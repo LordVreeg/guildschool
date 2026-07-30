@@ -1841,7 +1841,7 @@ function renderSkillModule(skillId) {
         <textarea rows="2" style="width:100%;resize:vertical" onchange="updateSkill('${skillId}','notes',this.value)">${si.notes||''}</textarea>
       </div>
 
-      ${(!si.dropdownOnly && def && !def.templated && parseFloat(si.rawXP) > 0) ? `
+      ${(!si.dropdownOnly && def && parseFloat(si.rawXP) > 0 && (!def.templated || WEAPON_CLASSES.includes(si.binding))) ? `
       <div style="margin-top:10px">
         <button class="btn btn-dim" onclick="manualPopulateChildren('${skillId}')">Populate Missing Dropdown Skills</button>
         <div class="note" style="margin-top:4px">Adds any dropdown-only sub-skills of ${si.skillName} that aren't already on this character — useful for skills trained before this feature existed.</div>
@@ -2253,11 +2253,17 @@ function autoPopulateDropdownChildren(character, parentInst) {
   // Special case: every Basic weapon skill shares the same 5 templated combat dropdowns,
   // bound to that specific weapon class. Single weap spec is excluded — it binds to one
   // specific weapon item, not a class, so it can't be auto-decided here.
-  if (WEAPON_CLASSES.includes(parentDef.name)) {
+  // The weapon class can come from the skill itself being the base weapon skill (e.g.
+  // populating from "Basic Spears"), or from a sibling templated skill already bound to
+  // that class (e.g. populating the rest from "Damage Bonus" bound to "Basic Spears") —
+  // covers old characters where the base weapon skill entry was never added directly.
+  const weaponClass = WEAPON_CLASSES.includes(parentDef.name) ? parentDef.name
+    : (WEAPON_CLASSES.includes(parentInst.binding) ? parentInst.binding : null);
+  if (weaponClass) {
     const sharedTemplated = ['Attack versus', 'Damage Bonus', 'Initiative bonus', 'Multiple attack', 'Parry'];
     for (const name of sharedTemplated) {
       const def = SKILLS.find(s => s.name === name);
-      if (def) addChild(def, parentDef.name);
+      if (def) addChild(def, weaponClass);
     }
   }
 
