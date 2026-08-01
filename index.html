@@ -194,7 +194,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Georgia', serif;
     <option value="group">Sort: Group</option>
     <option value="locale">Sort: Locale</option>
   </select>
-  <button onclick="openNewCharModal()">+ New Character</button>
+  <button onclick="openNewCharModal()">Character Creation</button>
   <div class="sep"></div>
   <span id="auth-user-label" style="font-size:11px;color:var(--header-text);margin-right:8px"></span>
   <button id="admin-panel-btn" onclick="openAdminPanel()" style="display:none">Admin</button>
@@ -2162,31 +2162,72 @@ function createChar() {
   renderApp();
 }
 
+let addSkillModalMode = 'other';
+
 function openAddSkillModal() {
+  const char = state.characters[state.activeChar];
+  const guildTabs = [
+    char && char.guild ? { key: 'primary', label: `Primary Guild (${char.guild})` } : null,
+    char && char.guild2 ? { key: 'secondary', label: `Secondary Guild (${char.guild2})` } : null,
+  ].filter(Boolean);
+
+  addSkillModalMode = guildTabs.length ? guildTabs[0].key : 'other';
+
+  openModal(`
+    <h3>Add Skill</h3>
+    <div class="form-group" style="margin-bottom:8px;display:flex;gap:6px;flex-wrap:wrap">
+      ${guildTabs.map(g => `<button class="btn btn-dim" id="skill-mode-${g.key}" onclick="setAddSkillMode('${g.key}')">${g.label}</button>`).join('')}
+      <button class="btn btn-dim" id="skill-mode-other" onclick="setAddSkillMode('other')">Other (All Skills)</button>
+    </div>
+    <div class="form-group" style="margin-bottom:8px"><label>Filter</label>
+      <input id="skill-filter" style="width:100%" placeholder="Type to search..." oninput="filterSkillList(this.value)">
+    </div>
+    <div id="skill-list" style="max-height:300px;overflow-y:auto;border:1px solid var(--border)"></div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button></div>`);
+
+  renderAddSkillList();
+}
+
+function setAddSkillMode(mode) {
+  addSkillModalMode = mode;
+  const filterInput = document.getElementById('skill-filter');
+  if (filterInput) filterInput.value = '';
+  renderAddSkillList();
+}
+
+function renderAddSkillList() {
+  const char = state.characters[state.activeChar];
   const typeOrder = ['Combat','Spell','Acting','Alchemic','Art','Artisan','Curative','Dance','Detect','Engineer','Language','Mind','Movement','Music','Priest','Scholar','Social','Thieves','Torturer','Outdoor'];
+
+  let pool = SKILLS;
+  if (addSkillModalMode === 'primary' || addSkillModalMode === 'secondary') {
+    const guildName = addSkillModalMode === 'primary' ? char.guild : char.guild2;
+    const guildData = GUILDS[guildName] || {};
+    const allowed = new Set(Object.keys(guildData).map(n => n.toLowerCase()));
+    pool = SKILLS.filter(s => allowed.has(s.name.toLowerCase()));
+  }
+
   const byType = {};
-  for (const s of SKILLS) {
+  for (const s of pool) {
     if (!byType[s.type]) byType[s.type] = [];
     byType[s.type].push(s);
   }
   const sortedTypes = typeOrder.filter(t => byType[t]).concat(Object.keys(byType).filter(t => !typeOrder.includes(t)));
 
-  openModal(`
-    <h3>Add Skill</h3>
-    <div class="form-group" style="margin-bottom:8px"><label>Filter</label>
-      <input id="skill-filter" style="width:100%" placeholder="Type to search..." oninput="filterSkillList(this.value)">
-    </div>
-    <div id="skill-list" style="max-height:300px;overflow-y:auto;border:1px solid var(--border)">
-      ${sortedTypes.map(type => `
-        <div style="padding:3px 8px;background:var(--header-bg);color:var(--header-text);font-size:10px;text-transform:uppercase">${type}</div>
-        ${(byType[type]||[]).map(s => `
-        <div class="sidebar-item skill-opt" onclick="addSkill('${s.name.replace(/'/g,"\\'")}')" data-name="${s.name.toLowerCase()}" style="padding:5px 12px;border-bottom:1px solid rgba(46,53,80,.3)">
-          <span>${s.name}</span>
-          <span class="lv" style="font-size:10px">${s.parent ? '↳ '+s.parent : 'Base'}</span>
-        </div>`).join('')}
-      `).join('')}
-    </div>
-    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button></div>`);
+  const listEl = document.getElementById('skill-list');
+  listEl.innerHTML = sortedTypes.length ? sortedTypes.map(type => `
+    <div style="padding:3px 8px;background:var(--header-bg);color:var(--header-text);font-size:10px;text-transform:uppercase">${type}</div>
+    ${(byType[type]||[]).map(s => `
+    <div class="sidebar-item skill-opt" onclick="addSkill('${s.name.replace(/'/g,"\\'")}')" data-name="${s.name.toLowerCase()}" style="padding:5px 12px;border-bottom:1px solid rgba(46,53,80,.3)">
+      <span>${s.name}</span>
+      <span class="lv" style="font-size:10px">${s.parent ? '↳ '+s.parent : 'Base'}</span>
+    </div>`).join('')}
+  `).join('') : '<div class="note" style="padding:10px">No skills found for this guild.</div>';
+
+  ['primary','secondary','other'].forEach(m => {
+    const btn = document.getElementById('skill-mode-'+m);
+    if (btn) btn.classList.toggle('btn-gold', m === addSkillModalMode);
+  });
 }
 
 function filterSkillList(val) {
