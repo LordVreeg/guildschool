@@ -1058,6 +1058,7 @@ function renderOverview() {
       <div class="form-row" style="margin-bottom:4px">
         ${['ST','IN','WI','CD','HE','CH','AP'].map(a=>`<div class="computed-item"><span class="ci-label">${a}</span><span class="ci-value">${(char.attrs||{})[a]||'—'}</span></div>`).join('')}
         <div class="computed-item" style="margin-left:auto"><span class="ci-label">Total Raw XP</span><span class="ci-value">${totalXP.toLocaleString()}</span></div>
+        ${char.unspentInitialExp > 0 ? `<div class="computed-item"><span class="ci-label">Unspent Initial Raw XP</span><span class="ci-value" style="color:var(--gold)">${char.unspentInitialExp.toLocaleString()}</span></div>` : ''}
       </div>
     </div>
   </div>`;
@@ -1115,6 +1116,7 @@ function renderGeneralModule() {
   <div class="panel">
     <div class="panel-header"><h2 style="font-family:'Algerian','Georgia',serif;font-weight:bold">General Information — ${char.name}</h2>
       <div class="computed-item" style="margin-left:auto"><span class="ci-label">Total Raw XP</span><span class="ci-value" style="font-size:16px">${totalXP.toLocaleString()}</span></div>
+      ${char.unspentInitialExp > 0 ? `<div class="computed-item"><span class="ci-label">Unspent Initial Raw XP</span><span class="ci-value" style="font-size:16px;color:var(--gold)">${char.unspentInitialExp.toLocaleString()}</span></div>` : ''}
     </div>
     <div class="panel-body">
       <div class="form-row">
@@ -1892,6 +1894,15 @@ function openNewCharModal() {
       </div>
       <div class="note">Race and subrace are single d100 rolls each (no re-roll/choice). Stops after Social Number — does not roll the Acquisitions item chart.</div>
     </div>
+    <hr class="divider">
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:8px">
+      <input type="checkbox" id="nc-initial-exp" onchange="document.getElementById('nc-initial-exp-amount').disabled=!this.checked">
+      Initial EXP spend
+    </label>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>Starting Raw XP pool to spend on skills</label>
+      <input type="number" id="nc-initial-exp-amount" class="w150" value="5000" disabled>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
       <button class="btn btn-gold" onclick="createChar()">Create</button>
@@ -2105,6 +2116,12 @@ function createChar() {
   if (!name && !rollChecked) return;
   const id = 'char_' + Date.now();
   const char = { id, name: name || 'Unnamed', attrs: {ST:12,IN:12,WI:12,CD:12,HE:12,CH:12,AP:12}, skills: [], guild: '', guild2: '' };
+
+  const initialExpChecked = document.getElementById('nc-initial-exp') && document.getElementById('nc-initial-exp').checked;
+  if (initialExpChecked) {
+    const amount = parseFloat(document.getElementById('nc-initial-exp-amount').value) || 0;
+    if (amount > 0) char.unspentInitialExp = amount;
+  }
 
   if (rollChecked) {
     const region = document.getElementById('nc-region').value;
@@ -2815,6 +2832,10 @@ function updateSkill(skillId, field, value) {
   const si = (char.skills || []).find(s => s.id === skillId);
   if (!si) return;
   const wasZero = !si.rawXP || parseFloat(si.rawXP) === 0;
+  if (field === 'rawXP' && char.unspentInitialExp > 0) {
+    const delta = (parseFloat(value) || 0) - (parseFloat(si.rawXP) || 0);
+    if (delta > 0) char.unspentInitialExp = Math.max(0, char.unspentInitialExp - delta);
+  }
   si[field] = value;
   if (field === 'rawXP' && wasZero && parseFloat(value) > 0 && !si.dropdownOnly) {
     autoPopulateDropdownChildren(char, si);
