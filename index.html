@@ -1816,15 +1816,21 @@ function renderSkillModule(skillId) {
 
       <!-- LEVEL ROLLS -->
       ${!si.dropdownOnly ? `
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Level Rolls (${def ? def.per_level : '?'} per level)</div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px">Level Rolls (${def ? def.per_level : '?'} per level)</div>
+        ${def && def.per_level ? `<button type="button" class="btn btn-dim" style="font-size:11px;padding:2px 8px" onclick="rollAllEmptyLevels('${skillId}')" title="Rolls ${def.per_level} for every empty level below">🎲 Roll All Empty</button>` : ''}
+      </div>
       <div class="rolls-grid">
         ${Array.from({length:20}, (_,i) => {
           const v = rolls[i] || '';
-          return `<input type="number" min="0" value="${v}" placeholder="${i+1}" class="${v?'has-val':''}" 
-            onchange="updateRoll('${skillId}',${i},this.value);this.className=this.value?'has-val':''">`;
+          return `<div style="display:flex;gap:2px">
+            <input type="number" min="0" value="${v}" placeholder="${i+1}" class="${v?'has-val':''}" style="flex:1;min-width:0"
+              onchange="updateRoll('${skillId}',${i},this.value);this.className=this.value?'has-val':''">
+            ${def && def.per_level ? `<button type="button" class="btn btn-dim" style="padding:2px 5px;font-size:10px" title="Roll ${def.per_level} for level ${i+1}" onclick="rollLevelSlot('${skillId}',${i})">🎲</button>` : ''}
+          </div>`;
         }).join('')}
       </div>
-      <div class="note">Rolls entered: ${rolls.filter(v=>v!==''&&v!==undefined).length} / 20 | Sum: ${vals.rollTotal}</div>
+      <div class="note">Rolls entered: ${rolls.filter(v=>v!==''&&v!==undefined).length} / 20 | Sum: ${vals.rollTotal} — 🎲 rolls real dice (per-level formula above) instead of a physical die; use whichever you prefer per level.</div>
       ` : '<div class="note">Dropdown Only — no XP or rolls tracked</div>'}
 
       <hr class="divider">
@@ -2854,6 +2860,32 @@ function updateRoll(skillId, idx, value) {
   si.rolls[idx] = value === '' ? '' : parseInt(value) || 0;
   saveState();
   // Re-render just the computed summary without full re-render
+  renderSkillModule(skillId);
+  renderSidebar();
+}
+
+function rollLevelSlot(skillId, idx) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const si = (char.skills || []).find(s => s.id === skillId);
+  if (!si) return;
+  const def = SKILLS.find(s => s.name === si.skillName);
+  if (!def || !def.per_level) return;
+  updateRoll(skillId, idx, rollDiceExpr(def.per_level));
+}
+
+function rollAllEmptyLevels(skillId) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const si = (char.skills || []).find(s => s.id === skillId);
+  if (!si) return;
+  const def = SKILLS.find(s => s.name === si.skillName);
+  if (!def || !def.per_level) return;
+  if (!si.rolls) si.rolls = Array(20).fill('');
+  for (let i = 0; i < 20; i++) {
+    if (si.rolls[i] === '' || si.rolls[i] === undefined) si.rolls[i] = rollDiceExpr(def.per_level);
+  }
+  saveState();
   renderSkillModule(skillId);
   renderSidebar();
 }
