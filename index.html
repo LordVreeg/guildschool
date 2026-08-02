@@ -1097,7 +1097,7 @@ function renderGeneralModule() {
   const customChoices = loadCustomData();
   const a = char.attrs || {};
   const guilds = Object.keys(GUILDS).sort();
-  const races = ['Human','Omwo~','Gartier','Gnollic','Orcash','Goblic','Ograk Strain','FratreCanis','Klaxik','Hobytalia','Gnomic'];
+  const races = ['Human','Omwo~','Gartier','Gnollic','Orcash','Goblic','Ograk Strain','FratreCanis','Klaxik','Hobytalia','Gnomic','Cross'];
   const subraces = {
     'Human': ['Mixed','Southern','Gwynellian','Omnian','Delvan','Grey March','Gesana'],
     'Omwo~': ['Meadow (Metto~)','Seafaring (Cmao)','Vale (Vanir)','Wood (Wolden)','Noble (Huet)','High (Imo)'],
@@ -1107,6 +1107,7 @@ function renderGeneralModule() {
     'Orcash': ['Mixed','Orcashgrak','Zyjmanese'],
     'Gartier': ['Mixed','Dexter (White Bear)','New'],
     'FratreCanis': ['Common','Gnollic'],
+    'Cross': ['See notes'],
   };
   const srOptions = '<option value="" ' + (char.subrace ? '' : 'selected') + '>— none selected —</option>' +
     (subraces[char.race] || []).map(sr => `<option ${char.subrace===sr?'selected':''}>${sr}</option>`).join('');
@@ -1992,17 +1993,20 @@ function rollNewCharacterData(region, isFemale) {
     log.push(`Cross component 2: ${second.race} (roll ${second.raceRoll}) → ${second.subraceRow.subrace} (roll ${second.subraceRoll})`);
     const a = first.subraceRow, b = second.subraceRow;
     const avg = (x,y) => Math.round(((x+y)/2) * 100) / 100;
+    // Attribute mods round .5 averages UP rather than leaving a fractional attribute on the sheet.
+    const avgAttr = (x,y) => Math.ceil((x+y)/2);
+    const crossLabel = `${first.race}/${second.race} Cross (${first.race} (${a.subrace}) × ${second.race} (${b.subrace}))`;
     subraceRow = {
-      subrace: `${first.race} (${a.subrace}) × ${second.race} (${b.subrace})`,
-      stMod: avg(a.stMod,b.stMod), inMod: avg(a.inMod,b.inMod), wiMod: avg(a.wiMod,b.wiMod),
-      cdMod: avg(a.cdMod,b.cdMod), heMod: avg(a.heMod,b.heMod), chMod: avg(a.chMod,b.chMod), apMod: avg(a.apMod,b.apMod),
+      subrace: 'See notes',
+      stMod: avgAttr(a.stMod,b.stMod), inMod: avgAttr(a.inMod,b.inMod), wiMod: avgAttr(a.wiMod,b.wiMod),
+      cdMod: avgAttr(a.cdMod,b.cdMod), heMod: avgAttr(a.heMod,b.heMod), chMod: avgAttr(a.chMod,b.chMod), apMod: avgAttr(a.apMod,b.apMod),
       heightMod: avg(a.heightMod,b.heightMod), weightMod: avg(a.weightMod,b.weightMod),
       socMod: avg(a.socMod,b.socMod), startAgeMod: avg(a.startAgeMod,b.startAgeMod), maxAgeMod: avg(a.maxAgeMod,b.maxAgeMod),
       darksight: avg(a.darksight,b.darksight),
       skillBonusText: [a.skillBonusText, b.skillBonusText].filter(Boolean).join(' | '),
     };
-    race = `${first.race}/${second.race} Cross`;
-    log.push(`Averaged stats: ST${subraceRow.stMod>=0?'+':''}${subraceRow.stMod}, IN${subraceRow.inMod>=0?'+':''}${subraceRow.inMod}, WI${subraceRow.wiMod>=0?'+':''}${subraceRow.wiMod}, CD${subraceRow.cdMod>=0?'+':''}${subraceRow.cdMod}, HE${subraceRow.heMod>=0?'+':''}${subraceRow.heMod}, CH${subraceRow.chMod>=0?'+':''}${subraceRow.chMod}, AP${subraceRow.apMod>=0?'+':''}${subraceRow.apMod}`);
+    race = 'Cross';
+    log.push(`Averaged stats (ties round up): ST${subraceRow.stMod>=0?'+':''}${subraceRow.stMod}, IN${subraceRow.inMod>=0?'+':''}${subraceRow.inMod}, WI${subraceRow.wiMod>=0?'+':''}${subraceRow.wiMod}, CD${subraceRow.cdMod>=0?'+':''}${subraceRow.cdMod}, HE${subraceRow.heMod>=0?'+':''}${subraceRow.heMod}, CH${subraceRow.chMod>=0?'+':''}${subraceRow.chMod}, AP${subraceRow.apMod>=0?'+':''}${subraceRow.apMod}`);
   } else {
     // Subrace (normal path)
     subraceRoll = rollDie(100);
@@ -2112,6 +2116,7 @@ function rollNewCharacterData(region, isFemale) {
     attrs: finalAttrs, race, subrace: subraceRow.subrace, height, weight: weightRounded,
     age: startAge, maxAge, darksight: subraceRow.darksight, socialNumber, socialDesc, startingWealth,
     acquisitionBonus: bonusStr, startingSkills, acquisitionSkills, acquisitionLogItems,
+    crossLabel: typeof crossLabel !== 'undefined' ? crossLabel : null,
     log
   };
 }
@@ -2172,7 +2177,7 @@ function createChar() {
         });
         autoPopulateDropdownChildren(char, char.skills[char.skills.length - 1]);
       }
-      if (!name) char.name = `Unnamed ${rolled.race} (${rolled.subrace})`;
+      if (!name) char.name = rolled.crossLabel ? `Unnamed ${rolled.crossLabel}` : `Unnamed ${rolled.race} (${rolled.subrace})`;
     }
   }
 
