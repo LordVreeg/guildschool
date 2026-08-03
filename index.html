@@ -1198,6 +1198,12 @@ function renderGeneralModule() {
             ${guilds.map(g=>`<option ${char.guild2===g?'selected':''}>${g}</option>`).join('')}
           </select>
         </div>
+        <div class="form-group"><label>Tertiary Guild</label>
+          <select class="w250" onchange="updateChar('guild3',this.value)">
+            <option value="">— none —</option>
+            ${guilds.map(g=>`<option ${char.guild3===g?'selected':''}>${g}</option>`).join('')}
+          </select>
+        </div>
       </div>
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Circumstance Checks
@@ -2126,7 +2132,7 @@ function createChar() {
   const rollChecked = document.getElementById('nc-roll') && document.getElementById('nc-roll').checked;
   if (!name && !rollChecked) return;
   const id = 'char_' + Date.now();
-  const char = { id, name: name || 'Unnamed', attrs: {ST:12,IN:12,WI:12,CD:12,HE:12,CH:12,AP:12}, skills: [], guild: '', guild2: '' };
+  const char = { id, name: name || 'Unnamed', attrs: {ST:12,IN:12,WI:12,CD:12,HE:12,CH:12,AP:12}, skills: [], guild: '', guild2: '', guild3: '' };
 
   const initialExpChecked = document.getElementById('nc-initial-exp') && document.getElementById('nc-initial-exp').checked;
   if (initialExpChecked) {
@@ -2197,6 +2203,7 @@ function openAddSkillModal() {
   const guildTabs = [
     char && char.guild ? { key: 'primary', label: `Primary Guild (${char.guild})` } : null,
     char && char.guild2 ? { key: 'secondary', label: `Secondary Guild (${char.guild2})` } : null,
+    char && char.guild3 ? { key: 'tertiary', label: `Tertiary Guild (${char.guild3})` } : null,
   ].filter(Boolean);
 
   addSkillModalMode = guildTabs.length ? guildTabs[0].key : 'other';
@@ -2228,8 +2235,8 @@ function renderAddSkillList() {
   const typeOrder = ['Combat','Spell','Acting','Alchemic','Art','Artisan','Curative','Dance','Detect','Engineer','Language','Mind','Movement','Music','Priest','Scholar','Social','Thieves','Torturer','Outdoor'];
 
   let pool = SKILLS;
-  if (addSkillModalMode === 'primary' || addSkillModalMode === 'secondary') {
-    const guildName = addSkillModalMode === 'primary' ? char.guild : char.guild2;
+  if (addSkillModalMode === 'primary' || addSkillModalMode === 'secondary' || addSkillModalMode === 'tertiary') {
+    const guildName = addSkillModalMode === 'primary' ? char.guild : addSkillModalMode === 'secondary' ? char.guild2 : char.guild3;
     const guildData = GUILDS[guildName] || {};
     const allowed = new Set(Object.keys(guildData).map(n => n.toLowerCase()));
     pool = SKILLS.filter(s => allowed.has(s.name.toLowerCase()));
@@ -2252,7 +2259,7 @@ function renderAddSkillList() {
     </div>`).join('')}
   `).join('') : '<div class="note" style="padding:10px">No skills found for this guild.</div>';
 
-  ['primary','secondary','other'].forEach(m => {
+  ['primary','secondary','tertiary','other'].forEach(m => {
     const btn = document.getElementById('skill-mode-'+m);
     if (btn) btn.classList.toggle('btn-gold', m === addSkillModalMode);
   });
