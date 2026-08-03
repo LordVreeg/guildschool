@@ -2377,9 +2377,12 @@ function addSkill(skillName) {
   if (!char.skills) char.skills = [];
   const def = SKILLS.find(s => s.name === skillName);
   const id = 'sk_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+  const guildForSkill = (addSkillModalMode === 'secondary' && char.guild2) ? char.guild2
+    : (addSkillModalMode === 'tertiary' && char.guild3) ? char.guild3
+    : char.guild || '';
   char.skills.push({
     id, skillName,
-    guildName: char.guild || '',
+    guildName: guildForSkill,
     dropdownOnly: false,
     parentSkillId: '',
     rawXP: 0,
