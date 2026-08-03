@@ -2233,31 +2233,44 @@ function setAddSkillMode(mode) {
 function renderAddSkillList() {
   const char = state.characters[state.activeChar];
   const typeOrder = ['Combat','Spell','Acting','Alchemic','Art','Artisan','Curative','Dance','Detect','Engineer','Language','Mind','Movement','Music','Priest','Scholar','Social','Thieves','Torturer','Outdoor'];
-
-  let pool = SKILLS;
-  if (addSkillModalMode === 'primary' || addSkillModalMode === 'secondary' || addSkillModalMode === 'tertiary') {
-    const guildName = addSkillModalMode === 'primary' ? char.guild : addSkillModalMode === 'secondary' ? char.guild2 : char.guild3;
-    const guildData = GUILDS[guildName] || {};
-    const allowed = new Set(Object.keys(guildData).map(n => n.toLowerCase()));
-    pool = SKILLS.filter(s => allowed.has(s.name.toLowerCase()));
-  }
-
-  const byType = {};
-  for (const s of pool) {
-    if (!byType[s.type]) byType[s.type] = [];
-    byType[s.type].push(s);
-  }
-  const sortedTypes = typeOrder.filter(t => byType[t]).concat(Object.keys(byType).filter(t => !typeOrder.includes(t)));
-
+  const isGuildMode = addSkillModalMode === 'primary' || addSkillModalMode === 'secondary' || addSkillModalMode === 'tertiary';
   const listEl = document.getElementById('skill-list');
-  listEl.innerHTML = sortedTypes.length ? sortedTypes.map(type => `
-    <div style="padding:3px 8px;background:var(--header-bg);color:var(--header-text);font-size:10px;text-transform:uppercase">${type}</div>
-    ${(byType[type]||[]).map(s => `
-    <div class="sidebar-item skill-opt" onclick="addSkill('${s.name.replace(/'/g,"\\'")}')" data-name="${s.name.toLowerCase()}" style="padding:5px 12px;border-bottom:1px solid rgba(46,53,80,.3)">
-      <span>${s.name}</span>
-      <span class="lv" style="font-size:10px">${s.parent ? '↳ '+s.parent : 'Base'}</span>
-    </div>`).join('')}
-  `).join('') : '<div class="note" style="padding:10px">No skills found for this guild.</div>';
+
+  if (isGuildMode) {
+    // Guild tables cover most of the skill list at varying bonus levels rather than
+    // a clean specialty/baseline split, so instead of hiding skills we surface the
+    // guild's best bonuses first — that's what actually cuts down the scrolling.
+    const guildName = addSkillModalMode === 'primary' ? char.guild : addSkillModalMode === 'secondary' ? char.guild2 : char.guild3;
+    const ranked = SKILLS
+      .map(s => ({ s, bonus: getGuildBase(guildName, s.name) }))
+      .filter(x => x.bonus > 0)
+      .sort((a, b) => b.bonus - a.bonus);
+
+    listEl.innerHTML = ranked.length ? ranked.map(({s, bonus}) => `
+      <div class="sidebar-item skill-opt" onclick="addSkill('${s.name.replace(/'/g,"\\'")}')" data-name="${s.name.toLowerCase()}" style="padding:5px 12px;border-bottom:1px solid rgba(46,53,80,.3);display:flex;justify-content:space-between;gap:8px">
+        <span>${s.name}</span>
+        <span style="display:flex;gap:8px;align-items:center;white-space:nowrap">
+          <span style="font-size:10px;color:var(--gold-dim)">${bonus.toFixed(3)}</span>
+          <span class="lv" style="font-size:10px">${s.parent ? '↳ '+s.parent : 'Base'}</span>
+        </span>
+      </div>`).join('') : '<div class="note" style="padding:10px">No skills found for this guild.</div>';
+  } else {
+    const byType = {};
+    for (const s of SKILLS) {
+      if (!byType[s.type]) byType[s.type] = [];
+      byType[s.type].push(s);
+    }
+    const sortedTypes = typeOrder.filter(t => byType[t]).concat(Object.keys(byType).filter(t => !typeOrder.includes(t)));
+
+    listEl.innerHTML = sortedTypes.length ? sortedTypes.map(type => `
+      <div style="padding:3px 8px;background:var(--header-bg);color:var(--header-text);font-size:10px;text-transform:uppercase">${type}</div>
+      ${(byType[type]||[]).map(s => `
+      <div class="sidebar-item skill-opt" onclick="addSkill('${s.name.replace(/'/g,"\\'")}')" data-name="${s.name.toLowerCase()}" style="padding:5px 12px;border-bottom:1px solid rgba(46,53,80,.3)">
+        <span>${s.name}</span>
+        <span class="lv" style="font-size:10px">${s.parent ? '↳ '+s.parent : 'Base'}</span>
+      </div>`).join('')}
+    `).join('') : '<div class="note" style="padding:10px">No skills found.</div>';
+  }
 
   ['primary','secondary','tertiary','other'].forEach(m => {
     const btn = document.getElementById('skill-mode-'+m);
