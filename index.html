@@ -317,7 +317,7 @@ async function handleSignedIn() {
   const adminBtn = document.getElementById('admin-panel-btn');
   if (adminBtn) adminBtn.style.display = currentProfile.is_admin ? 'inline-block' : 'none';
   await loadState();
-  fetchMyGroups();
+  await fetchMyGroups();
   updateExportIndicator();
   loadData().catch(err => {
     document.getElementById('main').innerHTML = `<div style="padding:40px;color:var(--red-b)">
@@ -934,16 +934,16 @@ function renderCharSelect() {
   if (sortSel) sortSel.value = mode;
 
   const label = c => `${c.name}${c.isNPC ? ' (NPC)' : ''}`;
+  const groupName = c => { const g = myGroups.find(x => x.id === c.playGroupId); return g ? g.name : null; };
 
   let html = '<option value="">— select character —</option>';
   if (mode === 'name') {
     const sorted = [...chars].sort((a,b) => (a.name||'').localeCompare(b.name||''));
-    html += sorted.map(c => `<option value="${c.id}" ${c.id === state.activeChar ? 'selected' : ''}>${label(c)}${c.group ? ' ['+c.group+']' : ''}${c.locale ? ' - '+c.locale : ''}</option>`).join('');
+    html += sorted.map(c => `<option value="${c.id}" ${c.id === state.activeChar ? 'selected' : ''}>${label(c)}${groupName(c) ? ' ['+groupName(c)+']' : ''}${c.locale ? ' - '+c.locale : ''}</option>`).join('');
   } else {
-    const field = mode === 'group' ? 'group' : 'locale';
     const groups = {};
     for (const c of chars) {
-      const key = c[field] || `(No ${mode === 'group' ? 'Group' : 'Locale'})`;
+      const key = mode === 'group' ? (groupName(c) || '(No Group)') : (c.locale || '(No Locale)');
       if (!groups[key]) groups[key] = [];
       groups[key].push(c);
     }
@@ -1104,11 +1104,24 @@ function ronWeekday({ month, day, isLithe }) {
   const doy = month * (RON_DAYS_PER_MONTH + 1) + dayIndex;
   return RON_WEEKDAYS[((doy % 8) + 8) % 8];
 }
+function ordinal(n) {
+  const s = ['th','st','nd','rd'], v = n % 100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
+}
 function ronDateLabel(clock) {
   const m = RON_MONTHS[clock.month];
   const wd = ronWeekday(clock);
   const dayLabel = clock.isLithe ? `Lithe Day (after ${m.key})` : `${m.key} ${clock.day}`;
-  const timeLabel = `Hour ${clock.hour}:${String(clock.minute).padStart(2,'0')}`;
+  // The 22-hour day is two 11-hour segments anchored to dawn and dusk, not a
+  // real-world clock: hour 0 is the 1st hour of the Sou (daybreak), running
+  // 11 hours; hour 11 is the 1st hour of the Na Sou (dusk), running 11 more.
+  // Hour-of-day resets to 1 at each transition rather than counting through
+  // to 22 — there's no Noon/Midnight reference point either way.
+  const isNaSou = clock.hour >= 11;
+  const hourInSegment = (isNaSou ? clock.hour - 11 : clock.hour) + 1;
+  const timeLabel = clock.minute
+    ? `${ordinal(hourInSegment)} Hour ${isNaSou ? 'Na Sou' : 'Sou'} and ${clock.minute}`
+    : `${ordinal(hourInSegment)} Hour ${isNaSou ? 'Na Sou' : 'Sou'}`;
   return `${wd}, ${dayLabel}, ${clock.year} RON — ${timeLabel}`;
 }
 
@@ -1228,7 +1241,7 @@ function openCreateGroupModal() {
         <select id="ng-month">${RON_MONTHS.map((m,i)=>`<option value="${i}">${m.key} (${m.season})</option>`).join('')}</select>
       </div>
       <div class="form-group"><label>Day (1-60)</label><input id="ng-day" type="number" class="w80" value="1" min="1" max="60"></div>
-      <div class="form-group"><label>Hour (0-21)</label><input id="ng-hour" type="number" class="w80" value="0" min="0" max="21"></div>
+      <div class="form-group"><label>Hour (0=1st Sou, 11=1st Na Sou)</label><input id="ng-hour" type="number" class="w80" value="0" min="0" max="21"></div>
       <div class="form-group"><label>Minute (0-59)</label><input id="ng-minute" type="number" class="w80" value="0" min="0" max="59"></div>
     </div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="createGroup()">Create</button></div>`);
@@ -1447,10 +1460,9 @@ function renderGeneralModule() {
           </select>
         </div>
         <div class="form-group"><label>Group</label>
-          <select class="w150" onchange="handleChoiceSelect(this,state.characters[state.activeChar],'group','groups')">
-            <option value="">— select —</option>
-            ${(customChoices.groups||[]).map(g=>`<option ${char.group===g?'selected':''}>${g}</option>`).join('')}
-            <option value="__addnew__">+ Add New...</option>
+          <select class="w150" onchange="linkCharacterToGroup(this.value)">
+            <option value="">— none —</option>
+            ${myGroups.map(g=>`<option value="${g.id}" ${char.playGroupId===g.id?'selected':''}>${escapeHtml(g.name)}</option>`).join('')}
           </select>
         </div>
         <div class="form-group"><label>Social Tier</label><input type="number" class="w80" value="${char.socialNumber!==undefined?char.socialNumber:''}" onchange="updateChar('socialNumber',this.value)"></div>
@@ -1501,17 +1513,6 @@ function renderGeneralModule() {
             ${guilds.map(g=>`<option ${char.guild3===g?'selected':''}>${g}</option>`).join('')}
           </select>
         </div>
-      </div>
-      <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Play Group (Multiplayer)</div>
-      <div class="form-row">
-        <div class="form-group"><label>Group</label>
-          <select class="w250" onchange="linkCharacterToGroup(this.value)">
-            <option value="">— none —</option>
-            ${myGroups.map(g=>`<option value="${g.id}" ${char.playGroupId===g.id?'selected':''}>${escapeHtml(g.name)}${g.myRole==='gm'?' (GM)':''}</option>`).join('')}
-          </select>
-        </div>
-        <div class="form-group" style="justify-content:flex-end"><div class="note">Lets your GM see this character in the Groups tab. If your group isn't listed, open Groups once to refresh, or ask your GM to invite you.</div></div>
       </div>
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Circumstance Checks
@@ -3338,7 +3339,7 @@ function buildCharacterSheetHtml(char) {
       <div class="pv-item"><b>Weight</b>${char.bodyWeight||'—'}</div>
       <div class="pv-item"><b>Darksight</b>${char.darksight||'—'}</div>
       <div class="pv-item"><b>Locale</b>${char.locale||'—'}</div>
-      <div class="pv-item"><b>Group</b>${char.group||'—'}</div>
+      <div class="pv-item"><b>Group</b>${(myGroups.find(g=>g.id===char.playGroupId)||{}).name||'—'}</div>
       <div class="pv-item"><b>Social Tier</b>${char.socialNumber!==undefined?char.socialNumber:'—'}</div>
     </div>
     ${char.appearanceNotes ? `<h2>Appearance</h2><div class="pv-item">${char.appearanceNotes}</div>` : ''}
