@@ -210,6 +210,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Georgia', serif;
   <span id="export-indicator" style="font-size:11px;margin-right:8px"></span>
   <button onclick="printCharacterSheet()">🖨 Print Sheet</button>
   <button onclick="showUtilitiesModule()">🔧 Utilities</button>
+  <button onclick="showGroupModule()">👥 Groups</button>
   <button onclick="exportData()">Export JSON</button>
   <button onclick="importData()">Import JSON</button>
 </div>
@@ -316,6 +317,7 @@ async function handleSignedIn() {
   const adminBtn = document.getElementById('admin-panel-btn');
   if (adminBtn) adminBtn.style.display = currentProfile.is_admin ? 'inline-block' : 'none';
   await loadState();
+  fetchMyGroups();
   updateExportIndicator();
   loadData().catch(err => {
     document.getElementById('main').innerHTML = `<div style="padding:40px;color:var(--red-b)">
@@ -472,7 +474,7 @@ async function loadState() {
   try {
     const { data, error } = await sb
       .from('characters')
-      .select('id, data')
+      .select('id, data, group_id')
       .eq('owner_id', currentUser.id);
     if (error) throw error;
     const characters = {};
@@ -480,6 +482,7 @@ async function loadState() {
     for (const row of data) {
       const appId = row.data && row.data.id;
       if (!appId) continue;
+      row.data.playGroupId = row.group_id || null;
       characters[appId] = row.data;
       charRowIds[appId] = row.id;
     }
@@ -1017,6 +1020,7 @@ function renderMain() {
   if (state.activeView === 'combat') { renderCombatModule(); return; }
   if (state.activeView === 'spell') { renderSpellModule(); return; }
   if (state.activeView === 'utilities') { renderUtilitiesModule(); return; }
+  if (state.activeView === 'group') { renderGroupModule(); return; }
   if (state.activeSkillId) { renderSkillModule(state.activeSkillId); return; }
   renderOverview();
 }
@@ -1053,6 +1057,271 @@ function showUtilitiesModule() {
   state.activeSkillId = null;
   state.activeView = 'utilities';
   renderUtilitiesModule();
+}
+
+// ============================================================
+// GROUP MODULE (Reckoning of Nebler calendar, roster, notes)
+// ============================================================
+
+const RON_MONTHS = [
+  { key: 'Dumotux',  season: 'Winterwane', desc: 'the month of Ice' },
+  { key: 'Tokush',   season: 'Spring',     desc: 'the month of Renewal' },
+  { key: 'Tanos',    season: 'Summerwax',  desc: 'the month of Promise' },
+  { key: 'Gosun',    season: 'Summerwane', desc: 'the month of Flowers' },
+  { key: 'Hisui',    season: 'Fall',       desc: 'the month of Leaf-fall' },
+  { key: 'Dumoktis', season: 'Winterwax',  desc: 'the month of Hardening' },
+];
+const RON_WEEKDAYS = ['Dunsak','Bowyak','Vindak','Scaliak','Harvak','Monsak','Lawsak','Fastak'];
+const RON_DAYS_PER_MONTH = 60;
+const RON_HOURS_PER_DAY = 22;
+// Everything below is built on a single "seconds since RON year 0" counter.
+// Advancing by minutes, hours, days, or (later) 2-second combat segments is
+// just adding to that one number — no separate rollover logic per unit.
+const RON_SEC_PER_MIN = 60;
+const RON_SEC_PER_HOUR = 3600;
+const RON_SEC_PER_DAY = RON_SEC_PER_HOUR * RON_HOURS_PER_DAY;                 // 79,200
+const RON_SEC_PER_MONTH_BLOCK = RON_SEC_PER_DAY * (RON_DAYS_PER_MONTH + 1);   // 4,831,200 (60 days + 1 Lithe day)
+const RON_SEC_PER_YEAR = RON_SEC_PER_MONTH_BLOCK * 6;                         // 28,987,200
+
+function ronFromSeconds(totalSeconds) {
+  let s = totalSeconds;
+  const year = Math.floor(s / RON_SEC_PER_YEAR); s -= year * RON_SEC_PER_YEAR;
+  const month = Math.floor(s / RON_SEC_PER_MONTH_BLOCK); s -= month * RON_SEC_PER_MONTH_BLOCK;
+  const dayIndex = Math.floor(s / RON_SEC_PER_DAY); s -= dayIndex * RON_SEC_PER_DAY; // 0-60; 60 = Lithe day
+  const isLithe = dayIndex >= RON_DAYS_PER_MONTH;
+  const day = isLithe ? RON_DAYS_PER_MONTH : dayIndex + 1;
+  const hour = Math.floor(s / RON_SEC_PER_HOUR); s -= hour * RON_SEC_PER_HOUR;
+  const minute = Math.floor(s / RON_SEC_PER_MIN); s -= minute * RON_SEC_PER_MIN;
+  return { year, month, day, isLithe, hour, minute, second: s };
+}
+function ronToSeconds({ year, month, day, isLithe, hour, minute, second }) {
+  const dayIndex = isLithe ? RON_DAYS_PER_MONTH : (day - 1);
+  return year*RON_SEC_PER_YEAR + month*RON_SEC_PER_MONTH_BLOCK + dayIndex*RON_SEC_PER_DAY
+       + (hour||0)*RON_SEC_PER_HOUR + (minute||0)*RON_SEC_PER_MIN + (second||0);
+}
+function ronWeekday({ month, day, isLithe }) {
+  const dayIndex = isLithe ? RON_DAYS_PER_MONTH : (day - 1);
+  const doy = month * (RON_DAYS_PER_MONTH + 1) + dayIndex;
+  return RON_WEEKDAYS[((doy % 8) + 8) % 8];
+}
+function ronDateLabel(clock) {
+  const m = RON_MONTHS[clock.month];
+  const wd = ronWeekday(clock);
+  const dayLabel = clock.isLithe ? `Lithe Day (after ${m.key})` : `${m.key} ${clock.day}`;
+  const timeLabel = `Hour ${clock.hour}:${String(clock.minute).padStart(2,'0')}`;
+  return `${wd}, ${dayLabel}, ${clock.year} RON — ${timeLabel}`;
+}
+
+let myGroups = [];
+let activeGroupId = null;
+let groupRosterCache = [];
+let groupNotesCache = [];
+
+function showGroupModule() {
+  state.activeSkillId = null;
+  state.activeView = 'group';
+  renderGroupModule();
+}
+
+async function fetchMyGroups() {
+  if (!currentUser) return [];
+  const { data: memberships, error } = await sb.from('group_members')
+    .select('role, groups(id,name,created_by,clock_seconds)')
+    .eq('user_id', currentUser.id);
+  if (error) { console.error('Failed to load groups', error); return myGroups; }
+  myGroups = (memberships || []).filter(m => m.groups).map(m => ({ ...m.groups, myRole: m.role }));
+  return myGroups;
+}
+
+async function renderGroupModule() {
+  document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body">Loading groups…</div></div>`;
+  await fetchMyGroups();
+  if (activeGroupId && !myGroups.find(g => g.id === activeGroupId)) activeGroupId = null;
+  if (!activeGroupId && myGroups.length) activeGroupId = myGroups[0].id;
+
+  const picker = `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+      ${myGroups.map(g => `<button class="btn ${g.id===activeGroupId?'btn-gold':'btn-dim'}" onclick="selectGroup('${g.id}')">${escapeHtml(g.name)}${g.myRole==='gm'?' ★':''}</button>`).join('')}
+      <button class="btn btn-dim" onclick="openCreateGroupModal()">+ New Group</button>
+    </div>`;
+
+  if (!activeGroupId) {
+    document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body">${picker}<div class="note">You're not in any groups yet. Create one, or ask your GM to invite you by email.</div></div></div>`;
+    return;
+  }
+  document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body">${picker}<div id="group-detail">Loading…</div></div></div>`;
+  renderGroupDetail(myGroups.find(g => g.id === activeGroupId));
+}
+
+function selectGroup(groupId) {
+  activeGroupId = groupId;
+  renderGroupModule();
+}
+
+async function renderGroupDetail(group) {
+  const isGM = group.myRole === 'gm';
+  const [{ data: roster, error: rErr }, { data: notes, error: nErr }] = await Promise.all([
+    sb.from('group_roster').select('id, owner_id, name, is_npc').eq('group_id', group.id),
+    sb.from('group_notes').select('id, author_id, note, game_seconds, created_at').eq('group_id', group.id).order('game_seconds', { ascending: false })
+  ]);
+  const el = document.getElementById('group-detail');
+  if (!el) return;
+  if (rErr || nErr) {
+    el.innerHTML = `<div style="color:var(--red-b)">Failed to load group: ${escapeHtml((rErr||nErr).message)}</div>`;
+    return;
+  }
+  groupRosterCache = roster || [];
+  groupNotesCache = notes || [];
+
+  const rosterHtml = groupRosterCache.length
+    ? groupRosterCache.map(c => `<li>${escapeHtml(c.name || '(unnamed)')}${c.is_npc ? ' <span style="font-size:10px;color:var(--gold-dim)">(NPC)</span>' : ''}</li>`).join('')
+    : '<li class="note">No characters linked to this group yet.</li>';
+
+  const notesHtml = groupNotesCache.length
+    ? groupNotesCache.map(n => `<tr><td style="white-space:nowrap;font-size:11px;color:var(--text-dim)">${ronDateLabel(ronFromSeconds(n.game_seconds))}</td><td>${escapeHtml(n.note)}</td></tr>`).join('')
+    : '<tr><td colspan="2" class="note">No notes yet.</td></tr>';
+
+  el.innerHTML = `
+    <hr class="divider">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h2 style="margin:0">${escapeHtml(group.name)}</h2>
+      ${isGM ? `<button class="btn btn-dim" onclick="openInviteModal('${group.id}')">+ Invite Player</button>` : ''}
+    </div>
+    <div class="form-group" style="margin-top:8px"><label>Roster (PCs &amp; NPCs)</label>
+      <ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${rosterHtml}</ul>
+    </div>
+    <hr class="divider">
+    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Time — Reckoning of Nebler</div>
+    <div class="computed-item" style="margin-bottom:8px"><span class="ci-value" style="font-size:16px">${ronDateLabel(ronFromSeconds(group.clock_seconds))}</span></div>
+    ${isGM ? `
+    <div class="form-row">
+      <div class="form-group"><label>Advance by</label><input id="clock-advance-amt" type="number" class="w80" value="1"></div>
+      <div class="form-group"><label>Unit</label>
+        <select id="clock-advance-unit">
+          <option value="60">Minutes</option>
+          <option value="3600" selected>Hours</option>
+          <option value="79200">Days</option>
+        </select>
+      </div>
+      <div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="advanceGroupClock('${group.id}')">Advance Time</button></div>
+    </div>` : '<div class="note">Only the GM can advance time.</div>'}
+    <hr class="divider">
+    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Notes</div>
+    <div class="form-row">
+      <div class="form-group" style="flex:1"><textarea id="new-group-note" rows="2" style="width:100%" placeholder="Add a note at the current time..."></textarea></div>
+      <div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="addGroupNote('${group.id}')">Add Note</button></div>
+    </div>
+    <table class="skill-table" style="margin-top:8px">
+      <thead><tr><th>When (in-game)</th><th>Note</th></tr></thead>
+      <tbody>${notesHtml}</tbody>
+    </table>`;
+}
+
+function openCreateGroupModal() {
+  openModal(`
+    <h3>New Group</h3>
+    <div class="form-group" style="margin-bottom:8px"><label>Group Name</label><input id="ng-name" style="width:100%"></div>
+    <div class="note" style="margin-bottom:8px">Starting date (Reckoning of Nebler)</div>
+    <div class="form-row">
+      <div class="form-group"><label>Year (RON)</label><input id="ng-year" type="number" class="w100" value="895"></div>
+      <div class="form-group"><label>Month</label>
+        <select id="ng-month">${RON_MONTHS.map((m,i)=>`<option value="${i}">${m.key} (${m.season})</option>`).join('')}</select>
+      </div>
+      <div class="form-group"><label>Day (1-60)</label><input id="ng-day" type="number" class="w80" value="1" min="1" max="60"></div>
+      <div class="form-group"><label>Hour (0-21)</label><input id="ng-hour" type="number" class="w80" value="0" min="0" max="21"></div>
+      <div class="form-group"><label>Minute (0-59)</label><input id="ng-minute" type="number" class="w80" value="0" min="0" max="59"></div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="createGroup()">Create</button></div>`);
+}
+
+async function createGroup() {
+  const name = document.getElementById('ng-name').value.trim();
+  if (!name) { alert('Group name is required.'); return; }
+  const year = parseInt(document.getElementById('ng-year').value) || 895;
+  const month = parseInt(document.getElementById('ng-month').value) || 0;
+  const day = Math.min(60, Math.max(1, parseInt(document.getElementById('ng-day').value) || 1));
+  const hour = Math.min(21, Math.max(0, parseInt(document.getElementById('ng-hour').value) || 0));
+  const minute = Math.min(59, Math.max(0, parseInt(document.getElementById('ng-minute').value) || 0));
+  const clockSeconds = ronToSeconds({ year, month, day, isLithe: false, hour, minute, second: 0 });
+  const { data, error } = await sb.from('groups').insert({
+    name, created_by: currentUser.id, clock_seconds: clockSeconds
+  }).select('id').single();
+  if (error) { alert('Failed to create group: ' + error.message); return; }
+  const { error: memErr } = await sb.from('group_members').insert({ group_id: data.id, user_id: currentUser.id, role: 'gm' });
+  if (memErr) { alert('Group created, but failed to add you as its GM: ' + memErr.message); }
+  activeGroupId = data.id;
+  closeModal();
+  renderGroupModule();
+}
+
+async function advanceGroupClock(groupId) {
+  const group = myGroups.find(g => g.id === groupId);
+  if (!group) return;
+  const amount = parseInt(document.getElementById('clock-advance-amt').value) || 0;
+  const unitSeconds = parseInt(document.getElementById('clock-advance-unit').value) || 3600;
+  const nextSeconds = group.clock_seconds + (amount * unitSeconds);
+  const { error } = await sb.from('groups').update({ clock_seconds: nextSeconds }).eq('id', groupId);
+  if (error) { alert('Failed to advance time: ' + error.message); return; }
+  renderGroupModule();
+}
+
+async function addGroupNote(groupId) {
+  const group = myGroups.find(g => g.id === groupId);
+  if (!group) return;
+  const textEl = document.getElementById('new-group-note');
+  const text = textEl.value.trim();
+  if (!text) return;
+  const { error } = await sb.from('group_notes').insert({
+    group_id: groupId, author_id: currentUser.id, note: text, game_seconds: group.clock_seconds
+  });
+  if (error) { alert('Failed to add note: ' + error.message); return; }
+  renderGroupModule();
+}
+
+function openInviteModal(groupId) {
+  openModal(`
+    <h3>Invite Player</h3>
+    <div class="form-group" style="margin-bottom:8px"><label>Player's Email</label><input id="inv-email" style="width:100%" type="email"></div>
+    <div class="form-group" style="margin-bottom:8px"><label>Role</label>
+      <select id="inv-role"><option value="player">Player</option><option value="gm">GM</option></select>
+    </div>
+    <div id="inv-status" style="font-size:12px;color:var(--red-b);margin-bottom:8px;display:none"></div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="inviteMember('${groupId}')">Invite</button></div>`);
+}
+
+async function inviteMember(groupId) {
+  const email = document.getElementById('inv-email').value.trim();
+  const role = document.getElementById('inv-role').value;
+  const statusEl = document.getElementById('inv-status');
+  statusEl.style.display = 'none';
+  if (!email) return;
+  const { data: lookup, error: lookupErr } = await sb.from('profile_lookup').select('id').ilike('email', email).maybeSingle();
+  if (lookupErr || !lookup) {
+    statusEl.textContent = 'No approved user found with that email.';
+    statusEl.style.display = 'block';
+    return;
+  }
+  const { error } = await sb.from('group_members').insert({ group_id: groupId, user_id: lookup.id, role });
+  if (error) {
+    statusEl.textContent = 'Failed to invite: ' + error.message;
+    statusEl.style.display = 'block';
+    return;
+  }
+  closeModal();
+  renderGroupModule();
+}
+
+async function linkCharacterToGroup(groupId) {
+  const appId = state.activeChar;
+  const char = state.characters[appId];
+  if (!char) return;
+  const rowId = charRowIds[appId];
+  if (!rowId) { alert('This character needs to save at least once (any edit will do) before it can be linked to a group.'); renderGeneralModule(); return; }
+  const { error } = await sb.from('characters').update({ group_id: groupId || null }).eq('id', rowId);
+  if (error) { alert('Failed to link character to group: ' + error.message); return; }
+  char.playGroupId = groupId || null;
+  saveState();
+  renderGeneralModule();
 }
 
 function showSkillModule(skillId) {
@@ -1232,6 +1501,17 @@ function renderGeneralModule() {
             ${guilds.map(g=>`<option ${char.guild3===g?'selected':''}>${g}</option>`).join('')}
           </select>
         </div>
+      </div>
+      <hr class="divider">
+      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Play Group (Multiplayer)</div>
+      <div class="form-row">
+        <div class="form-group"><label>Group</label>
+          <select class="w250" onchange="linkCharacterToGroup(this.value)">
+            <option value="">— none —</option>
+            ${myGroups.map(g=>`<option value="${g.id}" ${char.playGroupId===g.id?'selected':''}>${escapeHtml(g.name)}${g.myRole==='gm'?' (GM)':''}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group" style="justify-content:flex-end"><div class="note">Lets your GM see this character in the Groups tab. If your group isn't listed, open Groups once to refresh, or ask your GM to invite you.</div></div>
       </div>
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Circumstance Checks
