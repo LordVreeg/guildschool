@@ -1279,6 +1279,11 @@ async function renderGroupDetail(group) {
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Time — Reckoning of Nebler</div>
     <div class="computed-item" style="margin-bottom:8px"><span class="ci-value" style="font-size:16px">${ronDateLabel(ronFromSeconds(group.clock_seconds))}</span></div>
     ${isGM ? `
+    <div class="form-row" style="margin-bottom:6px">
+      <button class="btn btn-dim" onclick="quickAdvance('${group.id}', 60)">+1 min</button>
+      <button class="btn btn-dim" onclick="quickAdvance('${group.id}', 600)">+10 min</button>
+      <button class="btn btn-dim" onclick="quickAdvance('${group.id}', 1800)">+30 min</button>
+    </div>
     <div class="form-row">
       <div class="form-group"><label>Advance by</label><input id="clock-advance-amt" type="number" class="w80" value="1"></div>
       <div class="form-group"><label>Unit</label>
@@ -1349,6 +1354,12 @@ async function advanceGroupClock(groupId) {
   const elapsedSeconds = amount * unitSeconds;
   const nextSeconds = group.clock_seconds + elapsedSeconds;
   await maybePromptResting(groupId, nextSeconds, elapsedSeconds);
+}
+
+async function quickAdvance(groupId, seconds) {
+  const group = myGroups.find(g => g.id === groupId);
+  if (!group) return;
+  await maybePromptResting(groupId, group.clock_seconds + seconds, seconds);
 }
 
 async function syncGroupRecovery(groupId) {
