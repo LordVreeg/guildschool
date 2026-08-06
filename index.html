@@ -865,6 +865,78 @@ function computeHP(character) {
   return { totalHP, system, currentHP, physicalMax, physicalCurrent, enduranceMax, enduranceCurrent };
 }
 
+// Rolls forward SP recovery for elapsed game time since this character's last
+// check, and (if opts.isResting) accrues toward the 6-hour nightly HP-recovery
+// threshold. Default assumption is "not resting" -- callers only pass
+// isResting/focusPools when a GM has explicitly reported a rest span (see the
+// Group module's resting prompt on clock advances > 2 hours). Mutates
+// character.spellState / character.recoveryState in place.
+function settleCharacterRecovery(character, uptoSeconds, opts) {
+  opts = opts || {};
+  const focusPools = opts.focusPools || null;
+  const isResting = !!opts.isResting;
+  if (!character.recoveryState) character.recoveryState = {};
+  const rs = character.recoveryState;
+  const last = (rs.lastCheckSeconds != null) ? rs.lastCheckSeconds : uptoSeconds;
+  const elapsedSec = uptoSeconds - last;
+  const spGains = [];
+  if (elapsedSec > 0) {
+    const elapsedHours = elapsedSec / 3600;
+    const pools = computeSpellPools(character);
+    if (!character.spellState) character.spellState = {};
+    for (const pool of pools) {
+      if (pool.currentSP >= pool.maxSP) continue;
+      const usingSleepRate = isResting && focusPools && focusPools.includes(pool.name);
+      const rate = usingSleepRate ? pool.recoverSleep : pool.recoverAwake;
+      if (rate <= 0) continue;
+      const next = Math.min(pool.maxSP, pool.currentSP + rate * elapsedHours);
+      const gained = Math.round((next - pool.currentSP) * 10) / 10;
+      if (gained > 0) {
+        if (!character.spellState[pool.name]) character.spellState[pool.name] = {};
+        character.spellState[pool.name].current = next;
+        spGains.push(`+${gained} ${pool.name}`);
+      }
+    }
+    if (isResting) rs.restHoursAccrued = (rs.restHoursAccrued || 0) + elapsedHours;
+  }
+  rs.lastCheckSeconds = uptoSeconds;
+  let hpRollsDue = 0;
+  while ((rs.restHoursAccrued || 0) >= 6) { rs.restHoursAccrued -= 6; hpRollsDue++; }
+  return { spGains, hpRollsDue };
+}
+
+// Resolves one nightly HP-recovery Fortitude CC roll (d100, roll <= target succeeds).
+// Standard: 1 HP baseline for the rest, +1 more on success, +1 more per 25% rolled
+// under target. Collegium: Endurance fully refills (capped at current Physical);
+// Physical needs the CC roll -- success +1, success by 25+ or a crit (<=5) +2,
+// fail +0, crit fail (>=96) -1. Mutates character.hpState in place.
+function applyHPRecoveryRoll(character, rollResult) {
+  const hp = computeHP(character);
+  const target = computeCC(character).fortitude.value;
+  const success = rollResult <= target;
+  const margin = success ? (target - rollResult) : 0;
+  if (!character.hpState) character.hpState = {};
+  if (hp.system === 'collegium') {
+    const critSuccess = rollResult <= 5;
+    const critFail = rollResult >= 96;
+    let physicalDelta;
+    if (critFail) physicalDelta = -1;
+    else if (!success) physicalDelta = 0;
+    else if (critSuccess || margin >= 25) physicalDelta = 2;
+    else physicalDelta = 1;
+    const physicalCurrent = Math.max(0, Math.min(hp.physicalMax, hp.physicalCurrent + physicalDelta));
+    const enduranceCurrent = Math.min(hp.enduranceMax, physicalCurrent);
+    character.hpState.physicalCurrent = physicalCurrent;
+    character.hpState.enduranceCurrent = enduranceCurrent;
+    return { system: 'collegium', roll: rollResult, target, success, physicalDelta, physicalCurrent, enduranceCurrent };
+  } else {
+    const delta = success ? (2 + Math.floor(margin / 25)) : 1;
+    const currentHP = Math.max(0, Math.min(hp.totalHP, hp.currentHP + delta));
+    character.hpState.currentHP = currentHP;
+    return { system: 'standard', roll: rollResult, target, success, delta, currentHP };
+  }
+}
+
 function computeArmor(character) {
   const items = character.items || [];
   const armorItems = items.filter(it => it.type === 'Armor');
@@ -1218,6 +1290,7 @@ async function renderGroupDetail(group) {
       </div>
       <div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="advanceGroupClock('${group.id}')">Advance Time</button></div>
       <div class="form-group" style="justify-content:flex-end"><button class="btn btn-dim" onclick="openEditTimeModal('${group.id}')">Edit Time</button></div>
+      <div class="form-group" style="justify-content:flex-end"><button class="btn btn-dim" onclick="syncGroupRecovery('${group.id}')" title="Catch up HP/SP recovery for the roster without moving the clock">Sync Recovery</button></div>
     </div>` : '<div class="note">Only the GM can advance time.</div>'}
     <hr class="divider">
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Notes</div>
@@ -1273,9 +1346,148 @@ async function advanceGroupClock(groupId) {
   if (!group) return;
   const amount = parseInt(document.getElementById('clock-advance-amt').value) || 0;
   const unitSeconds = parseInt(document.getElementById('clock-advance-unit').value) || 3600;
-  const nextSeconds = group.clock_seconds + (amount * unitSeconds);
+  const elapsedSeconds = amount * unitSeconds;
+  const nextSeconds = group.clock_seconds + elapsedSeconds;
+  await maybePromptResting(groupId, nextSeconds, elapsedSeconds);
+}
+
+async function syncGroupRecovery(groupId) {
+  const group = myGroups.find(g => g.id === groupId);
+  if (!group) return;
+  await runGroupRecovery(groupId, group.clock_seconds, {});
+  renderGroupModule();
+}
+
+// Applies SP/HP recovery for every roster character up to uptoSeconds.
+// restingMap is { [characterRowId]: { isResting, focusPools } } for any
+// characters a GM has flagged as resting for this span; everyone else
+// defaults to the awake rate with no HP accrual. Writes results straight to
+// Supabase (roster characters generally aren't the GM's own state.characters),
+// logs a group note, and opens the HP-roll modal for anyone whose rest crossed
+// the 6-hour nightly threshold.
+async function runGroupRecovery(groupId, uptoSeconds, restingMap) {
+  const { data: rosterChars, error } = await sb.from('characters').select('id, data').eq('group_id', groupId);
+  if (error) { alert('Failed to load roster for recovery: ' + error.message); return; }
+  const summaryLines = [];
+  const hpRollsQueue = [];
+  for (const row of rosterChars || []) {
+    const charData = row.data;
+    if (!charData) continue;
+    const opts = (restingMap && restingMap[row.id]) || {};
+    const result = settleCharacterRecovery(charData, uptoSeconds, opts);
+    if (result.spGains.length) summaryLines.push(`${charData.name || '(unnamed)'}: ${result.spGains.join(', ')}`);
+    for (let i = 0; i < result.hpRollsDue; i++) hpRollsQueue.push({ charRowId: row.id, charData, name: charData.name || '(unnamed)' });
+    const { error: uErr } = await sb.from('characters').update({ data: charData }).eq('id', row.id);
+    if (uErr) console.error('Failed to save recovery for', row.id, uErr);
+  }
+  if (summaryLines.length) {
+    await sb.from('group_notes').insert({ group_id: groupId, author_id: currentUser.id, note: `Recovery: ${summaryLines.join(' | ')}`, game_seconds: uptoSeconds });
+  }
+  if (hpRollsQueue.length) openHpRollModal(groupId, hpRollsQueue, uptoSeconds);
+}
+
+// Advances <=2 hours settle silently (default non-resting). Longer advances
+// ask the GM who was resting (asleep or trying to sleep) and which spell
+// pools they were working on reclaiming, since that determines the faster
+// sleep recovery rate and counts toward each character's 6-hour HP threshold.
+let restingPromptRoster = [];
+async function maybePromptResting(groupId, nextSeconds, elapsedSeconds) {
+  if (elapsedSeconds <= 7200) {
+    const { error } = await sb.from('groups').update({ clock_seconds: nextSeconds }).eq('id', groupId);
+    if (error) { alert('Failed to advance time: ' + error.message); return; }
+    await runGroupRecovery(groupId, nextSeconds, {});
+    renderGroupModule();
+    return;
+  }
+  const { data: rosterChars, error } = await sb.from('characters').select('id, data').eq('group_id', groupId);
+  if (error) { alert('Failed to load roster: ' + error.message); return; }
+  restingPromptRoster = (rosterChars || []).filter(r => r.data);
+  const hours = (elapsedSeconds / 3600).toFixed(1);
+  openModal(`
+    <h3>Advancing ${hours} hours — who was resting?</h3>
+    <div class="note" style="margin-bottom:8px">Resting means asleep or trying to sleep. Anyone left unchecked is assumed active and still recovers spell points automatically at the normal awake rate.</div>
+    ${restingPromptRoster.map(r => {
+      const pools = computeSpellPools(r.data);
+      const poolBoxes = pools.map(p => `<label style="display:inline-flex;align-items:center;gap:4px;margin-right:10px;font-size:12px"><input type="checkbox" class="rest-pool" data-char="${r.id}" value="${escapeHtml(p.name)}"> ${escapeHtml(p.name)}</label>`).join('');
+      return `<div style="margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" class="rest-toggle" id="rest-${r.id}" onchange="document.getElementById('rest-pools-${r.id}').style.display=this.checked?'block':'none'">
+          <b>${escapeHtml(r.data.name || '(unnamed)')}</b> was resting
+        </label>
+        <div id="rest-pools-${r.id}" style="display:none;margin:6px 0 0 22px">
+          <div class="note" style="margin-bottom:4px">Which spell points were they working on reclaiming? (unchecked pools still recover at the normal awake rate)</div>
+          ${poolBoxes || '<span class="note">No trained spell pools.</span>'}
+        </div>
+      </div>`;
+    }).join('')}
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="confirmRestingPrompt('${groupId}', ${nextSeconds})">Apply</button></div>`);
+}
+
+async function confirmRestingPrompt(groupId, nextSeconds) {
+  const restingMap = {};
+  for (const r of restingPromptRoster) {
+    const toggle = document.getElementById(`rest-${r.id}`);
+    if (toggle && toggle.checked) {
+      const focusPools = Array.from(document.querySelectorAll(`.rest-pool[data-char="${r.id}"]:checked`)).map(el => el.value);
+      restingMap[r.id] = { isResting: true, focusPools };
+    }
+  }
   const { error } = await sb.from('groups').update({ clock_seconds: nextSeconds }).eq('id', groupId);
   if (error) { alert('Failed to advance time: ' + error.message); return; }
+  closeModal();
+  await runGroupRecovery(groupId, nextSeconds, restingMap);
+  renderGroupModule();
+}
+
+// Batches nightly Fortitude CC rolls for anyone whose accrued rest crossed a
+// 6-hour threshold this settlement. The GM either types in a roll a player
+// made at the table, or rolls online (d100, roll <= Fortitude CC succeeds).
+let pendingHpRolls = [];
+function openHpRollModal(groupId, queue, uptoSeconds) {
+  pendingHpRolls = queue.map((q, i) => ({ ...q, idx: i }));
+  renderHpRollModal(groupId, uptoSeconds);
+}
+function renderHpRollModal(groupId, uptoSeconds) {
+  const rows = pendingHpRolls.map(q => {
+    const cc = computeCC(q.charData).fortitude.value;
+    return `<tr>
+      <td>${escapeHtml(q.name)}</td>
+      <td>${cc}</td>
+      <td><input type="number" class="w80" id="hproll-${q.idx}" min="1" max="100"></td>
+      <td><button class="btn btn-dim" onclick="rollHpOnline(${q.idx})">Roll Online</button></td>
+    </tr>`;
+  }).join('');
+  openModal(`
+    <h3>Nightly HP Recovery Due</h3>
+    <div class="note" style="margin-bottom:8px">A full night's rest completed for these characters. Enter each player's Fortitude CC roll (d100, roll ≤ target succeeds), or roll online.</div>
+    <table class="skill-table"><thead><tr><th>Character</th><th>Fort CC Target</th><th>Roll</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Skip For Now</button><button class="btn btn-gold" onclick="applyHpRolls('${groupId}', ${uptoSeconds})">Apply</button></div>`);
+}
+function rollHpOnline(idx) {
+  const roll = rollDie(100);
+  const input = document.getElementById(`hproll-${idx}`);
+  if (input) input.value = roll;
+}
+async function applyHpRolls(groupId, uptoSeconds) {
+  const summary = [];
+  for (const q of pendingHpRolls) {
+    const input = document.getElementById(`hproll-${q.idx}`);
+    const roll = input ? parseInt(input.value) : NaN;
+    if (!roll || roll < 1 || roll > 100) continue;
+    const res = applyHPRecoveryRoll(q.charData, roll);
+    const { error } = await sb.from('characters').update({ data: q.charData }).eq('id', q.charRowId);
+    if (error) { console.error('Failed to save HP recovery', error); continue; }
+    if (res.system === 'collegium') {
+      summary.push(`${q.name}: rolled ${roll} vs Fort CC ${res.target} (${res.success ? 'success' : 'fail'}) — Physical ${res.physicalDelta >= 0 ? '+' : ''}${res.physicalDelta}, Endurance now ${res.enduranceCurrent}`);
+    } else {
+      summary.push(`${q.name}: rolled ${roll} vs Fort CC ${res.target} (${res.success ? 'success' : 'fail'}) — +${res.delta} HP (now ${res.currentHP})`);
+    }
+  }
+  if (summary.length) {
+    await sb.from('group_notes').insert({ group_id: groupId, author_id: currentUser.id, note: `Nightly HP recovery: ${summary.join(' | ')}`, game_seconds: uptoSeconds });
+  }
+  pendingHpRolls = [];
+  closeModal();
   renderGroupModule();
 }
 
@@ -2853,6 +3065,10 @@ function updateOtherBonus(idx, field, value) {
 function updateSpellState(poolName, field, value) {
   const char = state.characters[state.activeChar];
   if (!char) return;
+  if (char.playGroupId) {
+    const grp = myGroups.find(g => g.id === char.playGroupId);
+    if (grp) settleCharacterRecovery(char, grp.clock_seconds, {});
+  }
   if (!char.spellState) char.spellState = {};
   if (!char.spellState[poolName]) char.spellState[poolName] = {};
   char.spellState[poolName][field] = parseFloat(value) || 0;
@@ -3067,6 +3283,10 @@ function confirmHardcast() {
   const char = state.characters[state.activeChar];
   if (!char || !hardcastState) return;
   const hs = hardcastState;
+  if (char.playGroupId) {
+    const grp = myGroups.find(g => g.id === char.playGroupId);
+    if (grp) settleCharacterRecovery(char, grp.clock_seconds, {});
+  }
   const pools = computeSpellPools(char);
   const poolByName = {};
   for (const p of pools) poolByName[p.name] = p;
@@ -3125,6 +3345,10 @@ function removeSpell(idx) {
 function updateHPState(field, value) {
   const char = state.characters[state.activeChar];
   if (!char) return;
+  if (char.playGroupId) {
+    const grp = myGroups.find(g => g.id === char.playGroupId);
+    if (grp) settleCharacterRecovery(char, grp.clock_seconds, {});
+  }
   if (!char.hpState) char.hpState = {};
   char.hpState[field] = (field === 'system') ? value : (parseFloat(value) || 0);
   saveState();
