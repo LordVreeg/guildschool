@@ -2473,6 +2473,15 @@ function openNewCharModal() {
     <div class="form-group" style="margin-bottom:10px"><label>Name (leave blank if rolling — race-dependent naming)</label><input id="nc-name" class="wfull" style="width:100%" placeholder="Character name, or leave blank to name after rolling"></div>
     <hr class="divider">
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:8px">
+      <input type="checkbox" id="nc-initial-exp" checked onchange="document.getElementById('nc-initial-exp-amount').disabled=!this.checked">
+      Initial EXP spend
+    </label>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>Starting Raw XP pool to spend on skills</label>
+      <input type="number" id="nc-initial-exp-amount" class="w150" value="5000">
+    </div>
+    <hr class="divider">
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:8px">
       <input type="checkbox" id="nc-roll" onchange="document.getElementById('nc-roll-options').style.display=this.checked?'block':'none'">
       Roll new character (attributes, race, subrace, height/weight/age, social background)
     </label>
@@ -2490,15 +2499,6 @@ function openNewCharModal() {
         </div>
       </div>
       <div class="note">Race and subrace are single d100 rolls each (no re-roll/choice). Stops after Social Number — does not roll the Acquisitions item chart.</div>
-    </div>
-    <hr class="divider">
-    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:8px">
-      <input type="checkbox" id="nc-initial-exp" checked onchange="document.getElementById('nc-initial-exp-amount').disabled=!this.checked">
-      Initial EXP spend
-    </label>
-    <div class="form-group" style="margin-bottom:10px">
-      <label>Starting Raw XP pool to spend on skills</label>
-      <input type="number" id="nc-initial-exp-amount" class="w150" value="5000">
     </div>
     <div class="modal-actions">
       <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
