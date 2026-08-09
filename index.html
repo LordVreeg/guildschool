@@ -1247,7 +1247,7 @@ async function renderGroupDetail(group) {
   const isGM = group.myRole === 'gm';
   const [{ data: roster, error: rErr }, { data: notes, error: nErr }] = await Promise.all([
     sb.from('group_roster').select('id, owner_id, name, is_npc').eq('group_id', group.id),
-    sb.from('group_notes').select('id, author_id, note, game_seconds, created_at').eq('group_id', group.id).order('game_seconds', { ascending: false })
+    sb.from('group_notes').select('id, author_id, note, game_seconds, created_at, visible_to_all').eq('group_id', group.id).order('game_seconds', { ascending: false })
   ]);
   const el = document.getElementById('group-detail');
   if (!el) return;
@@ -1263,14 +1263,23 @@ async function renderGroupDetail(group) {
     : '<li class="note">No characters linked to this group yet.</li>';
 
   const notesHtml = groupNotesCache.length
-    ? groupNotesCache.map(n => `<tr><td style="white-space:nowrap;font-size:11px;color:var(--text-dim)">${ronDateLabel(ronFromSeconds(n.game_seconds))}</td><td>${escapeHtml(n.note)}</td></tr>`).join('')
+    ? groupNotesCache.map(n => {
+        const canToggle = isGM || n.author_id === currentUser.id;
+        const badge = n.visible_to_all
+          ? '<span style="font-size:10px;color:var(--text-dim)">Visible to all</span>'
+          : '<span style="font-size:10px;color:var(--gold-dim)">Private (author + GM)</span>';
+        const toggle = canToggle
+          ? `<button class="btn btn-dim" style="font-size:10px;padding:2px 6px" onclick="toggleNoteVisibility('${n.id}','${group.id}')">${n.visible_to_all ? 'Make Private' : 'Make Visible to All'}</button>`
+          : '';
+        return `<tr><td style="white-space:nowrap;font-size:11px;color:var(--text-dim)">${ronDateLabel(ronFromSeconds(n.game_seconds))}</td><td>${escapeHtml(n.note)}<div style="margin-top:4px;display:flex;align-items:center;gap:8px">${badge}${toggle}</div></td></tr>`;
+      }).join('')
     : '<tr><td colspan="2" class="note">No notes yet.</td></tr>';
 
   el.innerHTML = `
     <hr class="divider">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <h2 style="margin:0">${escapeHtml(group.name)}</h2>
-      ${isGM ? `<button class="btn btn-dim" onclick="openInviteModal('${group.id}')">+ Invite Player</button>` : ''}
+      ${isGM ? `<button class="btn btn-dim" onclick="openAddToGroupModal('${group.id}')">+ Add to Group</button>` : ''}
     </div>
     <div class="form-group" style="margin-top:8px"><label>Roster (PCs &amp; NPCs)</label>
       <ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${rosterHtml}</ul>
@@ -1301,8 +1310,10 @@ async function renderGroupDetail(group) {
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Notes</div>
     <div class="form-row">
       <div class="form-group" style="flex:1"><textarea id="new-group-note" rows="2" style="width:100%" placeholder="Add a note at the current time..."></textarea></div>
+      <div class="form-group"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="new-group-note-visible"> Visible to everyone</label></div>
       <div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="addGroupNote('${group.id}')">Add Note</button></div>
     </div>
+    <div class="note" style="margin-top:4px">Notes default to private (you + the GM). Check the box, or use the toggle after posting, to share with the whole group.</div>
     <table class="skill-table" style="margin-top:8px">
       <thead><tr><th>When (in-game)</th><th>Note</th></tr></thead>
       <tbody>${notesHtml}</tbody>
@@ -1388,7 +1399,12 @@ async function runGroupRecovery(groupId, uptoSeconds, restingMap) {
     const result = settleCharacterRecovery(charData, uptoSeconds, opts);
     if (result.spGains.length) summaryLines.push(`${charData.name || '(unnamed)'}: ${result.spGains.join(', ')}`);
     for (let i = 0; i < result.hpRollsDue; i++) hpRollsQueue.push({ charRowId: row.id, charData, name: charData.name || '(unnamed)' });
-    const { error: uErr } = await sb.from('characters').update({ data: charData }).eq('id', row.id);
+    const { error: uErr } = await sb.rpc('gm_apply_recovery', {
+      p_character_id: row.id,
+      p_hp_state: charData.hpState || {},
+      p_spell_state: charData.spellState || {},
+      p_recovery_state: charData.recoveryState || {}
+    });
     if (uErr) console.error('Failed to save recovery for', row.id, uErr);
   }
   if (summaryLines.length) {
@@ -1486,7 +1502,12 @@ async function applyHpRolls(groupId, uptoSeconds) {
     const roll = input ? parseInt(input.value) : NaN;
     if (!roll || roll < 1 || roll > 100) continue;
     const res = applyHPRecoveryRoll(q.charData, roll);
-    const { error } = await sb.from('characters').update({ data: q.charData }).eq('id', q.charRowId);
+    const { error } = await sb.rpc('gm_apply_recovery', {
+      p_character_id: q.charRowId,
+      p_hp_state: q.charData.hpState || {},
+      p_spell_state: q.charData.spellState || {},
+      p_recovery_state: q.charData.recoveryState || {}
+    });
     if (error) { console.error('Failed to save HP recovery', error); continue; }
     if (res.system === 'collegium') {
       summary.push(`${q.name}: rolled ${roll} vs Fort CC ${res.target} (${res.success ? 'success' : 'fail'}) — Physical ${res.physicalDelta >= 0 ? '+' : ''}${res.physicalDelta}, Endurance now ${res.enduranceCurrent}`);
@@ -1550,28 +1571,86 @@ async function addGroupNote(groupId) {
   const textEl = document.getElementById('new-group-note');
   const text = textEl.value.trim();
   if (!text) return;
+  const visibleToAll = document.getElementById('new-group-note-visible').checked;
   const { error } = await sb.from('group_notes').insert({
-    group_id: groupId, author_id: currentUser.id, note: text, game_seconds: group.clock_seconds
+    group_id: groupId, author_id: currentUser.id, note: text, game_seconds: group.clock_seconds, visible_to_all: visibleToAll
   });
   if (error) { alert('Failed to add note: ' + error.message); return; }
   renderGroupModule();
 }
 
-function openInviteModal(groupId) {
-  openModal(`
-    <h3>Invite Player</h3>
-    <div class="form-group" style="margin-bottom:8px"><label>Player's Email</label><input id="inv-email" style="width:100%" type="email"></div>
-    <div class="form-group" style="margin-bottom:8px"><label>Role</label>
-      <select id="inv-role"><option value="player">Player</option><option value="gm">GM</option></select>
-    </div>
-    <div id="inv-status" style="font-size:12px;color:var(--red-b);margin-bottom:8px;display:none"></div>
-    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="inviteMember('${groupId}')">Invite</button></div>`);
+async function toggleNoteVisibility(noteId, groupId) {
+  const note = groupNotesCache.find(n => n.id === noteId);
+  if (!note) return;
+  const { error } = await sb.from('group_notes').update({ visible_to_all: !note.visible_to_all }).eq('id', noteId);
+  if (error) { alert('Failed to change visibility: ' + error.message); return; }
+  renderGroupModule();
 }
 
-async function inviteMember(groupId) {
-  const email = document.getElementById('inv-email').value.trim();
-  const role = document.getElementById('inv-role').value;
-  const statusEl = document.getElementById('inv-status');
+// Populated when the modal opens: every approved player + every character
+// in the system (minimal fields only, via profile_lookup/character_lookup),
+// so the GM can pick a player then cascade to one of their characters
+// without an email round-trip. Approval is the trust boundary here, per
+// the same pattern profile_lookup already uses.
+let addToGroupCache = { profiles: [], characters: [] };
+
+async function openAddToGroupModal(groupId) {
+  const [{ data: profiles, error: pErr }, { data: characters, error: cErr }] = await Promise.all([
+    sb.from('profile_lookup').select('id, email').order('email'),
+    sb.from('character_lookup').select('id, owner_id, group_id, name, is_npc').order('name')
+  ]);
+  if (pErr || cErr) { alert('Failed to load players/characters: ' + (pErr || cErr).message); return; }
+  addToGroupCache = { profiles: profiles || [], characters: characters || [] };
+
+  openModal(`
+    <h3>Add to Group</h3>
+    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Add a Character</div>
+    <div class="form-group" style="margin-bottom:8px"><label>Player</label>
+      <select id="atg-player" onchange="renderAtgCharacterOptions()">
+        <option value="">— select a player —</option>
+        ${addToGroupCache.profiles.map(p => `<option value="${p.id}">${escapeHtml(p.email || p.id)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:8px"><label>Character</label>
+      <select id="atg-character"><option value="">— pick a player first —</option></select>
+    </div>
+    <div id="atg-status" style="font-size:12px;color:var(--red-b);margin-bottom:8px;display:none"></div>
+    <div class="modal-actions" style="margin-bottom:16px"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="submitAddCharacter('${groupId}')">Add to Group</button></div>
+    <hr class="divider">
+    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Add a Co-GM</div>
+    <div class="note" style="margin-bottom:8px">For someone running the game alongside you, who doesn't need a character added.</div>
+    <div class="form-group" style="margin-bottom:8px"><label>Email</label><input id="atg-gm-email" style="width:100%" type="email"></div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="submitAddGm('${groupId}')">Add as GM</button></div>`);
+}
+
+function renderAtgCharacterOptions() {
+  const playerId = document.getElementById('atg-player').value;
+  const sel = document.getElementById('atg-character');
+  if (!playerId) { sel.innerHTML = '<option value="">— pick a player first —</option>'; return; }
+  const chars = addToGroupCache.characters.filter(c => c.owner_id === playerId);
+  sel.innerHTML = chars.length
+    ? chars.map(c => `<option value="${c.id}">${escapeHtml(c.name || '(unnamed)')}${c.is_npc ? ' (NPC)' : ''}${c.group_id ? ' — already in a group' : ''}</option>`).join('')
+    : '<option value="">This player has no characters yet</option>';
+}
+
+async function submitAddCharacter(groupId) {
+  const characterId = document.getElementById('atg-character').value;
+  const statusEl = document.getElementById('atg-status');
+  statusEl.style.display = 'none';
+  if (!characterId) return;
+  const { error } = await sb.rpc('gm_add_character_to_group', { p_character_id: characterId, p_group_id: groupId });
+  if (error) {
+    statusEl.textContent = 'Failed to add character: ' + error.message;
+    statusEl.style.display = 'block';
+    return;
+  }
+  closeModal();
+  renderGroupModule();
+}
+
+async function submitAddGm(groupId) {
+  const email = document.getElementById('atg-gm-email').value.trim();
+  const statusEl = document.getElementById('atg-status');
   statusEl.style.display = 'none';
   if (!email) return;
   const { data: lookup, error: lookupErr } = await sb.from('profile_lookup').select('id').ilike('email', email).maybeSingle();
@@ -1580,9 +1659,9 @@ async function inviteMember(groupId) {
     statusEl.style.display = 'block';
     return;
   }
-  const { error } = await sb.from('group_members').insert({ group_id: groupId, user_id: lookup.id, role });
+  const { error } = await sb.from('group_members').insert({ group_id: groupId, user_id: lookup.id, role: 'gm' });
   if (error) {
-    statusEl.textContent = 'Failed to invite: ' + error.message;
+    statusEl.textContent = 'Failed to add: ' + error.message;
     statusEl.style.display = 'block';
     return;
   }
