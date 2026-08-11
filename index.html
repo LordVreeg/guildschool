@@ -700,8 +700,26 @@ function computeWeight(character) {
   const ignoreEnc = getSkillSkval(character, 'Ignore encumbrance');
   const possible = Math.round((a.ST||0)*90 + (a.HE||0)*10 + basicMove*10 + ignoreEnc*10);
   const items = character.items || [];
-  const carried = items.reduce((sum, it) => sum + ((parseFloat(it.weight) || 0) * (parseFloat(it.qty) || 1)), 0);
+  const carried = items.filter(it => !it.location).reduce((sum, it) => sum + ((parseFloat(it.weight) || 0) * (parseFloat(it.qty) || 1)), 0);
   return { possible, carried };
+}
+
+// Groups items by their storage location (blank = carried on person) so a
+// player can see how much is banked or sitting in a given void-space bag,
+// separately from what's actually weighing them down.
+function computeStorageSummary(character) {
+  const items = character.items || [];
+  const groups = {};
+  for (const it of items) {
+    const loc = it.location ? it.location.trim() : '';
+    const key = loc || 'On Person (Carried)';
+    if (!groups[key]) groups[key] = { location: key, count: 0, weight: 0, worth: 0 };
+    const qty = parseFloat(it.qty) || 1;
+    groups[key].count += qty;
+    groups[key].weight += (parseFloat(it.weight) || 0) * qty;
+    groups[key].worth += (parseFloat(it.worth) || 0) * qty;
+  }
+  return Object.values(groups).sort((a, b) => a.location === 'On Person (Carried)' ? -1 : b.location === 'On Person (Carried)' ? 1 : a.location.localeCompare(b.location));
 }
 
 function computeSpeed(character) {
@@ -1930,8 +1948,10 @@ function renderGeneralModule() {
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weapons, Armor & Items
         <span style="color:var(--gold);text-transform:none;letter-spacing:normal;font-size:13px;margin-left:12px">Total Worth: ${((char.items||[]).reduce((sum,it)=>sum+((parseFloat(it.worth)||0)*(parseFloat(it.qty)||1)),0)).toLocaleString()}</span>
       </div>
+      <div class="note" style="margin-bottom:6px">Leave Location blank for items carried on your person (counts toward Weight Carried above). Anything else — a bank, a bag of holding, a specific stash — is tracked but doesn't weigh you down.</div>
+      <datalist id="item-location-list">${[...new Set((char.items||[]).map(it=>it.location).filter(Boolean))].map(loc=>`<option value="${escapeHtml(loc)}">`).join('')}</datalist>
       <table class="item-table">
-        <thead><tr><th>Item</th><th>Type</th><th>Class</th><th>Model</th><th>AV</th><th>PR</th><th>Qty</th><th>Unit Wt</th><th>Total Wt</th><th>Unit Worth</th><th>Total Worth</th><th>MW/Magic</th><th>Notes</th><th></th></tr></thead>
+        <thead><tr><th>Item</th><th>Type</th><th>Class</th><th>Model</th><th>AV</th><th>PR</th><th>Qty</th><th>Unit Wt</th><th>Total Wt</th><th>Unit Worth</th><th>Total Worth</th><th>MW/Magic</th><th>Location</th><th>Notes</th><th></th></tr></thead>
         <tbody>
           ${(char.items || []).map((it, idx) => `
           <tr style="${it.masterwork ? 'font-style:italic' : ''}">
@@ -1981,6 +2001,7 @@ function renderGeneralModule() {
             <td class="item-worth"><input type="number" value="${it.worth||0}" onchange="updateItem(${idx},'worth',this.value)"></td>
             <td class="item-total-wt">${(((parseFloat(it.worth)||0)*(parseFloat(it.qty)||1))).toLocaleString()}</td>
             <td style="text-align:center"><input type="checkbox" ${it.masterwork?'checked':''} onchange="updateItem(${idx},'masterwork',this.checked);renderGeneralModule()"></td>
+            <td><input value="${it.location||''}" list="item-location-list" placeholder="Carried" style="width:110px" onchange="updateItem(${idx},'location',this.value);renderGeneralModule()"></td>
             <td><input value="${it.notes||''}" onchange="updateItem(${idx},'notes',this.value)"></td>
 
             <td class="item-del" onclick="removeItem(${idx})">✕</td>
@@ -1988,6 +2009,14 @@ function renderGeneralModule() {
         </tbody>
       </table>
       <button class="btn btn-gold" onclick="addItem()">+ Add Item</button>
+
+      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px">Storage Locations</div>
+      <table class="skill-table">
+        <thead><tr><th>Location</th><th>Items</th><th>Weight</th><th>Worth</th></tr></thead>
+        <tbody>
+          ${computeStorageSummary(char).map(g => `<tr><td>${escapeHtml(g.location)}</td><td>${g.count}</td><td>${g.weight.toLocaleString()}</td><td>${g.worth.toLocaleString()}</td></tr>`).join('') || '<tr><td colspan="4" class="note">No items yet.</td></tr>'}
+        </tbody>
+      </table>
 
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Notes</div>
@@ -3103,7 +3132,7 @@ function addItem() {
   const char = state.characters[state.activeChar];
   if (!char) return;
   if (!char.items) char.items = [];
-  char.items.push({ name: '', type: 'Item', qty: 1, weight: 0, worth: '', notes: '' });
+  char.items.push({ name: '', type: 'Item', qty: 1, weight: 0, worth: '', notes: '', location: '' });
   saveState();
   renderGeneralModule();
 }
@@ -3668,7 +3697,7 @@ function buildCharacterSheetHtml(char) {
     return `<tr><td>${def ? def.type : ''}</td><td>${si.skillName}${si.binding ? ' ('+si.binding+')' : ''}</td><td>${si.dropdownOnly ? 'Dropdown' : 'Trained'}</td><td>${vals.level}</td><td>${vals.skval}</td></tr>`;
   }).join('');
 
-  const itemRows = items.map(it => `<tr style="${it.masterwork?'font-style:italic':''}"><td>${it.name||''}</td><td>${it.type||''}</td><td>${it.qty||1}</td><td>${it.weight||0}</td><td>${it.worth||0}</td></tr>`).join('');
+  const itemRows = items.map(it => `<tr style="${it.masterwork?'font-style:italic':''}"><td>${it.name||''}</td><td>${it.type||''}</td><td>${it.qty||1}</td><td>${it.weight||0}</td><td>${it.worth||0}</td><td>${it.location||'Carried'}</td></tr>`).join('');
 
   const weaponPanels = items.filter(it => it.type === 'Weapon').map(it => {
     const wv = computeWeapon(char, it);
@@ -3734,7 +3763,7 @@ function buildCharacterSheetHtml(char) {
     ${spellPools.length ? `<h2>Spell Points</h2><table><tr><th>Pool</th><th>Max</th><th>Current</th><th>Used</th></tr>${spellPoolRows}</table>` : ''}
     ${spellbook.length ? `<h2>Spellbook</h2><table><tr><th>Spell</th><th>School</th><th>Cost</th></tr>${spellbookRows}</table>` : ''}
     <h2>Weapons, Armor & Items</h2>
-    <table><tr><th>Item</th><th>Type</th><th>Qty</th><th>Weight</th><th>Worth</th></tr>${itemRows}</table>
+    <table><tr><th>Item</th><th>Type</th><th>Qty</th><th>Weight</th><th>Worth</th><th>Location</th></tr>${itemRows}</table>
     ${char.itemNotes ? `<h2>Item Notes</h2><div class="pv-item">${char.itemNotes}</div>` : ''}
     ${char.historyNotes ? `<h2>History</h2><div class="pv-item">${char.historyNotes}</div>` : ''}
     ${char.relationshipNotes ? `<h2>Relationships</h2><div class="pv-item">${char.relationshipNotes}</div>` : ''}
