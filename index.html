@@ -1277,10 +1277,25 @@ function selectGroup(groupId) {
   renderGroupModule();
 }
 
+// Three independent roster orderings, toggled between in the UI: who's up
+// front on the road, who checks the trap, who opens the door. Each maps to
+// its own column on the character row (see schema_v8) via gm_set_roster_order.
+const ROSTER_ORDER_MODES = {
+  travel: { label: 'Travel / Marching', field: 'travel_order' },
+  trap:   { label: 'Trap Check',        field: 'trap_order' },
+  door:   { label: 'Door Opening',      field: 'door_order' }
+};
+let rosterOrderMode = 'travel';
+
+function setRosterOrderMode(mode) {
+  rosterOrderMode = mode;
+  renderGroupModule();
+}
+
 async function renderGroupDetail(group) {
   const isGM = group.myRole === 'gm';
   const [{ data: roster, error: rErr }, { data: notes, error: nErr }] = await Promise.all([
-    sb.from('group_roster').select('id, owner_id, name, is_npc, marching_order').eq('group_id', group.id),
+    sb.from('group_roster').select('id, owner_id, name, is_npc, travel_order, trap_order, door_order').eq('group_id', group.id),
     sb.from('group_notes').select('id, author_id, note, game_seconds, created_at, visible_to_all').eq('group_id', group.id).order('game_seconds', { ascending: false })
   ]);
   const el = document.getElementById('group-detail');
@@ -1289,17 +1304,19 @@ async function renderGroupDetail(group) {
     el.innerHTML = `<div style="color:var(--red-b)">Failed to load group: ${escapeHtml((rErr||nErr).message)}</div>`;
     return;
   }
+  const orderField = ROSTER_ORDER_MODES[rosterOrderMode].field;
   groupRosterCache = (roster || []).slice().sort((a, b) => {
-    const oa = a.marching_order != null ? a.marching_order : Infinity;
-    const ob = b.marching_order != null ? b.marching_order : Infinity;
+    const oa = a[orderField] != null ? a[orderField] : Infinity;
+    const ob = b[orderField] != null ? b[orderField] : Infinity;
     if (oa !== ob) return oa - ob;
     return (a.name || '').localeCompare(b.name || '');
   });
   groupNotesCache = notes || [];
 
-  // The roster's order doubles as marching order -- who's in front on the
-  // road, who checks the trap, who opens the door -- so the GM can drag it
-  // into shape with up/down buttons rather than it just being alphabetical.
+  const orderToggleHtml = Object.entries(ROSTER_ORDER_MODES).map(([key, m]) =>
+    `<button class="btn ${rosterOrderMode===key?'btn-gold':'btn-dim'}" style="font-size:11px;padding:3px 8px" onclick="setRosterOrderMode('${key}')">${m.label}</button>`
+  ).join('');
+
   const rosterHtml = groupRosterCache.length
     ? groupRosterCache.map((c, i) => `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
         <span style="color:var(--text-dim);width:1.5em;display:inline-block;text-align:right">${i+1}.</span>
@@ -1333,6 +1350,7 @@ async function renderGroupDetail(group) {
       ${isGM ? `<button class="btn btn-dim" onclick="openAddToGroupModal('${group.id}')">+ Add to Group</button>` : ''}
     </div>
     <div class="form-group" style="margin-top:8px"><label>Roster (PCs &amp; NPCs)</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0">${orderToggleHtml}</div>
       <ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${rosterHtml}</ul>
     </div>
     <hr class="divider">
@@ -1380,10 +1398,11 @@ async function moveRosterMember(groupId, characterId, direction) {
   [reordered[idx], reordered[targetIdx]] = [reordered[targetIdx], reordered[idx]];
   // Write out explicit sequential positions for the whole roster so this
   // stays correct even the first time (untouched characters start with no
-  // marching_order at all, sorted only by name until this runs).
-  const results = await Promise.all(reordered.map((c, i) => sb.rpc('gm_set_marching_order', { p_character_id: c.id, p_order: i })));
+  // order set for this mode yet). Only touches whichever of the three
+  // orderings is currently toggled to.
+  const results = await Promise.all(reordered.map((c, i) => sb.rpc('gm_set_roster_order', { p_character_id: c.id, p_order_type: rosterOrderMode, p_order: i })));
   const failed = results.find(r => r.error);
-  if (failed) { alert('Failed to update marching order: ' + failed.error.message); return; }
+  if (failed) { alert('Failed to update order: ' + failed.error.message); return; }
   renderGroupModule();
 }
 
