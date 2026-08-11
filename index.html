@@ -706,9 +706,13 @@ function computeWeight(character) {
 
 // Groups items by their storage location (blank = carried on person) so a
 // player can see how much is banked or sitting in a given void-space bag,
-// separately from what's actually weighing them down.
+// separately from what's actually weighing them down. Locations can have a
+// capacity limit (character.storageCapacities[location]) -- a real bag of
+// holding or satchel only holds so much, even though its contents are
+// weightless on the character themselves.
 function computeStorageSummary(character) {
   const items = character.items || [];
+  const capacities = character.storageCapacities || {};
   const groups = {};
   for (const it of items) {
     const loc = it.location ? it.location.trim() : '';
@@ -718,6 +722,16 @@ function computeStorageSummary(character) {
     groups[key].count += qty;
     groups[key].weight += (parseFloat(it.weight) || 0) * qty;
     groups[key].worth += (parseFloat(it.worth) || 0) * qty;
+  }
+  // include locations that have a defined capacity but no items yet, so an
+  // empty bag still shows up with its limit
+  for (const loc of Object.keys(capacities)) {
+    if (!groups[loc]) groups[loc] = { location: loc, count: 0, weight: 0, worth: 0 };
+  }
+  for (const g of Object.values(groups)) {
+    const cap = capacities[g.location];
+    g.capacity = (g.location === 'On Person (Carried)' || cap === undefined || cap === null) ? null : parseFloat(cap);
+    g.over = g.capacity !== null && g.weight > g.capacity;
   }
   return Object.values(groups).sort((a, b) => a.location === 'On Person (Carried)' ? -1 : b.location === 'On Person (Carried)' ? 1 : a.location.localeCompare(b.location));
 }
@@ -2011,12 +2025,24 @@ function renderGeneralModule() {
       <button class="btn btn-gold" onclick="addItem()">+ Add Item</button>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px">Storage Locations</div>
+      <div class="note" style="margin-bottom:6px">Set a Capacity on a bag/satchel/etc. to flag it when overloaded. Leave blank for no limit. To add an empty container before putting anything in it, give it a name and capacity here.</div>
       <table class="skill-table">
-        <thead><tr><th>Location</th><th>Items</th><th>Weight</th><th>Worth</th></tr></thead>
+        <thead><tr><th>Location</th><th>Items</th><th>Weight</th><th>Capacity</th><th>Worth</th></tr></thead>
         <tbody>
-          ${computeStorageSummary(char).map(g => `<tr><td>${escapeHtml(g.location)}</td><td>${g.count}</td><td>${g.weight.toLocaleString()}</td><td>${g.worth.toLocaleString()}</td></tr>`).join('') || '<tr><td colspan="4" class="note">No items yet.</td></tr>'}
+          ${computeStorageSummary(char).map(g => `<tr>
+            <td>${escapeHtml(g.location)}</td>
+            <td>${g.count}</td>
+            <td style="${g.over?'color:#c05050;font-weight:bold':''}">${g.weight.toLocaleString()}${g.over?' OVER':''}</td>
+            <td>${g.location==='On Person (Carried)' ? '<span class="note">see Weight above</span>' : `<input type="number" class="w100" value="${g.capacity!==null?g.capacity:''}" placeholder="none" onchange="updateStorageCapacity('${g.location.replace(/'/g,"\\'")}',this.value)">`}</td>
+            <td>${g.worth.toLocaleString()}</td>
+          </tr>`).join('') || '<tr><td colspan="5" class="note">No items yet.</td></tr>'}
         </tbody>
       </table>
+      <div class="form-row" style="margin-top:6px">
+        <div class="form-group"><label>New Container Name</label><input id="new-storage-name" class="w150"></div>
+        <div class="form-group"><label>Capacity</label><input id="new-storage-capacity" type="number" class="w100"></div>
+        <div class="form-group" style="justify-content:flex-end"><button class="btn btn-dim" onclick="addStorageContainer()">+ Add Container</button></div>
+      </div>
 
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Notes</div>
@@ -3133,6 +3159,27 @@ function addItem() {
   if (!char) return;
   if (!char.items) char.items = [];
   char.items.push({ name: '', type: 'Item', qty: 1, weight: 0, worth: '', notes: '', location: '' });
+  saveState();
+  renderGeneralModule();
+}
+
+function updateStorageCapacity(location, value) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  if (!char.storageCapacities) char.storageCapacities = {};
+  char.storageCapacities[location] = (value === '' || value === null) ? null : (parseFloat(value) || 0);
+  saveState();
+  renderGeneralModule();
+}
+
+function addStorageContainer() {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const name = document.getElementById('new-storage-name').value.trim();
+  const capacity = document.getElementById('new-storage-capacity').value;
+  if (!name) return;
+  if (!char.storageCapacities) char.storageCapacities = {};
+  char.storageCapacities[name] = capacity === '' ? null : (parseFloat(capacity) || 0);
   saveState();
   renderGeneralModule();
 }
