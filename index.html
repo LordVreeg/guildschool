@@ -924,9 +924,11 @@ function settleCharacterRecovery(character, uptoSeconds, opts) {
       const next = Math.min(pool.maxSP, pool.currentSP + rate * elapsedHours);
       const gained = Math.round((next - pool.currentSP) * 10) / 10;
       if (gained > 0) {
+        // Always apply the fractional gain so it keeps accumulating silently
+        // across settlements, but only mention it once it adds up to a full point.
         if (!character.spellState[pool.name]) character.spellState[pool.name] = {};
         character.spellState[pool.name].current = next;
-        spGains.push(`+${gained} ${pool.name}`);
+        if (gained >= 1) spGains.push(`+${Math.floor(gained)} ${pool.name}`);
       }
     }
     if (isResting) rs.restHoursAccrued = (rs.restHoursAccrued || 0) + elapsedHours;
@@ -1303,7 +1305,10 @@ async function renderGroupDetail(group) {
         const toggle = canToggle
           ? `<button class="btn btn-dim" style="font-size:10px;padding:2px 6px" onclick="toggleNoteVisibility('${n.id}','${group.id}')">${n.visible_to_all ? 'Make Private' : 'Make Visible to All'}</button>`
           : '';
-        return `<tr><td style="white-space:nowrap;font-size:11px;color:var(--text-dim)">${ronDateLabel(ronFromSeconds(n.game_seconds))}</td><td>${escapeHtml(n.note)}<div style="margin-top:4px;display:flex;align-items:center;gap:8px">${badge}${toggle}</div></td></tr>`;
+        const editBtn = canToggle
+          ? `<button class="btn btn-dim" style="font-size:10px;padding:2px 6px" onclick="openEditNoteModal('${n.id}','${group.id}')">Edit</button>`
+          : '';
+        return `<tr><td style="white-space:nowrap;font-size:11px;color:var(--text-dim)">${ronDateLabel(ronFromSeconds(n.game_seconds))}</td><td>${escapeHtml(n.note)}<div style="margin-top:4px;display:flex;align-items:center;gap:8px">${badge}${toggle}${editBtn}</div></td></tr>`;
       }).join('')
     : '<tr><td colspan="2" class="note">No notes yet.</td></tr>';
 
@@ -1616,6 +1621,24 @@ async function toggleNoteVisibility(noteId, groupId) {
   if (!note) return;
   const { error } = await sb.from('group_notes').update({ visible_to_all: !note.visible_to_all }).eq('id', noteId);
   if (error) { alert('Failed to change visibility: ' + error.message); return; }
+  renderGroupModule();
+}
+
+function openEditNoteModal(noteId, groupId) {
+  const note = groupNotesCache.find(n => n.id === noteId);
+  if (!note) return;
+  openModal(`
+    <h3>Edit Note</h3>
+    <div class="form-group" style="margin-bottom:8px"><textarea id="edit-note-text" rows="4" style="width:100%">${escapeHtml(note.note)}</textarea></div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="saveEditedNote('${noteId}','${groupId}')">Save</button></div>`);
+}
+
+async function saveEditedNote(noteId, groupId) {
+  const text = document.getElementById('edit-note-text').value.trim();
+  if (!text) return;
+  const { error } = await sb.from('group_notes').update({ note: text }).eq('id', noteId);
+  if (error) { alert('Failed to save note: ' + error.message); return; }
+  closeModal();
   renderGroupModule();
 }
 
