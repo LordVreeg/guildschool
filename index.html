@@ -507,12 +507,13 @@ async function flushCharactersToSupabase() {
   if (!currentUser) return;
   for (const [appId, charData] of Object.entries(state.characters)) {
     const rowId = charRowIds[appId];
+    const hpStatus = computeHpStatus(charData);
     if (rowId) {
-      const { error } = await sb.from('characters').update({ data: charData }).eq('id', rowId);
+      const { error } = await sb.from('characters').update({ data: charData, hp_damaged: hpStatus.damaged, hp_critical: hpStatus.critical }).eq('id', rowId);
       if (error) console.error('Save failed for', appId, error);
     } else {
       const { data, error } = await sb.from('characters')
-        .insert({ owner_id: currentUser.id, data: charData })
+        .insert({ owner_id: currentUser.id, data: charData, hp_damaged: hpStatus.damaged, hp_critical: hpStatus.critical })
         .select('id').single();
       if (error) console.error('Create failed for', appId, error);
       else charRowIds[appId] = data.id;
@@ -899,6 +900,16 @@ function computeHP(character) {
   const enduranceCurrent = hpState.enduranceCurrent !== undefined ? hpState.enduranceCurrent : enduranceMax;
 
   return { totalHP, system, currentHP, physicalMax, physicalCurrent, enduranceMax, enduranceCurrent };
+}
+
+// Derived damaged/critical flags, cached to plain columns (hp_damaged/
+// hp_critical) so the group roster can show a color cue to every group
+// member -- not just the GM or the character's own owner, who are the only
+// ones with RLS read access to the actual HP numbers.
+function computeHpStatus(character) {
+  const hp = computeHP(character);
+  const cur = hp.system === 'collegium' ? (hp.physicalCurrent + hp.enduranceCurrent) : hp.currentHP;
+  return { damaged: cur < hp.totalHP, critical: cur < hp.totalHP / 2 };
 }
 
 // Rolls forward SP recovery for elapsed game time since this character's last
@@ -1299,7 +1310,7 @@ function setRosterOrderMode(mode) {
 async function renderGroupDetail(group) {
   const isGM = group.myRole === 'gm';
   const [{ data: roster, error: rErr }, { data: notes, error: nErr }] = await Promise.all([
-    sb.from('group_roster').select('id, owner_id, name, is_npc, travel_order, trap_order, door_order').eq('group_id', group.id),
+    sb.from('group_roster').select('id, owner_id, name, is_npc, travel_order, trap_order, door_order, hp_damaged, hp_critical').eq('group_id', group.id),
     sb.from('group_notes').select('id, author_id, note, game_seconds, created_at, visible_to_all').eq('group_id', group.id).order('game_seconds', { ascending: false })
   ]);
   const el = document.getElementById('group-detail');
@@ -1356,9 +1367,14 @@ async function renderGroupDetail(group) {
             hpTag = ` <span style="${damaged ? 'color:#c05050;font-weight:bold' : ''}">(${hp.currentHP}/${hp.totalHP} HP)</span>`;
           }
         }
+        // Damaged/critical is a plain boolean on the roster row itself (see
+        // schema_v9), visible to every group member regardless of whether
+        // they can see this character's actual sheet -- just a color cue,
+        // no numbers leak through it.
+        const nameStyle = c.hp_critical ? 'color:#c05050;font-weight:bold' : (c.hp_damaged ? 'color:#c05050' : '');
         return `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
         <span style="color:var(--text-dim);width:1.5em;display:inline-block;text-align:right">${i+1}.</span>
-        <span>${escapeHtml(c.name || '(unnamed)')}${c.is_npc ? ' <span style="font-size:10px;color:var(--gold-dim)">(NPC)</span>' : ''}${hpTag}</span>
+        <span style="${nameStyle}">${escapeHtml(c.name || '(unnamed)')}</span>${c.is_npc ? ' <span style="font-size:10px;color:var(--gold-dim)">(NPC)</span>' : ''}${hpTag}
         ${isGM ? `
         <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===0?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',-1)">▲</button>
         <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===groupRosterCache.length-1?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',1)">▼</button>` : ''}
@@ -1524,11 +1540,14 @@ async function runGroupRecovery(groupId, uptoSeconds, restingMap) {
     const result = settleCharacterRecovery(charData, uptoSeconds, opts);
     if (result.spGains.length) summaryLines.push(`${charData.name || '(unnamed)'}: ${result.spGains.join(', ')}`);
     for (let i = 0; i < result.hpRollsDue; i++) hpRollsQueue.push({ charRowId: row.id, charData, name: charData.name || '(unnamed)' });
+    const hpStatus = computeHpStatus(charData);
     const { error: uErr } = await sb.rpc('gm_apply_recovery', {
       p_character_id: row.id,
       p_hp_state: charData.hpState || {},
       p_spell_state: charData.spellState || {},
-      p_recovery_state: charData.recoveryState || {}
+      p_recovery_state: charData.recoveryState || {},
+      p_hp_damaged: hpStatus.damaged,
+      p_hp_critical: hpStatus.critical
     });
     if (uErr) console.error('Failed to save recovery for', row.id, uErr);
   }
@@ -1627,11 +1646,14 @@ async function applyHpRolls(groupId, uptoSeconds) {
     const roll = input ? parseInt(input.value) : NaN;
     if (!roll || roll < 1 || roll > 100) continue;
     const res = applyHPRecoveryRoll(q.charData, roll);
+    const hpStatus = computeHpStatus(q.charData);
     const { error } = await sb.rpc('gm_apply_recovery', {
       p_character_id: q.charRowId,
       p_hp_state: q.charData.hpState || {},
       p_spell_state: q.charData.spellState || {},
-      p_recovery_state: q.charData.recoveryState || {}
+      p_recovery_state: q.charData.recoveryState || {},
+      p_hp_damaged: hpStatus.damaged,
+      p_hp_critical: hpStatus.critical
     });
     if (error) { console.error('Failed to save HP recovery', error); continue; }
     if (res.system === 'collegium') {
