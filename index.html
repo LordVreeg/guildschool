@@ -1345,9 +1345,16 @@ async function renderGroupDetail(group) {
         const hp = hpByCharId[c.id];
         let hpTag = '';
         if (hp) {
-          const cur = hp.system === 'collegium' ? (hp.physicalCurrent + hp.enduranceCurrent) : hp.currentHP;
-          const damaged = cur < hp.totalHP;
-          hpTag = ` <span style="${damaged ? 'color:#c05050;font-weight:bold' : ''}">(${cur}/${hp.totalHP} HP)</span>`;
+          if (hp.system === 'collegium') {
+            // Shown split, not merged into one total -- 0 Physical/full Endurance
+            // and full Physical/0 Endurance would look identical merged, but
+            // the first is in real danger and the second isn't.
+            const damaged = hp.physicalCurrent < hp.physicalMax || hp.enduranceCurrent < hp.enduranceMax;
+            hpTag = ` <span style="${damaged ? 'color:#c05050;font-weight:bold' : ''}">(Phys ${hp.physicalCurrent}/${hp.physicalMax}, End ${hp.enduranceCurrent}/${hp.enduranceMax})</span>`;
+          } else {
+            const damaged = hp.currentHP < hp.totalHP;
+            hpTag = ` <span style="${damaged ? 'color:#c05050;font-weight:bold' : ''}">(${hp.currentHP}/${hp.totalHP} HP)</span>`;
+          }
         }
         return `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
         <span style="color:var(--text-dim);width:1.5em;display:inline-block;text-align:right">${i+1}.</span>
