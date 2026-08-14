@@ -1317,18 +1317,46 @@ async function renderGroupDetail(group) {
   });
   groupNotesCache = notes || [];
 
+  // HP on the roster: a GM already has RLS read access to every character's
+  // full data in their group, so fetch it and compute real HP for everyone.
+  // A regular player only sees their own -- group_roster deliberately
+  // exposes name/order only, not full sheets, so we don't fetch anyone
+  // else's data for them; their own is already loaded locally anyway.
+  const hpByCharId = {};
+  if (isGM && groupRosterCache.length) {
+    const { data: fullChars } = await sb.from('characters').select('id, data').in('id', groupRosterCache.map(c => c.id));
+    for (const row of fullChars || []) {
+      if (row.data) hpByCharId[row.id] = computeHP(row.data);
+    }
+  } else {
+    const mine = groupRosterCache.find(c => c.owner_id === currentUser.id);
+    if (mine) {
+      const appId = Object.keys(charRowIds).find(k => charRowIds[k] === mine.id);
+      if (appId && state.characters[appId]) hpByCharId[mine.id] = computeHP(state.characters[appId]);
+    }
+  }
+
   const orderToggleHtml = Object.entries(ROSTER_ORDER_MODES).map(([key, m]) =>
     `<button class="btn ${rosterOrderMode===key?'btn-gold':'btn-dim'}" style="font-size:11px;padding:3px 8px" onclick="setRosterOrderMode('${key}')">${m.label}</button>`
   ).join('');
 
   const rosterHtml = groupRosterCache.length
-    ? groupRosterCache.map((c, i) => `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+    ? groupRosterCache.map((c, i) => {
+        const hp = hpByCharId[c.id];
+        let hpTag = '';
+        if (hp) {
+          const cur = hp.system === 'collegium' ? (hp.physicalCurrent + hp.enduranceCurrent) : hp.currentHP;
+          const damaged = cur < hp.totalHP;
+          hpTag = ` <span style="${damaged ? 'color:#c05050;font-weight:bold' : ''}">(${cur}/${hp.totalHP} HP)</span>`;
+        }
+        return `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
         <span style="color:var(--text-dim);width:1.5em;display:inline-block;text-align:right">${i+1}.</span>
-        <span>${escapeHtml(c.name || '(unnamed)')}${c.is_npc ? ' <span style="font-size:10px;color:var(--gold-dim)">(NPC)</span>' : ''}</span>
+        <span>${escapeHtml(c.name || '(unnamed)')}${c.is_npc ? ' <span style="font-size:10px;color:var(--gold-dim)">(NPC)</span>' : ''}${hpTag}</span>
         ${isGM ? `
         <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===0?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',-1)">▲</button>
         <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===groupRosterCache.length-1?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',1)">▼</button>` : ''}
-      </li>`).join('')
+      </li>`;
+      }).join('')
     : '<li class="note">No characters linked to this group yet.</li>';
 
   const notesHtml = groupNotesCache.length
