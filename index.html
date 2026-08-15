@@ -1311,7 +1311,7 @@ async function renderGroupDetail(group) {
   const isGM = group.myRole === 'gm';
   const [{ data: roster, error: rErr }, { data: notes, error: nErr }] = await Promise.all([
     sb.from('group_roster').select('id, owner_id, name, is_npc, travel_order, trap_order, door_order, hp_damaged, hp_critical').eq('group_id', group.id),
-    sb.from('group_notes').select('id, author_id, note, game_seconds, created_at, visible_to_all').eq('group_id', group.id).order('game_seconds', { ascending: false })
+    sb.from('group_notes').select('id, author_id, note, game_seconds, created_at, visible_to_all').eq('group_id', group.id).order('game_seconds', { ascending: false }).order('created_at', { ascending: true })
   ]);
   const el = document.getElementById('group-detail');
   if (!el) return;
@@ -1737,16 +1737,44 @@ async function toggleNoteVisibility(noteId, groupId) {
 function openEditNoteModal(noteId, groupId) {
   const note = groupNotesCache.find(n => n.id === noteId);
   if (!note) return;
+  const c = ronFromSeconds(note.game_seconds);
   openModal(`
     <h3>Edit Note</h3>
     <div class="form-group" style="margin-bottom:8px"><textarea id="edit-note-text" rows="4" style="width:100%">${escapeHtml(note.note)}</textarea></div>
+    <div class="note" style="margin-bottom:6px">Correcting the time re-sorts this note into its right chronological place in the log.</div>
+    <div class="form-row">
+      <div class="form-group"><label>Year (RON)</label><input id="en-year" type="number" class="w100" value="${c.year}"></div>
+      <div class="form-group"><label>Month</label>
+        <select id="en-month">${RON_MONTHS.map((m,i)=>`<option value="${i}" ${i===c.month?'selected':''}>${m.key} (${m.season})</option>`).join('')}</select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="en-lithe" ${c.isLithe?'checked':''} onchange="document.getElementById('en-day-wrap').style.display=this.checked?'none':'block'">
+          Lithe Day
+        </label>
+      </div>
+      <div class="form-group" id="en-day-wrap" style="display:${c.isLithe?'none':'block'}"><label>Day (1-60)</label><input id="en-day" type="number" class="w80" value="${c.day}" min="1" max="60"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Hour (0=1st Sou, 11=1st Na Sou)</label><input id="en-hour" type="number" class="w80" value="${c.hour}" min="0" max="21"></div>
+      <div class="form-group"><label>Minute (0-59)</label><input id="en-minute" type="number" class="w80" value="${c.minute}" min="0" max="59"></div>
+    </div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="saveEditedNote('${noteId}','${groupId}')">Save</button></div>`);
 }
 
 async function saveEditedNote(noteId, groupId) {
   const text = document.getElementById('edit-note-text').value.trim();
   if (!text) return;
-  const { error } = await sb.from('group_notes').update({ note: text }).eq('id', noteId);
+  const year = parseInt(document.getElementById('en-year').value) || 0;
+  const month = parseInt(document.getElementById('en-month').value) || 0;
+  const isLithe = document.getElementById('en-lithe').checked;
+  const day = Math.min(60, Math.max(1, parseInt(document.getElementById('en-day').value) || 1));
+  const hour = Math.min(21, Math.max(0, parseInt(document.getElementById('en-hour').value) || 0));
+  const minute = Math.min(59, Math.max(0, parseInt(document.getElementById('en-minute').value) || 0));
+  const gameSeconds = ronToSeconds({ year, month, day, isLithe, hour, minute, second: 0 });
+  const { error } = await sb.from('group_notes').update({ note: text, game_seconds: gameSeconds }).eq('id', noteId);
   if (error) { alert('Failed to save note: ' + error.message); return; }
   closeModal();
   renderGroupModule();
