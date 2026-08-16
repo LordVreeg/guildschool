@@ -1311,7 +1311,7 @@ async function renderGroupDetail(group) {
   const isGM = group.myRole === 'gm';
   const [{ data: roster, error: rErr }, { data: notes, error: nErr }] = await Promise.all([
     sb.from('group_roster').select('id, owner_id, name, is_npc, travel_order, trap_order, door_order, hp_damaged, hp_critical').eq('group_id', group.id),
-    sb.from('group_notes').select('id, author_id, note, game_seconds, created_at, visible_to_all').eq('group_id', group.id).order('game_seconds', { ascending: false }).order('created_at', { ascending: true })
+    sb.from('group_notes').select('id, author_id, note, game_seconds, created_at, visible_to_all').eq('group_id', group.id).order('game_seconds', { ascending: true }).order('created_at', { ascending: true })
   ]);
   const el = document.getElementById('group-detail');
   if (!el) return;
