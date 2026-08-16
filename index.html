@@ -1929,13 +1929,13 @@ function renderGoesiMonthView(groupId, isGM) {
   };
 
   openModal(`
-    <h3 style="margin-bottom:4px">Goesi — ${monthDef.key} (${monthDef.season})</h3>
+    <h3 style="margin-bottom:4px;font-family:'Algerian','Georgia',serif;font-weight:bold;font-size:22px;color:var(--gold)">${monthDef.key} <span style="font-size:15px;color:var(--gold-dim);font-family:inherit">(${monthDef.season}) — ${goesiViewYear} RON</span></h3>
     <div class="form-row" style="margin-bottom:10px;align-items:center">
-      <button class="btn btn-dim" onclick="goesiNavMonth('${groupId}',-1)">◀ Prev</button>
+      <button class="btn btn-dim" onclick="goesiNavMonth('${groupId}',-1)">◀ Previous Goesi</button>
       <select onchange="goesiSetYear('${groupId}', this.value)">
         ${yearOptions.map(y => `<option value="${y}" ${y===goesiViewYear?'selected':''}>${y} RON</option>`).join('')}
       </select>
-      <button class="btn btn-dim" onclick="goesiNavMonth('${groupId}',1)">Next ▶</button>
+      <button class="btn btn-dim" onclick="goesiNavMonth('${groupId}',1)">Next Goesi ▶</button>
     </div>
     <table class="skill-table" style="table-layout:fixed">
       <thead><tr>${RON_WEEKDAYS.map(w=>`<th style="font-size:10px">${w}</th>`).join('')}</tr></thead>
@@ -1944,7 +1944,7 @@ function renderGoesiMonthView(groupId, isGM) {
       </tbody>
     </table>
     <div class="note" style="margin-top:8px">🎉 holiday · 📝 note · ⏳ spell effect ending. Click a day for details.</div>
-    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Close</button></div>`);
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Close</button></div>`, { wide: true });
 }
 
 function renderGoesiDayDetail(groupId, isGM) {
@@ -1984,7 +1984,7 @@ function renderGoesiDayDetail(groupId, isGM) {
     </div>` : '';
 
   openModal(`
-    <h3 style="margin-bottom:4px">${escapeHtml(dayLabel)}</h3>
+    <h3 style="margin-bottom:4px;font-family:'Algerian','Georgia',serif;font-weight:bold;font-size:20px;color:var(--gold)">${escapeHtml(dayLabel)}</h3>
     <button class="btn btn-dim" style="margin-bottom:10px" onclick="backToGoesiMonth('${groupId}')">◀ Back to ${RON_MONTHS[month].key}</button>
 
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Holidays</div>
@@ -2006,7 +2006,7 @@ function renderGoesiDayDetail(groupId, isGM) {
       <div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="addGoesiNote('${groupId}')">Add Note</button></div>
     </div>
 
-    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Close</button></div>`);
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Close</button></div>`, { wide: true });
 }
 
 async function addHoliday(groupId) {
@@ -3075,8 +3075,10 @@ function nextLevelThreshold(level) {
 // ============================================================
 // MODALS
 // ============================================================
-function openModal(html) {
-  document.getElementById('modal-box').innerHTML = html;
+function openModal(html, opts) {
+  const box = document.getElementById('modal-box');
+  box.innerHTML = html;
+  box.style.maxWidth = (opts && opts.wide) ? '760px' : '';
   document.getElementById('modal-overlay').classList.add('open');
 }
 function closeModal() {
