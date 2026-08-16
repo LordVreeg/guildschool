@@ -1246,10 +1246,21 @@ function ronDateLabel(clock) {
   return `${wd}, ${dayLabel}, ${clock.year} RON — ${timeLabel}`;
 }
 
+// Date only, no weekday/time -- used to index log volumes by the Celtricia
+// range they cover, where the full ronDateLabel would be too long to read
+// in a picker.
+function ronShortDateLabel(clock) {
+  const m = RON_MONTHS[clock.month];
+  const dayLabel = clock.isLithe ? `Lithe Day (after ${m.key})` : `${m.key} ${clock.day}`;
+  return `${dayLabel}, ${clock.year} RON`;
+}
+
 let myGroups = [];
 let activeGroupId = null;
 let groupRosterCache = [];
 let groupNotesCache = [];
+let groupVolumesCache = [];
+let viewingVolumeId = null;
 
 function showGroupModule() {
   state.activeSkillId = null;
@@ -1309,14 +1320,26 @@ function setRosterOrderMode(mode) {
 
 async function renderGroupDetail(group) {
   const isGM = group.myRole === 'gm';
-  const [{ data: roster, error: rErr }, { data: notes, error: nErr }] = await Promise.all([
+  const [{ data: roster, error: rErr }, { data: volumes, error: volErr }] = await Promise.all([
     sb.from('group_roster').select('id, owner_id, name, is_npc, travel_order, trap_order, door_order, hp_damaged, hp_critical').eq('group_id', group.id),
-    sb.from('group_notes').select('id, author_id, note, game_seconds, created_at, visible_to_all').eq('group_id', group.id).order('created_at', { ascending: false })
+    sb.from('group_note_volumes').select('id, title, start_seconds, end_seconds').eq('group_id', group.id).order('start_seconds', { ascending: true })
   ]);
   const el = document.getElementById('group-detail');
   if (!el) return;
-  if (rErr || nErr) {
-    el.innerHTML = `<div style="color:var(--red-b)">Failed to load group: ${escapeHtml((rErr||nErr).message)}</div>`;
+  if (rErr || volErr) {
+    el.innerHTML = `<div style="color:var(--red-b)">Failed to load group: ${escapeHtml((rErr||volErr).message)}</div>`;
+    return;
+  }
+  groupVolumesCache = volumes || [];
+  const activeVolume = groupVolumesCache.find(v => v.end_seconds == null) || groupVolumesCache[groupVolumesCache.length - 1] || null;
+  if (!viewingVolumeId || !groupVolumesCache.some(v => v.id === viewingVolumeId)) {
+    viewingVolumeId = activeVolume ? activeVolume.id : null;
+  }
+  const { data: notes, error: nErr } = viewingVolumeId
+    ? await sb.from('group_notes').select('id, author_id, note, game_seconds, created_at, visible_to_all').eq('group_id', group.id).eq('volume_id', viewingVolumeId).order('created_at', { ascending: false })
+    : { data: [], error: null };
+  if (nErr) {
+    el.innerHTML = `<div style="color:var(--red-b)">Failed to load group: ${escapeHtml(nErr.message)}</div>`;
     return;
   }
   const orderField = ROSTER_ORDER_MODES[rosterOrderMode].field;
@@ -1431,13 +1454,27 @@ async function renderGroupDetail(group) {
       <div class="form-group" style="justify-content:flex-end"><button class="btn btn-dim" onclick="syncGroupRecovery('${group.id}')" title="Catch up HP/SP recovery for the roster without moving the clock">Sync Recovery</button></div>
     </div>` : '<div class="note">Only the GM can advance time.</div>'}
     <hr class="divider">
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Notes</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">
+      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px">Log</div>
+      ${isGM ? `<button class="btn btn-dim" onclick="startNewLogVolume('${group.id}')" title="Closes the current log at this moment and starts a fresh one -- old entries stay archived and browsable">Start New Log</button>` : ''}
+    </div>
+    <div class="form-row" style="margin-bottom:6px">
+      <div class="form-group" style="flex:1">
+        <label>Viewing</label>
+        <select onchange="selectViewingVolume(this.value)" style="width:100%">
+          ${groupVolumesCache.map((v, i) => `<option value="${v.id}" ${v.id===viewingVolumeId?'selected':''}>${escapeHtml(volumeLabel(v, i))}</option>`).join('')}
+        </select>
+      </div>
+      ${isGM && viewingVolumeId ? `<div class="form-group" style="justify-content:flex-end"><button class="btn btn-dim" onclick="renameVolume('${viewingVolumeId}')">Rename</button></div>` : ''}
+    </div>
+    ${viewingVolumeId === (activeVolume && activeVolume.id) ? `
     <div class="form-row">
       <div class="form-group" style="flex:1"><textarea id="new-group-note" rows="2" style="width:100%" placeholder="Add a note at the current time..."></textarea></div>
       <div class="form-group"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="new-group-note-visible"> Visible to everyone</label></div>
       <div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="addGroupNote('${group.id}')">Add Note</button></div>
     </div>
     <div class="note" style="margin-top:4px">Notes default to private (you + the GM). Check the box, or use the toggle after posting, to share with the whole group.</div>
+    ` : `<div class="note" style="margin-bottom:4px">Viewing an archived log -- new notes go to the current one. Editing/visibility still works here for corrections.</div>`}
     <table class="skill-table" style="margin-top:8px">
       <thead><tr><th>When (in-game)</th><th>Note</th></tr></thead>
       <tbody>${notesHtml}</tbody>
@@ -1493,7 +1530,10 @@ async function createGroup() {
   if (error) { alert('Failed to create group: ' + error.message); return; }
   const { error: memErr } = await sb.from('group_members').insert({ group_id: data.id, user_id: currentUser.id, role: 'gm' });
   if (memErr) { alert('Group created, but failed to add you as its GM: ' + memErr.message); }
+  const { error: volErr } = await sb.from('group_note_volumes').insert({ group_id: data.id, start_seconds: clockSeconds });
+  if (volErr) { alert('Group created, but failed to open its first log volume: ' + volErr.message); }
   activeGroupId = data.id;
+  viewingVolumeId = null;
   closeModal();
   renderGroupModule();
 }
@@ -1522,6 +1562,13 @@ async function syncGroupRecovery(groupId) {
 }
 
 // Applies SP/HP recovery for every roster character up to uptoSeconds.
+// Auto-generated recovery notes always file against whatever log volume is
+// currently open, regardless of which one the GM happens to be viewing.
+async function getActiveVolumeId(groupId) {
+  const { data } = await sb.from('group_note_volumes').select('id').eq('group_id', groupId).is('end_seconds', null).maybeSingle();
+  return data ? data.id : null;
+}
+
 // restingMap is { [characterRowId]: { isResting, focusPools } } for any
 // characters a GM has flagged as resting for this span; everyone else
 // defaults to the awake rate with no HP accrual. Writes results straight to
@@ -1552,7 +1599,8 @@ async function runGroupRecovery(groupId, uptoSeconds, restingMap) {
     if (uErr) console.error('Failed to save recovery for', row.id, uErr);
   }
   if (summaryLines.length) {
-    await sb.from('group_notes').insert({ group_id: groupId, author_id: currentUser.id, note: `Recovery: ${summaryLines.join(' | ')}`, game_seconds: uptoSeconds });
+    const volumeId = await getActiveVolumeId(groupId);
+    await sb.from('group_notes').insert({ group_id: groupId, author_id: currentUser.id, note: `Recovery: ${summaryLines.join(' | ')}`, game_seconds: uptoSeconds, volume_id: volumeId });
   }
   if (hpRollsQueue.length) openHpRollModal(groupId, hpRollsQueue, uptoSeconds);
 }
@@ -1663,7 +1711,8 @@ async function applyHpRolls(groupId, uptoSeconds) {
     }
   }
   if (summary.length) {
-    await sb.from('group_notes').insert({ group_id: groupId, author_id: currentUser.id, note: `Nightly HP recovery: ${summary.join(' | ')}`, game_seconds: uptoSeconds });
+    const volumeId = await getActiveVolumeId(groupId);
+    await sb.from('group_notes').insert({ group_id: groupId, author_id: currentUser.id, note: `Nightly HP recovery: ${summary.join(' | ')}`, game_seconds: uptoSeconds, volume_id: volumeId });
   }
   pendingHpRolls = [];
   closeModal();
@@ -1720,9 +1769,52 @@ async function addGroupNote(groupId) {
   if (!text) return;
   const visibleToAll = document.getElementById('new-group-note-visible').checked;
   const { error } = await sb.from('group_notes').insert({
-    group_id: groupId, author_id: currentUser.id, note: text, game_seconds: group.clock_seconds, visible_to_all: visibleToAll
+    group_id: groupId, author_id: currentUser.id, note: text, game_seconds: group.clock_seconds, visible_to_all: visibleToAll, volume_id: viewingVolumeId
   });
   if (error) { alert('Failed to add note: ' + error.message); return; }
+  renderGroupModule();
+}
+
+// A volume is indexed by the Celtricia (RON) date range it covers, since
+// that's what actually locates it in a campaign running real-world years --
+// "Volume 3" alone tells you nothing, "Volume 3, Dumotux 1 - Hisui 12, 897
+// RON" does. An optional GM-set title rides alongside it.
+function volumeLabel(v, index) {
+  const startLabel = ronShortDateLabel(ronFromSeconds(v.start_seconds));
+  const endLabel = v.end_seconds != null ? ronShortDateLabel(ronFromSeconds(v.end_seconds)) : 'present';
+  const title = v.title ? `${v.title} — ` : '';
+  return `Volume ${index + 1}: ${title}${startLabel} to ${endLabel}`;
+}
+
+function selectViewingVolume(volumeId) {
+  viewingVolumeId = volumeId;
+  renderGroupModule();
+}
+
+async function renameVolume(volumeId) {
+  const v = groupVolumesCache.find(x => x.id === volumeId);
+  if (!v) return;
+  const title = prompt('Title for this log volume (blank to clear):', v.title || '');
+  if (title === null) return;
+  const { error } = await sb.from('group_note_volumes').update({ title: title.trim() || null }).eq('id', volumeId);
+  if (error) { alert('Failed to rename: ' + error.message); return; }
+  renderGroupModule();
+}
+
+async function startNewLogVolume(groupId) {
+  const group = myGroups.find(g => g.id === groupId);
+  if (!group) return;
+  if (!confirm('Close the current log at this moment and start a new one? Old entries stay archived and viewable, just not shown by default.')) return;
+  const active = groupVolumesCache.find(v => v.end_seconds == null);
+  if (active) {
+    const { error: closeErr } = await sb.from('group_note_volumes').update({ end_seconds: group.clock_seconds }).eq('id', active.id);
+    if (closeErr) { alert('Failed to close the current log: ' + closeErr.message); return; }
+  }
+  const { data: created, error: createErr } = await sb.from('group_note_volumes')
+    .insert({ group_id: groupId, start_seconds: group.clock_seconds })
+    .select('id').single();
+  if (createErr) { alert('Failed to start a new log: ' + createErr.message); return; }
+  viewingVolumeId = created.id;
   renderGroupModule();
 }
 
