@@ -1433,7 +1433,7 @@ async function renderGroupDetail(group) {
     </div>
     <hr class="divider">
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Time — Reckoning of Nebler</div>
-    <div class="computed-item" style="margin-bottom:8px"><span class="ci-value" style="font-size:16px">${ronDateLabel(ronFromSeconds(group.clock_seconds))}</span></div>
+    <div class="computed-item" style="margin-bottom:8px"><span class="ci-value" style="font-size:16px;cursor:pointer;text-decoration:underline dotted" onclick="openGoesiModal('${group.id}')" title="Open the Goesi (month) calendar">${ronDateLabel(ronFromSeconds(group.clock_seconds))}</span></div>
     ${isGM ? `
     <div class="form-row" style="margin-bottom:6px">
       <button class="btn btn-dim" onclick="quickAdvance('${group.id}', 60)">+1 min</button>
@@ -1816,6 +1816,233 @@ async function startNewLogVolume(groupId) {
   if (createErr) { alert('Failed to start a new log: ' + createErr.message); return; }
   viewingVolumeId = created.id;
   renderGroupModule();
+}
+
+// ============================================================
+// GOESI CALENDAR
+// ============================================================
+// A month-grid popup (Goesi = the Westic word for a 60-day month), reached
+// by clicking the group's date/time display. Shows recurring holidays,
+// notes anchored to specific days, and spell effects ending that day, and
+// lets a player add a note or a GM add a holiday right from a day's detail
+// view. Editing/toggling an existing note's visibility still happens from
+// the regular Log, not duplicated here.
+let goesiViewYear = null;
+let goesiViewMonth = null;
+let goesiDayDetail = null; // { month, day, isLithe } or null (month-grid view)
+let goesiCache = { holidays: [], effects: [], notes: [] };
+
+// Lays out 60 days + 1 Lithe day into 8-wide weekday rows, offset so day 1
+// lands in its real Hawaak column -- the weekday cycle runs continuously
+// across month boundaries (per the wiki's own month-grid pages), it doesn't
+// reset to column 1 every month.
+function buildGoesiGrid(month) {
+  const doy0 = month * (RON_DAYS_PER_MONTH + 1);
+  const startCol = ((doy0 % 8) + 8) % 8;
+  const cells = [];
+  for (let i = 0; i < startCol; i++) cells.push(null);
+  for (let d = 1; d <= RON_DAYS_PER_MONTH; d++) cells.push({ day: d, isLithe: false });
+  cells.push({ day: null, isLithe: true });
+  while (cells.length % 8 !== 0) cells.push(null);
+  const rows = [];
+  for (let i = 0; i < cells.length; i += 8) rows.push(cells.slice(i, i + 8));
+  return rows;
+}
+
+async function openGoesiModal(groupId) {
+  const group = myGroups.find(g => g.id === groupId);
+  if (!group) return;
+  if (goesiViewYear == null) {
+    const c = ronFromSeconds(group.clock_seconds);
+    goesiViewYear = c.year;
+    goesiViewMonth = c.month;
+  }
+  goesiDayDetail = null;
+  await renderGoesiModal(groupId);
+}
+
+async function renderGoesiModal(groupId) {
+  const group = myGroups.find(g => g.id === groupId);
+  if (!group) return;
+  const isGM = group.myRole === 'gm';
+  const monthStart = ronToSeconds({ year: goesiViewYear, month: goesiViewMonth, day: 1, isLithe: false, hour: 0, minute: 0, second: 0 });
+  const monthEnd = monthStart + RON_SEC_PER_MONTH_BLOCK;
+
+  const [{ data: holidays, error: hErr }, { data: effects, error: eErr }, { data: notes, error: nErr }] = await Promise.all([
+    sb.from('group_holidays').select('id, month, day, is_lithe, name, notes').eq('group_id', groupId).eq('month', goesiViewMonth),
+    sb.from('character_spell_effects').select('id, character_id, spell_name, cast_at_seconds, expires_at_seconds').eq('group_id', groupId).gte('expires_at_seconds', monthStart).lt('expires_at_seconds', monthEnd),
+    sb.from('group_notes').select('id, author_id, note, game_seconds, visible_to_all').eq('group_id', groupId).gte('game_seconds', monthStart).lt('game_seconds', monthEnd)
+  ]);
+  if (hErr || eErr || nErr) { alert('Failed to load calendar: ' + (hErr||eErr||nErr).message); return; }
+  goesiCache = { holidays: holidays || [], effects: effects || [], notes: notes || [] };
+
+  if (goesiDayDetail) renderGoesiDayDetail(groupId, isGM);
+  else renderGoesiMonthView(groupId, isGM);
+}
+
+function goesiNavMonth(groupId, delta) {
+  goesiViewMonth += delta;
+  if (goesiViewMonth < 0) { goesiViewMonth = 5; goesiViewYear--; }
+  else if (goesiViewMonth > 5) { goesiViewMonth = 0; goesiViewYear++; }
+  renderGoesiModal(groupId);
+}
+
+function goesiSetYear(groupId, year) {
+  goesiViewYear = parseInt(year) || goesiViewYear;
+  renderGoesiModal(groupId);
+}
+
+function openGoesiDay(groupId, month, day, isLithe) {
+  goesiDayDetail = { month, day, isLithe };
+  renderGoesiModal(groupId);
+}
+
+function backToGoesiMonth(groupId) {
+  goesiDayDetail = null;
+  renderGoesiModal(groupId);
+}
+
+function renderGoesiMonthView(groupId, isGM) {
+  const rows = buildGoesiGrid(goesiViewMonth);
+  const monthDef = RON_MONTHS[goesiViewMonth];
+  const yearOptions = [];
+  for (let y = goesiViewYear - 5; y <= goesiViewYear + 10; y++) yearOptions.push(y);
+
+  const cellHtml = (cell) => {
+    if (!cell) return '<td></td>';
+    const dayStart = ronToSeconds({ year: goesiViewYear, month: goesiViewMonth, day: cell.day || 1, isLithe: cell.isLithe, hour: 0, minute: 0, second: 0 });
+    const dayEnd = dayStart + RON_SEC_PER_DAY;
+    const dayHolidays = goesiCache.holidays.filter(h => h.is_lithe === cell.isLithe && (cell.isLithe || h.day === cell.day));
+    const dayNotes = goesiCache.notes.filter(n => n.game_seconds >= dayStart && n.game_seconds < dayEnd);
+    const dayEffects = goesiCache.effects.filter(e => e.expires_at_seconds >= dayStart && e.expires_at_seconds < dayEnd);
+    const badges = [
+      dayHolidays.length ? `<span title="${dayHolidays.length} holiday(s)">🎉${dayHolidays.length>1?dayHolidays.length:''}</span>` : '',
+      dayNotes.length ? `<span title="${dayNotes.length} note(s)">📝${dayNotes.length>1?dayNotes.length:''}</span>` : '',
+      dayEffects.length ? `<span title="${dayEffects.length} spell(s) ending">⏳${dayEffects.length>1?dayEffects.length:''}</span>` : ''
+    ].filter(Boolean).join(' ');
+    const label = cell.isLithe ? 'Lithe' : cell.day;
+    const dayArg = cell.day != null ? cell.day : 'null';
+    return `<td style="cursor:pointer;vertical-align:top;padding:4px" onclick="openGoesiDay('${groupId}',${goesiViewMonth},${dayArg},${cell.isLithe})">
+      <div style="font-size:11px;color:var(--text-dim)">${label}</div>
+      <div style="font-size:12px">${badges}</div>
+    </td>`;
+  };
+
+  openModal(`
+    <h3 style="margin-bottom:4px">Goesi — ${monthDef.key} (${monthDef.season})</h3>
+    <div class="form-row" style="margin-bottom:10px;align-items:center">
+      <button class="btn btn-dim" onclick="goesiNavMonth('${groupId}',-1)">◀ Prev</button>
+      <select onchange="goesiSetYear('${groupId}', this.value)">
+        ${yearOptions.map(y => `<option value="${y}" ${y===goesiViewYear?'selected':''}>${y} RON</option>`).join('')}
+      </select>
+      <button class="btn btn-dim" onclick="goesiNavMonth('${groupId}',1)">Next ▶</button>
+    </div>
+    <table class="skill-table" style="table-layout:fixed">
+      <thead><tr>${RON_WEEKDAYS.map(w=>`<th style="font-size:10px">${w}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${rows.map(row => `<tr>${row.map(cellHtml).join('')}</tr>`).join('')}
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:8px">🎉 holiday · 📝 note · ⏳ spell effect ending. Click a day for details.</div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Close</button></div>`);
+}
+
+function renderGoesiDayDetail(groupId, isGM) {
+  const { month, day, isLithe } = goesiDayDetail;
+  const dayStart = ronToSeconds({ year: goesiViewYear, month, day: day || 1, isLithe, hour: 0, minute: 0, second: 0 });
+  const dayEnd = dayStart + RON_SEC_PER_DAY;
+  const dayHolidays = goesiCache.holidays.filter(h => h.is_lithe === isLithe && (isLithe || h.day === day));
+  const dayNotes = goesiCache.notes.filter(n => n.game_seconds >= dayStart && n.game_seconds < dayEnd);
+  const dayEffects = goesiCache.effects.filter(e => e.expires_at_seconds >= dayStart && e.expires_at_seconds < dayEnd);
+  const myCharIds = new Set(Object.values(charRowIds));
+  const dayLabel = isLithe ? `Lithe Day (after ${RON_MONTHS[month].key})` : `${RON_MONTHS[month].key} ${day}, ${goesiViewYear} RON`;
+
+  const holidaysHtml = dayHolidays.length ? dayHolidays.map(h => `
+    <div style="margin-bottom:6px">
+      <b>🎉 ${escapeHtml(h.name)}</b>${h.notes ? `<div class="note">${escapeHtml(h.notes)}</div>` : ''}
+      ${isGM ? `<button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="deleteHoliday('${groupId}','${h.id}')">Remove</button>` : ''}
+    </div>`).join('') : '<div class="note">No holidays.</div>';
+
+  const effectsHtml = dayEffects.length ? `<table class="skill-table"><thead><tr><th>Character</th><th>Spell</th><th>Ends</th><th></th></tr></thead><tbody>
+    ${dayEffects.map(e => {
+      const canRemove = isGM || myCharIds.has(e.character_id);
+      const charName = (groupRosterCache.find(c => c.id === e.character_id) || {}).name || '(unknown)';
+      return `<tr><td>${escapeHtml(charName)}</td><td>${escapeHtml(e.spell_name)}</td><td>${ronDateLabel(ronFromSeconds(e.expires_at_seconds))}</td><td>${canRemove ? `<button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="deleteSpellEffect('${groupId}','${e.id}')">Remove</button>` : ''}</td></tr>`;
+    }).join('')}
+  </tbody></table>` : '<div class="note">No spell effects ending this day.</div>';
+
+  const notesListHtml = dayNotes.length ? dayNotes.map(n => `
+    <div style="margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)">
+      <div>${escapeHtml(n.note)}</div>
+      <span style="font-size:10px;color:${n.visible_to_all?'var(--text-dim)':'var(--gold-dim)'}">${n.visible_to_all ? 'Visible to all' : 'Private (author + GM)'}</span>
+    </div>`).join('') : '<div class="note">No notes.</div>';
+
+  const addHolidayForm = isGM ? `
+    <div class="form-row" style="margin-top:4px">
+      <div class="form-group" style="flex:1"><input id="goesi-holiday-name" placeholder="Holiday name"></div>
+      <div class="form-group" style="justify-content:flex-end"><button class="btn btn-dim" onclick="addHoliday('${groupId}')">+ Add Holiday Here</button></div>
+    </div>` : '';
+
+  openModal(`
+    <h3 style="margin-bottom:4px">${escapeHtml(dayLabel)}</h3>
+    <button class="btn btn-dim" style="margin-bottom:10px" onclick="backToGoesiMonth('${groupId}')">◀ Back to ${RON_MONTHS[month].key}</button>
+
+    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Holidays</div>
+    ${holidaysHtml}
+    ${addHolidayForm}
+
+    <hr class="divider">
+    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Spell Effects Ending</div>
+    ${effectsHtml}
+
+    <hr class="divider">
+    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Notes</div>
+    ${notesListHtml}
+    <div class="form-row" style="margin-top:6px">
+      <div class="form-group" style="flex:1"><textarea id="goesi-note-text" rows="2" style="width:100%" placeholder="Add a note for this day..."></textarea></div>
+      <div class="form-group"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="goesi-note-visible"> Visible to everyone</label></div>
+      <div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="addGoesiNote('${groupId}')">Add Note</button></div>
+    </div>
+
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Close</button></div>`);
+}
+
+async function addHoliday(groupId) {
+  const input = document.getElementById('goesi-holiday-name');
+  const name = input ? input.value.trim() : '';
+  if (!name || !goesiDayDetail) return;
+  const { month, day, isLithe } = goesiDayDetail;
+  const { error } = await sb.from('group_holidays').insert({ group_id: groupId, month, day: isLithe ? null : day, is_lithe: isLithe, name });
+  if (error) { alert('Failed to add holiday: ' + error.message); return; }
+  await renderGoesiModal(groupId);
+}
+
+async function deleteHoliday(groupId, holidayId) {
+  const { error } = await sb.from('group_holidays').delete().eq('id', holidayId);
+  if (error) { alert('Failed to remove holiday: ' + error.message); return; }
+  await renderGoesiModal(groupId);
+}
+
+async function deleteSpellEffect(groupId, effectId) {
+  const { error } = await sb.from('character_spell_effects').delete().eq('id', effectId);
+  if (error) { alert('Failed to remove spell effect: ' + error.message); return; }
+  await renderGoesiModal(groupId);
+}
+
+async function addGoesiNote(groupId) {
+  if (!goesiDayDetail) return;
+  const textEl = document.getElementById('goesi-note-text');
+  const text = textEl.value.trim();
+  if (!text) return;
+  const visibleToAll = document.getElementById('goesi-note-visible').checked;
+  const { month, day, isLithe } = goesiDayDetail;
+  const gameSeconds = ronToSeconds({ year: goesiViewYear, month, day: day || 1, isLithe, hour: 0, minute: 0, second: 0 });
+  const volumeId = await getActiveVolumeId(groupId);
+  const { error } = await sb.from('group_notes').insert({
+    group_id: groupId, author_id: currentUser.id, note: text, game_seconds: gameSeconds, visible_to_all: visibleToAll, volume_id: volumeId
+  });
+  if (error) { alert('Failed to add note: ' + error.message); return; }
+  await renderGoesiModal(groupId);
 }
 
 async function toggleNoteVisibility(noteId, groupId) {
@@ -3518,6 +3745,7 @@ function openHardcastModal(spellbookIdx) {
   hardcastState = {
     spellbookIdx, spellName: sp.name, school: sp.school, baseCosts: {...catalogEntry.costs},
     majorPool, spellSuccessBase: parseFloat(catalogEntry.spellSuccess) || 0,
+    duration: catalogEntry.duration || '',
     castMode: 'hardcast',
     substitute: {}, // { 'Death SP': true/false } — hardcast only
     overcastSpirit: 0, overcastMajor: 0, // hardcast only
@@ -3633,6 +3861,7 @@ function renderHardcastModal() {
   const successBonus = majorPoolInfo ? majorPoolInfo.successBonus : 0;
   const overcastBonus = mode === 'hardcast' ? (hs.overcastSpirit + hs.overcastMajor) : 0;
   const totalSuccess = Math.round((hs.spellSuccessBase + spiritSuccessSkval + majorSuccessSkval + successBonus + overcastBonus) * 10) / 10;
+  hs.totalSuccess = totalSuccess;
 
   const shortfalls = Object.entries(finalCosts).filter(([poolName, needed]) => {
     const info = poolByName[poolName];
@@ -3644,7 +3873,7 @@ function renderHardcastModal() {
 
   openModal(`
     <h3>Cast: ${hs.spellName}</h3>
-    <div class="note" style="margin-bottom:10px">${hs.school} — base cost ${Object.entries(hs.baseCosts).map(([s,v])=>`${s} ${v}`).join(', ')}</div>
+    <div class="note" style="margin-bottom:10px">${hs.school} — base cost ${Object.entries(hs.baseCosts).map(([s,v])=>`${s} ${v}`).join(', ')}${hs.duration ? ` — duration ${escapeHtml(hs.duration)}` : ''}</div>
 
     <div style="display:flex;gap:8px;margin-bottom:12px">
       ${modeBtn('hardcast','Hardcast')} ${modeBtn('plaque','Plaque')} ${modeBtn('scroll','Scrollcast')}
@@ -3719,8 +3948,110 @@ function confirmHardcast() {
     if (!char.spellState[poolName]) char.spellState[poolName] = {};
     char.spellState[poolName].current = currentBefore - needed;
   }
-  hardcastState = null;
   saveState();
+  // SP is spent either way -- hardcastState stays alive through resolving
+  // success and (if successful) marking a duration, closed out at the end
+  // of that chain rather than here.
+  openSpellResolveModal();
+}
+
+// Whether the spell was successfully cast: a d50 roll against the success
+// chance already shown in the cast modal, roll <= target succeeds. Only on
+// success does marking a duration make sense (see openMarkDurationModal).
+function openSpellResolveModal() {
+  const hs = hardcastState;
+  if (!hs) return;
+  openModal(`
+    <h3>Resolve: ${escapeHtml(hs.spellName)}</h3>
+    <div class="note" style="margin-bottom:8px">d50 roll, roll ≤ target succeeds.</div>
+    <div class="computed-item" style="margin-bottom:10px"><span class="ci-label">Target</span><span class="ci-value skval" style="font-size:20px">${hs.totalSuccess}</span></div>
+    <div class="form-row">
+      <div class="form-group"><label>Roll</label><input type="number" id="spell-resolve-roll" class="w80" min="1" max="50"></div>
+      <div class="form-group" style="justify-content:flex-end"><button class="btn btn-dim" onclick="rollSpellResolveOnline()">Roll Online</button></div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="skipSpellResolve()">Skip</button><button class="btn btn-gold" onclick="confirmSpellResolve()">Confirm</button></div>`);
+}
+
+function rollSpellResolveOnline() {
+  const roll = rollDie(50);
+  const input = document.getElementById('spell-resolve-roll');
+  if (input) input.value = roll;
+}
+
+function skipSpellResolve() {
+  hardcastState = null;
+  closeModal();
+  renderSpellModule();
+}
+
+function confirmSpellResolve() {
+  const hs = hardcastState;
+  if (!hs) return;
+  const input = document.getElementById('spell-resolve-roll');
+  const roll = input ? parseInt(input.value) : NaN;
+  if (!roll || roll < 1 || roll > 50) return;
+  const success = roll <= hs.totalSuccess;
+  const char = state.characters[state.activeChar];
+  if (success && char && char.playGroupId) {
+    openMarkDurationModal(roll);
+  } else {
+    hardcastState = null;
+    closeModal();
+    renderSpellModule();
+  }
+}
+
+// Only reachable on a successful cast for a character linked to a group --
+// no group means nowhere to show the flag, so there's nothing to mark
+// against. The player reads the spell's own duration text (shown here for
+// reference) and enters the result themselves rather than the app trying
+// to parse it (durations are free text and wildly inconsistent).
+function openMarkDurationModal(roll) {
+  const hs = hardcastState;
+  if (!hs) return;
+  openModal(`
+    <h3>${escapeHtml(hs.spellName)} — Success!</h3>
+    <div class="note" style="margin-bottom:8px">Rolled ${roll} vs target ${hs.totalSuccess}.${hs.duration ? ` Listed duration: ${escapeHtml(hs.duration)}` : ''}</div>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:8px">
+      <input type="checkbox" id="mark-duration-check" onchange="document.getElementById('mark-duration-fields').style.display=this.checked?'flex':'none'">
+      Mark duration?
+    </label>
+    <div id="mark-duration-fields" class="form-row" style="display:none">
+      <div class="form-group"><label>Amount</label><input type="number" id="mark-duration-amt" class="w80" value="1" min="0"></div>
+      <div class="form-group"><label>Unit</label>
+        <select id="mark-duration-unit">
+          <option value="60">Minutes</option>
+          <option value="3600" selected>Hours</option>
+          <option value="79200">Days</option>
+          <option value="633600">Hawaaks (8 days)</option>
+          <option value="4752000">Goesi (60 days)</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-gold" onclick="finishSpellCastWithDuration()">Done</button></div>`);
+}
+
+async function finishSpellCastWithDuration() {
+  const hs = hardcastState;
+  const char = state.characters[state.activeChar];
+  const markCheck = document.getElementById('mark-duration-check');
+  const marked = markCheck && markCheck.checked;
+  if (marked && char && char.playGroupId) {
+    const amt = parseFloat(document.getElementById('mark-duration-amt').value) || 0;
+    const unitSec = parseInt(document.getElementById('mark-duration-unit').value) || 3600;
+    const durationSeconds = amt * unitSec;
+    const grp = myGroups.find(g => g.id === char.playGroupId);
+    const rowId = charRowIds[state.activeChar];
+    if (grp && rowId && durationSeconds > 0) {
+      const castAt = grp.clock_seconds;
+      const { error } = await sb.from('character_spell_effects').insert({
+        character_id: rowId, group_id: grp.id, spell_name: hs.spellName,
+        cast_at_seconds: castAt, expires_at_seconds: castAt + durationSeconds
+      });
+      if (error) alert('Cast succeeded, but failed to save the duration flag: ' + error.message);
+    }
+  }
+  hardcastState = null;
   closeModal();
   renderSpellModule();
 }
