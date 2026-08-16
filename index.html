@@ -1929,13 +1929,17 @@ function renderGoesiMonthView(groupId, isGM) {
   };
 
   openModal(`
-    <h3 style="margin-bottom:4px;font-family:'Algerian','Georgia',serif;font-weight:bold;font-size:22px;color:var(--gold)">${monthDef.key} <span style="font-size:15px;color:var(--gold-dim);font-family:inherit">(${monthDef.season}) — ${goesiViewYear} RON</span></h3>
-    <div class="form-row" style="margin-bottom:10px;align-items:center">
-      <button class="btn btn-dim" onclick="goesiNavMonth('${groupId}',-1)">◀ Previous Goesi</button>
-      <select onchange="goesiSetYear('${groupId}', this.value)">
-        ${yearOptions.map(y => `<option value="${y}" ${y===goesiViewYear?'selected':''}>${y} RON</option>`).join('')}
-      </select>
-      <button class="btn btn-dim" onclick="goesiNavMonth('${groupId}',1)">Next Goesi ▶</button>
+    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:4px">
+      <button class="btn btn-dim" onclick="goesiNavMonth('${groupId}',-1)" title="Previous Goesi">◀</button>
+      <h3 style="margin:0;font-family:'Algerian','Georgia',serif;font-weight:bold;font-size:22px;color:var(--gold);text-align:center">${monthDef.key}<br><span style="font-size:14px;color:var(--gold-dim);font-family:inherit">${monthDef.season} — ${goesiViewYear} RON</span></h3>
+      <button class="btn btn-dim" onclick="goesiNavMonth('${groupId}',1)" title="Next Goesi">▶</button>
+    </div>
+    <div class="form-row" style="margin-bottom:10px;align-items:center;justify-content:center">
+      <div class="form-group"><label>Jump to Year</label>
+        <select onchange="goesiSetYear('${groupId}', this.value)">
+          ${yearOptions.map(y => `<option value="${y}" ${y===goesiViewYear?'selected':''}>${y} RON</option>`).join('')}
+        </select>
+      </div>
     </div>
     <table class="skill-table" style="table-layout:fixed">
       <thead><tr>${RON_WEEKDAYS.map(w=>`<th style="font-size:10px">${w}</th>`).join('')}</tr></thead>
