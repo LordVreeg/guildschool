@@ -1311,7 +1311,7 @@ async function renderGroupDetail(group) {
   const isGM = group.myRole === 'gm';
   const [{ data: roster, error: rErr }, { data: notes, error: nErr }] = await Promise.all([
     sb.from('group_roster').select('id, owner_id, name, is_npc, travel_order, trap_order, door_order, hp_damaged, hp_critical').eq('group_id', group.id),
-    sb.from('group_notes').select('id, author_id, note, game_seconds, created_at, visible_to_all').eq('group_id', group.id).order('game_seconds', { ascending: false }).order('created_at', { ascending: true })
+    sb.from('group_notes').select('id, author_id, note, game_seconds, created_at, visible_to_all').eq('group_id', group.id).order('created_at', { ascending: false })
   ]);
   const el = document.getElementById('group-detail');
   if (!el) return;
@@ -1741,7 +1741,7 @@ function openEditNoteModal(noteId, groupId) {
   openModal(`
     <h3>Edit Note</h3>
     <div class="form-group" style="margin-bottom:8px"><textarea id="edit-note-text" rows="4" style="width:100%">${escapeHtml(note.note)}</textarea></div>
-    <div class="note" style="margin-bottom:6px">Correcting the time re-sorts this note into its right chronological place in the log.</div>
+    <div class="note" style="margin-bottom:6px">This only corrects the displayed in-game time -- the log's own order is by when each note was actually entered, not by this.</div>
     <div class="form-row">
       <div class="form-group"><label>Year (RON)</label><input id="en-year" type="number" class="w100" value="${c.year}"></div>
       <div class="form-group"><label>Month</label>
