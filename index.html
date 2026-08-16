@@ -2280,8 +2280,6 @@ function renderGeneralModule() {
     'FratreCanis': ['Common','Gnollic'],
     'Cross': ['See notes'],
   };
-  const srOptions = '<option value="" ' + (char.subrace ? '' : 'selected') + '>— none selected —</option>' +
-    (subraces[char.race] || []).map(sr => `<option ${char.subrace===sr?'selected':''}>${sr}</option>`).join('');
   const totalXP = (char.skills || []).reduce((sum, si) => sum + (parseFloat(si.rawXP) || 0), 0);
 
   document.getElementById('main').innerHTML = `
@@ -2295,12 +2293,12 @@ function renderGeneralModule() {
         <div class="form-group"><label>Name</label><input class="w200" value="${char.name||''}" onchange="updateChar('name',this.value)"></div>
         <div class="form-group"><label>Nickname / Title</label><input class="w200" value="${char.nickname||''}" onchange="updateChar('nickname',this.value)"></div>
         <div class="form-group"><label>Race</label>
-          <select class="w140" onchange="updateChar('race',this.value);renderGeneralModule()">
-            ${races.map(r=>`<option ${char.race===r?'selected':''}>${r}</option>`).join('')}
-          </select>
+          <input class="w140" list="race-datalist" value="${char.race||''}" placeholder="e.g. Kobold" onchange="updateChar('race',this.value);renderGeneralModule()">
+          <datalist id="race-datalist">${races.map(r=>`<option value="${r}">`).join('')}</datalist>
         </div>
         <div class="form-group"><label>Subrace</label>
-          <select class="w200" onchange="updateChar('subrace',this.value)">${srOptions}</select>
+          <input class="w200" list="subrace-datalist" value="${char.subrace||''}" onchange="updateChar('subrace',this.value)">
+          <datalist id="subrace-datalist">${(subraces[char.race] || []).map(sr=>`<option value="${sr}">`).join('')}</datalist>
         </div>
         <div class="form-group"><label>Age</label><input class="w60" value="${char.age||''}" onchange="updateChar('age',this.value)"></div>
         <div class="form-group"><label>Max Age</label><input class="w60" value="${char.maxAge||''}" onchange="updateChar('maxAge',this.value)"></div>
