@@ -3525,7 +3525,7 @@ function autoPopulateDropdownChildren(character, parentInst) {
     const id = 'sk_' + Date.now() + '_' + Math.random().toString(36).slice(2,6) + '_' + added;
     character.skills.push({
       id, skillName: childDef.name,
-      guildName: character.guild || '',
+      guildName: parentInst.guildName || character.guild || '',
       dropdownOnly: true,
       parentSkillId: parentInst.id,
       rawXP: 0,
