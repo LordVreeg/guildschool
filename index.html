@@ -348,8 +348,11 @@ async function openAdminPanel() {
   content.innerHTML = profiles.map(p => {
     const myChars = charsByOwner[p.id] || [];
     const charList = myChars.length
-      ? '<ul style="margin:4px 0 0 16px;padding:0;font-size:12px;color:var(--text-dim)">' +
-        myChars.map(c => `<li style="cursor:pointer;color:var(--gold-dim);text-decoration:underline" onclick="viewCharacterReadOnly('${c.id}')">${escapeHtml((c.data && c.data.name) || '(unnamed)')}</li>`).join('') +
+      ? '<ul style="margin:4px 0 0 16px;padding:0;font-size:12px;color:var(--text-dim);list-style:none">' +
+        myChars.map(c => `<li style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+          <span style="cursor:pointer;color:var(--gold-dim);text-decoration:underline" onclick="viewCharacterReadOnly('${c.id}')">${escapeHtml((c.data && c.data.name) || '(unnamed)')}</span>
+          <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="openAdminTransferModal('${c.id}', '${escapeHtml((c.data && c.data.name) || '(unnamed)').replace(/'/g,"\\'")}')">Transfer</button>
+        </li>`).join('') +
         '</ul>'
       : '<div style="font-size:12px;color:var(--text-dim);margin-top:2px">No characters</div>';
     return `
@@ -372,6 +375,29 @@ async function openAdminPanel() {
 async function toggleApproval(userId, approved) {
   const { error } = await sb.from('profiles').update({ approved }).eq('id', userId);
   if (error) { alert('Failed to update: ' + error.message); }
+  openAdminPanel();
+}
+
+function openAdminTransferModal(charRowId, charName) {
+  openModal(`
+    <h3>Transfer "${escapeHtml(charName)}"</h3>
+    <div class="form-group" style="margin-bottom:8px"><label>New Owner's Email</label><input id="admin-transfer-email" style="width:100%" type="email"></div>
+    <div id="admin-transfer-status" style="font-size:12px;color:var(--red-b);margin-bottom:8px;display:none"></div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-red" onclick="confirmAdminTransfer('${charRowId}')">Transfer</button></div>`);
+}
+
+async function confirmAdminTransfer(charRowId) {
+  const email = document.getElementById('admin-transfer-email').value.trim();
+  const statusEl = document.getElementById('admin-transfer-status');
+  statusEl.style.display = 'none';
+  if (!email) return;
+  const { error } = await sb.rpc('transfer_character_ownership', { p_character_id: charRowId, p_new_owner_email: email });
+  if (error) {
+    statusEl.textContent = 'Failed to transfer: ' + error.message;
+    statusEl.style.display = 'block';
+    return;
+  }
+  closeModal();
   openAdminPanel();
 }
 
@@ -2544,6 +2570,7 @@ function renderGeneralModule() {
       </div>
       <div style="margin-top:12px;display:flex;gap:8px">
         <button class="btn btn-gold" onclick="saveState();showOverview()">Save & Return</button>
+        <button class="btn btn-red" onclick="openTransferOwnershipModal()">Transfer Ownership</button>
         <button class="btn btn-red" onclick="deleteChar()">Delete Character</button>
       </div>
     </div>
@@ -4304,6 +4331,43 @@ function deleteChar() {
   }
   renderApp();
   document.getElementById('main').innerHTML = '<div class="note" style="text-align:center;padding:40px">Character deleted.</div>';
+  document.getElementById('sidebar').innerHTML = '<div class="note" style="padding:12px;text-align:center">Select or create a character</div>';
+}
+
+function openTransferOwnershipModal() {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  openModal(`
+    <h3>Transfer Ownership</h3>
+    <div class="note" style="margin-bottom:8px;color:#c05050">You will lose access to "${escapeHtml(char.name || 'this character')}" once transferred — the new owner gets full control, and you won't be able to see or edit it anymore (unless you're an admin).</div>
+    <div class="form-group" style="margin-bottom:8px"><label>New Owner's Email</label><input id="transfer-email" style="width:100%" type="email"></div>
+    <div id="transfer-status" style="font-size:12px;color:var(--red-b);margin-bottom:8px;display:none"></div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-red" onclick="confirmTransferOwnership()">Transfer</button></div>`);
+}
+
+async function confirmTransferOwnership() {
+  const appId = state.activeChar;
+  const char = state.characters[appId];
+  const rowId = charRowIds[appId];
+  if (!char || !rowId) return;
+  const email = document.getElementById('transfer-email').value.trim();
+  const statusEl = document.getElementById('transfer-status');
+  statusEl.style.display = 'none';
+  if (!email) return;
+  if (!confirm(`Really transfer "${char.name || 'this character'}" to ${email}? This can't be undone by you -- only an admin could reverse it.`)) return;
+  const { error } = await sb.rpc('transfer_character_ownership', { p_character_id: rowId, p_new_owner_email: email });
+  if (error) {
+    statusEl.textContent = 'Failed to transfer: ' + error.message;
+    statusEl.style.display = 'block';
+    return;
+  }
+  delete state.characters[appId];
+  delete charRowIds[appId];
+  state.activeChar = null;
+  state.activeSkillId = null;
+  closeModal();
+  renderApp();
+  document.getElementById('main').innerHTML = '<div class="note" style="text-align:center;padding:40px">Character transferred.</div>';
   document.getElementById('sidebar').innerHTML = '<div class="note" style="padding:12px;text-align:center">Select or create a character</div>';
 }
 
