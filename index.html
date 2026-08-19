@@ -251,18 +251,57 @@ function escapeHtml(s) {
 
 // GuildSchool names are all "Location: Name" (e.g. "Igbar: Bowyers of
 // Ceminiar") -- with 40+ guilds per location across several locations, a
-// flat alphabetical <option> list is a long scroll to find anything.
-// Groups by that location prefix into <optgroup>s instead.
-function buildGuildOptions(guildList, selectedValue) {
+// flat list (even grouped) is a long scroll. <optgroup> can't collapse --
+// it's always fully expanded -- so this is a picker modal built on <details>
+// instead, collapsed by default except whichever location already holds the
+// current value. Renders a button that opens it; onSelect gets the chosen
+// guild name (or '' for "— none —").
+function guildPickerButton(currentValue, onSelectExpr) {
+  return `<button type="button" class="btn btn-dim" style="width:100%;text-align:left" onclick="openGuildPickerModal('${escapeHtml((currentValue||'').replace(/'/g,"\\'"))}', ${onSelectExpr})">${currentValue ? escapeHtml(currentValue) : '— none —'}</button>`;
+}
+
+let guildPickerCallback = null;
+function openGuildPickerModal(currentValue, onSelect) {
+  guildPickerCallback = onSelect;
   const groups = {};
-  for (const g of guildList) {
+  for (const g of Object.keys(GUILDS).sort()) {
     const idx = g.indexOf(': ');
     const location = idx >= 0 ? g.slice(0, idx) : '(Other)';
     (groups[location] = groups[location] || []).push(g);
   }
-  return Object.keys(groups).sort().map(loc => `<optgroup label="${escapeHtml(loc)}">${
-    groups[loc].map(g => `<option ${g===selectedValue?'selected':''}>${escapeHtml(g)}</option>`).join('')
-  }</optgroup>`).join('');
+  const locations = Object.keys(groups).sort();
+  openModal(`
+    <h3>Select GuildSchool</h3>
+    <div style="margin-bottom:8px"><button class="btn btn-dim" onclick="selectGuildFromPicker('')">— none —</button></div>
+    <div style="max-height:60vh;overflow-y:auto">
+      ${locations.map(loc => `<details ${groups[loc].includes(currentValue) ? 'open' : ''} style="margin-bottom:4px">
+        <summary style="cursor:pointer;font-weight:bold;color:var(--gold-dim);padding:4px 0">${escapeHtml(loc)} <span class="note">(${groups[loc].length})</span></summary>
+        <div style="margin-left:16px">
+          ${groups[loc].map(g => `<div style="padding:2px 0;cursor:pointer;${g===currentValue?'color:var(--gold);font-weight:bold':''}" onclick="selectGuildFromPicker('${g.replace(/'/g,"\\'")}')">${escapeHtml(g)}</div>`).join('')}
+        </div>
+      </details>`).join('')}
+    </div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button></div>`, { wide: true });
+}
+
+function selectGuildFromPicker(guildName) {
+  const cb = guildPickerCallback;
+  guildPickerCallback = null;
+  closeModal();
+  if (cb) cb(guildName);
+}
+
+// For pickers that feed a plain form field rather than character/skill
+// state (e.g. the Utilities "add Guild EXPMOD" form) -- patches just the
+// hidden input + button label instead of a full module re-render, so it
+// doesn't wipe out whatever's already typed in that form's other fields.
+function pickGuildIntoField(hiddenId, buttonId) {
+  const hidden = document.getElementById(hiddenId);
+  openGuildPickerModal(hidden ? hidden.value : '', v => {
+    if (hidden) hidden.value = v;
+    const btn = document.getElementById(buttonId);
+    if (btn) btn.textContent = v || '— existing —';
+  });
 }
 function setAuthStatus(msg) {
   const el = document.getElementById('auth-error');
@@ -2313,7 +2352,6 @@ function renderGeneralModule() {
   if (!char) return;
   const customChoices = loadCustomData();
   const a = char.attrs || {};
-  const guilds = Object.keys(GUILDS).sort();
   const races = ['Human','Omwo~','Gartier','Gnollic','Orcash','Goblic','Ograk Strain','FratreCanis','Klaxik','Hobytalia','Gnomic','Cross'];
   const subraces = {
     'Human': ['Mixed','Southern','Gwynellian','Omnian','Delvan','Grey March','Gesana'],
@@ -2400,23 +2438,14 @@ function renderGeneralModule() {
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Guilds</div>
       <div class="form-row">
-        <div class="form-group"><label>Primary Guild</label>
-          <select class="w250" onchange="updateChar('guild',this.value)">
-            <option value="">— none —</option>
-            ${buildGuildOptions(guilds, char.guild)}
-          </select>
+        <div class="form-group" style="width:250px"><label>Primary Guild</label>
+          ${guildPickerButton(char.guild, "v => { updateChar('guild', v); renderGeneralModule(); }")}
         </div>
-        <div class="form-group"><label>Secondary Guild</label>
-          <select class="w250" onchange="updateChar('guild2',this.value)">
-            <option value="">— none —</option>
-            ${buildGuildOptions(guilds, char.guild2)}
-          </select>
+        <div class="form-group" style="width:250px"><label>Secondary Guild</label>
+          ${guildPickerButton(char.guild2, "v => { updateChar('guild2', v); renderGeneralModule(); }")}
         </div>
-        <div class="form-group"><label>Tertiary Guild</label>
-          <select class="w250" onchange="updateChar('guild3',this.value)">
-            <option value="">— none —</option>
-            ${buildGuildOptions(guilds, char.guild3)}
-          </select>
+        <div class="form-group" style="width:250px"><label>Tertiary Guild</label>
+          ${guildPickerButton(char.guild3, "v => { updateChar('guild3', v); renderGeneralModule(); }")}
         </div>
       </div>
       <hr class="divider">
@@ -2894,7 +2923,6 @@ function renderSpellModule() {
 function renderUtilitiesModule() {
   const custom = loadCustomData();
   const typeOrder = ['Combat','Spell','Acting','Alchemic','Art','Artisan','Curative','Dance','Detect','Engineer','Language','Mind','Movement','Music','Priest','Scholar','Social','Thieves','Torturer','Outdoor'];
-  const guildNames = Object.keys(GUILDS).sort();
 
   document.getElementById('main').innerHTML = `
   <div class="panel">
@@ -2924,11 +2952,9 @@ function renderUtilitiesModule() {
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Add Guild EXPMOD (bxp)</div>
       <div class="form-row">
-        <div class="form-group"><label>Guild</label>
-          <select id="ge-guild">
-            <option value="">— existing —</option>
-            ${buildGuildOptions(guildNames, '')}
-          </select>
+        <div class="form-group" style="width:250px"><label>Guild</label>
+          <input type="hidden" id="ge-guild" value="">
+          <button type="button" id="ge-guild-label" class="btn btn-dim" style="width:100%;text-align:left" onclick="pickGuildIntoField('ge-guild','ge-guild-label')">— existing —</button>
         </div>
         <div class="form-group"><label>Or New Guild Name</label><input id="ge-newguild" class="w200" placeholder="e.g. Igbar: New Guild"></div>
       </div>
@@ -2967,7 +2993,6 @@ function renderSkillModule(skillId) {
   if (!si) return;
   const def = SKILLS.find(s => s.name === si.skillName);
   const vals = computeSkillValues(si, char, char.skills || []);
-  const guilds = Object.keys(GUILDS).sort();
   const trainedSkills = getTrainedSkills(state.activeChar).filter(s => s.id !== skillId);
   const rolls = si.rolls || Array(20).fill('');
 
@@ -3006,11 +3031,8 @@ function renderSkillModule(skillId) {
 
       <!-- CONFIGURATION -->
       <div class="form-row">
-        <div class="form-group"><label>GuildSchool</label>
-          <select class="w250" onchange="updateSkill('${skillId}','guildName',this.value)">
-            <option value="">— none —</option>
-            ${buildGuildOptions(guilds, si.guildName)}
-          </select>
+        <div class="form-group" style="width:250px"><label>GuildSchool</label>
+          ${guildPickerButton(si.guildName, `v => updateSkill('${skillId}','guildName',v)`)}
         </div>
         ${def && def.templated ? (si.skillName === 'Single weap spec' ? `
         <div class="form-group"><label>Specific Weapon (not a class — this skill trains on one weapon only)</label>
