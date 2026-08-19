@@ -248,6 +248,22 @@ function hidePendingGate() { document.getElementById('pending-gate').style.displ
 function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+
+// GuildSchool names are all "Location: Name" (e.g. "Igbar: Bowyers of
+// Ceminiar") -- with 40+ guilds per location across several locations, a
+// flat alphabetical <option> list is a long scroll to find anything.
+// Groups by that location prefix into <optgroup>s instead.
+function buildGuildOptions(guildList, selectedValue) {
+  const groups = {};
+  for (const g of guildList) {
+    const idx = g.indexOf(': ');
+    const location = idx >= 0 ? g.slice(0, idx) : '(Other)';
+    (groups[location] = groups[location] || []).push(g);
+  }
+  return Object.keys(groups).sort().map(loc => `<optgroup label="${escapeHtml(loc)}">${
+    groups[loc].map(g => `<option ${g===selectedValue?'selected':''}>${escapeHtml(g)}</option>`).join('')
+  }</optgroup>`).join('');
+}
 function setAuthStatus(msg) {
   const el = document.getElementById('auth-error');
   el.textContent = msg || '';
@@ -2387,19 +2403,19 @@ function renderGeneralModule() {
         <div class="form-group"><label>Primary Guild</label>
           <select class="w250" onchange="updateChar('guild',this.value)">
             <option value="">— none —</option>
-            ${guilds.map(g=>`<option ${char.guild===g?'selected':''}>${g}</option>`).join('')}
+            ${buildGuildOptions(guilds, char.guild)}
           </select>
         </div>
         <div class="form-group"><label>Secondary Guild</label>
           <select class="w250" onchange="updateChar('guild2',this.value)">
             <option value="">— none —</option>
-            ${guilds.map(g=>`<option ${char.guild2===g?'selected':''}>${g}</option>`).join('')}
+            ${buildGuildOptions(guilds, char.guild2)}
           </select>
         </div>
         <div class="form-group"><label>Tertiary Guild</label>
           <select class="w250" onchange="updateChar('guild3',this.value)">
             <option value="">— none —</option>
-            ${guilds.map(g=>`<option ${char.guild3===g?'selected':''}>${g}</option>`).join('')}
+            ${buildGuildOptions(guilds, char.guild3)}
           </select>
         </div>
       </div>
@@ -2911,7 +2927,7 @@ function renderUtilitiesModule() {
         <div class="form-group"><label>Guild</label>
           <select id="ge-guild">
             <option value="">— existing —</option>
-            ${guildNames.map(g=>`<option>${g}</option>`).join('')}
+            ${buildGuildOptions(guildNames, '')}
           </select>
         </div>
         <div class="form-group"><label>Or New Guild Name</label><input id="ge-newguild" class="w200" placeholder="e.g. Igbar: New Guild"></div>
@@ -2993,7 +3009,7 @@ function renderSkillModule(skillId) {
         <div class="form-group"><label>GuildSchool</label>
           <select class="w250" onchange="updateSkill('${skillId}','guildName',this.value)">
             <option value="">— none —</option>
-            ${guilds.map(g=>`<option ${si.guildName===g?'selected':''}>${g}</option>`).join('')}
+            ${buildGuildOptions(guilds, si.guildName)}
           </select>
         </div>
         ${def && def.templated ? (si.skillName === 'Single weap spec' ? `
