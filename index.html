@@ -871,6 +871,7 @@ function computeWeapon(character, item) {
     .reduce((sum,s) => sum + computeSkillValues(s, character, character.skills||[]).skval, 0);
   const multipleAttackSkval = (character.skills||[]).filter(s => s.skillName === 'Multiple attack' && s.binding === item.weaponClass)
     .reduce((sum,s) => sum + computeSkillValues(s, character, character.skills||[]).skval, 0);
+  const parryPointsUsed = Math.min(Math.max(0, parseFloat(item.parryPointsUsed) || 0), parrySkval);
 
   function critFumble(totalToHit) {
     const threatRange = parseFloat(item.threatRange) || 0;
@@ -883,7 +884,7 @@ function computeWeapon(character, item) {
   }
 
   function calc(stn, cdn) {
-    const hit = ((a.ST||0)-stn)*stmod + ((a.CD||0)-cdn)*cdmod + skillAbility + magicBonusToHit;
+    const hit = ((a.ST||0)-stn)*stmod + ((a.CD||0)-cdn)*cdmod + skillAbility + magicBonusToHit - parryPointsUsed;
     const dmgBonus = (((a.ST||0)-stn)*stmod)/4 + magicDamageAfterDivider;
     const speed = Math.max(1, speedMelee - ((((a.CD||0)-cdn)*cdmod)/4));
     const cf = critFumble(hit);
@@ -911,7 +912,7 @@ function computeWeapon(character, item) {
     missile = { rawHit, rangeMod, finalHit, ammoItem, speedMissile, usedGrip: oneHandUsable ? '1H' : '2H', critChance: cf.critChance, fumbleThreshold: cf.fumbleThreshold, fumbleChance: cf.fumbleChance };
   }
 
-  return { skillAbility, baseWeaponSkval, singleWeapSpec, critHitBonusSkval, parrySkval, multipleAttackSkval, oneHand, twoHand, missile };
+  return { skillAbility, baseWeaponSkval, singleWeapSpec, critHitBonusSkval, parrySkval, parryPointsUsed, multipleAttackSkval, oneHand, twoHand, missile };
 }
 
 function computeSpellPools(character) {
@@ -1093,19 +1094,24 @@ function computeArmor(character) {
   const sumOtherAV = otherBonuses.reduce((sum, b) => sum + (parseFloat(b && b.av) || 0), 0);
   const sumOtherPR = otherBonuses.reduce((sum, b) => sum + (parseFloat(b && b.pr) || 0), 0);
 
+  const weaponItems = items.filter(it => it.type === 'Weapon');
+  const parryPointsTotal = weaponItems.reduce((sum, it) => sum + computeWeapon(character, it).parryPointsUsed, 0);
+
   function buildTotals(includeShield) {
     const sumAV = sumArmorAV + (includeShield ? sumShieldAV : 0);
     const sumPR = sumArmorPR + (includeShield ? sumShieldPR : 0);
     const totalAV = sumAV - avoidanceSkval + sumOtherAV;
-    const totalPR = sumPR + (protectionSkval / 5) + weaponProtection + sumOtherPR;
-    return { sumAV, sumPR, totalAV, totalPR };
+    const totalPR = sumPR + (protectionSkval / 5) + weaponProtection + sumOtherPR + parryPointsTotal;
+    // Parry only defends against melee attacks -- it can't block a missile or a spell.
+    const totalPRvsRangedOrMagic = totalPR - parryPointsTotal;
+    return { sumAV, sumPR, totalAV, totalPR, totalPRvsRangedOrMagic };
   }
 
   const withShield = buildTotals(true);
   const withoutShield = buildTotals(false);
 
   return { armorItems, shieldsComputed, shieldUseSkval, avoidanceSkval, protectionSkval,
-           weaponProtection, otherBonuses, sumOtherAV, sumOtherPR,
+           weaponProtection, otherBonuses, sumOtherAV, sumOtherPR, parryPointsTotal,
            sumArmorAV, sumArmorPR, sumShieldAV, sumShieldPR,
            withShield, withoutShield };
 }
@@ -2674,6 +2680,9 @@ function renderCombatModule() {
         <div class="computed-item"><span class="ci-label">Total PR (No Shield / 2H)</span><span class="ci-value" style="color:#7a7acf">${Math.round(armor.withoutShield.totalPR)}</span></div>
       </div>
       <div class="note">Lower AV is better for the defender — it's added directly to an attacker's hit chance. "No Shield" reflects two-handed weapon use or a dropped shield.</div>
+      ${armor.parryPointsTotal > 0 ? `
+      <div class="note" style="color:var(--gold-dim);margin-top:4px">⚠ ${armor.parryPointsTotal} of the Total PR above comes from Parry Points Committed. Parry only stops melee attacks — you can't parry a missile or a spell. Against a missile or magical attack, use PR ${Math.round(armor.withShield.totalPRvsRangedOrMagic)} (Shield) / ${Math.round(armor.withoutShield.totalPRvsRangedOrMagic)} (No Shield) instead.</div>
+      ` : ''}
 
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weapons</div>
@@ -2706,12 +2715,13 @@ function renderCombatModule() {
             <div class="note">Crit % = 7 + floor(to-hit÷10) + (10% × Critical Hit Bonus skval [${w.critHitBonusSkval}]) + weapon threat range, capped at half of to-hit, floored at 3% minimum. Fumble range is 93-00, shifting up only if to-hit itself exceeds 93 (so it never overlaps your own hit range).</div>
             <hr class="divider">
             <table class="skill-table">
-              <thead><tr><th></th><th>To-Hit</th><th>Dmg Bonus</th><th>Speed</th><th>Parry</th><th>Multiple Attack</th><th>Crit %</th><th>Fumble %</th></tr></thead>
+              <thead><tr><th></th><th>To-Hit</th><th>Dmg Bonus</th><th>Speed</th><th>Parry</th><th>Parry Used</th><th>Multiple Attack</th><th>Crit %</th><th>Fumble %</th></tr></thead>
               <tbody>
-                <tr>${w.oneHand ? `<td>One-Handed</td><td class="skval-cell">${Math.round(w.oneHand.hit)}</td><td>${Math.round(w.oneHand.dmgBonus)}</td><td>${Math.round(w.oneHand.speed)}</td><td>${w.parrySkval}</td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.oneHand.critChance)}</td><td>${fmtFumble(w.oneHand.fumbleThreshold)}</td>` : `<td style="color:var(--text-dim)">One-Handed</td><td colspan="7" class="note">Not usable one-handed — no 1H stats for this weapon</td>`}</tr>
-                <tr><td>Two-Handed</td><td class="skval-cell">${Math.round(w.twoHand.hit)}</td><td>${Math.round(w.twoHand.dmgBonus)}</td><td>${Math.round(w.twoHand.speed)}</td><td>${w.parrySkval}</td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.twoHand.critChance)}</td><td>${fmtFumble(w.twoHand.fumbleThreshold)}</td></tr>
+                <tr>${w.oneHand ? `<td>One-Handed</td><td class="skval-cell">${Math.round(w.oneHand.hit)}</td><td>${Math.round(w.oneHand.dmgBonus)}</td><td>${Math.round(w.oneHand.speed)}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w60" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.oneHand.critChance)}</td><td>${fmtFumble(w.oneHand.fumbleThreshold)}</td>` : `<td style="color:var(--text-dim)">One-Handed</td><td colspan="8" class="note">Not usable one-handed — no 1H stats for this weapon</td>`}</tr>
+                <tr><td>Two-Handed</td><td class="skval-cell">${Math.round(w.twoHand.hit)}</td><td>${Math.round(w.twoHand.dmgBonus)}</td><td>${Math.round(w.twoHand.speed)}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w60" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.twoHand.critChance)}</td><td>${fmtFumble(w.twoHand.fumbleThreshold)}</td></tr>
               </tbody>
             </table>
+            <div class="note">Parry Used is capped at this weapon's Parry skill value; every point subtracts from this weapon's To-Hit and adds to your Protection (PR) below — but only against melee attacks. It does nothing against missile or magical attacks.</div>
             ${w.missile ? `
             <hr class="divider">
             <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Missile Fire</div>
@@ -2799,8 +2809,12 @@ function renderCombatModule() {
           <tr><td>Avoidance skill (subtracted)</td><td colspan="2">−${armor.avoidanceSkval}</td><td colspan="2">−${armor.avoidanceSkval}</td></tr>
           <tr><td>Protection skill ÷ 5 (added)</td><td colspan="2">+${(armor.protectionSkval/5).toFixed(1)}</td><td colspan="2">+${(armor.protectionSkval/5).toFixed(1)}</td></tr>
           <tr><td>Weapon Protection</td><td colspan="2">+${armor.weaponProtection}</td><td colspan="2">+${armor.weaponProtection}</td></tr>
+          <tr><td>Parry Points Committed</td><td colspan="2">+${armor.parryPointsTotal}</td><td colspan="2">+${armor.parryPointsTotal}</td></tr>
           <tr><td>Other Bonuses</td><td colspan="2">+${armor.sumOtherAV} / +${armor.sumOtherPR}</td><td colspan="2">+${armor.sumOtherAV} / +${armor.sumOtherPR}</td></tr>
           <tr style="border-top:1px solid var(--gold)"><td><strong>Total</strong></td><td><strong>${Math.round(armor.withShield.totalAV)}</strong></td><td><strong>${Math.round(armor.withShield.totalPR)}</strong></td><td><strong>${Math.round(armor.withoutShield.totalAV)}</strong></td><td><strong>${Math.round(armor.withoutShield.totalPR)}</strong></td></tr>
+          ${armor.parryPointsTotal > 0 ? `
+          <tr><td class="note">vs Missile / Magical attack<br>(Parry excluded)</td><td></td><td>${Math.round(armor.withShield.totalPRvsRangedOrMagic)}</td><td></td><td>${Math.round(armor.withoutShield.totalPRvsRangedOrMagic)}</td></tr>
+          ` : ''}
         </tbody>
       </table>
 
@@ -4444,9 +4458,9 @@ function buildCharacterSheetHtml(char) {
     const wv = computeWeapon(char, it);
     return `<h2>${it.name} ${it.weaponModel ? '— '+it.weaponModel : ''}</h2>
       <div class="pv-item"><b>Damage</b>${it.damageDice||'—'} / ${it.dividingDie||'—'}</div>
-      <table><tr><th></th><th>To-Hit</th><th>Dmg Bonus</th><th>Speed</th><th>Parry</th><th>Multi Atk</th><th>Crit %</th><th>Fumble %</th></tr>
-      ${wv.oneHand ? `<tr><td>1H</td><td>${Math.round(wv.oneHand.hit)}</td><td>${Math.round(wv.oneHand.dmgBonus)}</td><td>${Math.round(wv.oneHand.speed)}</td><td>${wv.parrySkval}</td><td>${wv.multipleAttackSkval}</td><td>${fmtCrit(wv.oneHand.critChance)}</td><td>${fmtFumble(wv.oneHand.fumbleThreshold)}</td></tr>` : ''}
-      <tr><td>2H</td><td>${Math.round(wv.twoHand.hit)}</td><td>${Math.round(wv.twoHand.dmgBonus)}</td><td>${Math.round(wv.twoHand.speed)}</td><td>${wv.parrySkval}</td><td>${wv.multipleAttackSkval}</td><td>${fmtCrit(wv.twoHand.critChance)}</td><td>${fmtFumble(wv.twoHand.fumbleThreshold)}</td></tr>
+      <table><tr><th></th><th>To-Hit</th><th>Dmg Bonus</th><th>Speed</th><th>Parry</th><th>Parry Used</th><th>Multi Atk</th><th>Crit %</th><th>Fumble %</th></tr>
+      ${wv.oneHand ? `<tr><td>1H</td><td>${Math.round(wv.oneHand.hit)}</td><td>${Math.round(wv.oneHand.dmgBonus)}</td><td>${Math.round(wv.oneHand.speed)}</td><td>${wv.parrySkval}</td><td>${wv.parryPointsUsed}</td><td>${wv.multipleAttackSkval}</td><td>${fmtCrit(wv.oneHand.critChance)}</td><td>${fmtFumble(wv.oneHand.fumbleThreshold)}</td></tr>` : ''}
+      <tr><td>2H</td><td>${Math.round(wv.twoHand.hit)}</td><td>${Math.round(wv.twoHand.dmgBonus)}</td><td>${Math.round(wv.twoHand.speed)}</td><td>${wv.parrySkval}</td><td>${wv.parryPointsUsed}</td><td>${wv.multipleAttackSkval}</td><td>${fmtCrit(wv.twoHand.critChance)}</td><td>${fmtFumble(wv.twoHand.fumbleThreshold)}</td></tr>
       </table>`;
   }).join('');
 
