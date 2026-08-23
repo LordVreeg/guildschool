@@ -1353,6 +1353,28 @@ function ronHourFromPhaseInput(idPrefix) {
   return (isNaSou ? 11 : 0) + (hourNum - 1);
 }
 
+// Twin suns (Gerin, weak/red; Tribin, bright/yellow) and twin moons (Feral,
+// Waban) as a small sky glyph for the current raw hour:
+//   hour 0 (1st Hour Sou, red dawn) -- little red sun alone, Tribin hasn't risen
+//   hours 1-10 (2nd-11th Hour Sou, daylight) -- big yellow sun + little red sun
+//   hour 11 (1st Hour Na Sou, red dusk) -- little red sun (setting) + a moon
+//   hours 12-21 (2nd-11th Hour Na Sou, night) -- big moon + little moon
+function celestialIconsHtml(rawHour) {
+  const dot = (r, fill) => `<circle cx="9" cy="9" r="${r}" fill="${fill}"/>`;
+  const svg = (inner) => `<svg width="18" height="18" viewBox="0 0 18 18">${inner}</svg>`;
+  const bigSun = svg(dot(8, '#e8c34a'));
+  const smallSun = svg(dot(5, '#c0524a'));
+  const bigMoon = svg(dot(8, '#c9c9dc'));
+  const smallMoon = svg(dot(5, '#c9c9dc'));
+  const blank = svg('');
+  let left, right, title;
+  if (rawHour === 0) { left = smallSun; right = blank; title = 'Sou — the red dawn'; }
+  else if (rawHour <= 10) { left = bigSun; right = smallSun; title = 'Sou — daylight'; }
+  else if (rawHour === 11) { left = smallSun; right = smallMoon; title = 'Na Sou — the red dusk'; }
+  else { left = bigMoon; right = smallMoon; title = 'Na Sou — night'; }
+  return `<span style="display:inline-flex;align-items:center" title="${title}">${left}${right}</span>`;
+}
+
 // Date only, no weekday/time -- used to index log volumes by the Celtricia
 // range they cover, where the full ronDateLabel would be too long to read
 // in a picker.
@@ -1528,10 +1550,14 @@ async function renderGroupDetail(group) {
       }).join('')
     : '<tr><td colspan="2" class="note">No notes yet.</td></tr>';
 
+  const groupClock = ronFromSeconds(group.clock_seconds);
   el.innerHTML = `
     <hr class="divider">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <h2 style="margin:0">${escapeHtml(group.name)}</h2>
+      <div style="display:flex;align-items:center;gap:10px">
+        <h2 style="margin:0">${escapeHtml(group.name)}</h2>
+        ${celestialIconsHtml(groupClock.hour)}
+      </div>
       ${isGM ? `<button class="btn btn-dim" onclick="openAddToGroupModal('${group.id}')">+ Add to Group</button>` : ''}
     </div>
     <div class="form-group" style="margin-top:8px"><label>Roster (PCs &amp; NPCs)</label>
@@ -1540,7 +1566,7 @@ async function renderGroupDetail(group) {
     </div>
     <hr class="divider">
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Time — Reckoning of Nebler</div>
-    <div class="computed-item" style="margin-bottom:8px"><span class="ci-value" style="font-size:16px;cursor:pointer;text-decoration:underline dotted" onclick="openGoesiModal('${group.id}')" title="Open the Goesi (month) calendar">${ronDateLabel(ronFromSeconds(group.clock_seconds))}</span></div>
+    <div class="computed-item" style="margin-bottom:8px"><span class="ci-value" style="font-size:16px;cursor:pointer;text-decoration:underline dotted" onclick="openGoesiModal('${group.id}')" title="Open the Goesi (month) calendar">${ronDateLabel(groupClock)}</span></div>
     ${isGM ? `
     <div class="form-row" style="margin-bottom:6px">
       <button class="btn btn-dim" onclick="quickAdvance('${group.id}', 60)">+1 min</button>
