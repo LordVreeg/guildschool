@@ -1333,6 +1333,26 @@ function ronDateLabel(clock) {
   return `${wd}, ${dayLabel}, ${clock.year} RON — ${timeLabel}`;
 }
 
+// Renders an hour-in-phase (1-11) input plus a Sou/Na Sou selector, instead
+// of a raw 0-21 hour field -- typing "11" now always means the 11th hour of
+// whichever phase is selected, matching how the hour is actually spoken
+// about, rather than requiring the raw 0-indexed value (11 = 1st Na Sou).
+function ronHourPhaseInputHtml(idPrefix, currentRawHour) {
+  const isNaSou = currentRawHour >= 11;
+  const hourInPhase = (isNaSou ? currentRawHour - 11 : currentRawHour) + 1;
+  return `
+      <div class="form-group"><label>Hour (1-11)</label><input id="${idPrefix}-hournum" type="number" class="w60" value="${hourInPhase}" min="1" max="11"></div>
+      <div class="form-group"><label>Phase</label><select id="${idPrefix}-phase">
+        <option value="sou" ${!isNaSou?'selected':''}>Sou (day)</option>
+        <option value="nasou" ${isNaSou?'selected':''}>Na Sou (night)</option>
+      </select></div>`;
+}
+function ronHourFromPhaseInput(idPrefix) {
+  const hourNum = Math.min(11, Math.max(1, parseInt(document.getElementById(idPrefix + '-hournum').value) || 1));
+  const isNaSou = document.getElementById(idPrefix + '-phase').value === 'nasou';
+  return (isNaSou ? 11 : 0) + (hourNum - 1);
+}
+
 // Date only, no weekday/time -- used to index log volumes by the Celtricia
 // range they cover, where the full ronDateLabel would be too long to read
 // in a picker.
@@ -1596,7 +1616,7 @@ function openCreateGroupModal() {
         <select id="ng-month">${RON_MONTHS.map((m,i)=>`<option value="${i}">${m.key} (${m.season})</option>`).join('')}</select>
       </div>
       <div class="form-group"><label>Day (1-60)</label><input id="ng-day" type="number" class="w80" value="1" min="1" max="60"></div>
-      <div class="form-group"><label>Hour (0=1st Sou, 11=1st Na Sou)</label><input id="ng-hour" type="number" class="w80" value="0" min="0" max="21"></div>
+      ${ronHourPhaseInputHtml('ng', 0)}
       <div class="form-group"><label>Minute (0-59)</label><input id="ng-minute" type="number" class="w80" value="0" min="0" max="59"></div>
     </div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="createGroup()">Create</button></div>`);
@@ -1608,7 +1628,7 @@ async function createGroup() {
   const year = parseInt(document.getElementById('ng-year').value) || 895;
   const month = parseInt(document.getElementById('ng-month').value) || 0;
   const day = Math.min(60, Math.max(1, parseInt(document.getElementById('ng-day').value) || 1));
-  const hour = Math.min(21, Math.max(0, parseInt(document.getElementById('ng-hour').value) || 0));
+  const hour = ronHourFromPhaseInput('ng');
   const minute = Math.min(59, Math.max(0, parseInt(document.getElementById('ng-minute').value) || 0));
   const clockSeconds = ronToSeconds({ year, month, day, isLithe: false, hour, minute, second: 0 });
   const { data, error } = await sb.from('groups').insert({
@@ -1828,7 +1848,7 @@ function openEditTimeModal(groupId) {
       <div class="form-group" id="et-day-wrap" style="display:${c.isLithe?'none':'block'}"><label>Day (1-60)</label><input id="et-day" type="number" class="w80" value="${c.day}" min="1" max="60"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Hour (0=1st Sou, 11=1st Na Sou)</label><input id="et-hour" type="number" class="w80" value="${c.hour}" min="0" max="21"></div>
+      ${ronHourPhaseInputHtml('et', c.hour)}
       <div class="form-group"><label>Minute (0-59)</label><input id="et-minute" type="number" class="w80" value="${c.minute}" min="0" max="59"></div>
     </div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="setGroupTime('${groupId}')">Save</button></div>`);
@@ -1839,7 +1859,7 @@ async function setGroupTime(groupId) {
   const month = parseInt(document.getElementById('et-month').value) || 0;
   const isLithe = document.getElementById('et-lithe').checked;
   const day = Math.min(60, Math.max(1, parseInt(document.getElementById('et-day').value) || 1));
-  const hour = Math.min(21, Math.max(0, parseInt(document.getElementById('et-hour').value) || 0));
+  const hour = ronHourFromPhaseInput('et');
   const minute = Math.min(59, Math.max(0, parseInt(document.getElementById('et-minute').value) || 0));
   const seconds = ronToSeconds({ year, month, day, isLithe, hour, minute, second: 0 });
   const { error } = await sb.from('groups').update({ clock_seconds: seconds }).eq('id', groupId);
@@ -2091,7 +2111,7 @@ function renderGoesiDayDetail(groupId, isGM) {
     ${notesListHtml}
     <div class="form-group" style="margin-bottom:6px"><textarea id="goesi-note-text" rows="2" style="width:100%" placeholder="Add a note for this day..."></textarea></div>
     <div class="form-row">
-      <div class="form-group"><label>Hour (0=1st Sou, 11=1st Na Sou)</label><input id="goesi-note-hour" type="number" class="w80" value="0" min="0" max="21"></div>
+      ${ronHourPhaseInputHtml('goesi-note', 0)}
       <div class="form-group"><label>Minute</label><input id="goesi-note-minute" type="number" class="w80" value="0" min="0" max="59"></div>
       <div class="form-group"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap">&nbsp;<input type="checkbox" id="goesi-note-visible"> Visible to everyone</label></div>
       <div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="addGoesiNote('${groupId}')">Add Note</button></div>
@@ -2128,7 +2148,7 @@ async function addGoesiNote(groupId) {
   const text = textEl.value.trim();
   if (!text) return;
   const visibleToAll = document.getElementById('goesi-note-visible').checked;
-  const hour = Math.min(21, Math.max(0, parseInt(document.getElementById('goesi-note-hour').value) || 0));
+  const hour = ronHourFromPhaseInput('goesi-note');
   const minute = Math.min(59, Math.max(0, parseInt(document.getElementById('goesi-note-minute').value) || 0));
   const { month, day, isLithe } = goesiDayDetail;
   const gameSeconds = ronToSeconds({ year: goesiViewYear, month, day: day || 1, isLithe, hour, minute, second: 0 });
@@ -2172,7 +2192,7 @@ function openEditNoteModal(noteId, groupId) {
       <div class="form-group" id="en-day-wrap" style="display:${c.isLithe?'none':'block'}"><label>Day (1-60)</label><input id="en-day" type="number" class="w80" value="${c.day}" min="1" max="60"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Hour (0=1st Sou, 11=1st Na Sou)</label><input id="en-hour" type="number" class="w80" value="${c.hour}" min="0" max="21"></div>
+      ${ronHourPhaseInputHtml('en', c.hour)}
       <div class="form-group"><label>Minute (0-59)</label><input id="en-minute" type="number" class="w80" value="${c.minute}" min="0" max="59"></div>
     </div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="saveEditedNote('${noteId}','${groupId}')">Save</button></div>`);
@@ -2185,7 +2205,7 @@ async function saveEditedNote(noteId, groupId) {
   const month = parseInt(document.getElementById('en-month').value) || 0;
   const isLithe = document.getElementById('en-lithe').checked;
   const day = Math.min(60, Math.max(1, parseInt(document.getElementById('en-day').value) || 1));
-  const hour = Math.min(21, Math.max(0, parseInt(document.getElementById('en-hour').value) || 0));
+  const hour = ronHourFromPhaseInput('en');
   const minute = Math.min(59, Math.max(0, parseInt(document.getElementById('en-minute').value) || 0));
   const gameSeconds = ronToSeconds({ year, month, day, isLithe, hour, minute, second: 0 });
   const { error } = await sb.from('group_notes').update({ note: text, game_seconds: gameSeconds }).eq('id', noteId);
