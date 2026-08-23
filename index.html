@@ -3148,6 +3148,7 @@ function renderSkillModule(skillId) {
         <div class="computed-item" style="margin-bottom:2px"><span class="ci-label">→ Adj XP</span><span class="ci-value" style="font-size:14px">${Math.round(vals.adjXP).toLocaleString()}</span></div>
         <div class="computed-item" style="margin-bottom:2px"><span class="ci-label">→ Level</span><span class="ci-value" style="font-size:14px;color:#4a9460">${vals.level}</span></div>
         ${!si.dropdownOnly ? `<div class="computed-item" style="margin-bottom:2px"><span class="ci-label">Next Level at Adj XP</span><span class="ci-value" style="font-size:12px;color:var(--text-dim)">${nextLevelThreshold(vals.level)}</span></div>` : ''}
+        ${!si.dropdownOnly ? `<div class="computed-item" style="margin-bottom:2px"><span class="ci-label">Next Level at Raw XP</span><span class="ci-value" style="font-size:12px;color:var(--text-dim)">${nextLevelThresholdRaw(vals.level, vals.expmod)}</span></div>` : ''}
       </div>
 
       <!-- LEVEL ROLLS -->
@@ -3199,6 +3200,14 @@ function renderSkillModule(skillId) {
 function nextLevelThreshold(level) {
   const next = LEVELS.find(r => r.level === level + 1);
   return next ? next.from.toLocaleString() : '—';
+}
+// Raw XP is what the player actually enters; Adj XP = Raw XP * expmod is what
+// levels are looked up against. Inverts that to show how much raw XP is
+// needed to cross the next level's Adj XP threshold at the current expmod.
+function nextLevelThresholdRaw(level, expmod) {
+  const next = LEVELS.find(r => r.level === level + 1);
+  if (!next || expmod <= 0) return '—';
+  return Math.ceil(next.from / expmod).toLocaleString();
 }
 
 // ============================================================
