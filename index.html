@@ -3823,6 +3823,17 @@ function updateChar(field, value) {
   const char = state.characters[state.activeChar];
   if (!char) return;
   char[field] = value;
+  if (field === 'guild' && value) {
+    // Starting skills are granted before the player has picked a guild (see
+    // createChar), so they're tagged with guildName: ''. Once the primary
+    // Guild/School is picked, backfill those still-unassigned skills to it
+    // rather than leaving them permanently un-guilded. Skills already tagged
+    // to a specific guild (e.g. via a secondary/tertiary guild) are left
+    // alone.
+    for (const si of (char.skills || [])) {
+      if (!si.guildName) si.guildName = value;
+    }
+  }
   saveState();
   renderCharSelect();
 }
