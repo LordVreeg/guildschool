@@ -3223,43 +3223,80 @@ function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
 }
 
-function openNewCharModal() {
+function openNewCharModal(preset) {
+  preset = preset || {};
+  const initialExp = preset.initialExp !== undefined ? preset.initialExp : true;
+  const initialExpAmount = preset.initialExpAmount !== undefined ? preset.initialExpAmount : 5000;
+  const roll = preset.roll || false;
   openModal(`
     <h3>New Character</h3>
-    <div class="form-group" style="margin-bottom:10px"><label>Name (leave blank if rolling — race-dependent naming)</label><input id="nc-name" class="wfull" style="width:100%" placeholder="Character name, or leave blank to name after rolling"></div>
+    <div class="form-group" style="margin-bottom:10px"><label>Name (leave blank if rolling — race-dependent naming)</label><input id="nc-name" class="wfull" style="width:100%" placeholder="Character name, or leave blank to name after rolling" value="${escapeHtml(preset.name||'')}"></div>
     <hr class="divider">
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:8px">
-      <input type="checkbox" id="nc-initial-exp" checked onchange="document.getElementById('nc-initial-exp-amount').disabled=!this.checked">
+      <input type="checkbox" id="nc-initial-exp" ${initialExp?'checked':''} onchange="document.getElementById('nc-initial-exp-amount').disabled=!this.checked">
       Initial EXP spend
     </label>
     <div class="form-group" style="margin-bottom:10px">
       <label>Starting Raw XP pool to spend on skills</label>
-      <input type="number" id="nc-initial-exp-amount" class="w150" value="5000">
+      <input type="number" id="nc-initial-exp-amount" class="w150" value="${initialExpAmount}" ${initialExp?'':'disabled'}>
     </div>
     <hr class="divider">
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:8px">
-      <input type="checkbox" id="nc-roll" onchange="document.getElementById('nc-roll-options').style.display=this.checked?'block':'none'">
+      <input type="checkbox" id="nc-roll" ${roll?'checked':''} onchange="document.getElementById('nc-roll-options').style.display=this.checked?'block':'none'">
       Roll new character (attributes, race, subrace, height/weight/age, social background)
     </label>
-    <div id="nc-roll-options" style="display:none;margin-bottom:10px">
+    <div id="nc-roll-options" style="display:${roll?'block':'none'};margin-bottom:10px">
       <div class="form-row">
         <div class="form-group"><label>Region</label>
           <select id="nc-region">
-            ${Object.keys(BASE_RACE_TABLE).map(r=>`<option>${r}</option>`).join('')}
+            ${Object.keys(BASE_RACE_TABLE).map(r=>`<option ${preset.region===r?'selected':''}>${r}</option>`).join('')}
           </select>
         </div>
         <div class="form-group"><label>Gender (affects height calc)</label>
           <select id="nc-gender-roll">
-            <option>Male</option><option>Female</option><option>Other</option>
+            ${['Male','Female','Other'].map(g=>`<option ${preset.gender===g?'selected':''}>${g}</option>`).join('')}
           </select>
         </div>
       </div>
       <div class="note">Race and subrace are single d100 rolls each (no re-roll/choice). Stops after Social Number — does not roll the Acquisitions item chart.</div>
     </div>
     <div class="modal-actions">
+      <button class="btn btn-dim" onclick="openCharTutorial(captureNewCharFormState())">Quick Tutorial</button>
       <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
       <button class="btn btn-gold" onclick="createChar()">Create</button>
     </div>`);
+}
+
+// Reads the New Character form's current values so the tutorial round-trip
+// ("Quick Tutorial" then "Back to New Character") doesn't lose in-progress input.
+function captureNewCharFormState() {
+  return {
+    name: document.getElementById('nc-name').value,
+    initialExp: document.getElementById('nc-initial-exp').checked,
+    initialExpAmount: document.getElementById('nc-initial-exp-amount').value,
+    roll: document.getElementById('nc-roll').checked,
+    region: document.getElementById('nc-region').value,
+    gender: document.getElementById('nc-gender-roll').value,
+  };
+}
+
+let charTutorialReturnState = null;
+function openCharTutorial(formPreset) {
+  charTutorialReturnState = formPreset || null;
+  openModal(`
+    <h3>GuildSchool — Quick Tutorial</h3>
+    <div style="font-size:13px;line-height:1.5">
+    <p>This is the GuildSchool Character Tool. It can be used to transfer a character from another format, to create a new one with a GM, or to totally randomize all the beginning dice rolls.</p>
+    <hr class="divider">
+    <p><strong>Playing the game</strong></p>
+    <p>GuildSchool is, at its heart, a skill based game. Everything is based on the skills of the characters. And while this is true to some degree in any game, a skill based system allows for the creation and development of a character that is unique to that character, as opposed to following a restrictive class template. Some systems leave a lot of blank space; some universal framework, whether it be in combat or in pottery, should allow the characters to grow in the direction they wish.</p>
+    <p>Furthermore, one of the major ideas in this particular skill based system is the idea that expertise in a broad-based skill gives you some little ability in specialty skills underneath it. A thief with the basic trap skill has a small amount of skill in finding traps, removing traps, and setting traps. This rule is called the <strong>"dropdown" rule</strong>.</p>
+    <p>This is a departure from most systems, and something developed decades ago to model the actual learning experience. There are other skill based systems out there, but in most of them each skill stands alone, and a character who gets better at painting or basic merchant is not assumed to get better at other skills that would be, in reality, related.</p>
+    <p>Another major ideal of the GuildSchool game is that one only gets better in skills that are used. Experience points and levels are kept in each skill, and a thief only gets better at finding the aforementioned trap by using that skill. No one gets better at finding traps by killing other creatures, contrary to the design of most RPGs.</p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-gold" onclick="openNewCharModal(charTutorialReturnState)">Back to New Character</button>
+    </div>`, { wide: true });
 }
 
 function rollDie(sides) { return Math.floor(Math.random() * sides) + 1; }
