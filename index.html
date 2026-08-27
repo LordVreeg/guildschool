@@ -2672,6 +2672,20 @@ function renderGeneralModule() {
       </div>
     </div>
   </div>`;
+
+  // welcomeShown is only ever explicitly set to false at character creation
+  // (see createChar), so older characters that predate this field (where
+  // it's simply undefined) never trigger it -- this is strictly a
+  // first-time-only popup for brand new characters.
+  if (char.welcomeShown === false) {
+    char.welcomeShown = true;
+    saveState();
+    openModal(`
+      <h3>Welcome, ${escapeHtml(char.name || 'traveler')}!</h3>
+      <p>Great, this character now exists. Your first move from here, after you read through social rolls and all, is to choose your Guild/School. That's where your skills all derive from, where your history is from, and your link to the world of Celtricia.</p>
+      <p>From there, you'll see you already have some skills, and you'll need to spend your starting experience on new skills.</p>
+      <div class="modal-actions"><button class="btn btn-gold" onclick="closeModal()">Got it</button></div>`);
+  }
 }
 
 function renderCombatModule() {
@@ -3509,7 +3523,7 @@ function createChar() {
   const rollChecked = document.getElementById('nc-roll') && document.getElementById('nc-roll').checked;
   if (!name && !rollChecked) return;
   const id = 'char_' + Date.now();
-  const char = { id, name: name || 'Unnamed', attrs: {ST:12,IN:12,WI:12,CD:12,HE:12,CH:12,AP:12}, skills: [], guild: '', guild2: '', guild3: '' };
+  const char = { id, name: name || 'Unnamed', attrs: {ST:12,IN:12,WI:12,CD:12,HE:12,CH:12,AP:12}, skills: [], guild: '', guild2: '', guild3: '', welcomeShown: false };
 
   const initialExpChecked = document.getElementById('nc-initial-exp') && document.getElementById('nc-initial-exp').checked;
   if (initialExpChecked) {
