@@ -984,10 +984,10 @@ function computeSpellPools(character) {
   return pools;
 }
 
-// Small colored dot summarizing a character's total spell point health
-// across every trained pool (sum of current / sum of max), for the group
-// roster. Green >75%, yellow 25-75%, red <25%. Returns '' for a character
-// with no trained spell pools at all -- nothing to show.
+// Small colored lightning bolt summarizing a character's total spell point
+// health across every trained pool (sum of current / sum of max), for the
+// group roster. Green >75%, yellow 25-75%, red <25%. Returns '' for a
+// character with no trained spell pools at all -- nothing to show.
 function spellHealthSigilHtml(character) {
   const pools = computeSpellPools(character);
   if (!pools.length) return '';
@@ -997,7 +997,7 @@ function spellHealthSigilHtml(character) {
   const pct = totalCurrent / totalMax;
   const color = pct > 0.75 ? '#4a9460' : pct > 0.25 ? '#c9a227' : '#c0524a';
   const label = Math.round(pct * 100) + '% spell points (' + Math.round(totalCurrent) + '/' + Math.round(totalMax) + ')';
-  return ` <span title="${label}" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${color};vertical-align:middle"></span>`;
+  return ` <svg title="${label}" width="11" height="14" viewBox="0 0 11 14" style="vertical-align:middle" xmlns="http://www.w3.org/2000/svg"><polygon points="6.5,0 0,8 4.5,8 3,14 11,5 6,5" fill="${color}"/></svg>`;
 }
 
 function computeHP(character) {
