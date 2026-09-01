@@ -1015,6 +1015,22 @@ function computeHP(character) {
   return { totalHP, system, currentHP, physicalMax, physicalCurrent, enduranceMax, enduranceCurrent };
 }
 
+// A character is officially dead once their negative HP has gone deep
+// enough that they can no longer make the Fortitude CC roll to stabilize
+// (see the wiki's Taking Damage page): the roll is penalized 10% for every
+// point below 0, and once that penalty meets or exceeds their Fortitude CC
+// the roll becomes impossible. Beyond the Pale raises the Fortitude CC used
+// for this specific check (not Fortitude in general) by 1 per 5 skval.
+// Collegium characters use Physical (real injury), not Endurance.
+function isCharacterDead(character, hp) {
+  const currentHP = hp.system === 'collegium' ? hp.physicalCurrent : hp.currentHP;
+  if (currentHP >= 0) return false;
+  const baseFort = computeCC(character).fortitude.value;
+  const beyondThePale = getSkillSkval(character, 'Beyond the Pale');
+  const effectiveFort = baseFort + Math.floor(beyondThePale / 5);
+  return (10 * Math.abs(currentHP)) >= effectiveFort;
+}
+
 // Derived damaged/critical flags, cached to plain columns (hp_damaged/
 // hp_critical) so the group roster can show a color cue to every group
 // member -- not just the GM or the character's own owner, who are the only
@@ -1518,12 +1534,15 @@ async function renderGroupDetail(group) {
   // else's data for them; their own is already loaded locally anyway.
   const hpByCharId = {};
   const spSigilByCharId = {};
+  const deadByCharId = {};
   if (isGM && groupRosterCache.length) {
     const { data: fullChars } = await sb.from('characters').select('id, data').in('id', groupRosterCache.map(c => c.id));
     for (const row of fullChars || []) {
       if (row.data) {
-        hpByCharId[row.id] = computeHP(row.data);
+        const hp = computeHP(row.data);
+        hpByCharId[row.id] = hp;
         spSigilByCharId[row.id] = spellHealthSigilHtml(row.data);
+        deadByCharId[row.id] = isCharacterDead(row.data, hp);
       }
     }
   } else {
@@ -1531,8 +1550,10 @@ async function renderGroupDetail(group) {
     if (mine) {
       const appId = Object.keys(charRowIds).find(k => charRowIds[k] === mine.id);
       if (appId && state.characters[appId]) {
-        hpByCharId[mine.id] = computeHP(state.characters[appId]);
+        const hp = computeHP(state.characters[appId]);
+        hpByCharId[mine.id] = hp;
         spSigilByCharId[mine.id] = spellHealthSigilHtml(state.characters[appId]);
+        deadByCharId[mine.id] = isCharacterDead(state.characters[appId], hp);
       }
     }
   }
@@ -1561,11 +1582,13 @@ async function renderGroupDetail(group) {
         // schema_v9), visible to every group member regardless of whether
         // they can see this character's actual sheet -- just a color cue,
         // no numbers leak through it.
-        const nameStyle = c.hp_critical ? 'color:#c05050;font-weight:bold' : (c.hp_damaged ? 'color:#c05050' : '');
+        let nameStyle = c.hp_critical ? 'color:#c05050;font-weight:bold' : (c.hp_damaged ? 'color:#c05050' : '');
+        const isDead = !!deadByCharId[c.id];
+        if (isDead) nameStyle += ';text-decoration:line-through';
         const spSigil = spSigilByCharId[c.id] || '';
         return `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
         <span style="color:var(--text-dim);width:1.5em;display:inline-block;text-align:right">${i+1}.</span>
-        <span style="${nameStyle}">${escapeHtml(c.name || '(unnamed)')}</span>${c.is_npc ? ' <span style="font-size:10px;color:var(--gold-dim)">(NPC)</span>' : ''}${hpTag}${spSigil}
+        <span style="${nameStyle}" ${isDead?'title="Past the point of stabilizing -- can no longer make the Fortitude roll"':''}>${escapeHtml(c.name || '(unnamed)')}</span>${c.is_npc ? ' <span style="font-size:10px;color:var(--gold-dim)">(NPC)</span>' : ''}${hpTag}${spSigil}
         ${isGM ? `
         <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===0?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',-1)">▲</button>
         <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===groupRosterCache.length-1?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',1)">▼</button>` : ''}
