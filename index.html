@@ -984,6 +984,22 @@ function computeSpellPools(character) {
   return pools;
 }
 
+// Small colored dot summarizing a character's total spell point health
+// across every trained pool (sum of current / sum of max), for the group
+// roster. Green >75%, yellow 25-75%, red <25%. Returns '' for a character
+// with no trained spell pools at all -- nothing to show.
+function spellHealthSigilHtml(character) {
+  const pools = computeSpellPools(character);
+  if (!pools.length) return '';
+  const totalMax = pools.reduce((sum, p) => sum + p.maxSP, 0);
+  const totalCurrent = pools.reduce((sum, p) => sum + p.currentSP, 0);
+  if (totalMax <= 0) return '';
+  const pct = totalCurrent / totalMax;
+  const color = pct > 0.75 ? '#4a9460' : pct > 0.25 ? '#c9a227' : '#c0524a';
+  const label = Math.round(pct * 100) + '% spell points (' + Math.round(totalCurrent) + '/' + Math.round(totalMax) + ')';
+  return ` <span title="${label}" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${color};vertical-align:middle"></span>`;
+}
+
 function computeHP(character) {
   const totalHP = getSkillSkval(character, 'Hit Points');
   const hpState = character.hpState || {};
@@ -1501,16 +1517,23 @@ async function renderGroupDetail(group) {
   // exposes name/order only, not full sheets, so we don't fetch anyone
   // else's data for them; their own is already loaded locally anyway.
   const hpByCharId = {};
+  const spSigilByCharId = {};
   if (isGM && groupRosterCache.length) {
     const { data: fullChars } = await sb.from('characters').select('id, data').in('id', groupRosterCache.map(c => c.id));
     for (const row of fullChars || []) {
-      if (row.data) hpByCharId[row.id] = computeHP(row.data);
+      if (row.data) {
+        hpByCharId[row.id] = computeHP(row.data);
+        spSigilByCharId[row.id] = spellHealthSigilHtml(row.data);
+      }
     }
   } else {
     const mine = groupRosterCache.find(c => c.owner_id === currentUser.id);
     if (mine) {
       const appId = Object.keys(charRowIds).find(k => charRowIds[k] === mine.id);
-      if (appId && state.characters[appId]) hpByCharId[mine.id] = computeHP(state.characters[appId]);
+      if (appId && state.characters[appId]) {
+        hpByCharId[mine.id] = computeHP(state.characters[appId]);
+        spSigilByCharId[mine.id] = spellHealthSigilHtml(state.characters[appId]);
+      }
     }
   }
 
@@ -1539,9 +1562,10 @@ async function renderGroupDetail(group) {
         // they can see this character's actual sheet -- just a color cue,
         // no numbers leak through it.
         const nameStyle = c.hp_critical ? 'color:#c05050;font-weight:bold' : (c.hp_damaged ? 'color:#c05050' : '');
+        const spSigil = spSigilByCharId[c.id] || '';
         return `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
         <span style="color:var(--text-dim);width:1.5em;display:inline-block;text-align:right">${i+1}.</span>
-        <span style="${nameStyle}">${escapeHtml(c.name || '(unnamed)')}</span>${c.is_npc ? ' <span style="font-size:10px;color:var(--gold-dim)">(NPC)</span>' : ''}${hpTag}
+        <span style="${nameStyle}">${escapeHtml(c.name || '(unnamed)')}</span>${c.is_npc ? ' <span style="font-size:10px;color:var(--gold-dim)">(NPC)</span>' : ''}${hpTag}${spSigil}
         ${isGM ? `
         <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===0?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',-1)">▲</button>
         <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===groupRosterCache.length-1?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',1)">▼</button>` : ''}
