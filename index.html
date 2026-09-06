@@ -213,7 +213,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Georgia', serif;
   <button onclick="printCharacterSheet()">🖨 Print Sheet</button>
   <button onclick="showUtilitiesModule()">🔧 Utilities</button>
   <button onclick="showGroupModule()">👥 Groups</button>
-  <button onclick="showBestiaryModule()">🐉 Bestiary</button>
+  <button onclick="showBestiaryModule()">🐉 Beastiary</button>
   <button onclick="exportData()">Export JSON</button>
   <button onclick="importData()">Import JSON</button>
 </div>
@@ -1379,7 +1379,7 @@ async function renderBestiaryModule() {
   document.getElementById('main').innerHTML = `
   <div class="panel">
     <div class="panel-header" style="display:flex;justify-content:space-between;align-items:center">
-      <h2>Bestiary</h2>
+      <h2>Beastiary</h2>
       <button class="btn btn-neon" onclick="openNewBestiaryEntry()">+ New Foe</button>
     </div>
     <div class="panel-body">
@@ -1517,7 +1517,7 @@ function renderBestiaryEditor() {
   <div class="panel">
     <div class="panel-header" style="display:flex;justify-content:space-between;align-items:flex-start">
       <div style="flex:1">
-        <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Bestiary entry</div>
+        <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Beastiary entry</div>
         <input value="${escapeHtml(d.name||'')}" placeholder="Foe name" style="font-family:'Algerian','Georgia',serif;font-weight:bold;font-size:22px;color:var(--gold);border:1px solid transparent;width:100%;background:transparent" onchange="updateBestiaryField('name',this.value)">
       </div>
       <span class="type-badge" style="color:var(--red-b);border-color:var(--red-b)">GM only</span>
