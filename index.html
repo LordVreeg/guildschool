@@ -1328,6 +1328,34 @@ const BESTIARY_BONUS_ABILITIES = ['Light poison', 'Light spell use', 'Quick move
 const BESTIARY_SPECIAL_ABILITIES = ['Poison', 'Flight', '25+ SP caster', '12%+ crit', 'Undead perm damage', '15%+ magic resist', '10%+ magic-to-hit', 'Regeneration'];
 const BESTIARY_EXCEPTIONAL_ABILITIES = ['60+ SP spells', '50%+ magic resist'];
 
+// Base-creature stat templates transcribed from the wiki's Bestiary section
+// (currently just Goblins and Wight -- the wiki's whole current Bestiary).
+// Picking one of these in the editor pre-fills the stat fields below, same
+// pattern as selectBestiaryArmor/selectBestiaryAttackWeapon -- always still
+// editable after. Add more entries here as more wiki Bestiary pages appear.
+const BESTIARY_RACE_TEMPLATES = [
+  {
+    name: 'Goblin',
+    hp_formula: 'd6 + d4/plev', avg_hp: 3.5,
+    armor_name: '', shield_name: '', avoidance: 25, protection: 20,
+    bmod: 1, avg_damage: 2.7, multi: 5,
+    attacks: [{ name: 'Flanged Mace', weaponName: 'Flanged Mace', toHit: '', damageDice: '2d4+11', speed: '5' }],
+    bonus_abilities: ["Darksight 25'+"], special_abilities: [], exceptional_abilities: [],
+    level_capable: true, possible_classes: ['Cleric', 'Thief'],
+    notes: "Type-Ogrillite. 3-4' tall, yellowed skin, muscular, small fangs, high-pitched voices. Very organized and disciplined -- shock troops of a tribe. Hardy outdoors folk, females as common as males. Darksight 30'. Basic Outdoors 30%. Alternate loadout: shortbow instead of mace, Multi 20%."
+  },
+  {
+    name: 'Wight',
+    hp_formula: '21-32 + d4/plev', avg_hp: 26.5,
+    armor_name: '', shield_name: '', avoidance: 25, protection: 40,
+    bmod: 1, avg_damage: 0, multi: 0,
+    attacks: [],
+    bonus_abilities: [], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
+    level_capable: true, possible_classes: [],
+    notes: "Cunning undead -- a spirit from a grave imprisoned in the ancient body, aware of its condition and hating life; can reason well enough to avoid priests and pick dangerous targets first. Strong (avg 15 ST), not slow. Retains armor/shield use. Usually spawned from a grave and spirit; can be charmed or commanded by necromancers and greater undead. +10 Protection vs piercing weapons. Requires magic, silver, or masterwork weapons to hit, or Protection effectively +10 higher. Immune to sleep and charm. Not a caster. CCs: Fort 70 / Reflex 50 / Will 60 / Soc 10 starting. Lesser undead often flock to a Wight's banner in a boneyard or old battle scene. Fort save -15 vs its permanent HP loss ability."
+  }
+];
+
 let bestiaryCache = [];
 let bestiaryEditingId = null; // null = list view, 'new' = new entry, or an existing id
 let bestiaryDraft = null;
@@ -1386,10 +1414,11 @@ async function renderBestiaryModule() {
       <div class="note" style="margin-bottom:10px">Your personal library of foe templates — private to you, not visible to players or other GMs. Duplicate an entry to quickly build a variant.</div>
       ${bestiaryCache.length === 0 ? '<div class="note" style="padding:10px 0">No foes yet. Click "+ New Foe" to build one.</div>' : ''}
       ${bestiaryCache.length ? `<table class="skill-table">
-        <thead><tr><th>Name</th><th>Prepped for</th><th>Avg HP</th><th>XP</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Type</th><th>Prepped for</th><th>Avg HP</th><th>XP</th><th></th></tr></thead>
         <tbody>
           ${bestiaryCache.map(e => `<tr>
             <td style="cursor:pointer;color:var(--gold)" onclick="openEditBestiaryEntry('${e.id}')">${escapeHtml(e.name)}</td>
+            <td class="note">${e.race ? escapeHtml(e.race) : '—'}</td>
             <td class="note">${e.group_id && groupNameById[e.group_id] ? escapeHtml(groupNameById[e.group_id]) : '—'}</td>
             <td>${e.avg_hp != null ? e.avg_hp : '—'}</td>
             <td class="skval-cell">${Math.round(computeFoeXP(e) * 10) / 10}</td>
@@ -1406,11 +1435,23 @@ async function renderBestiaryModule() {
 
 function blankBestiaryDraft() {
   return {
-    name: '', group_id: null, hp_formula: '', avg_hp: 0, armor_name: '', shield_name: '',
+    name: '', race: '', group_id: null, hp_formula: '', avg_hp: 0, armor_name: '', shield_name: '',
     avoidance: 0, protection: 0, bmod: 0, avg_damage: 0, multi: 0,
     bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
     attacks: [], level_capable: false, possible_classes: [], items: [], spells: [], notes: ''
   };
+}
+
+function loadBestiaryRaceTemplate(name) {
+  const t = BESTIARY_RACE_TEMPLATES.find(r => r.name === name);
+  if (!t) return;
+  const hasStats = bestiaryDraft.hp_formula || bestiaryDraft.avg_hp || bestiaryDraft.avoidance || bestiaryDraft.protection || (bestiaryDraft.attacks||[]).length;
+  if (hasStats && !confirm(`Overwrite this foe's stats with the base ${t.name} template? Name and notes you already typed will be kept where possible.`)) return;
+  const keepName = bestiaryDraft.name;
+  Object.assign(bestiaryDraft, JSON.parse(JSON.stringify(t)));
+  bestiaryDraft.race = t.name;
+  bestiaryDraft.name = keepName || t.name;
+  renderBestiaryEditor();
 }
 
 function openNewBestiaryEntry() {
@@ -1523,12 +1564,27 @@ function renderBestiaryEditor() {
       <span class="type-badge" style="color:var(--red-b);border-color:var(--red-b)">GM only</span>
     </div>
     <div class="panel-body">
-      <div class="form-group" style="margin-bottom:10px"><label>Prepped for group (optional)</label>
-        <select onchange="updateBestiaryField('group_id', this.value || null)">
-          <option value="">— none / reusable anywhere —</option>
-          ${myGroups.map(g => `<option value="${g.id}" ${d.group_id===g.id?'selected':''}>${escapeHtml(g.name)}</option>`).join('')}
-        </select>
+      <div class="form-row">
+        <div class="form-group" style="flex:1"><label>Race / type</label>
+          <input style="width:100%" value="${escapeHtml(d.race||'')}" placeholder="Goblin, Wight, Human bandit..." onchange="updateBestiaryField('race',this.value)">
+        </div>
+        <div class="form-group" style="flex:1"><label>Prepped for group (optional)</label>
+          <select onchange="updateBestiaryField('group_id', this.value || null)">
+            <option value="">— none / reusable anywhere —</option>
+            ${myGroups.map(g => `<option value="${g.id}" ${d.group_id===g.id?'selected':''}>${escapeHtml(g.name)}</option>`).join('')}
+          </select>
+        </div>
       </div>
+      <div class="form-row" style="align-items:flex-end;margin-bottom:10px">
+        <div class="form-group" style="flex:1"><label>Load base stats from wiki Beastiary</label>
+          <select id="bf-race-template">
+            <option value="">— pick a wiki creature —</option>
+            ${BESTIARY_RACE_TEMPLATES.map(t=>`<option>${escapeHtml(t.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><button class="btn btn-dim" onclick="loadBestiaryRaceTemplate(document.getElementById('bf-race-template').value)">Load</button></div>
+      </div>
+      <div class="note" style="margin-bottom:10px">Only creatures with a current wiki Bestiary page are in this list. Loading fills in stats below -- still fully editable after.</div>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Core stats</div>
       <div class="form-row">
@@ -1642,6 +1698,7 @@ async function saveBestiaryEntry() {
   const row = {
     group_id: bestiaryDraft.group_id || null,
     name: bestiaryDraft.name.trim(),
+    race: bestiaryDraft.race || null,
     hp_formula: bestiaryDraft.hp_formula || null,
     avg_hp: bestiaryDraft.avg_hp || 0,
     armor_name: bestiaryDraft.armor_name || null,
