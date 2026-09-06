@@ -211,6 +211,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Georgia', serif;
   <button onclick="printCharacterSheet()">🖨 Print Sheet</button>
   <button onclick="showUtilitiesModule()">🔧 Utilities</button>
   <button onclick="showGroupModule()">👥 Groups</button>
+  <button onclick="showBestiaryModule()">🐉 Bestiary</button>
   <button onclick="exportData()">Export JSON</button>
   <button onclick="importData()">Import JSON</button>
 </div>
@@ -1276,6 +1277,7 @@ function renderMain() {
   if (state.activeView === 'spell') { renderSpellModule(); return; }
   if (state.activeView === 'utilities') { renderUtilitiesModule(); return; }
   if (state.activeView === 'group') { renderGroupModule(); return; }
+  if (state.activeView === 'bestiary') { renderBestiaryModule(); return; }
   if (state.activeSkillId) { renderSkillModule(state.activeSkillId); return; }
   renderOverview();
 }
@@ -1312,6 +1314,383 @@ function showUtilitiesModule() {
   state.activeSkillId = null;
   state.activeView = 'utilities';
   renderUtilitiesModule();
+}
+
+// ============================================================
+// BESTIARY (foe templates) -- private to the GM who created them,
+// not tied to any character or group. See project_combat_initiative_tracker_spec
+// memory for the full design; this is the first piece of it (the
+// combat/initiative tracker itself isn't built yet).
+// ============================================================
+const BESTIARY_BONUS_ABILITIES = ['Light poison', 'Light spell use', 'Quick movement', 'Damage resistance', 'Missiles', "Darksight 25'+"];
+const BESTIARY_SPECIAL_ABILITIES = ['Poison', 'Flight', '25+ SP caster', '12%+ crit', 'Undead perm damage', '15%+ magic resist', '10%+ magic-to-hit', 'Regeneration'];
+const BESTIARY_EXCEPTIONAL_ABILITIES = ['60+ SP spells', '50%+ magic resist'];
+
+let bestiaryCache = [];
+let bestiaryEditingId = null; // null = list view, 'new' = new entry, or an existing id
+let bestiaryDraft = null;
+
+function showBestiaryModule() {
+  state.activeSkillId = null;
+  state.activeView = 'bestiary';
+  bestiaryEditingId = null;
+  renderBestiaryModule();
+}
+
+// XP = HP^2*.15 + (100-AV)*HP*.01 + PR*HP*.015 + Bmod*HP*.012 + AvgDam*HP*.1
+//    + Multi*HP*.05 + 1.5*HP*bonusCount + 6.25*HP*specialCount + 10*HP*exceptionalCount
+// Reverse-engineered from the user's "Monster/Foe EXP Calculator" spreadsheet
+// (its actual cell formulas, not just one example's computed values).
+function computeFoeXP(e) {
+  const hp = parseFloat(e.avg_hp) || 0;
+  const av = parseFloat(e.avoidance) || 0;
+  const pr = parseFloat(e.protection) || 0;
+  const bmod = parseFloat(e.bmod) || 0;
+  const avgDam = parseFloat(e.avg_damage) || 0;
+  const multi = parseFloat(e.multi) || 0;
+  const bonus = (e.bonus_abilities || []).length;
+  const special = (e.special_abilities || []).length;
+  const exceptional = (e.exceptional_abilities || []).length;
+  return hp*hp*0.15
+    + (100-av)*hp*0.01
+    + pr*hp*0.015
+    + bmod*hp*0.012
+    + avgDam*hp*0.1
+    + multi*hp*0.05
+    + 1.5*hp*bonus
+    + 6.25*hp*special
+    + 10*hp*exceptional;
+}
+
+async function renderBestiaryModule() {
+  await fetchMyGroups();
+  if (bestiaryEditingId) { renderBestiaryEditor(); return; }
+  const { data, error } = await sb.from('bestiary_entries').select('*').order('name', { ascending: true });
+  if (error) {
+    document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body" style="color:var(--red-b)">Failed to load bestiary: ${escapeHtml(error.message)}</div></div>`;
+    return;
+  }
+  bestiaryCache = data || [];
+  const groupNameById = {};
+  for (const g of myGroups) groupNameById[g.id] = g.name;
+
+  document.getElementById('main').innerHTML = `
+  <div class="panel">
+    <div class="panel-header" style="display:flex;justify-content:space-between;align-items:center">
+      <h2>Bestiary</h2>
+      <button class="btn btn-gold" onclick="openNewBestiaryEntry()">+ New Foe</button>
+    </div>
+    <div class="panel-body">
+      <div class="note" style="margin-bottom:10px">Your personal library of foe templates — private to you, not visible to players or other GMs. Duplicate an entry to quickly build a variant.</div>
+      ${bestiaryCache.length === 0 ? '<div class="note" style="padding:10px 0">No foes yet. Click "+ New Foe" to build one.</div>' : ''}
+      ${bestiaryCache.length ? `<table class="skill-table">
+        <thead><tr><th>Name</th><th>Prepped for</th><th>Avg HP</th><th>XP</th><th></th></tr></thead>
+        <tbody>
+          ${bestiaryCache.map(e => `<tr>
+            <td style="cursor:pointer;color:var(--gold)" onclick="openEditBestiaryEntry('${e.id}')">${escapeHtml(e.name)}</td>
+            <td class="note">${e.group_id && groupNameById[e.group_id] ? escapeHtml(groupNameById[e.group_id]) : '—'}</td>
+            <td>${e.avg_hp != null ? e.avg_hp : '—'}</td>
+            <td class="skval-cell">${Math.round(computeFoeXP(e) * 10) / 10}</td>
+            <td style="white-space:nowrap">
+              <button class="btn btn-dim" style="font-size:10px;padding:2px 6px" onclick="duplicateBestiaryEntry('${e.id}')">Duplicate</button>
+              <button class="btn btn-dim" style="font-size:10px;padding:2px 6px;color:var(--red-b)" onclick="deleteBestiaryEntry('${e.id}')">Delete</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>` : ''}
+    </div>
+  </div>`;
+}
+
+function blankBestiaryDraft() {
+  return {
+    name: '', group_id: null, hp_formula: '', avg_hp: 0, armor_name: '', shield_name: '',
+    avoidance: 0, protection: 0, bmod: 0, avg_damage: 0, multi: 0,
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    attacks: [], level_capable: false, possible_classes: [], items: [], spells: [], notes: ''
+  };
+}
+
+function openNewBestiaryEntry() {
+  bestiaryEditingId = 'new';
+  bestiaryDraft = blankBestiaryDraft();
+  renderBestiaryEditor();
+}
+
+function openEditBestiaryEntry(id) {
+  const e = bestiaryCache.find(x => x.id === id);
+  if (!e) return;
+  bestiaryEditingId = id;
+  bestiaryDraft = JSON.parse(JSON.stringify(e));
+  renderBestiaryEditor();
+}
+
+function closeBestiaryEditor() {
+  bestiaryEditingId = null;
+  bestiaryDraft = null;
+  renderBestiaryModule();
+}
+
+function updateBestiaryField(field, value) { bestiaryDraft[field] = value; renderBestiaryEditor(); }
+function updateBestiaryNum(field, value) { bestiaryDraft[field] = parseFloat(value) || 0; renderBestiaryEditor(); }
+
+function selectBestiaryArmor(name) {
+  bestiaryDraft.armor_name = name || '';
+  const def = ARMOR.find(a => a.name === name);
+  if (def) { bestiaryDraft.avoidance = def.av; bestiaryDraft.protection = def.pr; }
+  renderBestiaryEditor();
+}
+function selectBestiaryShield(name) {
+  bestiaryDraft.shield_name = name || '';
+  const def = SHIELDS.find(s => s.name === name);
+  if (def) { bestiaryDraft.protection = (parseFloat(bestiaryDraft.protection) || 0) + def.pr; }
+  renderBestiaryEditor();
+}
+
+function addBestiaryAttack() {
+  bestiaryDraft.attacks = bestiaryDraft.attacks || [];
+  bestiaryDraft.attacks.push({ name: '', weaponName: '', toHit: '', damageDice: '', speed: '' });
+  renderBestiaryEditor();
+}
+function removeBestiaryAttack(idx) { bestiaryDraft.attacks.splice(idx, 1); renderBestiaryEditor(); }
+function updateBestiaryAttack(idx, field, value) { bestiaryDraft.attacks[idx][field] = value; renderBestiaryEditor(); }
+function selectBestiaryAttackWeapon(idx, name) {
+  const a = bestiaryDraft.attacks[idx];
+  a.weaponName = name || '';
+  const def = WEAPONS.find(w => w.name === name);
+  if (def) {
+    a.damageDice = def.damage_dice || '';
+    a.speed = def.speed_melee != null ? String(def.speed_melee) : '';
+    if (!a.name) a.name = def.name;
+  }
+  renderBestiaryEditor();
+}
+
+function toggleBestiaryAbility(field, value, checked) {
+  const arr = bestiaryDraft[field] || (bestiaryDraft[field] = []);
+  const idx = arr.indexOf(value);
+  if (checked && idx === -1) arr.push(value);
+  if (!checked && idx !== -1) arr.splice(idx, 1);
+  renderBestiaryEditor();
+}
+
+function addBestiaryItem() {
+  bestiaryDraft.items = bestiaryDraft.items || [];
+  bestiaryDraft.items.push({ name: '', qty: 1, worth: 0 });
+  renderBestiaryEditor();
+}
+function removeBestiaryItem(idx) { bestiaryDraft.items.splice(idx, 1); renderBestiaryEditor(); }
+function updateBestiaryItem(idx, field, value) {
+  bestiaryDraft.items[idx][field] = (field === 'qty' || field === 'worth') ? (parseFloat(value) || 0) : value;
+  renderBestiaryEditor();
+}
+
+function addBestiarySpell() {
+  const sel = document.getElementById('bf-spell-add');
+  const name = sel ? sel.value : '';
+  if (!name) return;
+  bestiaryDraft.spells = bestiaryDraft.spells || [];
+  if (!bestiaryDraft.spells.includes(name)) bestiaryDraft.spells.push(name);
+  renderBestiaryEditor();
+}
+function removeBestiarySpell(name) {
+  bestiaryDraft.spells = (bestiaryDraft.spells || []).filter(s => s !== name);
+  renderBestiaryEditor();
+}
+
+function bestiaryAbilityGroup(title, options, field) {
+  const selected = bestiaryDraft[field] || [];
+  return `<div class="form-group" style="flex:1;background:var(--input-bg);border:1px solid var(--border);padding:8px">
+    <div style="font-size:11px;color:var(--gold);font-weight:bold;margin-bottom:4px">${title}</div>
+    ${options.map(o => `<label style="display:flex;gap:5px;font-size:12px;margin-bottom:3px;align-items:center;cursor:pointer">
+      <input type="checkbox" ${selected.includes(o)?'checked':''} onchange="toggleBestiaryAbility('${field}','${o.replace(/'/g,"\\'")}',this.checked)">${escapeHtml(o)}
+    </label>`).join('')}
+  </div>`;
+}
+
+function renderBestiaryEditor() {
+  const d = bestiaryDraft;
+  const xp = computeFoeXP(d);
+  document.getElementById('main').innerHTML = `
+  <div class="panel">
+    <div class="panel-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div style="flex:1">
+        <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Bestiary entry</div>
+        <input value="${escapeHtml(d.name||'')}" placeholder="Foe name" style="font-family:'Algerian','Georgia',serif;font-weight:bold;font-size:22px;color:var(--gold);border:1px solid transparent;width:100%;background:transparent" onchange="updateBestiaryField('name',this.value)">
+      </div>
+      <span class="type-badge" style="color:var(--red-b);border-color:var(--red-b)">GM only</span>
+    </div>
+    <div class="panel-body">
+      <div class="form-group" style="margin-bottom:10px"><label>Prepped for group (optional)</label>
+        <select onchange="updateBestiaryField('group_id', this.value || null)">
+          <option value="">— none / reusable anywhere —</option>
+          ${myGroups.map(g => `<option value="${g.id}" ${d.group_id===g.id?'selected':''}>${escapeHtml(g.name)}</option>`).join('')}
+        </select>
+      </div>
+
+      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Core stats</div>
+      <div class="form-row">
+        <div class="form-group"><label>HP formula</label><input class="w150" value="${escapeHtml(d.hp_formula||'')}" onchange="updateBestiaryField('hp_formula',this.value)" placeholder="d6 + d4/plev"></div>
+        <div class="form-group"><label>Avg HP</label><input type="number" class="w80" value="${d.avg_hp||0}" onchange="updateBestiaryNum('avg_hp',this.value)"></div>
+        <div class="form-group"><label>Avoidance</label><input type="number" class="w80" value="${d.avoidance||0}" onchange="updateBestiaryNum('avoidance',this.value)"></div>
+        <div class="form-group"><label>Protection</label><input type="number" class="w80" value="${d.protection||0}" onchange="updateBestiaryNum('protection',this.value)"></div>
+        <div class="form-group"><label>Bmod</label><input type="number" class="w80" value="${d.bmod||0}" onchange="updateBestiaryNum('bmod',this.value)"></div>
+        <div class="form-group"><label>Avg damage</label><input type="number" class="w80" value="${d.avg_damage||0}" onchange="updateBestiaryNum('avg_damage',this.value)"></div>
+        <div class="form-group"><label>Multi</label><input type="number" class="w80" value="${d.multi||0}" onchange="updateBestiaryNum('multi',this.value)"></div>
+      </div>
+
+      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Armor &amp; shield</div>
+      <div class="form-row">
+        <div class="form-group"><label>Armor</label>
+          <select onchange="selectBestiaryArmor(this.value)">
+            <option value="">— custom / none —</option>
+            ${ARMOR.map(a=>`<option ${d.armor_name===a.name?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label>Shield</label>
+          <select onchange="selectBestiaryShield(this.value)">
+            <option value="">— none —</option>
+            ${SHIELDS.map(s=>`<option ${d.shield_name===s.name?'selected':''}>${escapeHtml(s.name)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="note">Picking an Armor/Shield pre-fills Avoidance/Protection above — still editable after, for a raggedy or masterwork copy.</div>
+
+      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Attacks</div>
+      <table class="skill-table">
+        <thead><tr><th>Name</th><th>Weapon</th><th>To-hit</th><th>Damage dice</th><th>Speed</th><th></th></tr></thead>
+        <tbody>
+          ${(d.attacks||[]).map((a,i)=>`<tr>
+            <td><input value="${escapeHtml(a.name||'')}" onchange="updateBestiaryAttack(${i},'name',this.value)"></td>
+            <td><select onchange="selectBestiaryAttackWeapon(${i},this.value)">
+              <option value="">— natural —</option>
+              ${WEAPONS.map(w=>`<option ${a.weaponName===w.name?'selected':''}>${escapeHtml(w.name)}</option>`).join('')}
+            </select></td>
+            <td><input value="${escapeHtml(a.toHit||'')}" onchange="updateBestiaryAttack(${i},'toHit',this.value)" class="w60"></td>
+            <td><input value="${escapeHtml(a.damageDice||'')}" onchange="updateBestiaryAttack(${i},'damageDice',this.value)"></td>
+            <td><input value="${escapeHtml(a.speed||'')}" onchange="updateBestiaryAttack(${i},'speed',this.value)" class="w60"></td>
+            <td style="text-align:center;color:var(--red-b);cursor:pointer" onclick="removeBestiaryAttack(${i})">✕</td>
+          </tr>`).join('')}
+          ${(d.attacks||[]).length===0 ? '<tr><td colspan="6" class="note" style="padding:8px 0">No attacks yet.</td></tr>' : ''}
+        </tbody>
+      </table>
+      <button class="btn btn-dim" onclick="addBestiaryAttack()">+ Add attack</button>
+
+      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Abilities</div>
+      <div class="form-row" style="align-items:flex-start">
+        ${bestiaryAbilityGroup('Bonus (+1.5×HP each)', BESTIARY_BONUS_ABILITIES, 'bonus_abilities')}
+        ${bestiaryAbilityGroup('Special (+6.25×HP each)', BESTIARY_SPECIAL_ABILITIES, 'special_abilities')}
+        ${bestiaryAbilityGroup('Exceptional (+10×HP each)', BESTIARY_EXCEPTIONAL_ABILITIES, 'exceptional_abilities')}
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;background:var(--header-bg);color:var(--header-text);padding:12px 16px;margin:16px 0">
+        <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px">XP value</div>
+        <div style="font-size:26px;font-weight:bold;color:var(--gold-dim)">${Math.round(xp*10)/10}</div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group" style="flex:1"><label>Level capable?</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:4px"><input type="checkbox" ${d.level_capable?'checked':''} onchange="updateBestiaryField('level_capable',this.checked)">Individuals can vary in level</label>
+        </div>
+        <div class="form-group" style="flex:2"><label>Possible classes (comma separated)</label>
+          <input style="width:100%" value="${escapeHtml((d.possible_classes||[]).join(', '))}" onchange="updateBestiaryField('possible_classes', this.value.split(',').map(s=>s.trim()).filter(Boolean))">
+        </div>
+      </div>
+
+      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Items carried</div>
+      <table class="item-table">
+        <thead><tr><th>Name</th><th>Qty</th><th>Worth</th><th></th></tr></thead>
+        <tbody>
+          ${(d.items||[]).map((it,i)=>`<tr>
+            <td><input value="${escapeHtml(it.name||'')}" onchange="updateBestiaryItem(${i},'name',this.value)"></td>
+            <td class="item-qty"><input type="number" value="${it.qty||1}" onchange="updateBestiaryItem(${i},'qty',this.value)"></td>
+            <td class="item-qty"><input type="number" value="${it.worth||0}" onchange="updateBestiaryItem(${i},'worth',this.value)"></td>
+            <td class="item-del" onclick="removeBestiaryItem(${i})">✕</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <button class="btn btn-dim" onclick="addBestiaryItem()">+ Add item</button>
+
+      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Spells known</div>
+      ${(d.spells||[]).length ? `<div style="margin-bottom:6px">${d.spells.map(s=>`<span class="type-badge" style="cursor:pointer;margin:0 4px 4px 0" onclick="removeBestiarySpell('${s.replace(/'/g,"\\'")}')" title="Click to remove">${escapeHtml(s)} ✕</span>`).join('')}</div>` : '<div class="note" style="margin-bottom:6px">None yet.</div>'}
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <select id="bf-spell-add">
+            <option value="">— add a spell —</option>
+            ${SPELLS.map(s=>`<option>${escapeHtml(s.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><button class="btn btn-dim" onclick="addBestiarySpell()">+ Add</button></div>
+      </div>
+
+      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Notes</div>
+      <textarea style="width:100%;min-height:70px" onchange="updateBestiaryField('notes',this.value)" placeholder="Racial traits, darksight, description...">${escapeHtml(d.notes||'')}</textarea>
+
+      <div class="modal-actions" style="margin-top:14px">
+        ${bestiaryEditingId !== 'new' ? `<button class="btn btn-red" onclick="deleteBestiaryEntry('${bestiaryEditingId}')">Delete</button><button class="btn btn-dim" onclick="duplicateBestiaryEntry('${bestiaryEditingId}')">Duplicate</button>` : ''}
+        <button class="btn btn-dim" onclick="closeBestiaryEditor()">Cancel</button>
+        <button class="btn btn-gold" onclick="saveBestiaryEntry()">Save</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function saveBestiaryEntry() {
+  if (!bestiaryDraft.name || !bestiaryDraft.name.trim()) { alert('Name is required.'); return; }
+  const row = {
+    group_id: bestiaryDraft.group_id || null,
+    name: bestiaryDraft.name.trim(),
+    hp_formula: bestiaryDraft.hp_formula || null,
+    avg_hp: bestiaryDraft.avg_hp || 0,
+    armor_name: bestiaryDraft.armor_name || null,
+    shield_name: bestiaryDraft.shield_name || null,
+    avoidance: bestiaryDraft.avoidance || 0,
+    protection: bestiaryDraft.protection || 0,
+    bmod: bestiaryDraft.bmod || 0,
+    avg_damage: bestiaryDraft.avg_damage || 0,
+    multi: bestiaryDraft.multi || 0,
+    bonus_abilities: bestiaryDraft.bonus_abilities || [],
+    special_abilities: bestiaryDraft.special_abilities || [],
+    exceptional_abilities: bestiaryDraft.exceptional_abilities || [],
+    attacks: bestiaryDraft.attacks || [],
+    level_capable: !!bestiaryDraft.level_capable,
+    possible_classes: bestiaryDraft.possible_classes || [],
+    items: bestiaryDraft.items || [],
+    spells: bestiaryDraft.spells || [],
+    notes: bestiaryDraft.notes || null
+  };
+  let error;
+  if (bestiaryEditingId === 'new') {
+    ({ error } = await sb.from('bestiary_entries').insert({ ...row, created_by: currentUser.id }));
+  } else {
+    ({ error } = await sb.from('bestiary_entries').update(row).eq('id', bestiaryEditingId));
+  }
+  if (error) { alert('Failed to save: ' + error.message); return; }
+  bestiaryEditingId = null;
+  bestiaryDraft = null;
+  renderBestiaryModule();
+}
+
+async function duplicateBestiaryEntry(id) {
+  const e = bestiaryCache.find(x => x.id === id);
+  if (!e) return;
+  const row = { ...e };
+  delete row.id;
+  delete row.created_at;
+  delete row.updated_at;
+  row.created_by = currentUser.id;
+  row.name = row.name + ' (copy)';
+  const { error } = await sb.from('bestiary_entries').insert(row);
+  if (error) { alert('Failed to duplicate: ' + error.message); return; }
+  renderBestiaryModule();
+}
+
+async function deleteBestiaryEntry(id) {
+  if (!confirm('Delete this bestiary entry? This cannot be undone.')) return;
+  const { error } = await sb.from('bestiary_entries').delete().eq('id', id);
+  if (error) { alert('Failed to delete: ' + error.message); return; }
+  if (bestiaryEditingId === id) { bestiaryEditingId = null; bestiaryDraft = null; }
+  renderBestiaryModule();
 }
 
 // ============================================================
