@@ -1437,6 +1437,7 @@ function blankBestiaryDraft() {
   return {
     name: '', race: '', group_id: null, hp_formula: '', avg_hp: 0, armor_name: '', shield_name: '',
     avoidance: 0, protection: 0, bmod: 0, avg_damage: 0, multi: 0,
+    cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
     bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
     attacks: [], level_capable: false, possible_classes: [], items: [], spells: [], notes: ''
   };
@@ -1597,6 +1598,15 @@ function renderBestiaryEditor() {
         <div class="form-group"><label>Multi</label><input type="number" class="w80" value="${d.multi||0}" onchange="updateBestiaryNum('multi',this.value)"></div>
       </div>
 
+      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">CCs (Contest Checks)</div>
+      <div class="form-row">
+        <div class="form-group"><label>Fortitude</label><input type="number" class="w80" value="${d.cc_fortitude||0}" onchange="updateBestiaryNum('cc_fortitude',this.value)"></div>
+        <div class="form-group"><label>Reflex</label><input type="number" class="w80" value="${d.cc_reflex||0}" onchange="updateBestiaryNum('cc_reflex',this.value)"></div>
+        <div class="form-group"><label>Will</label><input type="number" class="w80" value="${d.cc_will||0}" onchange="updateBestiaryNum('cc_will',this.value)"></div>
+        <div class="form-group"><label>Surprise</label><input type="number" class="w80" value="${d.cc_surprise||0}" onchange="updateBestiaryNum('cc_surprise',this.value)"></div>
+        <div class="form-group"><label>Social</label><input type="number" class="w80" value="${d.cc_social||0}" onchange="updateBestiaryNum('cc_social',this.value)"></div>
+      </div>
+
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Armor &amp; shield</div>
       <div class="form-row">
         <div class="form-group"><label>Armor</label>
@@ -1708,6 +1718,11 @@ async function saveBestiaryEntry() {
     bmod: bestiaryDraft.bmod || 0,
     avg_damage: bestiaryDraft.avg_damage || 0,
     multi: bestiaryDraft.multi || 0,
+    cc_fortitude: bestiaryDraft.cc_fortitude || null,
+    cc_reflex: bestiaryDraft.cc_reflex || null,
+    cc_will: bestiaryDraft.cc_will || null,
+    cc_surprise: bestiaryDraft.cc_surprise || null,
+    cc_social: bestiaryDraft.cc_social || null,
     bonus_abilities: bestiaryDraft.bonus_abilities || [],
     special_abilities: bestiaryDraft.special_abilities || [],
     exceptional_abilities: bestiaryDraft.exceptional_abilities || [],
