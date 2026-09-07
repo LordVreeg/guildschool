@@ -1974,6 +1974,8 @@ function loadBestiaryTemplate(key) {
   Object.assign(bestiaryDraft, clean);
   bestiaryDraft.race = t.name;
   bestiaryDraft.name = keepName || t.name;
+  bestiaryDraft.avg_hp = Math.round(bestiaryDraft.avg_hp || 0);
+  recomputeBestiaryAvgDamage();
   renderBestiaryEditor();
 }
 
@@ -2037,6 +2039,7 @@ function openEditBestiaryEntry(id) {
   if (!e) return;
   bestiaryEditingId = id;
   bestiaryDraft = JSON.parse(JSON.stringify(e));
+  bestiaryDraft.avg_hp = Math.round(bestiaryDraft.avg_hp || 0);
   renderBestiaryEditor();
 }
 
@@ -2047,7 +2050,74 @@ function closeBestiaryEditor() {
 }
 
 function updateBestiaryField(field, value) { bestiaryDraft[field] = value; renderBestiaryEditor(); }
-function updateBestiaryNum(field, value) { bestiaryDraft[field] = parseFloat(value) || 0; renderBestiaryEditor(); }
+function updateBestiaryNum(field, value) {
+  let n = parseFloat(value) || 0;
+  if (field === 'avg_hp') n = Math.round(n); // no partial HP
+  bestiaryDraft[field] = n;
+  renderBestiaryEditor();
+}
+
+// Average damage per hit for the "dividing die" mechanic used throughout the
+// wiki's Bestiary: roll damage dice, add a flat bonus, then divide by an
+// INDEPENDENTLY rolled die (e.g. "((2d4+11)/D6)+0"). That division isn't a
+// flat /6 -- the divisor is itself uniform over 1..N, so small rolls skew the
+// average up. True expected value is E[numerator] * H(N)/N, where H(N) is
+// the Nth harmonic number (sum of 1/k for k=1..N).
+function harmonicAvgFactor(n) {
+  n = Math.round(n);
+  if (!n || n < 1) return 1;
+  let sum = 0;
+  for (let k = 1; k <= n; k++) sum += 1 / k;
+  return sum / n;
+}
+// Averages a plain additive dice expression like "2d4+11" or "1d8+1d6+11".
+// Returns null if any term can't be parsed (rather than guessing).
+function avgDiceExprValue(expr) {
+  if (!expr) return null;
+  const terms = String(expr).replace(/\s+/g, '').split('+');
+  let sum = 0;
+  for (const term of terms) {
+    if (!term) return null;
+    const m = term.match(/^(\d+)[dD](\d+)$/);
+    if (m) { sum += parseInt(m[1], 10) * (parseInt(m[2], 10) + 1) / 2; continue; }
+    const n = parseFloat(term);
+    if (isNaN(n)) return null;
+    sum += n;
+  }
+  return sum;
+}
+// dividingDie: pass a number when it's known separately (a matched WEAPONS
+// catalog entry, whose damage_dice is just the numerator). Otherwise pass
+// null and this parses the full wiki notation "((expr)/dN)+flat" out of the
+// raw text itself. Returns null if it can't confidently compute a number.
+function computeAttackAvgDamage(damageDiceText, dividingDie) {
+  const text = (damageDiceText || '').trim();
+  if (!text) return null;
+  if (dividingDie) {
+    const avg = avgDiceExprValue(text);
+    return avg == null ? null : avg * harmonicAvgFactor(dividingDie);
+  }
+  const m = text.match(/\(\(([^)]+)\)\s*\/\s*[dD](\d+)\)\s*\+?\s*(-?\d+(?:\.\d+)?)?/);
+  if (!m) return null;
+  const avg = avgDiceExprValue(m[1].trim());
+  if (avg == null) return null;
+  const trailFlat = m[3] ? parseFloat(m[3]) : 0;
+  return avg * harmonicAvgFactor(parseInt(m[2], 10)) + trailFlat;
+}
+// Recomputes avg_damage from the primary (first) attack whenever attacks
+// change -- if it can't be confidently parsed, leaves whatever's there
+// (usually 0, or a value the GM entered by hand) rather than clobbering it.
+function recomputeBestiaryAvgDamage() {
+  const a = (bestiaryDraft.attacks || [])[0];
+  if (!a) return;
+  let result = null;
+  if (a.weaponName) {
+    const def = WEAPONS.find(w => w.name === a.weaponName);
+    if (def && def.dividing_die) result = computeAttackAvgDamage(a.damageDice, def.dividing_die);
+  }
+  if (result == null) result = computeAttackAvgDamage(a.damageDice, null);
+  if (result != null && isFinite(result)) bestiaryDraft.avg_damage = Math.round(result * 100) / 100;
+}
 
 function selectBestiaryArmor(name) {
   bestiaryDraft.armor_name = name || '';
@@ -2065,10 +2135,11 @@ function selectBestiaryShield(name) {
 function addBestiaryAttack() {
   bestiaryDraft.attacks = bestiaryDraft.attacks || [];
   bestiaryDraft.attacks.push({ name: '', weaponName: '', toHit: '', damageDice: '', speed: '' });
+  recomputeBestiaryAvgDamage();
   renderBestiaryEditor();
 }
-function removeBestiaryAttack(idx) { bestiaryDraft.attacks.splice(idx, 1); renderBestiaryEditor(); }
-function updateBestiaryAttack(idx, field, value) { bestiaryDraft.attacks[idx][field] = value; renderBestiaryEditor(); }
+function removeBestiaryAttack(idx) { bestiaryDraft.attacks.splice(idx, 1); recomputeBestiaryAvgDamage(); renderBestiaryEditor(); }
+function updateBestiaryAttack(idx, field, value) { bestiaryDraft.attacks[idx][field] = value; recomputeBestiaryAvgDamage(); renderBestiaryEditor(); }
 function selectBestiaryAttackWeapon(idx, name) {
   const a = bestiaryDraft.attacks[idx];
   a.weaponName = name || '';
@@ -2078,6 +2149,7 @@ function selectBestiaryAttackWeapon(idx, name) {
     a.speed = def.speed_melee != null ? String(def.speed_melee) : '';
     if (!a.name) a.name = def.name;
   }
+  recomputeBestiaryAvgDamage();
   renderBestiaryEditor();
 }
 
