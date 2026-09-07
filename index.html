@@ -1716,6 +1716,28 @@ const BESTIARY_RACE_TEMPLATES = [
     notes: "An ancient Sauroid dragon-line -- venal and cruel, extremely logical and intelligent (INT 15-19), imbued with a connection to the Perfect Flame (3rd Station), making their fire mastery exceptional even though general spellcasting is merely decent. Hatchlings as small as 4 Are nose to tail; ancients as long as 2 Tolkar+. All stats scale by Age Category (1-Worm through 7-ancient/1501+ years) -- figures above are the per-category base; protection gains +2-8 more per category. Bite Multi 9% (separate from the 18% Claw Multi used above). Basic Detect 35%. Detect Magic 40%. Hard/Harder to Kill 1/day each. Immunity to Heat 3/day. Fear at 6th level + age category. Spellcasting (Spirit and Fire spheres, level ~1d4 x age category) plus a breath weapon."
   },
   {
+    name: 'Skeletal Legionaire',
+    hp_formula: '1-4', avg_hp: 2.5,
+    armor_name: '', shield_name: '', avoidance: 45, protection: 15,
+    bmod: 1, avg_damage: 0, multi: 0,
+    cc_fortitude: 40, cc_reflex: 30, cc_will: 20, cc_surprise: 11, cc_social: 5,
+    attacks: [{ name: 'weapon (by weapon, sometimes damaged)', weaponName: '', toHit: '', damageDice: '((2d6)/d6)', speed: 'Speed 7' }],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "The weakest humanoid undead -- unaware and mindless, but with enough clever cunning to judge which opponents are more dangerous and avoid priests. Occurs naturally from a weak spirit inhabiting a skeletal body, or more often deliberately created as a servant. Weak (avg 10 ST), very slow. Named for the masses raised as war fodder. Retains no skills from its soul splinters. +10 Protection vs piercing weapons. Immune to sleep and charm. Normally wears armor. Not a caster (or cannot remember casting). Often flocks to the banner of Wights or powerful undead in a boneyard or old battle scene."
+  },
+  {
+    name: 'Skeletal Warrior',
+    hp_formula: '1-4+3', avg_hp: 5.5,
+    armor_name: '', shield_name: '', avoidance: 40, protection: 15,
+    bmod: 1, avg_damage: 0, multi: 0,
+    cc_fortitude: 60, cc_reflex: 35, cc_will: 30, cc_surprise: 70, cc_social: null,
+    attacks: [{ name: 'weapon (by weapon)', weaponName: '', toHit: '', damageDice: '((2d4+5)/d8)+1', speed: 'Speed 6' }],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "A weak humanoid undead -- unaware and mindless, and unlike the Skeletal Legionaire, cannot reason at all: obeys only the 12 words of command from its creator, or attacks anything on sight if naturally occurring. Occurs naturally from a weak spirit inhabiting a skeletal body, or more often deliberately created as a servant. Weak (avg 11 ST), very slow. Named for the masses raised as war fodder. Retains no skills from its soul splinters. +10 Protection vs piercing weapons. Immune to sleep and charm. Normally wears armor. Not a caster (or cannot remember casting). Often flocks to the banner of Wights or powerful undead in a boneyard or old battle scene."
+  },
+  {
     name: 'Spectre',
     hp_formula: '42', avg_hp: 42,
     armor_name: '', shield_name: '', avoidance: 0, protection: 74,
