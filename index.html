@@ -2055,7 +2055,24 @@ function updateBestiaryNum(field, value) {
   let n = parseFloat(value) || 0;
   if (['avg_hp', 'level', 'max_hp', 'current_hp'].includes(field)) n = Math.round(n); // no partial HP or levels
   bestiaryDraft[field] = n;
+  if (field === 'bmod' || field === 'max_hp') fillBlankBestiaryToHits();
   renderBestiaryEditor();
+}
+
+// Bmod x Max HP = basic chance to hit (per user clarification). Used as
+// each attack's To-Hit default -- fills only attacks whose To-Hit is still
+// blank, so a manually-entered override on one attack never gets clobbered
+// by a later HP roll or Bmod edit.
+function defaultBestiaryToHit() {
+  const bmod = parseFloat(bestiaryDraft.bmod) || 0;
+  const hp = parseFloat(bestiaryDraft.max_hp);
+  if (!hp) return null;
+  return Math.round(bmod * hp);
+}
+function fillBlankBestiaryToHits() {
+  const def = defaultBestiaryToHit();
+  if (def == null) return;
+  for (const a of (bestiaryDraft.attacks || [])) { if (!a.toHit) a.toHit = String(def); }
 }
 
 // Rolls a single additive term list like "43+5d10", "d6+12", "24+2d10", "3",
@@ -2111,6 +2128,7 @@ function rollBestiaryHpClick() {
   if (rolled == null) { alert("Couldn't parse the HP formula -- enter Max HP by hand."); return; }
   bestiaryDraft.max_hp = rolled;
   bestiaryDraft.current_hp = rolled;
+  fillBlankBestiaryToHits();
   renderBestiaryEditor();
 }
 
@@ -2193,6 +2211,7 @@ function addBestiaryAttack() {
   bestiaryDraft.attacks = bestiaryDraft.attacks || [];
   bestiaryDraft.attacks.push({ name: '', weaponName: '', toHit: '', damageDice: '', speed: '' });
   recomputeBestiaryAvgDamage();
+  fillBlankBestiaryToHits();
   renderBestiaryEditor();
 }
 function removeBestiaryAttack(idx) { bestiaryDraft.attacks.splice(idx, 1); recomputeBestiaryAvgDamage(); renderBestiaryEditor(); }
@@ -2207,6 +2226,7 @@ function selectBestiaryAttackWeapon(idx, name) {
     if (!a.name) a.name = def.name;
   }
   recomputeBestiaryAvgDamage();
+  fillBlankBestiaryToHits();
   renderBestiaryEditor();
 }
 
@@ -2362,6 +2382,7 @@ function renderBestiaryEditor() {
         </tbody>
       </table>
       <button class="btn btn-dim" onclick="addBestiaryAttack()">+ Add attack</button>
+      <div class="note" style="margin-top:6px">To-Hit defaults to Bmod × Max HP once both are set -- only fills a blank To-Hit, so per-attack overrides you type stick even after re-rolling HP or changing Bmod.</div>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Abilities</div>
       <div class="form-row" style="align-items:flex-start">
