@@ -1328,31 +1328,538 @@ const BESTIARY_BONUS_ABILITIES = ['Light poison', 'Light spell use', 'Quick move
 const BESTIARY_SPECIAL_ABILITIES = ['Poison', 'Flight', '25+ SP caster', '12%+ crit', 'Undead perm damage', '15%+ magic resist', '10%+ magic-to-hit', 'Regeneration'];
 const BESTIARY_EXCEPTIONAL_ABILITIES = ['60+ SP spells', '50%+ magic resist'];
 
-// Base-creature stat templates transcribed from the wiki's Bestiary section
-// (currently just Goblins and Wight -- the wiki's whole current Bestiary).
+// Base-creature stat templates transcribed from the wiki's Bestiary section.
 // Picking one of these in the editor pre-fills the stat fields below, same
 // pattern as selectBestiaryArmor/selectBestiaryAttackWeapon -- always still
 // editable after. Add more entries here as more wiki Bestiary pages appear.
+//
+// avg_damage is left at 0 for every template except Goblin: the wiki's
+// damage notation is "((dice+flat)/dX)+flat" -- a division by an
+// independently-rolled die -- and the exact resolution rule (rounding,
+// order of operations) isn't documented on these pages, so no reliable
+// single average could be computed without guessing at core mechanics.
+// The raw formula is preserved in full in each attack's damageDice field;
+// fill in avg_damage by hand once loaded, if you want it to feed the XP box.
 const BESTIARY_RACE_TEMPLATES = [
+  {
+    name: 'Barastal Earth Spectre',
+    hp_formula: '50', avg_hp: 50,
+    armor_name: '', shield_name: '', avoidance: -10, protection: 84,
+    bmod: 0, avg_damage: 0, multi: 0,
+    cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
+    attacks: [{ name: '3 pilum of adamant', weaponName: '', toHit: '', damageDice: '((2d8+14)/d5)+5', speed: 'SPD 5 (ready 5)' }],
+    bonus_abilities: [], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "A rank-1 named spectre ('Jellicose') attuned to the House of Earth, in ectoplasmic and stone-like armor, wielding three adamant pilums. Fear aura 15'. Its cursed weapon inflicts permanent HP damage on a failed Will save (will+10 penalty). MR 15%, +30 vs earth-based effects. Protection scales up sharply against lower-quality weapons: 84 vs magic+10/magic, 94 special, 104 silver, 114 plain. Resistances: Spirit 30, Earth 35, Death 20, Necromantic 20. Source sheet lists a separate 'Bmod-NATURAL 50' stat not mapped to the bmod field above."
+  },
+  {
+    name: 'Barastal Wight',
+    hp_formula: '24', avg_hp: 24,
+    armor_name: '', shield_name: '', avoidance: 18, protection: 42,
+    bmod: 0, avg_damage: 0, multi: 0,
+    cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
+    attacks: [{ name: 'scimitar, bloodletter', weaponName: '', toHit: '', damageDice: '((1d8+1d6+11)/d6)+3', speed: 'SPD 5 (ready 5)' }],
+    bonus_abilities: [], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "A rank-2 named Wight ('Barastals') of the Omwo~ race, in rags over ancient scale mail, wielding a cursed bloodletting scimitar (undead touch, permanent HP damage on a missed CC roll at will+10). Protection scales: 42 vs magic, 37 special, 47 silver, 57 plain weapons. Carries treasure including a Book of Prayers of St. Arbor, coin, and a skull-motif ring."
+  },
+  {
+    name: 'Barastal Wraith',
+    hp_formula: '33', avg_hp: 33,
+    armor_name: '', shield_name: '', avoidance: 15, protection: 57,
+    bmod: 0, avg_damage: 0, multi: 0,
+    cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
+    attacks: [{ name: 'scimitar, bloodletter', weaponName: '', toHit: '', damageDice: '((1d8+1d6+11)/d6)+4', speed: 'SPD 5 (ready 5)' }],
+    bonus_abilities: [], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "A rank-2 named Wraith ('Barastal wraith'), in rags over ancient plate armor, wielding a cursed bloodletting scimitar that permanently drains HP on a failed Will CC. Protection scales: 57 vs magic, 52 special, 62 silver, 72 plain weapons. Resistances: Spirit 20, Death 10, Necromantic 10."
+  },
+  {
+    name: 'Bolgan',
+    hp_formula: '16-35 + 2-5/plev', avg_hp: 25.5,
+    armor_name: '', shield_name: '', avoidance: 55, protection: 85,
+    bmod: 1.1, avg_damage: 0, multi: 0,
+    cc_fortitude: 80, cc_reflex: 55, cc_will: 45, cc_surprise: null, cc_social: null,
+    attacks: [],
+    bonus_abilities: ["Darksight 25'+"], special_abilities: [], exceptional_abilities: [],
+    level_capable: true, possible_classes: [],
+    notes: "An Ograk-offshoot Ogrillite found almost exclusively underground, squatter than surface Ograks, averaging 8-10' tall, 500-750 lbs, ST around 18. Longtime servants of Gartier underground; understand smithing/ironworking, social with some other underground races despite a violent temper. Darksight 75'. Combat skill described as similar to Hill Giants, 'very hard'. Noisy: -10 to hide checks. Normally wears armor. Page gives flat Reflex 55/Fort 80/Will 45 baselines rather than a full CC block with a Social value."
+  },
+  {
+    name: 'Candle Corpse',
+    hp_formula: 'd8+4', avg_hp: 8.5,
+    armor_name: '', shield_name: '', avoidance: 10, protection: 20,
+    bmod: 1, avg_damage: 0, multi: 10,
+    cc_fortitude: 80, cc_reflex: 20, cc_will: 15, cc_surprise: 15, cc_social: 0,
+    attacks: [{ name: 'Claw (x2)', weaponName: '', toHit: '', damageDice: '((1d6+4)/d6)+1', speed: 'SPD 6' }],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "Mindless undead that arise spontaneously from unshriven burials, or can be deliberately created via a graveside variant of the Corpse Candle rite. No cunning or hunger -- a single compulsion to guard their burial ground. Guttering Flame: a destroyed corpse reforms at graveside in 1d4 hours unless the inner candle flame is doused (holy water, consecrated salt, or fire/fire magic). Cannot be feared, routed, or compelled to flee. Won't pursue more than 30' from its grave; cannot be moved/commanded more than 60' from it. Immune to sleep, charm, fear/morale, poison, disease, mind-affecting effects. Vulnerable to fire. Commonly found in groups of 3-12."
+  },
+  {
+    name: 'Cloud Giant',
+    hp_formula: '43+5d10 + 1-8/plev', avg_hp: 70.5,
+    armor_name: '', shield_name: '', avoidance: 36, protection: 115,
+    bmod: 1.1, avg_damage: 0, multi: 14,
+    cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
+    attacks: [{ name: 'weapon (by weapon, favors swords)', weaponName: '', toHit: '', damageDice: '((4d6+22)/D5)+6', speed: 'SPD 8' }],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: true, possible_classes: [],
+    notes: "Large tribal giants of northern climes, equally at home underground near magma as in tropical climes, 15-17' tall, avg ST 21. Favor swords and boulder-throwing, wise in the wild. CAVEAT: this page's stat text is word-for-word identical to the Fire Giant page, including fire-themed spells (Heat Generation, Firebank, Flame Blade) and immunity to heat/fire -- almost certainly an uncorrected wiki copy/paste, treat these particular numbers/abilities with suspicion. Outdoor skill 35%. Spellcasting at 9th-level equivalent."
+  },
+  {
+    name: 'Dire Wolf',
+    hp_formula: '3d8+9', avg_hp: 22.5,
+    armor_name: '', shield_name: '', avoidance: 15, protection: 25,
+    bmod: 1.05, avg_damage: 0, multi: 20,
+    cc_fortitude: 55, cc_reflex: 50, cc_will: 40, cc_surprise: 60, cc_social: 35,
+    attacks: [{ name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d8+6)/d6)+1', speed: 'Speed 5' }],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "A larger, smarter cousin of the wolf that plans ambushes rather than running one down -- Ogrillite raiders (especially Kobolds and Goblins) prize them as trained war-mounts. Packs of 3-8, or singly as a trained mount. Up to 4' high, 90-120 lbs, INT 3-4. Pack Tactics: +15% to hit when 2+ Dire Wolves attack the same target, focuses the weakest/most isolated one. Keen Scent: cannot be surprised by anything approaching from upwind within 60'. Mount-trained individuals carry a rider without spooking and fight on regardless. Move 24'."
+  },
+  {
+    name: 'Dretch',
+    hp_formula: '8+3d10', avg_hp: 24.5,
+    armor_name: '', shield_name: '', avoidance: 36, protection: 40,
+    bmod: 1, avg_damage: 0, multi: 10,
+    cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
+    attacks: [{ name: 'Claws', weaponName: '', toHit: '', damageDice: '((3d6+15)/D6)+5', speed: 'SPD 6' }],
+    bonus_abilities: [], special_abilities: ['Regeneration'], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "Lesser demonic foot soldiers of the Eighth House (Entropic Outsiders) -- foolish, aggressive, stupid, angry. 4-5' tall, squat, reek of rotten bacon. Regenerates 1 HP per 10 segments. Requires silver or magic weapon to bypass protection."
+  },
+  {
+    name: 'Fire Giant',
+    hp_formula: '43+5d10 + 1-8/plev', avg_hp: 70.5,
+    armor_name: '', shield_name: '', avoidance: 36, protection: 115,
+    bmod: 1.1, avg_damage: 0, multi: 14,
+    cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
+    attacks: [{ name: 'weapon (by weapon, favors swords)', weaponName: '', toHit: '', damageDice: '((4d6+22)/D5)+6', speed: 'SPD 8' }],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: true, possible_classes: [],
+    notes: "Large tribal giants of northern climes, equally at home underground near magma as in tropical climes, 15-17' tall, avg ST 21. Favor swords and boulder-throwing, wise in the wild, totally immune to most heat/fire. CAVEAT: this page's stat text is word-for-word identical to the Cloud Giant page -- the fire-themed abilities plausibly belong here, but the duplication means one of the two pages wasn't customized after copy/paste; treat both with some suspicion. Outdoor skill 35%. Spellcasting at 9th-level equivalent: Heat Generation 3/day, Firebank 2/day, Flame Blade 2/day."
+  },
+  {
+    name: 'Frost Giant',
+    hp_formula: '43+5d10 + 1-8/plev', avg_hp: 70.5,
+    armor_name: '', shield_name: '', avoidance: 36, protection: 115,
+    bmod: 1.1, avg_damage: 0, multi: 14,
+    cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
+    attacks: [{ name: 'weapon (by weapon, favors axes/spears)', weaponName: '', toHit: '', damageDice: '((4d6+22)/D5)+6', speed: 'SPD 8' }],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: true, possible_classes: [],
+    notes: "Large tribal giants ranging northern hills and mountains covered in snow/ice, 15-17' tall, avg ST 21. Favor axes and spears plus boulder-throwing, wise in the wild, totally immune to most cold. Outdoor skill 35%. Coldsnap and Ice Slick at level 9, 1/day each. Toss boulders."
+  },
+  {
+    name: 'Gargoyle',
+    hp_formula: '2d10+10', avg_hp: 21,
+    armor_name: '', shield_name: '', avoidance: 25, protection: 40,
+    bmod: 1, avg_damage: 0, multi: 20,
+    cc_fortitude: 75, cc_reflex: 40, cc_will: 45, cc_surprise: 65, cc_social: 10,
+    attacks: [
+      { name: 'Claws (x2)', weaponName: '', toHit: '', damageDice: '((2d4+9)/d6)+1', speed: 'Speed 4' },
+      { name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d8+9)/d6)+1', speed: 'Speed 5' },
+      { name: 'Horn (Gore)', weaponName: '', toHit: '', damageDice: '((3d6+11)/d6)+2', speed: 'Speed 6' }
+    ],
+    bonus_abilities: [], special_abilities: ['Flight'], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "Statue-like winged humanoids of the House of Earth -- true flesh-and-stone creatures, not constructs or undead, so they CAN be charmed, slept, or reasoned with despite low INT (3-4). Prized as guardians since they'll hold a post indefinitely without pay, sleep, or supervision. Attack split Claw 40%/Bite 20%/Horn 40%. Base protection is magicked (40), rising in tiers: PR50 vs Masterwork, PR60 vs Silver, PR70 vs Normal weapons. Aerial Charge: a 10'+ flight run-up reduces the damage dividing die by 1 on a connecting claw/horn, usually once per combat. Statue Mimicry: motionless it's indistinguishable from carved stone, granting automatic surprise unless spotted first. Silent flight. Move 12'/Fly 25'."
+  },
+  {
+    name: 'Ghast',
+    hp_formula: '2d8+12', avg_hp: 21,
+    armor_name: '', shield_name: '', avoidance: 25, protection: 35,
+    bmod: 1, avg_damage: 0, multi: 25,
+    cc_fortitude: 75, cc_reflex: 80, cc_will: 65, cc_surprise: null, cc_social: 5,
+    attacks: [
+      { name: 'Claws (x2)', weaponName: '', toHit: '', damageDice: '((2d6+6)/d6)+2', speed: 'Speed 3' },
+      { name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d8+7)/d6)+2', speed: 'Speed 4' }
+    ],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "The greater form of the Ghoul -- older, more self-aware, more dangerous, retaining enough of its former self to feel hatred and direct its ghoul pack with real tactical intent. Multi split 40% bite/60% claw. Carrion Stench: living creatures within 10' must Fort CC-10% every 10 segments or suffer -10% to all CCs/attacks for 10 segments. Paralytic Touch: Fort CC-20%, paralysis 3d6+4 segments, affects even creatures normally resistant to ghoul paralysis. Immune to sleep, charm, poison, disease, cold; requires silver/magic/masterwork weapon to bypass protection. Holds ghouls back until the stench weakens foes, then sends them in while targeting the most dangerous opponent itself. If destroyed but not dismembered, attempts to reform over 2d6 rounds unless fire, holy effects, or sufficient Necromantic magic prevents it. Move 18'."
+  },
+  {
+    name: 'Ghoul',
+    hp_formula: 'd8+8', avg_hp: 12.5,
+    armor_name: '', shield_name: '', avoidance: 20, protection: 25,
+    bmod: 1, avg_damage: 0, multi: 25,
+    cc_fortitude: 65, cc_reflex: 75, cc_will: 50, cc_surprise: null, cc_social: 5,
+    attacks: [
+      { name: 'Claws (x2)', weaponName: '', toHit: '', damageDice: '((2d4+6)/d6)+1', speed: 'Speed 4' },
+      { name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d6+7)/d6)+1', speed: 'Speed 5' }
+    ],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "Feral, cunning undead driven by hunger rather than full self-awareness, retaining just enough of a soul splinter for simple tactics -- weakest-target focus, avoiding obvious casters. Feared for its paralyzing touch. Multi split 40% bite/60% claw. Carrion Stench (lesser): living creatures within 5' must Fort CC each round or suffer -5% to CCs/attacks that round. Paralytic touch: any successful hit forces Fort CC-15%, failure = paralysis 2d6+4 segments (doesn't stack -- a second failure just resets duration); undead/necromantic-immune creatures unaffected. Immune to sleep, charm, poison, disease, cold; requires silver/magic/masterwork weapon to bypass protection. At 0 HP keeps clawing weakly for 1d4 segments unless the head is destroyed. Move 15'."
+  },
+  {
+    name: 'Giant Ungol',
+    hp_formula: '2d8+14', avg_hp: 23,
+    armor_name: '', shield_name: '', avoidance: 30, protection: 32,
+    bmod: 1.1, avg_damage: 0, multi: 14,
+    cc_fortitude: 55, cc_reflex: 70, cc_will: 25, cc_surprise: 35, cc_social: 10,
+    attacks: [{ name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d8+9)/d6)+3', speed: 'SPD 5' }],
+    bonus_abilities: ["Darksight 25'+"], special_abilities: ['Poison'], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "One of several named size-variants of the Ungol giant-spider line. Territorial, rarely more than 1-2 encountered together outside a lair. Not sapient, not level/Cleric/thief capable; hunts by ambush and web. Poison (full): Fort CC-15%, (3d6+6)/d6 damage if the save is made, (4d6+16)/d6 if missed. Web: Reflex CC-15% to avoid entangle; may cocoon a downed target. Darksight 30' (vibration/heat sense). Wall/ceiling climb 90%."
+  },
   {
     name: 'Goblin',
     hp_formula: 'd6 + d4/plev', avg_hp: 3.5,
     armor_name: '', shield_name: '', avoidance: 25, protection: 20,
     bmod: 1, avg_damage: 2.7, multi: 5,
+    cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
     attacks: [{ name: 'Flanged Mace', weaponName: 'Flanged Mace', toHit: '', damageDice: '2d4+11', speed: '5' }],
     bonus_abilities: ["Darksight 25'+"], special_abilities: [], exceptional_abilities: [],
     level_capable: true, possible_classes: ['Cleric', 'Thief'],
     notes: "Type-Ogrillite. 3-4' tall, yellowed skin, muscular, small fangs, high-pitched voices. Very organized and disciplined -- shock troops of a tribe. Hardy outdoors folk, females as common as males. Darksight 30'. Basic Outdoors 30%. Alternate loadout: shortbow instead of mace, Multi 20%."
   },
   {
+    name: 'Greater Trollfolk',
+    hp_formula: '4d8+35', avg_hp: 53,
+    armor_name: '', shield_name: '', avoidance: 0, protection: 0,
+    bmod: 1, avg_damage: 0, multi: 17,
+    cc_fortitude: 70, cc_reflex: 65, cc_will: 50, cc_surprise: null, cc_social: 9,
+    attacks: [{ name: 'Claw', weaponName: '', toHit: '', damageDice: '((3d10+20)/d6)+10', speed: 'SPD 5' }],
+    bonus_abilities: ["Darksight 25'+"], special_abilities: ['Regeneration'], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "A larger, roughly 10'-tall variant of Trollfolk, sharing the base race's tribal, chaotic, hungry temperament and pack behavior (packs of 7-18, dislikes sunlight/outdoors). Darksight 70'. Basic Outdoors 30%. +15% resistant to fire and air. Regenerates 3 HP every 12 segments. No separate AV/PR is given on the wiki page for this larger variant -- only the HP and claw line differ from base Trollfolk, so avoidance/protection above are placeholders (0) pending your own numbers."
+  },
+  {
+    name: 'Hagarous',
+    hp_formula: '162', avg_hp: 162,
+    armor_name: '', shield_name: '', avoidance: -10, protection: 149,
+    bmod: 0, avg_damage: 0, multi: 5,
+    cc_fortitude: 80, cc_reflex: 40, cc_will: 90, cc_surprise: 20, cc_social: null,
+    attacks: [
+      { name: 'Ambretton Brass Huge falchion (2H)', weaponName: '', toHit: '', damageDice: '(22+1d12)/d5+4', speed: 'Speed 9 (ready 8)' },
+      { name: 'Tail (poison)', weaponName: '', toHit: '', damageDice: '(14+3d6)/d6+2, plus poison (4-32)/d4 per 10 rounds for 40 sec if Fort CC-40 missed', speed: 'Speed 3 (ready 3)' }
+    ],
+    bonus_abilities: [], special_abilities: ['12%+ crit', '15%+ magic resist'], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "A unique named Fiend of the 'Devilkin, major' race dwelling in a monastery, 15' tall, wreathed in red-tinged smoke, two sets of arms, a long tail, huge wings. Wears Black Dragon Hide armor and wields a huge Ambretton Brass falchion two-handed, backed by a venomous tail attack. A high-level unique boss-tier NPC worth 9100 XP. Protection scales: 149 base, 105/115/125/135/145 vs +15/+5/magic/silver/masterwork weapon grades respectively. Perfect Strike 15% every hit. Crit 13%. MR 25%. Immune to acid and poison. Summons a Dretch 10% of the time, 3/day. Casts Wave of Slowing at level 14, plus Hiding Hole, Word of the Charmer, and Flesh to Stone. The sheet also shows an unlabeled '12%' figure near its one-handed falchion calc, separate from the explicit 'multi attack 5%' used above -- meaning unclear."
+  },
+  {
+    name: 'Hecuvan',
+    hp_formula: 'd6+12 + 1-4/caster-lev', avg_hp: 15.5,
+    armor_name: '', shield_name: '', avoidance: 25, protection: 40,
+    bmod: 1, avg_damage: 0, multi: 7,
+    cc_fortitude: 70, cc_reflex: 50, cc_will: 60, cc_surprise: null, cc_social: 10,
+    attacks: [{ name: 'standard attack', weaponName: '', toHit: '', damageDice: '((2d6+10)/d6)+2', speed: 'Speed 5' }],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: true, possible_classes: [],
+    notes: "Cunning undead created by adding further soul splinters to a skeletal Servant, capable of taking up to 24 words of command and reasoning cleverly -- avoiding priests, identifying the most dangerous opponent. Valuable servants normally found as greater tomb guardians. +10 Protection vs piercing weapons. Immune to sleep and charm. Retains some skills from its soul splinters. Normally wears armor and can use shields."
+  },
+  {
+    name: 'Hill Giant',
+    hp_formula: '35+3d10 + d8/plev', avg_hp: 51.5,
+    armor_name: '', shield_name: '', avoidance: 38, protection: 75,
+    bmod: 1.1, avg_damage: 0, multi: 11,
+    cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
+    attacks: [{ name: 'weapon (by weapon)', weaponName: '', toHit: '', damageDice: '((4d6+15)/D5)+4', speed: 'SPD 8' }],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: true, possible_classes: [],
+    notes: "A mix of Ogrillite and giant blood -- the smallest true giants and the most commonly encountered type, mingling with both greater giants and Ogrillite tribes. Slightly stronger/larger than an Ograk, 9-11' tall, avg ST 19, lower INT (4-12), simple weapons. Outdoor skill 25%. Throws boulders."
+  },
+  {
+    name: 'Hobgoblin',
+    hp_formula: 'd8+2 + d4/plev', avg_hp: 6.5,
+    armor_name: '', shield_name: '', avoidance: 30, protection: 40,
+    bmod: 1, avg_damage: 0, multi: 6,
+    cc_fortitude: 60, cc_reflex: 60, cc_will: 40, cc_surprise: null, cc_social: 35,
+    attacks: [
+      { name: 'scimitar (favored)', weaponName: '', toHit: '', damageDice: '((1d8+1d6+11)/d6)+1', speed: 'SPD 5' },
+      { name: 'halberd (alternate)', weaponName: '', toHit: '', damageDice: '((1d12+18)/d5)+1', speed: 'Speed 8' },
+      { name: 'shortbow (alternate loadout)', weaponName: '', toHit: '', damageDice: 'same stats as scimitar loadout, 20% multi', speed: '' }
+    ],
+    bonus_abilities: ["Darksight 25'+"], special_abilities: [], exceptional_abilities: [],
+    level_capable: true, possible_classes: ['Cleric', 'Thief', 'Mage'],
+    notes: "Larger (5-6') Ogrillites renowned for fighting ability, thick and muscular with reddish skin and a strong penchant for armor and arms. Organized and heavily tribal, often work with or lead bands of Goblins. Darksight 30'. Basic Outdoors 30%. Assumed to wear raggedy Studded Leather/light scaled leather with shield. Many weapons beyond the favored scimitar/halberd are common."
+  },
+  {
+    name: 'Huge Ungol',
+    hp_formula: '2d8+2', avg_hp: 11,
+    armor_name: '', shield_name: '', avoidance: 30, protection: 25,
+    bmod: 1.1, avg_damage: 0, multi: 10,
+    cc_fortitude: 35, cc_reflex: 70, cc_will: 25, cc_surprise: 35, cc_social: 10,
+    attacks: [{ name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d8+7)/d8)+2', speed: 'SPD 5' }],
+    bonus_abilities: ["Darksight 25'+"], special_abilities: ['Poison'], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "Often found in packs of 5-8, particularly on the plains and hill country north of Igbar. Not sapient, not level/Cleric/thief capable. Poison: Fort CC-10%, (2d6+1)/d6 damage if made, (3d6+11)/d6 if missed. Web: Reflex CC-10% to avoid entangle. Darksight 30' (vibration/heat sense). Wall/ceiling climb 90%."
+  },
+  {
+    name: 'Kobold',
+    hp_formula: 'd4 + d3/plev', avg_hp: 2.5,
+    armor_name: '', shield_name: '', avoidance: 25, protection: 20,
+    bmod: 1, avg_damage: 0, multi: 0,
+    cc_fortitude: 40, cc_reflex: 65, cc_will: 40, cc_surprise: null, cc_social: 25,
+    attacks: [
+      { name: 'sabre (favored)', weaponName: '', toHit: '', damageDice: '((2d4+9)/D8)+0', speed: 'SPD 5' },
+      { name: 'shortbow (alternate loadout)', weaponName: '', toHit: '', damageDice: 'same stats as sabre loadout, 20% multi', speed: '' }
+    ],
+    bonus_abilities: ["Darksight 25'+"], special_abilities: [], exceptional_abilities: [],
+    level_capable: true, possible_classes: ['Cleric', 'Thief'],
+    notes: "Small (3-4') dog/lizard-like Ogrillites with high-pitched voices, somewhat organized shock troops. Self-interested cowards with little loyalty and a chip on their shoulder -- rarely fight fair, relying on numbers, traps, ambushes, and poison. Darksight 30'. Basic Outdoors 30%. Assumed to wear raggedy Studded Leather armor. NOTE: the wiki gives sabre Multi as the garbled 'Multi 0q%' -- couldn't be reliably parsed, left at 0 above; fix once you know the real number."
+  },
+  {
+    name: 'Large Ungol',
+    hp_formula: 'd8+1', avg_hp: 5.5,
+    armor_name: '', shield_name: '', avoidance: 30, protection: 20,
+    bmod: 1.1, avg_damage: 0, multi: 7,
+    cc_fortitude: 35, cc_reflex: 70, cc_will: 25, cc_surprise: 35, cc_social: 10,
+    attacks: [{ name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d6+6)/d8)+1', speed: 'SPD 5' }],
+    bonus_abilities: ["Darksight 25'+", 'Light poison'], special_abilities: [], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "The most common Ungol found near settled lands, man- to horse-sized. Not sapient; hunts by ambush and web in wooded, swampy, or underground terrain. Solitary or in small clutches of 2-4, sometimes mixed with a few Huge Ungols. Poison (light): Fort CC, (1d6+1)/d6 damage if made, (2d6+6)/d6 if missed. Web: Reflex CC to avoid entangle. Darksight 30' (vibration/heat sense). Wall/ceiling climb 90%."
+  },
+  {
+    name: 'Lizardman',
+    hp_formula: '6+2d4 + d6/plev', avg_hp: 11,
+    armor_name: '', shield_name: '', avoidance: 35, protection: 25,
+    bmod: 1, avg_damage: 0, multi: 8,
+    cc_fortitude: 62, cc_reflex: 65, cc_will: 45, cc_surprise: null, cc_social: 20,
+    attacks: [{ name: 'trident (favored)', weaponName: '', toHit: '', damageDice: '((1d12+16)/d6)+1', speed: 'SPD 6' }],
+    bonus_abilities: ["Darksight 25'+"], special_abilities: [], exceptional_abilities: [],
+    level_capable: true, possible_classes: ['Cleric'],
+    notes: "The Hssiouti -- man-sized, cannibalistic snake-men called 'Scalik' by humans, not culturally integrated, some bearing a fiendish intelligence. Roughly 4-5' tall, scale-covered, typically wielding clubs or spears. Darksight 30'. Basic Outdoors 30%. Basic Swim 90%. AV/PR improves to 40/35 with a shield. About 40% chance per group of 10 to include a shaman."
+  },
+  {
+    name: 'Minotaur',
+    hp_formula: '4d8+11 + d4/plev', avg_hp: 29,
+    armor_name: '', shield_name: '', avoidance: 30, protection: 45,
+    bmod: 1, avg_damage: 0, multi: 11,
+    cc_fortitude: 80, cc_reflex: 65, cc_will: 40, cc_surprise: null, cc_social: 30,
+    attacks: [
+      { name: 'axe (favored)', weaponName: '', toHit: '', damageDice: '((2d6+20)/d5)+4', speed: 'SPD 7' },
+      { name: 'halberd (alternate)', weaponName: '', toHit: '', damageDice: '((1d12+19)/d5)+4', speed: 'Speed 8' },
+      { name: 'charge attack (20% of the time)', weaponName: '', toHit: '', damageDice: '((2d8+17)/d6)+5, +5% crit', speed: 'SPD 4' }
+    ],
+    bonus_abilities: ["Darksight 25'+"], special_abilities: [], exceptional_abilities: [],
+    level_capable: true, possible_classes: [],
+    notes: "Angry, bull-headed Ograks of the Korang tribal line, 7+' tall, thick and powerful, easily goaded into a fight, disorganized and chaotic bullies (INT 5-9). Rare leader types often head trines and tribes. Basic Outdoors 30%. 20% chance per attack to charge instead, using a different damage line and +5% crit chance."
+  },
+  {
+    name: 'Necrotic Chimera',
+    hp_formula: '50', avg_hp: 50,
+    armor_name: '', shield_name: '', avoidance: 40, protection: 64,
+    bmod: 0, avg_damage: 0, multi: 8,
+    cc_fortitude: 80, cc_reflex: 30, cc_will: 60, cc_surprise: 50, cc_social: null,
+    attacks: [{ name: 'Bite (any head: dragon/lion/goat)', weaponName: '', toHit: '', damageDice: '(3d6+19)/d6+4 (+3 necrotic)', speed: 'Speed 5 (ready 5)' }],
+    bonus_abilities: [], special_abilities: ['12%+ crit', '15%+ magic resist'], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "An undead chimera created in Igbar bearing dragon, lion, and goat heads, all biting for identical damage (weapon skill listed as bite/bite/claw/butt). Clad in necrotic hide armor; needs silver weapons to bypass its protection fully (74 vs regular/non-silver weapons). Crit 13%. MR 25%. Immune to poison and mind-affecting effects. Breathes fire 3/day (20% chance per round): spray pattern, Reflex CC halves damage, Reflex CC by 25% quarters it, armor protection only 1/4 effective, damage (4d8+15)/d4. Source sheet lists a separate 'Bmod-NATURAL 35' stat not mapped to the bmod field above."
+  },
+  {
+    name: 'Nightmare',
+    hp_formula: '3d8+20', avg_hp: 33.5,
+    armor_name: '', shield_name: '', avoidance: 30, protection: 35,
+    bmod: 1, avg_damage: 0, multi: 35,
+    cc_fortitude: 80, cc_reflex: 70, cc_will: 75, cc_surprise: null, cc_social: 0,
+    attacks: [
+      { name: 'Fore hooves (x2)', weaponName: '', toHit: '', damageDice: '((2d6+8)/d6)+2 each, cold fire damage', speed: 'Speed 4' },
+      { name: 'Bite', weaponName: '', toHit: '', damageDice: '((d8+6)/d4)+1', speed: 'Speed 5' }
+    ],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "A creature of the House of Death -- a great black horse with hooves of cold fire and ash-scented breath, obtained through bargains that never favor the rider long-term. Multi split 50% hooves/50% bite. Cold Fire: hoof damage bypasses 10 points of non-magical armor protection. Terror Aura: natural animals within 60' must Will CC-20% on first sight or flee 3d10 segments (trained war animals save at Will CC-10%), checked once per encounter. Dread Presence: living creatures seeing it for the first time make a Will CC or suffer -5% to all CCs for 5 segments. Immune to sleep, charm, poison, disease, normal fire/cold; cannot be turned as undead (a creature of Death, not itself undead); requires magic weapon to bypass protection. Protects a mounted rider, fighting on independently if the rider is destroyed. Move 30'/sec, INT 6-9."
+  },
+  {
+    name: 'Ograk',
+    hp_formula: '24+2d10', avg_hp: 35,
+    armor_name: '', shield_name: '', avoidance: 38, protection: 55,
+    bmod: 1.1, avg_damage: 0, multi: 11,
+    cc_fortitude: 80, cc_reflex: 35, cc_will: 50, cc_surprise: null, cc_social: 20,
+    attacks: [{ name: 'weapon (by weapon)', weaponName: '', toHit: '', damageDice: '((4d6+14)/D5)+3', speed: 'SPD 8' }],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: true, possible_classes: [],
+    notes: "One of the original Ogrillite races, formed by Anthraxus as his children and servants. 8-9' tall, ST around 17-19, moderate INT (4-12). Throws boulders and uses simple weapons."
+  },
+  {
+    name: 'Orcash',
+    hp_formula: 'd8 + d4/plev', avg_hp: 4.5,
+    armor_name: '', shield_name: '', avoidance: 30, protection: 25,
+    bmod: 1, avg_damage: 0, multi: 6,
+    cc_fortitude: 60, cc_reflex: 65, cc_will: 40, cc_surprise: 35, cc_social: 25,
+    attacks: [
+      { name: 'scimitar (favored)', weaponName: '', toHit: '', damageDice: '((1d8+1d6+11)/d6)+1', speed: 'SPD 5' },
+      { name: 'shortbow (alternate loadout)', weaponName: '', toHit: '', damageDice: 'same stats as scimitar loadout, 20% multi', speed: '' }
+    ],
+    bonus_abilities: ["Darksight 25'+"], special_abilities: [], exceptional_abilities: [],
+    level_capable: true, possible_classes: ['Cleric', 'Thief'],
+    notes: "Small (4-5') pink-green skinned Ogrillites with upturned noses and mandibular canines. Totally disorganized, chaotic bullies, self-interested with little concept of loyalty, who bully weaker Ogrillites and rarely back down from a fight. Darksight 30'. Basic Outdoors 30%. Assumed to wear raggedy Studded Leather or light scaled leather armor."
+  },
+  {
+    name: 'Preserved Undead (Mummy)',
+    hp_formula: '40+6d8 (assumes level 14)', avg_hp: 67,
+    armor_name: '', shield_name: '', avoidance: -5, protection: 115,
+    bmod: 1.2, avg_damage: 0, multi: 35,
+    cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
+    attacks: [{ name: 'weapon (by weapon) plus Mummy’s Touch', weaponName: '', toHit: '', damageDice: '', speed: '' }],
+    bonus_abilities: [], special_abilities: ['15%+ magic resist', 'Regeneration'], exceptional_abilities: [],
+    level_capable: true, possible_classes: [],
+    notes: "Necromancers and other casters who use preservative magic to keep their soul tied to heavily alchemized, embalmed flesh, retaining much of their former knowledge and power. Supercharged by necromancy, hard to damage, can control lesser undead; commonly blend necromantic and alchemical power. Highly intelligent. Stats given assume level 14; protection may be further boosted by unquantified magic items. Regenerates 1 HP per 10 segments. Immune to sleep/charm. 20% Magic Resistance. Aura of fear every 10 segments (Will-10% or flee 3-12 segments). Casts Chromatic Orb 4/day, Pain 4/day, Vox's Leaking Bloodletter 2/day; raises a skeletal servant 2/day; can create a potion 1/day; hardens bone 1/day."
+  },
+  {
+    name: 'Red Dragon',
+    hp_formula: '35+3d10 per Age Category', avg_hp: 51.5,
+    armor_name: '', shield_name: '', avoidance: 70, protection: 140,
+    bmod: 1.1, avg_damage: 0, multi: 18,
+    cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
+    attacks: [
+      { name: 'Claw', weaponName: '', toHit: '', damageDice: '((4d6+22)/D5)+(age cat x2)', speed: 'SPD 8' },
+      { name: 'Bite', weaponName: '', toHit: '', damageDice: '((5d12+30)/d4)+(age cat x3)', speed: 'SPD 15' }
+    ],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "An ancient Sauroid dragon-line -- venal and cruel, extremely logical and intelligent (INT 15-19), imbued with a connection to the Perfect Flame (3rd Station), making their fire mastery exceptional even though general spellcasting is merely decent. Hatchlings as small as 4 Are nose to tail; ancients as long as 2 Tolkar+. All stats scale by Age Category (1-Worm through 7-ancient/1501+ years) -- figures above are the per-category base; protection gains +2-8 more per category. Bite Multi 9% (separate from the 18% Claw Multi used above). Basic Detect 35%. Detect Magic 40%. Hard/Harder to Kill 1/day each. Immunity to Heat 3/day. Fear at 6th level + age category. Spellcasting (Spirit and Fire spheres, level ~1d4 x age category) plus a breath weapon."
+  },
+  {
+    name: 'Spectre',
+    hp_formula: '42', avg_hp: 42,
+    armor_name: '', shield_name: '', avoidance: 0, protection: 74,
+    bmod: 0, avg_damage: 0, multi: 0,
+    cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
+    attacks: [{ name: 'morningstar', weaponName: '', toHit: '', damageDice: '((2d8+14)/d5)+3', speed: 'Speed 8 (ready 8)' }],
+    bonus_abilities: [], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "A rank-1 example spectre (no personal name given), wielding a morningstar. Ectoplasmic and undead like the Barastal Earth Spectre variant, but without the earth attunement or its elevated protection tiers. Protection scales: 74 vs magic+10, 84 vs magic, 94 special, 104 silver, 114 plain weapons. Bloodletter-style weapon causes permanent HP damage on a failed Will save (will+10 penalty). Fear effect with a Will save at 20'."
+  },
+  {
+    name: 'Stone Giant',
+    hp_formula: '36+4d10', avg_hp: 58,
+    armor_name: '', shield_name: '', avoidance: 36, protection: 95,
+    bmod: 1.1, avg_damage: 0, multi: 12,
+    cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
+    attacks: [{ name: 'weapon (by weapon)', weaponName: '', toHit: '', damageDice: '((4d6+18)/D5)+5', speed: 'SPD 8' }],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "Also called Mountain Giant -- the least and most common of the true giants, often serving as troops/followers of greater giants. 12-14' tall, avg ST 20, modest INT (5-14), simple weapons, throws boulders. Outdoor skill 25%."
+  },
+  {
+    name: 'Trollfolk',
+    hp_formula: '3d8+25', avg_hp: 38.5,
+    armor_name: '', shield_name: '', avoidance: 0, protection: 0,
+    bmod: 1, avg_damage: 0, multi: 13,
+    cc_fortitude: 70, cc_reflex: 65, cc_will: 50, cc_surprise: null, cc_social: 9,
+    attacks: [{ name: 'Claw', weaponName: '', toHit: '', damageDice: '((2d12+18)/d6)+9', speed: 'SPD 5' }],
+    bonus_abilities: ["Darksight 25'+"], special_abilities: ['Regeneration'], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "Tall (8-9'), thin, warted green Ogrillites with long noses and bristled hair, disorganized chaotic bullies who dislike sunlight and the outdoors (INT 5-8). Very hungry, rarely back down; work in packs of 7-18. A larger, roughly 10'-tall 'Greater Trollfolk' variant also exists as a separate Beastiary entry. Darksight 70'. Basic Outdoors 30%. +15% resistant to fire and air. Regenerates 3 HP every 12 segments. No AV/PR value is given on the wiki page for the base-size Trollfolk -- placeholders (0) above pending your own numbers."
+  },
+  {
+    name: 'True Ungol',
+    hp_formula: '33+3d8', avg_hp: 46.5,
+    armor_name: '', shield_name: '', avoidance: 30, protection: 36,
+    bmod: 1.1, avg_damage: 0, multi: 18,
+    cc_fortitude: 75, cc_reflex: 70, cc_will: 25, cc_surprise: 35, cc_social: 10,
+    attacks: [{ name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d10+11)/d6)+4', speed: 'SPD 6' }],
+    bonus_abilities: ["Darksight 25'+"], special_abilities: ['Poison'], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "The apex of the common Ungol line, roughly 7' across the body and 5' tall at the leg -- poison- and web-heavy, capable of taking on an armored party alone. Solitary, lair territory a mile or more; actively hunts intruders rather than waiting in ambush. Has rudimentary reasoning and will flee if losing (unusual for an Ungol). Poison (heavy): Fort CC-20%, (4d6+11)/d6 damage if made, (5d6+21)/d6 if missed. Web: Reflex CC-20% to avoid entangle; will cocoon downed prey for later feeding. Darksight 30' (vibration/heat sense). Wall/ceiling climb 90%."
+  },
+  {
+    name: 'Vargoyle',
+    hp_formula: '3+2d6', avg_hp: 10,
+    armor_name: '', shield_name: '', avoidance: 15, protection: 20,
+    bmod: 1, avg_damage: 0, multi: 0,
+    cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
+    attacks: [
+      { name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d6+7)/d6)+1, plus Poison: Fort CC-15% or ((3d4+1)/d4) + Bloodletting', speed: 'Speed 3' },
+      { name: 'Tentacle', weaponName: '', toHit: '', damageDice: '((3d6+7)/d6)+1', speed: 'Speed 4' }
+    ],
+    bonus_abilities: [], special_abilities: ['Poison', 'Flight'], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "A lesser creature of the House of Death, nasty, typically found in packs of 2-8 or as a servant of an undead being or necromancer. Attacks split 50/50 bite/tentacle rather than a stated Multi %. Initial Cry: on first encounter, all within 60' must Will CC-15% or flee for 3d10 segments. Move 30' flight/5' waddle. Darksight 80'. INT 5-8."
+  },
+  {
+    name: 'Vrock',
+    hp_formula: '40+5d10', avg_hp: 67.5,
+    armor_name: '', shield_name: '', avoidance: 25, protection: 90,
+    bmod: 1, avg_damage: 0, multi: 18,
+    cc_fortitude: 80, cc_reflex: 65, cc_will: 59, cc_surprise: 30, cc_social: 20,
+    attacks: [
+      { name: 'Claws', weaponName: '', toHit: '', damageDice: '((2d8+15)/D6)+8', speed: 'SPD 4' },
+      { name: 'Spear', weaponName: '', toHit: '', damageDice: '((3d8+19)/D6)+9', speed: 'SPD 8' }
+    ],
+    bonus_abilities: [], special_abilities: ['Regeneration'], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "Angry, stupid, aggressive bipedal vulture-demons (Entropic Outsiders) that hunt in packs and often wield spears, denizens of the Eighth House who fear little. Capricious and greedy, 9' tall, black-skinned, covered in dark ooze. Claws Multi 18% (used above), Spear Multi 15%. Protection includes an effective +5% magic. Regenerates 1 HP per 5 segments. Magic Resistance 10% (25% vs Chaos effects). Spell effects calculated at level 9: Minor Fire Blast at will, Personal Minor Disruption 2/day, Static Field and Weapon Charge 2/day."
+  },
+  {
+    name: 'White Dragon',
+    hp_formula: '22+2d10 per Age Category', avg_hp: 33,
+    armor_name: '', shield_name: '', avoidance: 50, protection: 90,
+    bmod: 1.05, avg_damage: 0, multi: 16,
+    cc_fortitude: 60, cc_reflex: 55, cc_will: 40, cc_surprise: 70, cc_social: 15,
+    attacks: [
+      { name: 'Claw', weaponName: '', toHit: '', damageDice: '((3d6+16)/D5)+(age cat x2)', speed: 'SPD 9' },
+      { name: 'Bite', weaponName: '', toHit: '', damageDice: '((4d10+22)/d4)+(age cat x2)', speed: 'SPD 16' },
+      { name: 'Breath Weapon (Cone of Killing Cold)', weaponName: '', toHit: '', damageDice: 'Hit: (3d8+10)/d6 + (age cat x2); Miss: half damage', speed: '' }
+    ],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "The least of the true Sauroid dragon-lines -- smallest, least cunning, shortest-lived, but still fearsome. Sullen and territorial rather than venal, lower INT (8-12), imbued with a connection to the Endless Ocean (House of Water), giving strong Hydromancy and cold magic despite unremarkable general spellcasting. Scales run chalky ivory in youth to frost-white in age. All stats scale by Age Category -- figures above are the per-category base; protection gains +2-6 more per category. Bite Multi 8% (separate from the 16% Claw Multi used above). Basic Detect 25%. Detect Magic 30%. Hard/Harder to Kill 1/day each. Immunity to Cold 3/day. Fear at 4th level + age category. Breath Weapon (Cone of Killing Cold) 3/day: ices/slicks surfaces for 2-12 segments after, Reflex CC-15 or fall prone moving through it, Fort CC-30."
+  },
+  {
     name: 'Wight',
     hp_formula: '21-32 + d4/plev', avg_hp: 26.5,
     armor_name: '', shield_name: '', avoidance: 25, protection: 40,
     bmod: 1, avg_damage: 0, multi: 0,
+    cc_fortitude: 70, cc_reflex: 50, cc_will: 60, cc_surprise: null, cc_social: 10,
     attacks: [],
     bonus_abilities: [], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
     level_capable: true, possible_classes: [],
-    notes: "Cunning undead -- a spirit from a grave imprisoned in the ancient body, aware of its condition and hating life; can reason well enough to avoid priests and pick dangerous targets first. Strong (avg 15 ST), not slow. Retains armor/shield use. Usually spawned from a grave and spirit; can be charmed or commanded by necromancers and greater undead. +10 Protection vs piercing weapons. Requires magic, silver, or masterwork weapons to hit, or Protection effectively +10 higher. Immune to sleep and charm. Not a caster. CCs: Fort 70 / Reflex 50 / Will 60 / Soc 10 starting. Lesser undead often flock to a Wight's banner in a boneyard or old battle scene. Fort save -15 vs its permanent HP loss ability."
+    notes: "Cunning undead -- a spirit from a grave imprisoned in the ancient body, aware of its condition and hating life; can reason well enough to avoid priests and pick dangerous targets first. Strong (avg 15 ST), not slow. Retains armor/shield use. Usually spawned from a grave and spirit; can be charmed or commanded by necromancers and greater undead. +10 Protection vs piercing weapons. Requires magic, silver, or masterwork weapons to hit, or Protection effectively +10 higher. Immune to sleep and charm. Not a caster. Lesser undead often flock to a Wight's banner in a boneyard or old battle scene. Fort save -15 vs its permanent HP loss ability."
+  },
+  {
+    name: 'Wolf',
+    hp_formula: 'd8+4', avg_hp: 8.5,
+    armor_name: '', shield_name: '', avoidance: 10, protection: 15,
+    bmod: 1, avg_damage: 0, multi: 15,
+    cc_fortitude: 45, cc_reflex: 55, cc_will: 25, cc_surprise: 55, cc_social: 30,
+    attacks: [{ name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d4+3)/d6)+0', speed: 'Speed 5' }],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "Wild pack hunters found across nearly every biome in Celtricia, wary of anything larger than themselves and unwilling to press a losing fight -- but a hungry pack that isolates a weaker target is patient, coordinated, merciless. Packs of 5-12; lone wolves are exiles or scouts who avoid fights when possible. Dark-furred, 50-70 lbs. Pack Tactics: +10% to hit when 2+ wolves attack the same target, focuses the weakest/most isolated one. Keen Scent: cannot be surprised by anything approaching from upwind within 60'. Move 24', INT 2 (Animal)."
+  },
+  {
+    name: 'Wraith',
+    hp_formula: '24-36 + 1-4/plev', avg_hp: 30,
+    armor_name: '', shield_name: '', avoidance: 25, protection: 40,
+    bmod: 1, avg_damage: 0, multi: 0,
+    cc_fortitude: 70, cc_reflex: 50, cc_will: 65, cc_surprise: null, cc_social: 10,
+    attacks: [{ name: 'scimitar, bloodletter', weaponName: '', toHit: '', damageDice: '((1d8+1d6+11)/d6+3)', speed: 'Speed 5 (ready 5)' }],
+    bonus_abilities: [], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
+    level_capable: true, possible_classes: [],
+    notes: "Cunning undead similar to Wights but less corporeal -- a spirit from a grave imprisoned in its ancient body, aware and hating life, cunning enough to prioritize dangerous foes and avoid priests. Strong (avg 15 ST), retains armor/shield use. Unlike Wights, not created by necromancy spells, but can be charmed or commanded by necromancers and greater undead; lesser undead flock to its banner too. +10 Protection vs piercing weapons. Requires magic weapon to hit. Immune to sleep and charm. Not a caster. Permanently drains HP on a failed Fort save -25 unless magically returned. The wiki page also embeds a specific rank-1 unnamed Wraith example NPC below the general description (HP 30, AV20/PRO 52, scaling to 62 vs silver/72 vs plain) whose bloodletter scimitar stats are reflected in the attack above."
+  },
+  {
+    name: 'Wyvern',
+    hp_formula: '7d10+28', avg_hp: 66.5,
+    armor_name: '', shield_name: '', avoidance: 65, protection: 55,
+    bmod: 1.05, avg_damage: 0, multi: 20,
+    cc_fortitude: 60, cc_reflex: 40, cc_will: 15, cc_surprise: 30, cc_social: 10,
+    attacks: [
+      { name: 'Sting (Poison)', weaponName: '', toHit: '', damageDice: '((2d6+9)/d6)+3', speed: 'Speed 5' },
+      { name: 'Bite', weaponName: '', toHit: '', damageDice: '((3d10+12)/d6)+4', speed: 'Speed 6' },
+      { name: 'Talons (x2)', weaponName: '', toHit: '', damageDice: '((3d8+11)/d6)+3 each', speed: 'Speed 4' }
+    ],
+    bonus_abilities: [], special_abilities: ['Poison', 'Flight'], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "A semi-intelligent, diminished cousin of true Sauroid dragons -- the line has bred true since arising and is far more fertile than true dragons, making them common in mountain country. Sauroids bear them little ill will, often keeping them as pets, hunting beasts, or half-tamed guardians. Aggressive to nearly everything, driven by hunger rather than cunning: brute weight, a plate-shearing bite, sword-length talons, and a venomous barbed tail rather than any elemental breath. Multi split 30% sting/30% bite/20% talon/20% talon. Aerial Charge reduces the damage dividing die by 1 on a connecting sting/bite. Improved Grab: both talons connecting lets it grapple as a free action; a held target is auto-struck by the sting next round; a talon crit has a 50% chance of counting as both talons connecting. Poison Sting: Fort CC-15% or (2d6/d6) immediately and again next round (a successful CC halves both). Move 12'/Fly 45'. INT 3-5. Body 20-50' nose to tail; usually alone, a mated pair, or a flight of 3-6."
+  },
+  {
+    name: 'Zombie',
+    hp_formula: '7+d8', avg_hp: 11.5,
+    armor_name: '', shield_name: '', avoidance: 55, protection: 30,
+    bmod: 1.1, avg_damage: 0, multi: 6,
+    cc_fortitude: 60, cc_reflex: 25, cc_will: 30, cc_surprise: null, cc_social: 0,
+    attacks: [{ name: 'powerful fists', weaponName: '', toHit: '', damageDice: '((2d6+5)/d6)+4', speed: 'SPD 8' }],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "Corporeal undead humanoids in various states of decay -- strong but slow, chaotic and aggressive but clumsy, famously foul-smelling. Created deliberately by necromancers or arise in the wild when a person dies unshriven. Assumed to wear raggedy clothing but feels no pain. Immune to sleep/charm/most mentalist effects."
   }
 ];
 
