@@ -1324,8 +1324,8 @@ function showUtilitiesModule() {
 // memory for the full design; this is the first piece of it (the
 // combat/initiative tracker itself isn't built yet).
 // ============================================================
-const BESTIARY_BONUS_ABILITIES = ['Light poison', 'Light spell use', 'Quick movement', 'Damage resistance', 'Missiles', "Darksight 25'+"];
-const BESTIARY_SPECIAL_ABILITIES = ['Poison', 'Flight', '25+ SP caster', '12%+ crit', 'Undead perm damage', '15%+ magic resist', '10%+ magic-to-hit', 'Regeneration'];
+const BESTIARY_BONUS_ABILITIES = ['Light poison', 'Light spell use', 'Quick movement', 'Damage resistance', 'Missiles', "Darksight 25'+", 'Web / minor impair move', 'Wallclimb / swim / flight'];
+const BESTIARY_SPECIAL_ABILITIES = ['Poison', '25+ SP caster', '12%+ crit', 'Undead perm damage', '15%+ magic resist', '10%+ magic-to-hit', 'Regeneration'];
 const BESTIARY_EXCEPTIONAL_ABILITIES = ['60+ SP spells', '50%+ magic resist'];
 
 // Base-creature stat templates transcribed from the wiki's Bestiary section.
@@ -1462,7 +1462,7 @@ const BESTIARY_RACE_TEMPLATES = [
       { name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d8+9)/d6)+1', speed: 'Speed 5' },
       { name: 'Horn (Gore)', weaponName: '', toHit: '', damageDice: '((3d6+11)/d6)+2', speed: 'Speed 6' }
     ],
-    bonus_abilities: [], special_abilities: ['Flight'], exceptional_abilities: [],
+    bonus_abilities: ['Wallclimb / swim / flight'], special_abilities: [], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "Statue-like winged humanoids of the House of Earth -- true flesh-and-stone creatures, not constructs or undead, so they CAN be charmed, slept, or reasoned with despite low INT (3-4). Prized as guardians since they'll hold a post indefinitely without pay, sleep, or supervision. Attack split Claw 40%/Bite 20%/Horn 40%. Base protection is magicked (40), rising in tiers: PR50 vs Masterwork, PR60 vs Silver, PR70 vs Normal weapons. Aerial Charge: a 10'+ flight run-up reduces the damage dividing die by 1 on a connecting claw/horn, usually once per combat. Statue Mimicry: motionless it's indistinguishable from carved stone, granting automatic surprise unless spotted first. Silent flight. Move 12'/Fly 25'."
   },
@@ -1501,7 +1501,7 @@ const BESTIARY_RACE_TEMPLATES = [
     bmod: 1.1, avg_damage: 0, multi: 14,
     cc_fortitude: 55, cc_reflex: 70, cc_will: 25, cc_surprise: 35, cc_social: 10,
     attacks: [{ name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d8+9)/d6)+3', speed: 'SPD 5' }],
-    bonus_abilities: ["Darksight 25'+"], special_abilities: ['Poison'], exceptional_abilities: [],
+    bonus_abilities: ["Darksight 25'+", 'Web / minor impair move', 'Wallclimb / swim / flight'], special_abilities: ['Poison'], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "One of several named size-variants of the Ungol giant-spider line. Territorial, rarely more than 1-2 encountered together outside a lair. Not sapient, not level/Cleric/thief capable; hunts by ambush and web. Poison (full): Fort CC-15%, (3d6+6)/d6 damage if the save is made, (4d6+16)/d6 if missed. Web: Reflex CC-15% to avoid entangle; may cocoon a downed target. Darksight 30' (vibration/heat sense). Wall/ceiling climb 90%."
   },
@@ -1585,7 +1585,7 @@ const BESTIARY_RACE_TEMPLATES = [
     bmod: 1.1, avg_damage: 0, multi: 10,
     cc_fortitude: 35, cc_reflex: 70, cc_will: 25, cc_surprise: 35, cc_social: 10,
     attacks: [{ name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d8+7)/d8)+2', speed: 'SPD 5' }],
-    bonus_abilities: ["Darksight 25'+"], special_abilities: ['Poison'], exceptional_abilities: [],
+    bonus_abilities: ["Darksight 25'+", 'Web / minor impair move', 'Wallclimb / swim / flight'], special_abilities: ['Poison'], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "Often found in packs of 5-8, particularly on the plains and hill country north of Igbar. Not sapient, not level/Cleric/thief capable. Poison: Fort CC-10%, (2d6+1)/d6 damage if made, (3d6+11)/d6 if missed. Web: Reflex CC-10% to avoid entangle. Darksight 30' (vibration/heat sense). Wall/ceiling climb 90%."
   },
@@ -1610,7 +1610,7 @@ const BESTIARY_RACE_TEMPLATES = [
     bmod: 1.1, avg_damage: 0, multi: 7,
     cc_fortitude: 35, cc_reflex: 70, cc_will: 25, cc_surprise: 35, cc_social: 10,
     attacks: [{ name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d6+6)/d8)+1', speed: 'SPD 5' }],
-    bonus_abilities: ["Darksight 25'+", 'Light poison'], special_abilities: [], exceptional_abilities: [],
+    bonus_abilities: ["Darksight 25'+", 'Light poison', 'Web / minor impair move', 'Wallclimb / swim / flight'], special_abilities: [], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "The most common Ungol found near settled lands, man- to horse-sized. Not sapient; hunts by ambush and web in wooded, swampy, or underground terrain. Solitary or in small clutches of 2-4, sometimes mixed with a few Huge Ungols. Poison (light): Fort CC, (1d6+1)/d6 damage if made, (2d6+6)/d6 if missed. Web: Reflex CC to avoid entangle. Darksight 30' (vibration/heat sense). Wall/ceiling climb 90%."
   },
@@ -1621,7 +1621,7 @@ const BESTIARY_RACE_TEMPLATES = [
     bmod: 1, avg_damage: 0, multi: 8,
     cc_fortitude: 62, cc_reflex: 65, cc_will: 45, cc_surprise: null, cc_social: 20,
     attacks: [{ name: 'trident (favored)', weaponName: '', toHit: '', damageDice: '((1d12+16)/d6)+1', speed: 'SPD 6' }],
-    bonus_abilities: ["Darksight 25'+"], special_abilities: [], exceptional_abilities: [],
+    bonus_abilities: ["Darksight 25'+", 'Wallclimb / swim / flight'], special_abilities: [], exceptional_abilities: [],
     level_capable: true, possible_classes: ['Cleric'],
     notes: "The Hssiouti -- man-sized, cannibalistic snake-men called 'Scalik' by humans, not culturally integrated, some bearing a fiendish intelligence. Roughly 4-5' tall, scale-covered, typically wielding clubs or spears. Darksight 30'. Basic Outdoors 30%. Basic Swim 90%. AV/PR improves to 40/35 with a shield. About 40% chance per group of 10 to include a shaman."
   },
@@ -1755,7 +1755,7 @@ const BESTIARY_RACE_TEMPLATES = [
     bmod: 1.1, avg_damage: 0, multi: 18,
     cc_fortitude: 75, cc_reflex: 70, cc_will: 25, cc_surprise: 35, cc_social: 10,
     attacks: [{ name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d10+11)/d6)+4', speed: 'SPD 6' }],
-    bonus_abilities: ["Darksight 25'+"], special_abilities: ['Poison'], exceptional_abilities: [],
+    bonus_abilities: ["Darksight 25'+", 'Web / minor impair move', 'Wallclimb / swim / flight'], special_abilities: ['Poison'], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "The apex of the common Ungol line, roughly 7' across the body and 5' tall at the leg -- poison- and web-heavy, capable of taking on an armored party alone. Solitary, lair territory a mile or more; actively hunts intruders rather than waiting in ambush. Has rudimentary reasoning and will flee if losing (unusual for an Ungol). Poison (heavy): Fort CC-20%, (4d6+11)/d6 damage if made, (5d6+21)/d6 if missed. Web: Reflex CC-20% to avoid entangle; will cocoon downed prey for later feeding. Darksight 30' (vibration/heat sense). Wall/ceiling climb 90%."
   },
@@ -1769,7 +1769,7 @@ const BESTIARY_RACE_TEMPLATES = [
       { name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d6+7)/d6)+1, plus Poison: Fort CC-15% or ((3d4+1)/d4) + Bloodletting', speed: 'Speed 3' },
       { name: 'Tentacle', weaponName: '', toHit: '', damageDice: '((3d6+7)/d6)+1', speed: 'Speed 4' }
     ],
-    bonus_abilities: [], special_abilities: ['Poison', 'Flight'], exceptional_abilities: [],
+    bonus_abilities: ["Darksight 25'+", 'Wallclimb / swim / flight'], special_abilities: ['Poison'], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "A lesser creature of the House of Death, nasty, typically found in packs of 2-8 or as a servant of an undead being or necromancer. Attacks split 50/50 bite/tentacle rather than a stated Multi %. Initial Cry: on first encounter, all within 60' must Will CC-15% or flee for 3d10 segments. Move 30' flight/5' waddle. Darksight 80'. INT 5-8."
   },
@@ -1846,7 +1846,7 @@ const BESTIARY_RACE_TEMPLATES = [
       { name: 'Bite', weaponName: '', toHit: '', damageDice: '((3d10+12)/d6)+4', speed: 'Speed 6' },
       { name: 'Talons (x2)', weaponName: '', toHit: '', damageDice: '((3d8+11)/d6)+3 each', speed: 'Speed 4' }
     ],
-    bonus_abilities: [], special_abilities: ['Poison', 'Flight'], exceptional_abilities: [],
+    bonus_abilities: ['Wallclimb / swim / flight'], special_abilities: ['Poison'], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "A semi-intelligent, diminished cousin of true Sauroid dragons -- the line has bred true since arising and is far more fertile than true dragons, making them common in mountain country. Sauroids bear them little ill will, often keeping them as pets, hunting beasts, or half-tamed guardians. Aggressive to nearly everything, driven by hunger rather than cunning: brute weight, a plate-shearing bite, sword-length talons, and a venomous barbed tail rather than any elemental breath. Multi split 30% sting/30% bite/20% talon/20% talon. Aerial Charge reduces the damage dividing die by 1 on a connecting sting/bite. Improved Grab: both talons connecting lets it grapple as a free action; a held target is auto-struck by the sting next round; a talon crit has a 50% chance of counting as both talons connecting. Poison Sting: Fort CC-15% or (2d6/d6) immediately and again next round (a successful CC halves both). Move 12'/Fly 45'. INT 3-5. Body 20-50' nose to tail; usually alone, a mated pair, or a flight of 3-6."
   },
