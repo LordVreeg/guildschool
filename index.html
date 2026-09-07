@@ -1324,8 +1324,8 @@ function showUtilitiesModule() {
 // memory for the full design; this is the first piece of it (the
 // combat/initiative tracker itself isn't built yet).
 // ============================================================
-const BESTIARY_BONUS_ABILITIES = ['Light poison', 'Light spell use', 'Quick movement', 'Damage resistance', 'Missiles', "Darksight 25'+", 'Web / minor impair move', 'Wallclimb / swim / flight'];
-const BESTIARY_SPECIAL_ABILITIES = ['Poison', '25+ SP caster', '12%+ crit', 'Undead perm damage', '15%+ magic resist', '10%+ magic-to-hit', 'Regeneration'];
+const BESTIARY_BONUS_ABILITIES = ['Light poison', 'Light spell use', 'Quick movement', 'Damage resistance', 'Missiles', "Darksight 25'+", 'Web / minor impair move', 'Wallclimb / swim / flight', 'Hide'];
+const BESTIARY_SPECIAL_ABILITIES = ['Poison', '25+ SP caster', '12%+ crit', 'Undead perm damage', '15%+ magic resist', '10%+ magic-to-hit', 'Regeneration', 'Invisibility', 'Hard to kill'];
 const BESTIARY_EXCEPTIONAL_ABILITIES = ['60+ SP spells', '50%+ magic resist'];
 
 // Base-creature stat templates transcribed from the wiki's Bestiary section.
@@ -1462,7 +1462,7 @@ const BESTIARY_RACE_TEMPLATES = [
       { name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d8+9)/d6)+1', speed: 'Speed 5' },
       { name: 'Horn (Gore)', weaponName: '', toHit: '', damageDice: '((3d6+11)/d6)+2', speed: 'Speed 6' }
     ],
-    bonus_abilities: ['Wallclimb / swim / flight'], special_abilities: [], exceptional_abilities: [],
+    bonus_abilities: ['Wallclimb / swim / flight', 'Hide'], special_abilities: [], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "Statue-like winged humanoids of the House of Earth -- true flesh-and-stone creatures, not constructs or undead, so they CAN be charmed, slept, or reasoned with despite low INT (3-4). Prized as guardians since they'll hold a post indefinitely without pay, sleep, or supervision. Attack split Claw 40%/Bite 20%/Horn 40%. Base protection is magicked (40), rising in tiers: PR50 vs Masterwork, PR60 vs Silver, PR70 vs Normal weapons. Aerial Charge: a 10'+ flight run-up reduces the damage dividing die by 1 on a connecting claw/horn, usually once per combat. Statue Mimicry: motionless it's indistinguishable from carved stone, granting automatic surprise unless spotted first. Silent flight. Move 12'/Fly 25'."
   },
@@ -1711,7 +1711,7 @@ const BESTIARY_RACE_TEMPLATES = [
       { name: 'Claw', weaponName: '', toHit: '', damageDice: '((4d6+22)/D5)+(age cat x2)', speed: 'SPD 8' },
       { name: 'Bite', weaponName: '', toHit: '', damageDice: '((5d12+30)/d4)+(age cat x3)', speed: 'SPD 15' }
     ],
-    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    bonus_abilities: [], special_abilities: ['Hard to kill'], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "An ancient Sauroid dragon-line -- venal and cruel, extremely logical and intelligent (INT 15-19), imbued with a connection to the Perfect Flame (3rd Station), making their fire mastery exceptional even though general spellcasting is merely decent. Hatchlings as small as 4 Are nose to tail; ancients as long as 2 Tolkar+. All stats scale by Age Category (1-Worm through 7-ancient/1501+ years) -- figures above are the per-category base; protection gains +2-8 more per category. Bite Multi 9% (separate from the 18% Claw Multi used above). Basic Detect 35%. Detect Magic 40%. Hard/Harder to Kill 1/day each. Immunity to Heat 3/day. Fear at 6th level + age category. Spellcasting (Spirit and Fire spheres, level ~1d4 x age category) plus a breath weapon."
   },
@@ -1798,7 +1798,7 @@ const BESTIARY_RACE_TEMPLATES = [
       { name: 'Bite', weaponName: '', toHit: '', damageDice: '((4d10+22)/d4)+(age cat x2)', speed: 'SPD 16' },
       { name: 'Breath Weapon (Cone of Killing Cold)', weaponName: '', toHit: '', damageDice: 'Hit: (3d8+10)/d6 + (age cat x2); Miss: half damage', speed: '' }
     ],
-    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    bonus_abilities: [], special_abilities: ['Hard to kill'], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "The least of the true Sauroid dragon-lines -- smallest, least cunning, shortest-lived, but still fearsome. Sullen and territorial rather than venal, lower INT (8-12), imbued with a connection to the Endless Ocean (House of Water), giving strong Hydromancy and cold magic despite unremarkable general spellcasting. Scales run chalky ivory in youth to frost-white in age. All stats scale by Age Category -- figures above are the per-category base; protection gains +2-6 more per category. Bite Multi 8% (separate from the 16% Claw Multi used above). Basic Detect 25%. Detect Magic 30%. Hard/Harder to Kill 1/day each. Immunity to Cold 3/day. Fear at 4th level + age category. Breath Weapon (Cone of Killing Cold) 3/day: ices/slicks surfaces for 2-12 segments after, Reflex CC-15 or fall prone moving through it, Fort CC-30."
   },
