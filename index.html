@@ -1928,13 +1928,13 @@ async function renderBestiaryModule() {
       <div class="note" style="margin-bottom:10px">Your personal library of foe templates — private to you, not visible to players or other GMs. Duplicate an entry to quickly build a variant.</div>
       ${bestiaryCache.length === 0 ? '<div class="note" style="padding:10px 0">No foes yet. Click "+ New Foe" to build one.</div>' : ''}
       ${bestiaryCache.length ? `<table class="skill-table">
-        <thead><tr><th>Name</th><th>Type</th><th>Prepped for</th><th>Avg HP</th><th>XP</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Type</th><th>Prepped for</th><th>HP</th><th>XP</th><th></th></tr></thead>
         <tbody>
           ${bestiaryCache.map(e => `<tr>
             <td style="cursor:pointer;color:var(--gold)" onclick="openEditBestiaryEntry('${e.id}')">${escapeHtml(e.name)}</td>
             <td class="note">${e.race ? escapeHtml(e.race) : '—'}</td>
             <td class="note">${e.group_id && groupNameById[e.group_id] ? escapeHtml(groupNameById[e.group_id]) : '—'}</td>
-            <td>${e.avg_hp != null ? e.avg_hp : '—'}</td>
+            <td>${e.current_hp != null ? `${e.current_hp}/${e.max_hp}` : (e.avg_hp != null ? `avg ${e.avg_hp}` : '—')}</td>
             <td class="skval-cell">${Math.round(computeFoeXP(e) * 10) / 10}</td>
             <td style="white-space:nowrap">
               <button class="btn btn-dim" style="font-size:10px;padding:2px 6px" onclick="duplicateBestiaryEntry('${e.id}')">Duplicate</button>
@@ -1951,6 +1951,7 @@ function blankBestiaryDraft() {
   return {
     name: '', race: '', group_id: null, hp_formula: '', avg_hp: 0, armor_name: '', shield_name: '',
     avoidance: 0, protection: 0, bmod: 0, avg_damage: 0, multi: 0,
+    level: 1, max_hp: null, current_hp: null,
     cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
     bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
     attacks: [], level_capable: false, possible_classes: [], items: [], spells: [], notes: ''
@@ -2052,8 +2053,64 @@ function closeBestiaryEditor() {
 function updateBestiaryField(field, value) { bestiaryDraft[field] = value; renderBestiaryEditor(); }
 function updateBestiaryNum(field, value) {
   let n = parseFloat(value) || 0;
-  if (field === 'avg_hp') n = Math.round(n); // no partial HP
+  if (['avg_hp', 'level', 'max_hp', 'current_hp'].includes(field)) n = Math.round(n); // no partial HP or levels
   bestiaryDraft[field] = n;
+  renderBestiaryEditor();
+}
+
+// Rolls a single additive term list like "43+5d10", "d6+12", "24+2d10", "3",
+// "d4" -- NdM (N optional, default 1) and flat integer terms added with '+'.
+function rollDiceTermList(expr) {
+  const terms = String(expr).replace(/\s+/g, '').split('+');
+  let total = 0;
+  for (const term of terms) {
+    if (!term) continue;
+    const m = term.match(/^(\d*)[dD](\d+)$/);
+    if (m) { total += rollDice(m[1] ? parseInt(m[1], 10) : 1, parseInt(m[2], 10)); continue; }
+    const n = parseInt(term, 10);
+    if (!isNaN(n)) total += n;
+  }
+  return total;
+}
+// One roll of an HP sub-expression: either a dice/flat term list (above) or
+// a flat "A-B" range (uniform random integer, inclusive).
+function rollHpSubExpr(expr) {
+  expr = expr.trim();
+  const range = expr.match(/^(\d+)\s*-\s*(\d+)$/);
+  if (range) {
+    const lo = parseInt(range[1], 10), hi = parseInt(range[2], 10);
+    return lo + Math.floor(Math.random() * (hi - lo + 1));
+  }
+  return rollDiceTermList(expr);
+}
+// Rolls a foe's HP from its freeform hp_formula and a level. Recognizes the
+// "<base> + <per-level>/plev" convention used throughout the Beastiary
+// templates -- base rolled once, per-level term rolled once per level above
+// 1st and summed in (e.g. "d6 + d4/plev" at level 3 rolls d6, then d4 twice
+// more). Strips parenthetical notes. Falls back to rolling the whole string
+// as a flat base (no scaling) if it doesn't match that convention -- safer
+// than guessing at an unfamiliar formula shape (dragons' "per Age Category",
+// Mummy's "(assumes level 14)", etc.).
+function rollBestiaryHp(formula, level) {
+  if (!formula) return null;
+  const clean = String(formula).replace(/\([^)]*\)/g, '').trim();
+  const m = clean.match(/^(.+?)\s*\+\s*([^+]+?)\s*\/\s*(?:plev|caster-lev|former\s*level|level)$/i);
+  let base = clean, perLevel = null;
+  if (m) { base = m[1].trim(); perLevel = m[2].trim(); }
+  let total = rollHpSubExpr(base);
+  const lv = Math.max(1, Math.round(parseFloat(level)) || 1);
+  if (perLevel) { for (let i = 1; i < lv; i++) total += rollHpSubExpr(perLevel); }
+  return total;
+}
+function rollBestiaryHpClick() {
+  if (!bestiaryDraft.hp_formula) { alert('Enter an HP formula first.'); return; }
+  if (bestiaryDraft.current_hp != null && bestiaryDraft.current_hp !== bestiaryDraft.max_hp) {
+    if (!confirm('This foe already has HP tracked (possibly mid-fight). Re-roll and reset Current HP to the new Max HP?')) return;
+  }
+  const rolled = rollBestiaryHp(bestiaryDraft.hp_formula, bestiaryDraft.level || 1);
+  if (rolled == null) { alert("Couldn't parse the HP formula -- enter Max HP by hand."); return; }
+  bestiaryDraft.max_hp = rolled;
+  bestiaryDraft.current_hp = rolled;
   renderBestiaryEditor();
 }
 
@@ -2249,6 +2306,16 @@ function renderBestiaryEditor() {
         <div class="form-group"><label>Avg damage</label><input type="number" class="w80" value="${d.avg_damage||0}" onchange="updateBestiaryNum('avg_damage',this.value)"></div>
         <div class="form-group"><label>Multi</label><input type="number" class="w80" value="${d.multi||0}" onchange="updateBestiaryNum('multi',this.value)"></div>
       </div>
+      <div class="note" style="margin-bottom:10px">Bmod × Avg HP = ${Math.round((parseFloat(d.bmod)||0) * (parseFloat(d.avg_hp)||0) * 100) / 100} -- basic chance to hit.</div>
+
+      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Hit points (this foe)</div>
+      <div class="form-row" style="align-items:flex-end">
+        <div class="form-group"><label>Level</label><input type="number" class="w80" value="${d.level||1}" onchange="updateBestiaryNum('level',this.value)"></div>
+        <div class="form-group"><button class="btn btn-dim" onclick="rollBestiaryHpClick()">🎲 Roll HP</button></div>
+        <div class="form-group"><label>Max HP</label><input type="number" class="w80" value="${d.max_hp!=null?d.max_hp:''}" onchange="updateBestiaryNum('max_hp',this.value)"></div>
+        <div class="form-group"><label>Current HP</label><input type="number" class="w80" value="${d.current_hp!=null?d.current_hp:''}" onchange="updateBestiaryNum('current_hp',this.value)"></div>
+      </div>
+      <div class="note" style="margin-bottom:10px">Rolls from the HP formula above using Level (for level-capable foes, "d4 per former level" rolls an extra d4 for each level past 1st) -- separate from Avg HP, which is just the XP-calc baseline. Current HP is what actually drops as this foe takes damage; edit it directly during a fight.</div>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">CCs (Contest Checks)</div>
       <div class="form-row">
@@ -2370,6 +2437,9 @@ async function saveBestiaryEntry() {
     bmod: bestiaryDraft.bmod || 0,
     avg_damage: bestiaryDraft.avg_damage || 0,
     multi: bestiaryDraft.multi || 0,
+    level: bestiaryDraft.level || 1,
+    max_hp: bestiaryDraft.max_hp != null ? bestiaryDraft.max_hp : null,
+    current_hp: bestiaryDraft.current_hp != null ? bestiaryDraft.current_hp : null,
     cc_fortitude: bestiaryDraft.cc_fortitude || null,
     cc_reflex: bestiaryDraft.cc_reflex || null,
     cc_will: bestiaryDraft.cc_will || null,
