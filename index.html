@@ -1866,6 +1866,12 @@ const BESTIARY_RACE_TEMPLATES = [
 let bestiaryCache = [];
 let bestiaryEditingId = null; // null = list view, 'new' = new entry, or an existing id
 let bestiaryDraft = null;
+let customBestiaryTemplates = []; // GM's own saved templates, from bestiary_templates -- alongside the built-in BESTIARY_RACE_TEMPLATES
+
+async function fetchCustomBestiaryTemplates() {
+  const { data, error } = await sb.from('bestiary_templates').select('*').order('name', { ascending: true });
+  if (!error) customBestiaryTemplates = data || [];
+}
 
 function showBestiaryModule() {
   state.activeSkillId = null;
@@ -1901,6 +1907,7 @@ function computeFoeXP(e) {
 
 async function renderBestiaryModule() {
   await fetchMyGroups();
+  await fetchCustomBestiaryTemplates();
   if (bestiaryEditingId) { renderBestiaryEditor(); return; }
   const { data, error } = await sb.from('bestiary_entries').select('*').order('name', { ascending: true });
   if (error) {
@@ -1950,15 +1957,72 @@ function blankBestiaryDraft() {
   };
 }
 
-function loadBestiaryRaceTemplate(name) {
-  const t = BESTIARY_RACE_TEMPLATES.find(r => r.name === name);
+// key is "wiki:<name>" (built-in BESTIARY_RACE_TEMPLATES) or "custom:<id>" (this GM's own saved bestiary_templates row)
+function loadBestiaryTemplate(key) {
+  if (!key) return;
+  const idx = key.indexOf(':');
+  const kind = key.slice(0, idx), ident = key.slice(idx + 1);
+  let t = null;
+  if (kind === 'wiki') t = BESTIARY_RACE_TEMPLATES.find(r => r.name === ident);
+  else if (kind === 'custom') t = customBestiaryTemplates.find(r => r.id === ident);
   if (!t) return;
   const hasStats = bestiaryDraft.hp_formula || bestiaryDraft.avg_hp || bestiaryDraft.avoidance || bestiaryDraft.protection || (bestiaryDraft.attacks||[]).length;
-  if (hasStats && !confirm(`Overwrite this foe's stats with the base ${t.name} template? Name and notes you already typed will be kept where possible.`)) return;
+  if (hasStats && !confirm(`Overwrite this foe's stats with the "${t.name}" template? Name and notes you already typed will be kept where possible.`)) return;
   const keepName = bestiaryDraft.name;
-  Object.assign(bestiaryDraft, JSON.parse(JSON.stringify(t)));
+  const clean = JSON.parse(JSON.stringify(t));
+  delete clean.id; delete clean.created_by; delete clean.created_at; delete clean.updated_at;
+  Object.assign(bestiaryDraft, clean);
   bestiaryDraft.race = t.name;
   bestiaryDraft.name = keepName || t.name;
+  renderBestiaryEditor();
+}
+
+// Saves the draft's current stat fields (not name/group/items/spells) as a
+// reusable template in bestiary_templates, so a homebrew foe's stat block
+// can seed future foes the same way a wiki creature does.
+async function saveCurrentAsBestiaryTemplate() {
+  const suggested = bestiaryDraft.race || bestiaryDraft.name || '';
+  const name = prompt('Save these stats as a new template. Template name:', suggested);
+  if (!name || !name.trim()) return;
+  const row = {
+    name: name.trim(),
+    hp_formula: bestiaryDraft.hp_formula || null,
+    avg_hp: bestiaryDraft.avg_hp || 0,
+    avoidance: bestiaryDraft.avoidance || 0,
+    protection: bestiaryDraft.protection || 0,
+    bmod: bestiaryDraft.bmod || 0,
+    avg_damage: bestiaryDraft.avg_damage || 0,
+    multi: bestiaryDraft.multi || 0,
+    cc_fortitude: bestiaryDraft.cc_fortitude || null,
+    cc_reflex: bestiaryDraft.cc_reflex || null,
+    cc_will: bestiaryDraft.cc_will || null,
+    cc_surprise: bestiaryDraft.cc_surprise || null,
+    cc_social: bestiaryDraft.cc_social || null,
+    attacks: bestiaryDraft.attacks || [],
+    bonus_abilities: bestiaryDraft.bonus_abilities || [],
+    special_abilities: bestiaryDraft.special_abilities || [],
+    exceptional_abilities: bestiaryDraft.exceptional_abilities || [],
+    level_capable: !!bestiaryDraft.level_capable,
+    possible_classes: bestiaryDraft.possible_classes || [],
+    notes: bestiaryDraft.notes || null
+  };
+  const { error } = await sb.from('bestiary_templates').insert({ ...row, created_by: currentUser.id });
+  if (error) { alert('Failed to save template: ' + error.message); return; }
+  await fetchCustomBestiaryTemplates();
+  renderBestiaryEditor();
+}
+
+async function deleteCustomBestiaryTemplate() {
+  const sel = document.getElementById('bf-race-template');
+  const key = sel ? sel.value : '';
+  if (!key.startsWith('custom:')) { alert("Select one of your own templates under \"My templates\" first."); return; }
+  const id = key.slice(7);
+  const t = customBestiaryTemplates.find(x => x.id === id);
+  if (!t) return;
+  if (!confirm(`Delete your custom template "${t.name}"? This cannot be undone.`)) return;
+  const { error } = await sb.from('bestiary_templates').delete().eq('id', id);
+  if (error) { alert('Failed to delete: ' + error.message); return; }
+  await fetchCustomBestiaryTemplates();
   renderBestiaryEditor();
 }
 
@@ -2084,15 +2148,24 @@ function renderBestiaryEditor() {
         </div>
       </div>
       <div class="form-row" style="align-items:flex-end;margin-bottom:10px">
-        <div class="form-group" style="flex:1"><label>Load base stats from wiki Beastiary</label>
+        <div class="form-group" style="flex:1"><label>Load base stats from a template</label>
           <select id="bf-race-template">
-            <option value="">— pick a wiki creature —</option>
-            ${BESTIARY_RACE_TEMPLATES.map(t=>`<option>${escapeHtml(t.name)}</option>`).join('')}
+            <option value="">— pick a template —</option>
+            <optgroup label="Wiki creatures">
+              ${BESTIARY_RACE_TEMPLATES.map(t=>`<option value="wiki:${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('')}
+            </optgroup>
+            ${customBestiaryTemplates.length ? `<optgroup label="My templates">
+              ${customBestiaryTemplates.map(t=>`<option value="custom:${t.id}">${escapeHtml(t.name)}</option>`).join('')}
+            </optgroup>` : ''}
           </select>
         </div>
-        <div class="form-group"><button class="btn btn-dim" onclick="loadBestiaryRaceTemplate(document.getElementById('bf-race-template').value)">Load</button></div>
+        <div class="form-group"><button class="btn btn-dim" onclick="loadBestiaryTemplate(document.getElementById('bf-race-template').value)">Load</button></div>
+        <div class="form-group"><button class="btn btn-dim" style="color:var(--red-b)" onclick="deleteCustomBestiaryTemplate()">Delete selected</button></div>
       </div>
-      <div class="note" style="margin-bottom:10px">Only creatures with a current wiki Bestiary page are in this list. Loading fills in stats below -- still fully editable after.</div>
+      <div class="note" style="margin-bottom:10px">"Wiki creatures" come from the current wiki Bestiary. "My templates" are ones you've saved yourself -- see the button below. Loading fills in stats -- still fully editable after. "Delete selected" only works on your own templates.</div>
+      <div class="form-row" style="margin-bottom:10px">
+        <div class="form-group"><button class="btn btn-dim" onclick="saveCurrentAsBestiaryTemplate()">Save current stats as a new template</button></div>
+      </div>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Core stats</div>
       <div class="form-row">
