@@ -1950,11 +1950,12 @@ async function renderBestiaryModule() {
       <div class="note" style="margin-bottom:10px">Your personal library of foe templates — private to you, not visible to players or other GMs. Duplicate an entry to quickly build a variant.</div>
       ${bestiaryCache.length === 0 ? '<div class="note" style="padding:10px 0">No foes yet. Click "+ New Foe" to build one.</div>' : ''}
       ${bestiaryCache.length ? `<table class="skill-table">
-        <thead><tr><th>Name</th><th>Type</th><th>Prepped for</th><th>HP</th><th>XP</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Type</th><th>Location</th><th>Prepped for</th><th>HP</th><th>XP</th><th></th></tr></thead>
         <tbody>
           ${bestiaryCache.map(e => `<tr>
             <td style="cursor:pointer;color:var(--gold)" onclick="openEditBestiaryEntry('${e.id}')">${escapeHtml(e.name)}</td>
             <td class="note">${e.race ? escapeHtml(e.race) : '—'}</td>
+            <td class="note">${e.location ? escapeHtml(e.location) : '—'}</td>
             <td class="note">${e.group_id && groupNameById[e.group_id] ? escapeHtml(groupNameById[e.group_id]) : '—'}</td>
             <td>${e.current_hp != null ? `${e.current_hp}/${e.max_hp}` : (e.avg_hp != null ? `avg ${e.avg_hp}` : '—')}</td>
             <td class="skval-cell">${Math.round(computeFoeXP(e) * 10) / 10}</td>
@@ -1971,7 +1972,7 @@ async function renderBestiaryModule() {
 
 function blankBestiaryDraft() {
   return {
-    name: '', race: '', group_id: null, hp_formula: '', avg_hp: 0, armor_name: '', shield_name: '',
+    name: '', race: '', location: '', group_id: null, hp_formula: '', avg_hp: 0, armor_name: '', shield_name: '',
     avoidance: 0, protection: 0, bmod: 0, avg_damage: 0, multi: 0,
     level: 1, max_hp: null, current_hp: null,
     cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
@@ -2311,6 +2312,9 @@ function renderBestiaryEditor() {
         <div class="form-group" style="flex:1"><label>Race / type</label>
           <input style="width:100%" value="${escapeHtml(d.race||'')}" placeholder="Goblin, Wight, Human bandit..." onchange="updateBestiaryField('race',this.value)">
         </div>
+        <div class="form-group" style="flex:1"><label>Location</label>
+          <input style="width:100%" value="${escapeHtml(d.location||'')}" placeholder="e.g. GA r3" onchange="updateBestiaryField('location',this.value)">
+        </div>
         <div class="form-group" style="flex:1"><label>Prepped for group (optional)</label>
           <select onchange="updateBestiaryField('group_id', this.value || null)">
             <option value="">— none / reusable anywhere —</option>
@@ -2471,6 +2475,7 @@ async function saveBestiaryEntry() {
     group_id: bestiaryDraft.group_id || null,
     name: bestiaryDraft.name.trim(),
     race: bestiaryDraft.race || null,
+    location: bestiaryDraft.location || null,
     hp_formula: bestiaryDraft.hp_formula || null,
     avg_hp: bestiaryDraft.avg_hp || 0,
     armor_name: bestiaryDraft.armor_name || null,
