@@ -4,31 +4,46 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GuildSchool Character System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600;1,700&family=Cinzel:wght@500;600;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:        #141314;
-  --panel:     #ffffff;
-  --border:    #444444;
-  --gold:      #2a4184;
-  --gold-dim:  #4f8697;
-  --text:      #444444;
-  --text-dim:  #7a7a7a;
-  --text-bright:#111111;
-  --trained:   #d8e8d8;
-  --trained-b: #4a8a4a;
-  --dropdown:  #e0d8ec;
-  --dropdown-b:#6a5a9a;
-  --red:       #f4d8d8;
-  --red-b:     #a03030;
-  --input-bg:  #f4f4f4;
-  --header-bg: #141314;
-  --header-text: #ffffff;
+  --bg:        #DCC99C;
+  --panel:     #F7F1DE;
+  --border:    #B39A66;
+  --gold:      #6E1B22;
+  --gold-dim:  #8A6A2F;
+  --text:      #2A1D12;
+  --text-dim:  #6B5A43;
+  --text-bright:#1D140B;
+  --trained:   #E3E6C8;
+  --trained-b: #5B7A3A;
+  --dropdown:  #E8DCE8;
+  --dropdown-b:#7A5A8A;
+  --red:       #F2DAD2;
+  --red-b:     #B33A1E;
+  --input-bg:  #F7F1E0;
+  --header-bg: #3E0F14;
+  --header-text: #F3E9CE;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text); font-family: 'Georgia', serif; font-size: 14px; min-height: 100vh; display: flex; flex-direction: column; }
+body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 60% 45% at 4% 2%, rgba(139,58,20,0.20), transparent 60%),
+    radial-gradient(ellipse 55% 40% at 98% 96%, rgba(139,58,20,0.18), transparent 60%),
+    radial-gradient(ellipse 40% 35% at 92% 4%, rgba(163,110,40,0.16), transparent 60%),
+    radial-gradient(ellipse 45% 35% at 2% 98%, rgba(163,110,40,0.14), transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.35 0 0 0 0 0.24 0 0 0 0 0.1 0 0 0 0.3 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-blend-mode: normal, normal, normal, normal, multiply;
+  background-size: auto, auto, auto, auto, 260px 260px;
+  background-attachment: fixed;
+  color: var(--text); font-family: 'IM Fell English', 'Georgia', serif; font-size: 14px; min-height: 100vh; display: flex; flex-direction: column;
+}
 /* TOP BAR */
 #topbar { background: var(--header-bg); border-bottom: 2px solid var(--gold-dim); padding: 8px 16px; display: flex; align-items: center; gap: 16px; }
-#topbar h1 { color: var(--header-text); font-size: 18px; letter-spacing: 2px; text-transform: uppercase; font-variant: small-caps; white-space: nowrap; }
+#topbar h1 { color: var(--header-text); font-family: 'Cinzel', serif; font-weight: 600; font-size: 16px; letter-spacing: 2px; text-transform: uppercase; white-space: nowrap; }
 #topbar .banner-logo { height: 34px; display: block; }
 .cc-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 12px; }
 .cc-cell { background: var(--input-bg); border: 1px solid var(--border); padding: 8px 10px; }
@@ -40,7 +55,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Georgia', serif;
 .weight-bar-fill.over { background: linear-gradient(90deg, var(--red-b), #a03030); }
 .item-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
 .item-table th { background: var(--header-bg); color: var(--header-text); font-size: 10px; text-transform: uppercase; padding: 5px 8px; text-align: left; border-bottom: 1px solid var(--border); }
-.item-table td { padding: 3px 6px; border-bottom: 1px solid rgba(46,53,80,.4); }
+.item-table td { padding: 3px 6px; border-bottom: 1px solid rgba(179,154,102,.4); }
 .item-table input, .item-table select { width: 100%; background: var(--input-bg); color: var(--text); border: 1px solid transparent; padding: 3px 5px; font-family: inherit; font-size: 12px; }
 .item-table input:focus, .item-table select:focus { border-color: var(--gold); outline: none; }
 .item-table .item-weight, .item-table .item-worth { width: 70px; }
@@ -58,21 +73,21 @@ body { background: var(--bg); color: var(--text); font-family: 'Georgia', serif;
 #sidebar { width: 220px; min-width: 220px; background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 8px 0; }
 .sidebar-section { padding: 6px 12px 2px; font-size: 11px; color: var(--gold-dim); text-transform: uppercase; letter-spacing: 1px; }
 .sidebar-item { padding: 5px 12px 5px 20px; cursor: pointer; color: var(--text-dim); font-size: 13px; display: flex; align-items: center; gap: 6px; }
-.sidebar-item:hover { background: rgba(200,151,58,.08); color: var(--text); }
-.sidebar-item.active { background: rgba(200,151,58,.15); color: var(--gold); border-left: 2px solid var(--gold); padding-left: 18px; }
+.sidebar-item:hover { background: rgba(110,27,34,.08); color: var(--text); }
+.sidebar-item.active { background: rgba(110,27,34,.15); color: var(--gold); border-left: 2px solid var(--gold); padding-left: 18px; }
 .sidebar-item .lv { font-size: 11px; color: var(--text-dim); margin-left: auto; }
 .sidebar-item .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .dot-trained { background: #4a9460; }
 .dot-dropdown { background: #5a5a9a; }
 .sidebar-add { padding: 6px 12px; }
-.sidebar-add button { width: 100%; background: rgba(200,151,58,.1); color: var(--gold); border: 1px solid var(--gold-dim); padding: 5px; font-family: inherit; font-size: 12px; cursor: pointer; }
-.sidebar-add button:hover { background: rgba(200,151,58,.2); }
+.sidebar-add button { width: 100%; background: rgba(110,27,34,.1); color: var(--gold); border: 1px solid var(--gold-dim); padding: 5px; font-family: inherit; font-size: 12px; cursor: pointer; }
+.sidebar-add button:hover { background: rgba(110,27,34,.2); }
 /* MAIN CONTENT */
 #main { flex: 1; overflow-y: auto; padding: 20px; }
 /* PANELS */
 .panel { background: var(--panel); border: 1px solid var(--border); margin-bottom: 16px; }
 .panel-header { background: var(--header-bg); border-bottom: 1px solid var(--border); padding: 8px 14px; display: flex; align-items: center; gap: 10px; }
-.panel-header h2 { color: var(--header-text); font-size: 14px; letter-spacing: 1px; text-transform: uppercase; font-variant: small-caps; }
+.panel-header h2 { color: var(--header-text); font-family: 'Cinzel', serif; font-weight: 600; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; }
 .panel-header .type-badge { font-size: 11px; color: var(--text-dim); background: var(--bg); border: 1px solid var(--border); padding: 1px 6px; }
 .panel-header .status-trained { color: #4a9460; font-size: 11px; }
 .panel-header .status-dropdown { color: #7a7acf; font-size: 11px; }
@@ -86,8 +101,8 @@ body { background: var(--bg); color: var(--text); font-family: 'Georgia', serif;
   padding: 5px 8px; font-family: inherit; font-size: 13px; min-width: 0;
 }
 .form-group input:focus, .form-group select:focus { border-color: var(--gold); outline: none; }
-.form-group input.computed { color: var(--gold); border-color: var(--gold-dim); background: rgba(200,151,58,.05); }
-.form-group input.computed-skval { color: var(--text-bright); font-size: 18px; font-weight: bold; border-color: var(--gold); background: rgba(200,151,58,.08); }
+.form-group input.computed { color: var(--gold); border-color: var(--gold-dim); background: rgba(110,27,34,.05); }
+.form-group input.computed-skval { color: var(--text-bright); font-size: 18px; font-weight: bold; border-color: var(--gold); background: rgba(110,27,34,.08); }
 .w40  { width: 40px; }
 .w60  { width: 60px; }
 .w80  { width: 80px; }
@@ -97,7 +112,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Georgia', serif;
 .w250 { width: 250px; }
 .wfull{ flex: 1; min-width: 120px; }
 /* COMPUTED ROW */
-.computed-row { background: rgba(200,151,58,.06); border: 1px solid var(--gold-dim); padding: 10px 14px; margin-bottom: 12px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+.computed-row { background: rgba(110,27,34,.06); border: 1px solid var(--gold-dim); padding: 10px 14px; margin-bottom: 12px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
 .computed-item { display: flex; flex-direction: column; gap: 2px; }
 .computed-item .ci-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; }
 .computed-item .ci-value { font-size: 16px; color: var(--gold); font-weight: bold; }
@@ -118,16 +133,16 @@ body { background: var(--bg); color: var(--text); font-family: 'Georgia', serif;
 /* OVERVIEW TABLE */
 .skill-table { width: 100%; border-collapse: collapse; }
 .skill-table th { background: var(--header-bg); color: var(--header-text); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); }
-.skill-table td { padding: 5px 10px; border-bottom: 1px solid rgba(46,53,80,.5); font-size: 13px; }
-.skill-table tr:hover td { background: rgba(200,151,58,.04); cursor: pointer; }
+.skill-table td { padding: 5px 10px; border-bottom: 1px solid rgba(179,154,102,.5); font-size: 13px; }
+.skill-table tr:hover td { background: rgba(110,27,34,.04); cursor: pointer; }
 .skill-table .type-label { font-size: 10px; color: var(--text-dim); }
 .skill-table .skval-cell { color: var(--gold); font-weight: bold; }
 .skill-table .level-cell { color: #4a9460; }
 .skill-table .dropdown-row td { color: #7a7acf; }
 /* BUTTONS */
 .btn { padding: 6px 14px; font-family: inherit; font-size: 13px; cursor: pointer; border: 1px solid; }
-.btn-gold { background: rgba(200,151,58,.1); color: var(--gold); border-color: var(--gold-dim); }
-.btn-gold:hover { background: rgba(200,151,58,.2); }
+.btn-gold { background: rgba(110,27,34,.1); color: var(--gold); border-color: var(--gold-dim); }
+.btn-gold:hover { background: rgba(110,27,34,.2); }
 .btn-red  { background: rgba(150,40,40,.1); color: #c05050; border-color: var(--red-b); }
 .btn-red:hover  { background: rgba(150,40,40,.25); }
 .btn-dim  { background: transparent; color: var(--text-dim); border-color: var(--border); }
@@ -2303,7 +2318,7 @@ function renderBestiaryEditor() {
     <div class="panel-header" style="display:flex;justify-content:space-between;align-items:flex-start">
       <div style="flex:1">
         <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Beastiary entry</div>
-        <input value="${escapeHtml(d.name||'')}" placeholder="Foe name" style="font-family:'Algerian','Georgia',serif;font-weight:bold;font-size:22px;color:var(--gold);border:1px solid transparent;width:100%;background:transparent" onchange="updateBestiaryField('name',this.value)">
+        <input value="${escapeHtml(d.name||'')}" placeholder="Foe name" style="font-family:'Cormorant Garamond','Georgia',serif;font-style:italic;font-weight:bold;font-size:22px;color:var(--gold);border:1px solid transparent;width:100%;background:transparent" onchange="updateBestiaryField('name',this.value)">
       </div>
       <span class="type-badge" style="color:var(--red-b);border-color:var(--red-b)">GM only</span>
     </div>
@@ -3349,7 +3364,7 @@ function renderGoesiMonthView(groupId, isGM) {
   openModal(`
     <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:4px">
       <button class="btn btn-dim" onclick="goesiNavMonth('${groupId}',-1)" title="Previous Goesi">◀</button>
-      <h3 style="margin:0;font-family:'Algerian','Georgia',serif;font-weight:bold;font-size:22px;color:var(--gold);text-align:center">${monthDef.key}<br><span style="font-size:14px;color:var(--gold-dim);font-family:inherit">${monthDef.season} — ${goesiViewYear} RON</span></h3>
+      <h3 style="margin:0;font-family:'Cormorant Garamond','Georgia',serif;font-style:italic;font-weight:bold;font-size:22px;color:var(--gold);text-align:center">${monthDef.key}<br><span style="font-size:14px;color:var(--gold-dim);font-family:inherit">${monthDef.season} — ${goesiViewYear} RON</span></h3>
       <button class="btn btn-dim" onclick="goesiNavMonth('${groupId}',1)" title="Next Goesi">▶</button>
     </div>
     <div class="form-row" style="margin-bottom:10px;align-items:center;justify-content:center">
@@ -3406,7 +3421,7 @@ function renderGoesiDayDetail(groupId, isGM) {
     </div>` : '';
 
   openModal(`
-    <h3 style="margin-bottom:4px;font-family:'Algerian','Georgia',serif;font-weight:bold;font-size:20px;color:var(--gold)">${escapeHtml(dayLabel)}</h3>
+    <h3 style="margin-bottom:4px;font-family:'Cormorant Garamond','Georgia',serif;font-style:italic;font-weight:bold;font-size:20px;color:var(--gold)">${escapeHtml(dayLabel)}</h3>
     <button class="btn btn-dim" style="margin-bottom:10px" onclick="backToGoesiMonth('${groupId}')">◀ Back to ${RON_MONTHS[month].key}</button>
 
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Holidays</div>
@@ -3646,7 +3661,7 @@ function renderOverview() {
 
   let html = `
   <div class="panel">
-    <div class="panel-header"><h2 style="font-family:'Algerian','Georgia',serif;font-weight:bold">${char.name}</h2>${char.nickname ? `<span class="type-badge" style="font-style:italic">"${char.nickname}"</span>` : ''}${char.isNPC ? '<span class="type-badge" style="color:var(--gold)">NPC</span>' : ''}<span class="type-badge">${char.race || ''} ${char.subrace || ''}</span><span class="type-badge">${char.guild || ''}</span></div>
+    <div class="panel-header"><h2 style="font-family:'Cormorant Garamond','Georgia',serif;font-style:italic;font-weight:bold">${char.name}</h2>${char.nickname ? `<span class="type-badge" style="font-style:italic">"${char.nickname}"</span>` : ''}${char.isNPC ? '<span class="type-badge" style="color:var(--gold)">NPC</span>' : ''}<span class="type-badge">${char.race || ''} ${char.subrace || ''}</span><span class="type-badge">${char.guild || ''}</span></div>
     <div class="panel-body">
       <div class="form-row" style="margin-bottom:4px">
         ${['ST','IN','WI','CD','HE','CH','AP'].map(a=>`<div class="computed-item"><span class="ci-label">${a}</span><span class="ci-value">${(char.attrs||{})[a]||'—'}</span></div>`).join('')}
@@ -3705,7 +3720,7 @@ function renderGeneralModule() {
 
   document.getElementById('main').innerHTML = `
   <div class="panel">
-    <div class="panel-header"><h2 style="font-family:'Algerian','Georgia',serif;font-weight:bold">General Information — ${char.name}</h2>
+    <div class="panel-header"><h2 style="font-family:'Cormorant Garamond','Georgia',serif;font-style:italic;font-weight:bold">General Information — ${char.name}</h2>
       <div class="computed-item" style="margin-left:auto"><span class="ci-label">Total Raw XP</span><span class="ci-value" style="font-size:16px">${totalXP.toLocaleString()}</span></div>
       ${char.unspentInitialExp > 0 ? `<div class="computed-item"><span class="ci-label">Unspent Initial Raw XP</span><span class="ci-value" style="font-size:16px;color:var(--gold)">${char.unspentInitialExp.toLocaleString()}</span></div>` : ''}
     </div>
@@ -4923,7 +4938,7 @@ function renderAddSkillList() {
       .sort((a, b) => b.bonus - a.bonus);
 
     listEl.innerHTML = ranked.length ? ranked.map(({s, bonus}) => `
-      <div class="sidebar-item skill-opt" onclick="addSkill('${s.name.replace(/'/g,"\\'")}')" data-name="${s.name.toLowerCase()}" style="padding:5px 12px;border-bottom:1px solid rgba(46,53,80,.3);display:flex;justify-content:space-between;gap:8px">
+      <div class="sidebar-item skill-opt" onclick="addSkill('${s.name.replace(/'/g,"\\'")}')" data-name="${s.name.toLowerCase()}" style="padding:5px 12px;border-bottom:1px solid rgba(179,154,102,.3);display:flex;justify-content:space-between;gap:8px">
         <span>${s.name}</span>
         <span style="display:flex;gap:8px;align-items:center;white-space:nowrap">
           <span style="font-size:10px;color:var(--gold-dim)">${bonus.toFixed(3)}</span>
@@ -4941,7 +4956,7 @@ function renderAddSkillList() {
     listEl.innerHTML = sortedTypes.length ? sortedTypes.map(type => `
       <div style="padding:3px 8px;background:var(--header-bg);color:var(--header-text);font-size:10px;text-transform:uppercase">${type}</div>
       ${(byType[type]||[]).map(s => `
-      <div class="sidebar-item skill-opt" onclick="addSkill('${s.name.replace(/'/g,"\\'")}')" data-name="${s.name.toLowerCase()}" style="padding:5px 12px;border-bottom:1px solid rgba(46,53,80,.3)">
+      <div class="sidebar-item skill-opt" onclick="addSkill('${s.name.replace(/'/g,"\\'")}')" data-name="${s.name.toLowerCase()}" style="padding:5px 12px;border-bottom:1px solid rgba(179,154,102,.3)">
         <span>${s.name}</span>
         <span class="lv" style="font-size:10px">${s.parent ? '↳ '+s.parent : 'Base'}</span>
       </div>`).join('')}
