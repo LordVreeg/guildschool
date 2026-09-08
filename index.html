@@ -1409,6 +1409,21 @@ const BESTIARY_RACE_TEMPLATES = [
     notes: "An Ograk-offshoot Ogrillite found almost exclusively underground, squatter than surface Ograks, averaging 8-10' tall, 500-750 lbs, ST around 18. Longtime servants of Gartier underground; understand smithing/ironworking, social with some other underground races despite a violent temper. Darksight 75'. Combat skill described as similar to Hill Giants, 'very hard'. Noisy: -10 to hide checks. Normally wears armor. Page gives flat Reflex 55/Fort 80/Will 45 baselines rather than a full CC block with a Social value."
   },
   {
+    name: 'Bugbear',
+    hp_formula: '2d8+4 + d5/plev', avg_hp: 13,
+    armor_name: '', shield_name: '', avoidance: 30, protection: 48,
+    bmod: 1, avg_damage: 0, multi: 7,
+    cc_fortitude: 67, cc_reflex: 55, cc_will: 50, cc_surprise: null, cc_social: 39,
+    attacks: [
+      { name: 'mace (favored)', weaponName: '', toHit: '', damageDice: '((2d8+11)/d6)+3', speed: 'SPD 6' },
+      { name: 'halberd (alternate)', weaponName: '', toHit: '', damageDice: '((1d12+18)/d5)+3', speed: 'Speed 8' },
+      { name: 'shortbow (alternate loadout)', weaponName: '', toHit: '', damageDice: 'same stats as mace loadout, 20% multi', speed: '' }
+    ],
+    bonus_abilities: ["Darksight 25'+"], special_abilities: [], exceptional_abilities: [],
+    level_capable: true, possible_classes: ['Cleric', 'Thief', 'Mage'],
+    notes: "Type-Ogrillite (Gartier). 6-8' tall, thick and muscular, furred, with a penchant for sarcasm; averages 14-18 Int. Often acculturate but otherwise prefer Hobgoblin company. Basic Outdoors 30%. Assumed to wear studded leather or light scaled leather with a shield. Alternate loadout: shortbow instead of mace/halberd, same stats but 20% multi. Note: the wiki page's descriptive text appears to reuse Hobgoblin phrasing ('renowned for their keen brains...leaders and thinkers for the Ogrillites') rather than describing Bugbears distinctly -- flagged here rather than silently corrected."
+  },
+  {
     name: 'Candle Corpse',
     hp_formula: 'd8+4', avg_hp: 8.5,
     armor_name: '', shield_name: '', avoidance: 10, protection: 20,
