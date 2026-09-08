@@ -23,7 +23,7 @@
   --dropdown-b:#7A5A8A;
   --red:       #F2DAD2;
   --red-b:     #B33A1E;
-  --input-bg:  #F7F1E0;
+  --input-bg:  #EFE3C4;
   --header-bg: #3E0F14;
   --header-text: #F3E9CE;
 }
@@ -46,11 +46,11 @@ body {
 #topbar h1 { color: var(--header-text); font-family: 'Cinzel', serif; font-weight: 600; font-size: 16px; letter-spacing: 2px; text-transform: uppercase; white-space: nowrap; }
 #topbar .banner-logo { height: 34px; display: block; }
 .cc-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 12px; }
-.cc-cell { background: var(--input-bg); border: 1px solid var(--border); padding: 8px 10px; }
+.cc-cell { background: var(--input-bg); padding: 8px 10px; }
 .cc-cell .cc-name { font-size: 11px; color: var(--gold-dim); text-transform: uppercase; letter-spacing: .5px; }
 .cc-cell .cc-value { font-size: 20px; color: var(--gold); font-weight: bold; }
 .cc-cell .cc-formula { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
-.weight-bar-track { background: var(--input-bg); border: 1px solid var(--border); height: 18px; width: 100%; position: relative; margin-top: 4px; }
+.weight-bar-track { background: var(--input-bg); height: 18px; width: 100%; position: relative; margin-top: 4px; }
 .weight-bar-fill { background: linear-gradient(90deg, #3a6a40, var(--gold-dim)); height: 100%; }
 .weight-bar-fill.over { background: linear-gradient(90deg, var(--red-b), #a03030); }
 .item-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
@@ -88,7 +88,7 @@ body {
 .panel { background: var(--panel); border: 1px solid var(--border); margin-bottom: 16px; }
 .panel-header { background: var(--header-bg); border-bottom: 1px solid var(--border); padding: 8px 14px; display: flex; align-items: center; gap: 10px; }
 .panel-header h2 { color: var(--header-text); font-family: 'Cinzel', serif; font-weight: 600; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; }
-.panel-header .type-badge { font-size: 11px; color: var(--text-dim); background: var(--bg); border: 1px solid var(--border); padding: 1px 6px; }
+.panel-header .type-badge { font-size: 11px; color: var(--text-dim); background: var(--bg); padding: 1px 6px; }
 .panel-header .status-trained { color: #4a9460; font-size: 11px; }
 .panel-header .status-dropdown { color: #7a7acf; font-size: 11px; }
 .panel-body { padding: 14px; }
@@ -97,7 +97,7 @@ body {
 .form-group { display: flex; flex-direction: column; gap: 3px; }
 .form-group label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; }
 .form-group input, .form-group select, .form-group textarea {
-  background: var(--input-bg); color: var(--text); border: 1px solid var(--border);
+  background: var(--input-bg); color: var(--text); border: 1px solid transparent;
   padding: 5px 8px; font-family: inherit; font-size: 13px; min-width: 0;
 }
 .form-group input:focus, .form-group select:focus { border-color: var(--gold); outline: none; }
@@ -112,7 +112,7 @@ body {
 .w250 { width: 250px; }
 .wfull{ flex: 1; min-width: 120px; }
 /* COMPUTED ROW */
-.computed-row { background: rgba(110,27,34,.06); border: 1px solid var(--gold-dim); padding: 10px 14px; margin-bottom: 12px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+.computed-row { background: rgba(110,27,34,.06); padding: 10px 14px; margin-bottom: 12px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
 .computed-item { display: flex; flex-direction: column; gap: 2px; }
 .computed-item .ci-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; }
 .computed-item .ci-value { font-size: 16px; color: var(--gold); font-weight: bold; }
@@ -121,7 +121,7 @@ body {
 .panel-header .computed-item .ci-value { color: #E9C64A; }
 /* ROLLS GRID */
 .rolls-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-bottom: 10px; }
-.rolls-grid input { background: var(--input-bg); color: var(--text); border: 1px solid var(--border); padding: 4px; text-align: center; font-family: inherit; font-size: 13px; width: 100%; }
+.rolls-grid input { background: var(--input-bg); color: var(--text); border: 1px solid transparent; padding: 4px; text-align: center; font-family: inherit; font-size: 13px; width: 100%; }
 .rolls-grid input:focus { border-color: var(--gold); outline: none; }
 .rolls-grid input.has-val { border-color: #3a5a40; background: rgba(60,100,65,.15); }
 /* DIVIDER */
@@ -130,7 +130,7 @@ body {
 .attr-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 12px; }
 .attr-cell { display: flex; flex-direction: column; gap: 3px; align-items: center; }
 .attr-cell label { font-size: 10px; color: var(--gold-dim); text-transform: uppercase; }
-.attr-cell input { background: var(--input-bg); color: var(--text-bright); border: 1px solid var(--border); padding: 6px 4px; text-align: center; font-size: 16px; width: 100%; font-family: inherit; }
+.attr-cell input { background: var(--input-bg); color: var(--text-bright); border: 1px solid transparent; padding: 6px 4px; text-align: center; font-size: 16px; width: 100%; font-family: inherit; }
 .attr-cell input:focus { border-color: var(--gold); outline: none; }
 /* OVERVIEW TABLE */
 .skill-table { width: 100%; border-collapse: collapse; }
