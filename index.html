@@ -1529,6 +1529,21 @@ const BESTIARY_RACE_TEMPLATES = [
     notes: "One of several named size-variants of the Ungol giant-spider line. Territorial, rarely more than 1-2 encountered together outside a lair. Not sapient, not level/Cleric/thief capable; hunts by ambush and web. Poison (full): Fort CC-15%, (3d6+6)/d6 damage if the save is made, (4d6+16)/d6 if missed. Web: Reflex CC-15% to avoid entangle; may cocoon a downed target. Darksight 30' (vibration/heat sense). Wall/ceiling climb 90%."
   },
   {
+    name: 'Gnoll',
+    hp_formula: 'd8+6 + d4/plev', avg_hp: 11,
+    armor_name: '', shield_name: '', avoidance: 30, protection: 40,
+    bmod: 1, avg_damage: 0, multi: 8,
+    cc_fortitude: 60, cc_reflex: 65, cc_will: 40, cc_surprise: null, cc_social: 45,
+    attacks: [
+      { name: 'scimitar (favored)', weaponName: '', toHit: '', damageDice: '((1d8+1d6+11)/d6)+2', speed: 'SPD 5' },
+      { name: 'halberd (alternate)', weaponName: '', toHit: '', damageDice: '((1d12+18)/d5)+2', speed: 'Speed 8' },
+      { name: 'shortbow (alternate loadout)', weaponName: '', toHit: '', damageDice: 'same stats as scimitar loadout, 20% multi', speed: '' }
+    ],
+    bonus_abilities: ["Darksight 25'+"], special_abilities: [], exceptional_abilities: [],
+    level_capable: true, possible_classes: ['Cleric', 'Thief'],
+    notes: "Type-Ogrillite. 6-7' tall, thin and rangy, with hyena faces and light yellow fur. Disorganized, chaotic, and bullies -- but surprisingly social and honor-bound for all that, still self-interested, and rarely back down from a fight. Basic Outdoors 30%. Assumed to wear raggedy Studded Leather or light scaled leather with a shield."
+  },
+  {
     name: 'Goblin',
     hp_formula: 'd6 + d4/plev', avg_hp: 3.5,
     armor_name: '', shield_name: '', avoidance: 25, protection: 20,
