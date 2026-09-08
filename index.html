@@ -2318,7 +2318,7 @@ function renderBestiaryEditor() {
     <div class="panel-header" style="display:flex;justify-content:space-between;align-items:flex-start">
       <div style="flex:1">
         <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Beastiary entry</div>
-        <input value="${escapeHtml(d.name||'')}" placeholder="Foe name" style="font-family:'Cormorant Garamond','Georgia',serif;font-style:italic;font-weight:bold;font-size:22px;color:var(--gold);border:1px solid transparent;width:100%;background:transparent" onchange="updateBestiaryField('name',this.value)">
+        <input value="${escapeHtml(d.name||'')}" placeholder="Foe name" style="font-family:'Cormorant Garamond','Georgia',serif;font-style:italic;font-weight:bold;font-size:22px;color:var(--header-text);border:1px solid transparent;width:100%;background:transparent" onchange="updateBestiaryField('name',this.value)">
       </div>
       <span class="type-badge" style="color:var(--red-b);border-color:var(--red-b)">GM only</span>
     </div>
