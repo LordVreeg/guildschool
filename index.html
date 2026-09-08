@@ -117,6 +117,8 @@ body {
 .computed-item .ci-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; }
 .computed-item .ci-value { font-size: 16px; color: var(--gold); font-weight: bold; }
 .computed-item .ci-value.skval { font-size: 22px; color: var(--text-bright); }
+.panel-header .computed-item .ci-label { color: var(--header-text); opacity: .7; }
+.panel-header .computed-item .ci-value { color: #E9C64A; }
 /* ROLLS GRID */
 .rolls-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-bottom: 10px; }
 .rolls-grid input { background: var(--input-bg); color: var(--text); border: 1px solid var(--border); padding: 4px; text-align: center; font-family: inherit; font-size: 13px; width: 100%; }
@@ -3722,7 +3724,7 @@ function renderGeneralModule() {
   <div class="panel">
     <div class="panel-header"><h2 style="font-family:'Cormorant Garamond','Georgia',serif;font-style:italic;font-weight:bold">General Information — ${char.name}</h2>
       <div class="computed-item" style="margin-left:auto"><span class="ci-label">Total Raw XP</span><span class="ci-value" style="font-size:16px">${totalXP.toLocaleString()}</span></div>
-      ${char.unspentInitialExp > 0 ? `<div class="computed-item"><span class="ci-label">Unspent Initial Raw XP</span><span class="ci-value" style="font-size:16px;color:var(--gold)">${char.unspentInitialExp.toLocaleString()}</span></div>` : ''}
+      ${char.unspentInitialExp > 0 ? `<div class="computed-item"><span class="ci-label">Unspent Initial Raw XP</span><span class="ci-value" style="font-size:16px">${char.unspentInitialExp.toLocaleString()}</span></div>` : ''}
     </div>
     <div class="panel-body">
       <div class="form-row">
