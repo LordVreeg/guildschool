@@ -1960,7 +1960,7 @@ function showBestiaryModule() {
 // Reverse-engineered from the user's "Monster/Foe EXP Calculator" spreadsheet
 // (its actual cell formulas, not just one example's computed values).
 function computeFoeXP(e) {
-  const hp = parseFloat(e.avg_hp) || 0;
+  const hp = parseFloat(e.max_hp) || parseFloat(e.avg_hp) || 0;
   const av = parseFloat(e.avoidance) || 0;
   const pr = parseFloat(e.protection) || 0;
   const bmod = parseFloat(e.bmod) || 0;
