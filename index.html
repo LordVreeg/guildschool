@@ -2003,11 +2003,12 @@ async function renderBestiaryModule() {
       <div class="note" style="margin-bottom:10px">Your personal library of foe templates — private to you, not visible to players or other GMs. Duplicate an entry to quickly build a variant.</div>
       ${bestiaryCache.length === 0 ? '<div class="note" style="padding:10px 0">No foes yet. Click "+ New Foe" to build one.</div>' : ''}
       ${bestiaryCache.length ? `<table class="skill-table">
-        <thead><tr><th>Name</th><th>Type</th><th>Location</th><th>Prepped for</th><th>HP</th><th>XP</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Type</th><th>Lvl</th><th>Location</th><th>Prepped for</th><th>HP</th><th>XP</th><th></th></tr></thead>
         <tbody>
           ${bestiaryCache.map(e => `<tr>
             <td style="cursor:pointer;color:var(--gold)" onclick="openEditBestiaryEntry('${e.id}')">${escapeHtml(e.name)}</td>
             <td class="note">${e.race ? escapeHtml(e.race) : '—'}</td>
+            <td class="note">${e.level || 1}</td>
             <td class="note">${e.location ? escapeHtml(e.location) : '—'}</td>
             <td class="note">${e.group_id && groupNameById[e.group_id] ? escapeHtml(groupNameById[e.group_id]) : '—'}</td>
             <td>${e.current_hp != null ? `${e.current_hp}/${e.max_hp}` : (e.avg_hp != null ? `avg ${e.avg_hp}` : '—')}</td>
