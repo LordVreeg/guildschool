@@ -1490,6 +1490,21 @@ const BESTIARY_RACE_TEMPLATES = [
     notes: "Large tribal giants of northern climes, equally at home underground near magma as in tropical climes, 15-17' tall, avg ST 21. Favor swords and boulder-throwing, wise in the wild, totally immune to most heat/fire. CAVEAT: this page's stat text is word-for-word identical to the Cloud Giant page -- the fire-themed abilities plausibly belong here, but the duplication means one of the two pages wasn't customized after copy/paste; treat both with some suspicion. Outdoor skill 35%. Spellcasting at 9th-level equivalent: Heat Generation 3/day, Firebank 2/day, Flame Blade 2/day."
   },
   {
+    name: 'Fire Lizard',
+    hp_formula: '4d8+16', avg_hp: 34,
+    armor_name: '', shield_name: '', avoidance: 30, protection: 40,
+    bmod: 0.9, avg_damage: 0, multi: 20,
+    cc_fortitude: 70, cc_reflex: 50, cc_will: 35, cc_surprise: 20, cc_social: 0,
+    attacks: [
+      { name: 'Bite (50% of attacks)', weaponName: '', toHit: '', damageDice: '((3d6+10)/d6)+8', speed: 'Speed 5' },
+      { name: 'Claw x2 (50% of attacks)', weaponName: '', toHit: '', damageDice: '((2d6+6)/d6)+3 each', speed: 'Speed 6' },
+      { name: 'Fire Breath (cone, 1/20 segs)', weaponName: '', toHit: '', damageDice: '(5d6+8)/d4 fire, Reflex CC for half', speed: 'Speed 4' }
+    ],
+    bonus_abilities: [], special_abilities: ['Immune to fire/heat (incl. magical)'], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "Large territorial reptile related to the giant lizard, roughly draft-horse-sized, grey-green scales with a reddish-orange cast from fire-producing glands. Not intelligent but cunning as a large predator -- patient, observant, aware of its own range. Move 15'. INT 2-4 (animal, territorial). Intensely territorial, defends its ground aggressively but rarely pursues prey beyond established boundaries; most dangerous when cornered or defending a lair. No special weapon requirements to damage. Fire Breath: 20' long, 10'-wide-at-terminus cone, (5d6+8)/d4 fire damage (Reflex CC for half); usable once per 20 segments. Typically opens with the breath weapon before closing to melee, and will close to melee immediately after using it rather than waiting out the cooldown. Lairs accumulate char marks on stonework/vegetation from years of territorial use; other creatures generally learn to avoid a Fire Lizard's range entirely."
+  },
+  {
     name: 'Frost Giant',
     hp_formula: '43+5d10 + 1-8/plev', avg_hp: 70.5,
     armor_name: '', shield_name: '', avoidance: 36, protection: 115,
