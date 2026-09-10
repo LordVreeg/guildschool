@@ -2272,6 +2272,28 @@ function rollBestiaryHpClick() {
   renderBestiaryEditor();
 }
 
+// Full weapon-quality-vs-Protection ladder from the "Damage Reduction (void-sourced)"
+// wiki rule: the creature's stated Protection is the "Magicked" tier; each step away
+// from it (better or worse weapon) shifts Protection by 10.
+function insertVoidDrContinuum() {
+  const base = parseFloat(bestiaryDraft.protection) || 0;
+  const tiers = [
+    ['Normal', base + 30],
+    ['Silver', base + 20],
+    ['Masterwork', base + 10],
+    ['Magicked', base],
+    ['Magicked+5%', base - 10],
+    ['Magicked+10%', base - 20],
+    ['Magicked+15%', base - 30],
+    ['Magicked+20%', base - 40],
+    ['Magicked+25%', base - 50]
+  ];
+  const text = 'Void Damage Reduction (Protection by weapon quality, ' + base + ' base vs Magicked, ±10 per tier): '
+    + tiers.map(([label, val]) => `${label} ${val}`).join(' / ') + '.';
+  bestiaryDraft.notes = bestiaryDraft.notes ? bestiaryDraft.notes.trim() + ' ' + text : text;
+  renderBestiaryEditor();
+}
+
 // Average damage per hit for the "dividing die" mechanic used throughout the
 // wiki's Bestiary: roll damage dice, add a flat bonus, then divide by an
 // INDEPENDENTLY rolled die (e.g. "((2d4+11)/D6)+0"). That division isn't a
@@ -2470,6 +2492,10 @@ function renderBestiaryEditor() {
         <div class="form-group"><label>Multi</label><input type="number" class="w80" value="${d.multi||0}" onchange="updateBestiaryNum('multi',this.value)"></div>
       </div>
       <div class="note" style="margin-bottom:10px">Bmod × Avg HP = ${Math.round((parseFloat(d.bmod)||0) * (parseFloat(d.avg_hp)||0) * 100) / 100} -- basic chance to hit.</div>
+      <div class="form-row" style="margin-bottom:10px">
+        <div class="form-group"><button class="btn btn-dim" onclick="insertVoidDrContinuum()">⛓ Void DR continuum</button></div>
+        <div class="note" style="flex:1;align-self:center">Inserts the full Normal/Silver/Masterwork/Magicked/+5%/+10%/+15%/+20%/+25% Protection ladder (±10 per tier off the Protection value above) into Notes below.</div>
+      </div>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Hit points (this foe)</div>
       <div class="form-row" style="align-items:flex-end">
