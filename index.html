@@ -1347,7 +1347,7 @@ function showUtilitiesModule() {
 // memory for the full design; this is the first piece of it (the
 // combat/initiative tracker itself isn't built yet).
 // ============================================================
-const BESTIARY_BONUS_ABILITIES = ['Light poison', 'Light spell use', 'Quick movement', 'Damage resistance', 'Missiles', "Darksight 25'+", 'Web / minor impair move', 'Wallclimb / swim / flight', 'Hide'];
+const BESTIARY_BONUS_ABILITIES = ['Light poison', 'Light spell use', 'Quick movement', 'Damage resistance', 'Missiles', "Darksight 25'+", 'Web / minor impair move', 'Wallclimb / swim / flight', 'Hide', 'Special or magic to hit'];
 const BESTIARY_SPECIAL_ABILITIES = ['Poison', '25+ SP caster', '12%+ crit', 'Undead perm damage', '15%+ magic resist', '10%+ magic-to-hit', 'Regeneration', 'Invisibility', 'Hard to kill', 'Minor Breath Weapon'];
 const BESTIARY_EXCEPTIONAL_ABILITIES = ['60+ SP spells', '50%+ magic resist', 'Major Breath Weapon'];
 
@@ -1371,7 +1371,7 @@ const BESTIARY_RACE_TEMPLATES = [
     bmod: 0, avg_damage: 0, multi: 0,
     cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
     attacks: [{ name: '3 pilum of adamant', weaponName: '', toHit: '', damageDice: '((2d8+14)/d5)+5', speed: 'SPD 5 (ready 5)' }],
-    bonus_abilities: [], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
+    bonus_abilities: ['Special or magic to hit'], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "A rank-1 named spectre ('Jellicose') attuned to the House of Earth, in ectoplasmic and stone-like armor, wielding three adamant pilums. Fear aura 15'. Its cursed weapon inflicts permanent HP damage on a failed Will save (will+10 penalty). MR 15%, +30 vs earth-based effects. Protection scales up sharply against lower-quality weapons: 84 vs magic+10/magic, 94 special, 104 silver, 114 plain. Resistances: Spirit 30, Earth 35, Death 20, Necromantic 20. Source sheet lists a separate 'Bmod-NATURAL 50' stat not mapped to the bmod field above."
   },
@@ -1382,7 +1382,7 @@ const BESTIARY_RACE_TEMPLATES = [
     bmod: 0, avg_damage: 0, multi: 0,
     cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
     attacks: [{ name: 'scimitar, bloodletter', weaponName: '', toHit: '', damageDice: '((1d8+1d6+11)/d6)+3', speed: 'SPD 5 (ready 5)' }],
-    bonus_abilities: [], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
+    bonus_abilities: ['Special or magic to hit'], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "A rank-2 named Wight ('Barastals') of the Omwo~ race, in rags over ancient scale mail, wielding a cursed bloodletting scimitar (undead touch, permanent HP damage on a missed CC roll at will+10). Protection scales: 42 vs magic, 37 special, 47 silver, 57 plain weapons. Carries treasure including a Book of Prayers of St. Arbor, coin, and a skull-motif ring."
   },
@@ -1393,7 +1393,7 @@ const BESTIARY_RACE_TEMPLATES = [
     bmod: 0, avg_damage: 0, multi: 0,
     cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
     attacks: [{ name: 'scimitar, bloodletter', weaponName: '', toHit: '', damageDice: '((1d8+1d6+11)/d6)+4', speed: 'SPD 5 (ready 5)' }],
-    bonus_abilities: [], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
+    bonus_abilities: ['Special or magic to hit'], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "A rank-2 named Wraith ('Barastal wraith'), in rags over ancient plate armor, wielding a cursed bloodletting scimitar that permanently drains HP on a failed Will CC. Protection scales: 57 vs magic, 52 special, 62 silver, 72 plain weapons. Resistances: Spirit 20, Death 10, Necromantic 10."
   },
@@ -1496,7 +1496,7 @@ const BESTIARY_RACE_TEMPLATES = [
     bmod: 1, avg_damage: 0, multi: 10,
     cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
     attacks: [{ name: 'Claws', weaponName: '', toHit: '', damageDice: '((3d6+15)/D6)+5', speed: 'SPD 6' }],
-    bonus_abilities: [], special_abilities: ['Regeneration'], exceptional_abilities: [],
+    bonus_abilities: ['Special or magic to hit'], special_abilities: ['Regeneration'], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "Lesser demonic foot soldiers of the Eighth House (Entropic Outsiders) -- foolish, aggressive, stupid, angry. 4-5' tall, squat, reek of rotten bacon. Regenerates 1 HP per 10 segments. Requires silver or magic weapon to bypass protection."
   },
@@ -1548,7 +1548,7 @@ const BESTIARY_RACE_TEMPLATES = [
       { name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d8+9)/d6)+1', speed: 'Speed 5' },
       { name: 'Horn (Gore)', weaponName: '', toHit: '', damageDice: '((3d6+11)/d6)+2', speed: 'Speed 6' }
     ],
-    bonus_abilities: ['Wallclimb / swim / flight', 'Hide'], special_abilities: [], exceptional_abilities: [],
+    bonus_abilities: ['Wallclimb / swim / flight', 'Hide', 'Special or magic to hit'], special_abilities: [], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "Statue-like winged humanoids of the House of Earth -- true flesh-and-stone creatures, not constructs or undead, so they CAN be charmed, slept, or reasoned with despite low INT (3-4). Prized as guardians since they'll hold a post indefinitely without pay, sleep, or supervision. Attack split Claw 40%/Bite 20%/Horn 40%. Base protection is magicked (40), rising in tiers: PR50 vs Masterwork, PR60 vs Silver, PR70 vs Normal weapons. Aerial Charge: a 10'+ flight run-up reduces the damage dividing die by 1 on a connecting claw/horn, usually once per combat. Statue Mimicry: motionless it's indistinguishable from carved stone, granting automatic surprise unless spotted first. Silent flight. Move 12'/Fly 25'."
   },
@@ -1562,7 +1562,7 @@ const BESTIARY_RACE_TEMPLATES = [
       { name: 'Claws (x2)', weaponName: '', toHit: '', damageDice: '((2d6+6)/d6)+2', speed: 'Speed 3' },
       { name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d8+7)/d6)+2', speed: 'Speed 4' }
     ],
-    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    bonus_abilities: ['Special or magic to hit'], special_abilities: [], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "The greater form of the Ghoul -- older, more self-aware, more dangerous, retaining enough of its former self to feel hatred and direct its ghoul pack with real tactical intent. Multi split 40% bite/60% claw. Carrion Stench: living creatures within 10' must Fort CC-10% every 10 segments or suffer -10% to all CCs/attacks for 10 segments. Paralytic Touch: Fort CC-20%, paralysis 3d6+4 segments, affects even creatures normally resistant to ghoul paralysis. Immune to sleep, charm, poison, disease, cold; requires silver/magic/masterwork weapon to bypass protection. Holds ghouls back until the stench weakens foes, then sends them in while targeting the most dangerous opponent itself. If destroyed but not dismembered, attempts to reform over 2d6 rounds unless fire, holy effects, or sufficient Necromantic magic prevents it. Move 18'."
   },
@@ -1576,7 +1576,7 @@ const BESTIARY_RACE_TEMPLATES = [
       { name: 'Claws (x2)', weaponName: '', toHit: '', damageDice: '((2d4+6)/d6)+1', speed: 'Speed 4' },
       { name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d6+7)/d6)+1', speed: 'Speed 5' }
     ],
-    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    bonus_abilities: ['Special or magic to hit'], special_abilities: [], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "Feral, cunning undead driven by hunger rather than full self-awareness, retaining just enough of a soul splinter for simple tactics -- weakest-target focus, avoiding obvious casters. Feared for its paralyzing touch. Multi split 40% bite/60% claw. Carrion Stench (lesser): living creatures within 5' must Fort CC each round or suffer -5% to CCs/attacks that round. Paralytic touch: any successful hit forces Fort CC-15%, failure = paralysis 2d6+4 segments (doesn't stack -- a second failure just resets duration); undead/necromantic-immune creatures unaffected. Immune to sleep, charm, poison, disease, cold; requires silver/magic/masterwork weapon to bypass protection. At 0 HP keeps clawing weakly for 1d4 segments unless the head is destroyed. Move 15'."
   },
@@ -1627,7 +1627,7 @@ const BESTIARY_RACE_TEMPLATES = [
       { name: 'Bite (60% of attacks)', weaponName: '', toHit: '', damageDice: '((3d6+15)/d5)+2', speed: 'Speed 5' },
       { name: 'Tail sweep (40% of attacks)', weaponName: '', toHit: '', damageDice: '((2d6+10)/d6)+1', speed: 'Speed 7' }
     ],
-    bonus_abilities: ['Petrifying Blood (potent)', 'Earthsense'], special_abilities: [], exceptional_abilities: ['Greater Petrifying Gaze'],
+    bonus_abilities: ['Petrifying Blood (potent)', 'Earthsense', 'Special or magic to hit'], special_abilities: [], exceptional_abilities: ['Greater Petrifying Gaze'],
     level_capable: false, possible_classes: [],
     notes: "House of Earth. Draft-horse-sized (much lower-slung), an armored eight-legged mass -- larger, older, and far more dangerous than the common Basilisk; believed effectively immortal barring violent death. Move 12'. INT 4-6 (cunning animal, territorial, remembers prior encounters). Found in areas of strong Earth-house resonance, deep wilderness or long-undisturbed sites. Immune to its own gaze and lesser Basilisks' gaze; +30% to saves vs Earth-school magic; immune to stone/petrification effects itself. Requires magic or masterwork weapons to bypass PR normally. Tail sweep hits a 10' arc behind it; Reflex CC-10% or knocked down. Multi 18%, split roughly 60% bite / 40% tail. Greater Petrifying Gaze (exceptional): functions on any living creature within 60' that merely looks in its general direction -- direct eye contact is NOT required. Fort CC-10% or petrification begins immediately; a failed save slows the target 50% as stone creeps from the extremities; a second failed save within 30 seconds (half the common Basilisk's window) fully petrifies. Stone to Flesh or equivalent required to reverse. Averting the eyes entirely prevents the effect but imposes -30% to all attack CCs; a Reflex roll -10 must be made every 15 segs to keep the gaze averted. Earthsense (bonus): senses vibration through the ground within 120', cannot be surprised by anything moving on foot in that range and does not need line of sight to detect it; cannot be snuck up on from the ground (negated by flight/levitation approach, but not the gaze). Petrifying Blood (bonus, potent): as common Basilisk but Fort CC-15%; a critical failure (missing by 30%+) partially petrifies the affected limb, -25% effectiveness for 2 hours unless treated with magical healing. Lair accumulates petrified victims over decades, sometimes mistaken for sculpture -- may hold valuable items. Blood and ground eye are extraordinarily potent, valuable alchemical components. Example: Biffin, a Greater Basilisk that has held a ruined district of Khav Verisan for 60+ years; even Ran Jaheen's servants avoid its range."
   },
@@ -1652,7 +1652,7 @@ const BESTIARY_RACE_TEMPLATES = [
       { name: 'Ambretton Brass Huge falchion (2H)', weaponName: '', toHit: '', damageDice: '(22+1d12)/d5+4', speed: 'Speed 9 (ready 8)' },
       { name: 'Tail (poison)', weaponName: '', toHit: '', damageDice: '(14+3d6)/d6+2, plus poison (4-32)/d4 per 10 rounds for 40 sec if Fort CC-40 missed', speed: 'Speed 3 (ready 3)' }
     ],
-    bonus_abilities: [], special_abilities: ['12%+ crit', '15%+ magic resist'], exceptional_abilities: [],
+    bonus_abilities: ['Special or magic to hit'], special_abilities: ['12%+ crit', '15%+ magic resist'], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "A unique named Fiend of the 'Devilkin, major' race dwelling in a monastery, 15' tall, wreathed in red-tinged smoke, two sets of arms, a long tail, huge wings. Wears Black Dragon Hide armor and wields a huge Ambretton Brass falchion two-handed, backed by a venomous tail attack. A high-level unique boss-tier NPC worth 9100 XP. Protection scales: 149 base, 105/115/125/135/145 vs +15/+5/magic/silver/masterwork weapon grades respectively. Perfect Strike 15% every hit. Crit 13%. MR 25%. Immune to acid and poison. Summons a Dretch 10% of the time, 3/day. Casts Wave of Slowing at level 14, plus Hiding Hole, Word of the Charmer, and Flesh to Stone. The sheet also shows an unlabeled '12%' figure near its one-handed falchion calc, separate from the explicit 'multi attack 5%' used above -- meaning unclear."
   },
@@ -1762,7 +1762,7 @@ const BESTIARY_RACE_TEMPLATES = [
     bmod: 0, avg_damage: 0, multi: 8,
     cc_fortitude: 80, cc_reflex: 30, cc_will: 60, cc_surprise: 50, cc_social: null,
     attacks: [{ name: 'Bite (any head: dragon/lion/goat)', weaponName: '', toHit: '', damageDice: '(3d6+19)/d6+4 (+3 necrotic)', speed: 'Speed 5 (ready 5)' }],
-    bonus_abilities: [], special_abilities: ['12%+ crit', '15%+ magic resist', 'Minor Breath Weapon'], exceptional_abilities: [],
+    bonus_abilities: ['Special or magic to hit'], special_abilities: ['12%+ crit', '15%+ magic resist', 'Minor Breath Weapon'], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "An undead chimera created in Igbar bearing dragon, lion, and goat heads, all biting for identical damage (weapon skill listed as bite/bite/claw/butt). Clad in necrotic hide armor; needs silver weapons to bypass its protection fully (74 vs regular/non-silver weapons). Crit 13%. MR 25%. Immune to poison and mind-affecting effects. Breathes fire 3/day (20% chance per round): spray pattern, Reflex CC halves damage, Reflex CC by 25% quarters it, armor protection only 1/4 effective, damage (4d8+15)/d4 (avg ~17.2, under the 20-avg Minor/Major breath-weapon threshold). Source sheet lists a separate 'Bmod-NATURAL 35' stat not mapped to the bmod field above."
   },
@@ -1776,7 +1776,7 @@ const BESTIARY_RACE_TEMPLATES = [
       { name: 'Fore hooves (x2)', weaponName: '', toHit: '', damageDice: '((2d6+8)/d6)+2 each, cold fire damage', speed: 'Speed 4' },
       { name: 'Bite', weaponName: '', toHit: '', damageDice: '((d8+6)/d4)+1', speed: 'Speed 5' }
     ],
-    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    bonus_abilities: ['Special or magic to hit'], special_abilities: [], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "A creature of the House of Death -- a great black horse with hooves of cold fire and ash-scented breath, obtained through bargains that never favor the rider long-term. Multi split 50% hooves/50% bite. Cold Fire: hoof damage bypasses 10 points of non-magical armor protection. Terror Aura: natural animals within 60' must Will CC-20% on first sight or flee 3d10 segments (trained war animals save at Will CC-10%), checked once per encounter. Dread Presence: living creatures seeing it for the first time make a Will CC or suffer -5% to all CCs for 5 segments. Immune to sleep, charm, poison, disease, normal fire/cold; cannot be turned as undead (a creature of Death, not itself undead); requires magic weapon to bypass protection. Protects a mounted rider, fighting on independently if the rider is destroyed. Move 30'/sec, INT 6-9."
   },
@@ -1860,7 +1860,7 @@ const BESTIARY_RACE_TEMPLATES = [
     bmod: 0, avg_damage: 0, multi: 0,
     cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
     attacks: [{ name: 'morningstar', weaponName: '', toHit: '', damageDice: '((2d8+14)/d5)+3', speed: 'Speed 8 (ready 8)' }],
-    bonus_abilities: [], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
+    bonus_abilities: ['Special or magic to hit'], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "A rank-1 example spectre (no personal name given), wielding a morningstar. Ectoplasmic and undead like the Barastal Earth Spectre variant, but without the earth attunement or its elevated protection tiers. Protection scales: 74 vs magic+10, 84 vs magic, 94 special, 104 silver, 114 plain weapons. Bloodletter-style weapon causes permanent HP damage on a failed Will save (will+10 penalty). Fear effect with a Will save at 20'."
   },
@@ -1947,7 +1947,7 @@ const BESTIARY_RACE_TEMPLATES = [
     bmod: 1, avg_damage: 0, multi: 0,
     cc_fortitude: 70, cc_reflex: 50, cc_will: 60, cc_surprise: null, cc_social: 10,
     attacks: [],
-    bonus_abilities: [], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
+    bonus_abilities: ['Special or magic to hit'], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
     level_capable: true, possible_classes: [],
     notes: "Cunning undead -- a spirit from a grave imprisoned in the ancient body, aware of its condition and hating life; can reason well enough to avoid priests and pick dangerous targets first. Strong (avg 15 ST), not slow. Retains armor/shield use. Usually spawned from a grave and spirit; can be charmed or commanded by necromancers and greater undead. +10 Protection vs piercing weapons. Requires magic, silver, or masterwork weapons to hit, or Protection effectively +10 higher. Immune to sleep and charm. Not a caster. Lesser undead often flock to a Wight's banner in a boneyard or old battle scene. Fort save -15 vs its permanent HP loss ability."
   },
@@ -1969,7 +1969,7 @@ const BESTIARY_RACE_TEMPLATES = [
     bmod: 1, avg_damage: 0, multi: 0,
     cc_fortitude: 70, cc_reflex: 50, cc_will: 65, cc_surprise: null, cc_social: 10,
     attacks: [{ name: 'scimitar, bloodletter', weaponName: '', toHit: '', damageDice: '((1d8+1d6+11)/d6+3)', speed: 'Speed 5 (ready 5)' }],
-    bonus_abilities: [], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
+    bonus_abilities: ['Special or magic to hit'], special_abilities: ['Undead perm damage'], exceptional_abilities: [],
     level_capable: true, possible_classes: [],
     notes: "Cunning undead similar to Wights but less corporeal -- a spirit from a grave imprisoned in its ancient body, aware and hating life, cunning enough to prioritize dangerous foes and avoid priests. Strong (avg 15 ST), retains armor/shield use. Unlike Wights, not created by necromancy spells, but can be charmed or commanded by necromancers and greater undead; lesser undead flock to its banner too. +10 Protection vs piercing weapons. Requires magic weapon to hit. Immune to sleep and charm. Not a caster. Permanently drains HP on a failed Fort save -25 unless magically returned. The wiki page also embeds a specific rank-1 unnamed Wraith example NPC below the general description (HP 30, AV20/PRO 52, scaling to 62 vs silver/72 vs plain) whose bloodletter scimitar stats are reflected in the attack above."
   },
