@@ -1348,8 +1348,8 @@ function showUtilitiesModule() {
 // combat/initiative tracker itself isn't built yet).
 // ============================================================
 const BESTIARY_BONUS_ABILITIES = ['Light poison', 'Light spell use', 'Quick movement', 'Damage resistance', 'Missiles', "Darksight 25'+", 'Web / minor impair move', 'Wallclimb / swim / flight', 'Hide'];
-const BESTIARY_SPECIAL_ABILITIES = ['Poison', '25+ SP caster', '12%+ crit', 'Undead perm damage', '15%+ magic resist', '10%+ magic-to-hit', 'Regeneration', 'Invisibility', 'Hard to kill'];
-const BESTIARY_EXCEPTIONAL_ABILITIES = ['60+ SP spells', '50%+ magic resist'];
+const BESTIARY_SPECIAL_ABILITIES = ['Poison', '25+ SP caster', '12%+ crit', 'Undead perm damage', '15%+ magic resist', '10%+ magic-to-hit', 'Regeneration', 'Invisibility', 'Hard to kill', 'Minor Breath Weapon'];
+const BESTIARY_EXCEPTIONAL_ABILITIES = ['60+ SP spells', '50%+ magic resist', 'Major Breath Weapon'];
 
 // Base-creature stat templates transcribed from the wiki's Bestiary section.
 // Picking one of these in the editor pre-fills the stat fields below, same
@@ -1740,9 +1740,9 @@ const BESTIARY_RACE_TEMPLATES = [
     bmod: 0, avg_damage: 0, multi: 8,
     cc_fortitude: 80, cc_reflex: 30, cc_will: 60, cc_surprise: 50, cc_social: null,
     attacks: [{ name: 'Bite (any head: dragon/lion/goat)', weaponName: '', toHit: '', damageDice: '(3d6+19)/d6+4 (+3 necrotic)', speed: 'Speed 5 (ready 5)' }],
-    bonus_abilities: [], special_abilities: ['12%+ crit', '15%+ magic resist'], exceptional_abilities: [],
+    bonus_abilities: [], special_abilities: ['12%+ crit', '15%+ magic resist', 'Minor Breath Weapon'], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
-    notes: "An undead chimera created in Igbar bearing dragon, lion, and goat heads, all biting for identical damage (weapon skill listed as bite/bite/claw/butt). Clad in necrotic hide armor; needs silver weapons to bypass its protection fully (74 vs regular/non-silver weapons). Crit 13%. MR 25%. Immune to poison and mind-affecting effects. Breathes fire 3/day (20% chance per round): spray pattern, Reflex CC halves damage, Reflex CC by 25% quarters it, armor protection only 1/4 effective, damage (4d8+15)/d4. Source sheet lists a separate 'Bmod-NATURAL 35' stat not mapped to the bmod field above."
+    notes: "An undead chimera created in Igbar bearing dragon, lion, and goat heads, all biting for identical damage (weapon skill listed as bite/bite/claw/butt). Clad in necrotic hide armor; needs silver weapons to bypass its protection fully (74 vs regular/non-silver weapons). Crit 13%. MR 25%. Immune to poison and mind-affecting effects. Breathes fire 3/day (20% chance per round): spray pattern, Reflex CC halves damage, Reflex CC by 25% quarters it, armor protection only 1/4 effective, damage (4d8+15)/d4 (avg ~17.2, under the 20-avg Minor/Major breath-weapon threshold). Source sheet lists a separate 'Bmod-NATURAL 35' stat not mapped to the bmod field above."
   },
   {
     name: 'Nightmare',
@@ -1913,7 +1913,7 @@ const BESTIARY_RACE_TEMPLATES = [
       { name: 'Bite', weaponName: '', toHit: '', damageDice: '((4d10+22)/d4)+(age cat x2)', speed: 'SPD 16' },
       { name: 'Breath Weapon (Cone of Killing Cold)', weaponName: '', toHit: '', damageDice: 'Hit: (3d8+10)/d6 + (age cat x2); Miss: half damage', speed: '' }
     ],
-    bonus_abilities: [], special_abilities: ['Hard to kill', 'Minor Breath Weapon (scales with Age Category)'], exceptional_abilities: [],
+    bonus_abilities: [], special_abilities: ['Hard to kill', 'Minor Breath Weapon'], exceptional_abilities: [],
     level_capable: false, possible_classes: [],
     notes: "The least of the true Sauroid dragon-lines -- smallest, least cunning, shortest-lived, but still fearsome. Sullen and territorial rather than venal, lower INT (8-12), imbued with a connection to the Endless Ocean (House of Water), giving strong Hydromancy and cold magic despite unremarkable general spellcasting. Scales run chalky ivory in youth to frost-white in age. All stats scale by Age Category -- figures above are the per-category base; protection gains +2-6 more per category. Bite Multi 8% (separate from the 16% Claw Multi used above). Basic Detect 25%. Detect Magic 30%. Hard/Harder to Kill 1/day each. Immunity to Cold 3/day. Fear at 4th level + age category. Breath Weapon (Cone of Killing Cold) 3/day: ices/slicks surfaces for 2-12 segments after, Reflex CC-15 or fall prone moving through it, Fort CC-30. Breath avg damage is ~9.6 (dice) + 2/Age Category flat -- Minor at Age Category 1-5 (under 20 avg), crosses into Major (20+ avg) at Age Category 6 and up; re-tag to Major/exceptional for an aged specimen if the GM sets its Age Category that high."
   },
