@@ -1802,11 +1802,12 @@ const BESTIARY_RACE_TEMPLATES = [
     cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
     attacks: [
       { name: 'Claw', weaponName: '', toHit: '', damageDice: '((4d6+22)/D5)+(age cat x2)', speed: 'SPD 8' },
-      { name: 'Bite', weaponName: '', toHit: '', damageDice: '((5d12+30)/d4)+(age cat x3)', speed: 'SPD 15' }
+      { name: 'Bite', weaponName: '', toHit: '', damageDice: '((5d12+30)/d4)+(age cat x3)', speed: 'SPD 15' },
+      { name: 'Fire Breath (3/day)', weaponName: '', toHit: '', damageDice: 'Bite damage x1.5, Reflex CC-10 for half / CC-50 for quarter; PR only 33% effective', speed: '' }
     ],
-    bonus_abilities: [], special_abilities: ['Hard to kill'], exceptional_abilities: [],
+    bonus_abilities: [], special_abilities: ['Hard to kill'], exceptional_abilities: ['Major Breath Weapon'],
     level_capable: false, possible_classes: [],
-    notes: "An ancient Sauroid dragon-line -- venal and cruel, extremely logical and intelligent (INT 15-19), imbued with a connection to the Perfect Flame (3rd Station), making their fire mastery exceptional even though general spellcasting is merely decent. Hatchlings as small as 4 Are nose to tail; ancients as long as 2 Tolkar+. All stats scale by Age Category (1-Worm through 7-ancient/1501+ years) -- figures above are the per-category base; protection gains +2-8 more per category. Bite Multi 9% (separate from the 18% Claw Multi used above). Basic Detect 35%. Detect Magic 40%. Hard/Harder to Kill 1/day each. Immunity to Heat 3/day. Fear at 6th level + age category. Spellcasting (Spirit and Fire spheres, level ~1d4 x age category) plus a breath weapon."
+    notes: "An ancient Sauroid dragon-line -- venal and cruel, extremely logical and intelligent (INT 15-19), imbued with a connection to the Perfect Flame (3rd Station), making their fire mastery exceptional even though general spellcasting is merely decent. Hatchlings as small as 4 Are nose to tail; ancients as long as 2 Tolkar+. All stats scale by Age Category (1-Worm through 7-ancient/1501+ years) -- figures above are the per-category base; protection gains +2-8 more per category. Bite Multi 9% (separate from the 18% Claw Multi used above). Basic Detect 35%. Detect Magic 40%. Hard/Harder to Kill 1/day each. Immunity to Heat 3/day. Fear at 6th level + age category. Spellcasting (Spirit and Fire spheres, level ~1d4 x age category) plus a breath weapon. Fire Breath: damage/mechanics not on the main Bestiary page, but a DM encounter writeup (Stenron's Tomb notes, for an Age-Category-7 ancient named Karse Vantan) gives it as Bite damage x1.5, 50' range at full power/100' at half, usable 3/day, Reflex CC-10 halves and CC-50 quarters it, and armor protection works at only 33% effectiveness against it. At the per-category Bite baseline (avg ~32.55 + 3/category) that puts breath avg damage at ~53+ even at Age Category 1 -- Major/exceptional at every age, not just when ancient."
   },
   {
     name: 'Skeletal Legionaire',
