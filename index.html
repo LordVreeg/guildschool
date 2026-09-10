@@ -1398,6 +1398,17 @@ const BESTIARY_RACE_TEMPLATES = [
     notes: "A rank-2 named Wraith ('Barastal wraith'), in rags over ancient plate armor, wielding a cursed bloodletting scimitar that permanently drains HP on a failed Will CC. Protection scales: 57 vs magic, 52 special, 62 silver, 72 plain weapons. Resistances: Spirit 20, Death 10, Necromantic 10."
   },
   {
+    name: 'Basilisk',
+    hp_formula: '3d8+10', avg_hp: 23.5,
+    armor_name: '', shield_name: '', avoidance: 30, protection: 55,
+    bmod: 0.9, avg_damage: 0, multi: 10,
+    cc_fortitude: 70, cc_reflex: 30, cc_will: 40, cc_surprise: 15, cc_social: 0,
+    attacks: [{ name: 'Bite', weaponName: '', toHit: '', damageDice: '((2d6+11)/d6)+1', speed: 'Speed 6' }],
+    bonus_abilities: ['Petrifying Blood'], special_abilities: ['Petrifying Gaze'], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "House of Earth. Heavy, slow-moving, pony-sized eight-legged reptile with thick armored hide (grey-green to deep brown); not fast or subtle but persistent, following prey for hours. Move 9'. INT 2-4 (animal, patient, persistent). Found in swampy/boggy terrain and areas of Earth-house magical presence. Immune to its own gaze and other Basilisks' gaze; +20% to saves vs Earth-school magic. No special weapon requirements to damage. Petrifying Gaze (special): a creature meeting its eyes directly must make a Fort CC or begin petrifying -- a failed save slows the target 50% (move/initiative) as stone creeps in from the extremities; a second failed save within 60 seconds fully petrifies (helpless, requires Stone to Flesh or equivalent to reverse, does not heal naturally). Looking away/using a mirror prevents the gaze but imposes -20% to all attacks; a Reflex roll -10 must be made every 15 segs to keep the gaze averted. Requires line of sight/conscious targeting -- not a passive aura. Petrifying Blood (bonus): contact with exposed skin requires Fort CC-5% or -10% to Reflex CCs for 30 min as flesh stiffens; resolves on its own, not a full petrification. Blood and ground eye are valuable alchemical components (ground eye + silver is a material component for the Lizard Eye spell)."
+  },
+  {
     name: 'Bolgan',
     hp_formula: '16-35 + 2-5/plev', avg_hp: 25.5,
     armor_name: '', shield_name: '', avoidance: 55, protection: 85,
@@ -1568,6 +1579,20 @@ const BESTIARY_RACE_TEMPLATES = [
     bonus_abilities: ["Darksight 25'+"], special_abilities: [], exceptional_abilities: [],
     level_capable: true, possible_classes: ['Cleric', 'Thief'],
     notes: "Type-Ogrillite. 3-4' tall, yellowed skin, muscular, small fangs, high-pitched voices. Very organized and disciplined -- shock troops of a tribe. Hardy outdoors folk, females as common as males. Darksight 30'. Basic Outdoors 30%. Alternate loadout: shortbow instead of mace, Multi 20%."
+  },
+  {
+    name: 'Greater Basilisk',
+    hp_formula: '5d8+25', avg_hp: 47.5,
+    armor_name: '', shield_name: '', avoidance: 20, protection: 58,
+    bmod: 0.9, avg_damage: 0, multi: 18,
+    cc_fortitude: 85, cc_reflex: 35, cc_will: 55, cc_surprise: 15, cc_social: 0,
+    attacks: [
+      { name: 'Bite (60% of attacks)', weaponName: '', toHit: '', damageDice: '((3d6+15)/d5)+2', speed: 'Speed 5' },
+      { name: 'Tail sweep (40% of attacks)', weaponName: '', toHit: '', damageDice: '((2d6+10)/d6)+1', speed: 'Speed 7' }
+    ],
+    bonus_abilities: ['Petrifying Blood (potent)', 'Earthsense'], special_abilities: [], exceptional_abilities: ['Greater Petrifying Gaze'],
+    level_capable: false, possible_classes: [],
+    notes: "House of Earth. Draft-horse-sized (much lower-slung), an armored eight-legged mass -- larger, older, and far more dangerous than the common Basilisk; believed effectively immortal barring violent death. Move 12'. INT 4-6 (cunning animal, territorial, remembers prior encounters). Found in areas of strong Earth-house resonance, deep wilderness or long-undisturbed sites. Immune to its own gaze and lesser Basilisks' gaze; +30% to saves vs Earth-school magic; immune to stone/petrification effects itself. Requires magic or masterwork weapons to bypass PR normally. Tail sweep hits a 10' arc behind it; Reflex CC-10% or knocked down. Multi 18%, split roughly 60% bite / 40% tail. Greater Petrifying Gaze (exceptional): functions on any living creature within 60' that merely looks in its general direction -- direct eye contact is NOT required. Fort CC-10% or petrification begins immediately; a failed save slows the target 50% as stone creeps from the extremities; a second failed save within 30 seconds (half the common Basilisk's window) fully petrifies. Stone to Flesh or equivalent required to reverse. Averting the eyes entirely prevents the effect but imposes -30% to all attack CCs; a Reflex roll -10 must be made every 15 segs to keep the gaze averted. Earthsense (bonus): senses vibration through the ground within 120', cannot be surprised by anything moving on foot in that range and does not need line of sight to detect it; cannot be snuck up on from the ground (negated by flight/levitation approach, but not the gaze). Petrifying Blood (bonus, potent): as common Basilisk but Fort CC-15%; a critical failure (missing by 30%+) partially petrifies the affected limb, -25% effectiveness for 2 hours unless treated with magical healing. Lair accumulates petrified victims over decades, sometimes mistaken for sculpture -- may hold valuable items. Blood and ground eye are extraordinarily potent, valuable alchemical components. Example: Biffin, a Greater Basilisk that has held a ruined district of Khav Verisan for 60+ years; even Ran Jaheen's servants avoid its range."
   },
   {
     name: 'Greater Trollfolk',
