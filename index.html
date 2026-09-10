@@ -1457,6 +1457,28 @@ const BESTIARY_RACE_TEMPLATES = [
     notes: "Large tribal giants of northern climes, equally at home underground near magma as in tropical climes, 15-17' tall, avg ST 21. Favor swords and boulder-throwing, wise in the wild. CAVEAT: this page's stat text is word-for-word identical to the Fire Giant page, including fire-themed spells (Heat Generation, Firebank, Flame Blade) and immunity to heat/fire -- almost certainly an uncorrected wiki copy/paste, treat these particular numbers/abilities with suspicion. Outdoor skill 35%. Spellcasting at 9th-level equivalent."
   },
   {
+    name: 'Crypt Captain',
+    hp_formula: '2-12+4', avg_hp: 11,
+    armor_name: '', shield_name: '', avoidance: 40, protection: 30,
+    bmod: 1, avg_damage: 0, multi: 0,
+    cc_fortitude: 60, cc_reflex: 50, cc_will: 50, cc_surprise: 13, cc_social: 10,
+    attacks: [{ name: 'weapon (by weapon)', weaponName: '', toHit: '', damageDice: '((2d8+6)/d6)+2', speed: '' }],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "Relentless, mindless humanoid undead -- occur naturally when a weak spirit inhabits a skeletal body, but more often created as servants; a sturdier counterpart to the Crypt Warrior. Cannot reason; can only be given commands up to 16 words. Average ST 13, average speed. Retain no skills from the soul splinters within them. Named for the fact that, when occurring naturally, most of the body (and often armor) is still assembled. Normally wears armor, averaging 40/30 av/pro. +10 Protection vs piercing weapons. Immune to sleep and charm. Not casters, or at least cannot remember casting. Often flock to the banner of Wights or other powerful undead in a boneyard or old battle scene."
+  },
+  {
+    name: 'Crypt Warrior',
+    hp_formula: '1-8+4', avg_hp: 8.5,
+    armor_name: '', shield_name: '', avoidance: 40, protection: 25,
+    bmod: 1, avg_damage: 0, multi: 0,
+    cc_fortitude: 40, cc_reflex: 38, cc_will: 35, cc_surprise: 10, cc_social: 0,
+    attacks: [{ name: 'weapon (by weapon)', weaponName: '', toHit: '', damageDice: '((2d8+4)/d6)+1', speed: '' }],
+    bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
+    level_capable: false, possible_classes: [],
+    notes: "Relentless, mindless humanoid undead -- occur naturally when a weak spirit inhabits a skeletal body, but more often created as servants. Cannot reason; can only be given commands up to 15 words. Average ST 12, average speed. Retain no skills from the soul splinters within them. Named for the fact that, when occurring naturally, most of the body (and often armor) is still assembled. Normally wears armor, averaging 40/25 av/pro. +10 Protection vs piercing weapons. Immune to sleep and charm. Not casters, or at least cannot remember casting. Often flock to the banner of Wights or other powerful undead in a boneyard or old battle scene."
+  },
+  {
     name: 'Dire Wolf',
     hp_formula: '3d8+9', avg_hp: 22.5,
     armor_name: '', shield_name: '', avoidance: 15, protection: 25,
