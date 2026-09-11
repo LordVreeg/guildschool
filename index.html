@@ -2276,22 +2276,35 @@ function rollBestiaryHpClick() {
 // wiki rule: the creature's stated Protection is the "Magicked" tier; each step away
 // from it (better or worse weapon) shifts Protection by 10.
 function insertVoidDrContinuum() {
-  const base = parseFloat(bestiaryDraft.protection) || 0;
-  const tiers = [
-    ['Normal', base + 30],
-    ['Silver', base + 20],
-    ['Masterwork', base + 10],
-    ['Magicked', base],
-    ['Magicked+5%', base - 10],
-    ['Magicked+10%', base - 20],
-    ['Magicked+15%', base - 30],
-    ['Magicked+20%', base - 40],
-    ['Magicked+25%', base - 50]
-  ];
-  const text = 'Void Damage Reduction (Protection by weapon quality, ' + base + ' base vs Magicked, ±10 per tier): '
-    + tiers.map(([label, val]) => `${label} ${val}`).join(' / ') + '.';
-  bestiaryDraft.notes = bestiaryDraft.notes ? bestiaryDraft.notes.trim() + ' ' + text : text;
-  renderBestiaryEditor();
+  try {
+    if (!bestiaryDraft) { alert('No foe is currently open for editing.'); return; }
+    const base = parseFloat(bestiaryDraft.protection) || 0;
+    const tiers = [
+      ['Normal', base + 30],
+      ['Silver', base + 20],
+      ['Masterwork', base + 10],
+      ['Magicked', base],
+      ['Magicked+5%', base - 10],
+      ['Magicked+10%', base - 20],
+      ['Magicked+15%', base - 30],
+      ['Magicked+20%', base - 40],
+      ['Magicked+25%', base - 50]
+    ];
+    const text = 'Void Damage Reduction (Protection by weapon quality, ' + base + ' base vs Magicked, ±10 per tier): '
+      + tiers.map(([label, val]) => `${label} ${val}`).join(' / ') + '.';
+    bestiaryDraft.notes = bestiaryDraft.notes ? bestiaryDraft.notes.trim() + ' ' + text : text;
+    renderBestiaryEditor();
+    const ta = document.getElementById('bf-notes-textarea');
+    if (ta) {
+      ta.focus();
+      ta.scrollTop = ta.scrollHeight;
+      const origBg = ta.style.background;
+      ta.style.background = 'var(--trained)';
+      setTimeout(() => { ta.style.background = origBg; }, 900);
+    }
+  } catch (e) {
+    alert('Void DR continuum failed: ' + e.message);
+  }
 }
 
 // Average damage per hit for the "dividing die" mechanic used throughout the
@@ -2601,7 +2614,7 @@ function renderBestiaryEditor() {
       </div>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Notes</div>
-      <textarea style="width:100%;min-height:70px" onchange="updateBestiaryField('notes',this.value)" placeholder="Racial traits, darksight, description...">${escapeHtml(d.notes||'')}</textarea>
+      <textarea id="bf-notes-textarea" style="width:100%;min-height:70px" onchange="updateBestiaryField('notes',this.value)" placeholder="Racial traits, darksight, description...">${escapeHtml(d.notes||'')}</textarea>
 
       <div class="modal-actions" style="margin-top:14px">
         ${bestiaryEditingId !== 'new' ? `<button class="btn btn-red" onclick="deleteBestiaryEntry('${bestiaryEditingId}')">Delete</button><button class="btn btn-dim" onclick="duplicateBestiaryEntry('${bestiaryEditingId}')">Duplicate</button>` : ''}
