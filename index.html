@@ -3104,7 +3104,7 @@ async function renderGroupDetail(group) {
     <div class="form-group" style="margin-top:8px">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <label style="margin:0">Combat</label>
-        ${isGM ? `<button class="btn btn-neon" style="font-size:11px;padding:3px 8px" onclick="openStartCombatModal('${group.id}')">+ Start New Combat</button>` : ''}
+        ${isGM ? `<button class="btn btn-gold" style="font-size:11px;padding:3px 8px" onclick="enterOrStartCombat('${group.id}')">⚔ Enter/Re-enter Combat</button>` : ''}
       </div>
       <ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${encountersHtml}</ul>
     </div>
@@ -3200,6 +3200,16 @@ let combatantsCache = [];
 let actionTracksCache = [];
 let combatLogCache = [];
 let combatOwnerByCharId = {}; // character_id -> owner_id, for this encounter's home group
+
+// The Group page's one Combat button: jump straight back into whatever
+// fight is already in progress (most recently touched active/paused
+// encounter) rather than always spawning a new one -- the encounter list
+// below still lets the GM pick a different/older one explicitly.
+function enterOrStartCombat(groupId) {
+  const resumable = groupEncountersCache.find(e => e.status === 'active' || e.status === 'paused');
+  if (resumable) { openEncounter(resumable.id); return; }
+  openStartCombatModal(groupId);
+}
 
 function openStartCombatModal(groupId) {
   openModal(`
