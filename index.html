@@ -1303,6 +1303,7 @@ function renderMain() {
   if (state.activeView === 'utilities') { renderUtilitiesModule(); return; }
   if (state.activeView === 'group') { renderGroupModule(); return; }
   if (state.activeView === 'bestiary') { renderBestiaryModule(); return; }
+  if (state.activeView === 'encounter') { renderEncounterModule(); return; }
   if (state.activeSkillId) { renderSkillModule(state.activeSkillId); return; }
   renderOverview();
 }
@@ -2872,6 +2873,7 @@ let groupRosterCache = [];
 let groupNotesCache = [];
 let groupVolumesCache = [];
 let viewingVolumeId = null;
+let groupEncountersCache = [];
 
 function showGroupModule() {
   state.activeSkillId = null;
@@ -2931,7 +2933,7 @@ function setRosterOrderMode(mode) {
 
 async function renderGroupDetail(group) {
   const isGM = group.myRole === 'gm';
-  const [{ data: roster, error: rErr }, { data: volumes, error: volErr }, { data: tempChars, error: tcErr }] = await Promise.all([
+  const [{ data: roster, error: rErr }, { data: volumes, error: volErr }, { data: tempChars, error: tcErr }, { data: encounters, error: encListErr }] = await Promise.all([
     sb.from('group_roster').select('id, owner_id, name, is_npc, travel_order, trap_order, door_order, hp_damaged, hp_critical').eq('group_id', group.id),
     sb.from('group_note_volumes').select('id, title, start_seconds, end_seconds').eq('group_id', group.id).order('start_seconds', { ascending: true }),
     // bestiary_entries RLS is scoped to created_by = auth.uid(), so this only
@@ -2939,14 +2941,16 @@ async function renderGroupDetail(group) {
     // rather than show a section that will always read empty for them.
     group.myRole === 'gm'
       ? sb.from('bestiary_entries').select('id, name, max_hp, current_hp, avg_hp').eq('group_id', group.id).eq('is_temp_pc', true).order('name', { ascending: true })
-      : Promise.resolve({ data: [], error: null })
+      : Promise.resolve({ data: [], error: null }),
+    sb.from('combat_encounters').select('id, name, status, current_segment, updated_at').eq('group_id', group.id).order('updated_at', { ascending: false })
   ]);
   const el = document.getElementById('group-detail');
   if (!el) return;
-  if (rErr || volErr || tcErr) {
-    el.innerHTML = `<div style="color:var(--red-b)">Failed to load group: ${escapeHtml((rErr||volErr||tcErr).message)}</div>`;
+  if (rErr || volErr || tcErr || encListErr) {
+    el.innerHTML = `<div style="color:var(--red-b)">Failed to load group: ${escapeHtml((rErr||volErr||tcErr||encListErr).message)}</div>`;
     return;
   }
+  groupEncountersCache = encounters || [];
   groupVolumesCache = volumes || [];
   const activeVolume = groupVolumesCache.find(v => v.end_seconds == null) || groupVolumesCache[groupVolumesCache.length - 1] || null;
   if (!viewingVolumeId || !groupVolumesCache.some(v => v.id === viewingVolumeId)) {
@@ -3066,6 +3070,14 @@ async function renderGroupDetail(group) {
       }).join('')
     : '<li class="note">No temp characters yet.</li>';
 
+  const encStatusColor = { active: '#4a9460', paused: '#c9a227', ended: 'var(--text-dim)' };
+  const encountersHtml = groupEncountersCache.length
+    ? groupEncountersCache.map(e => `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+        <span style="cursor:pointer;color:var(--gold)" onclick="openEncounter('${e.id}')">${escapeHtml(e.name)}</span>
+        <span style="font-size:10px;color:${encStatusColor[e.status]||'var(--text-dim)'}">(${e.status}, segment ${e.current_segment})</span>
+      </li>`).join('')
+    : '<li class="note">No combats yet.</li>';
+
   const groupClock = ronFromSeconds(group.clock_seconds);
   el.innerHTML = `
     <hr class="divider">
@@ -3089,6 +3101,13 @@ async function renderGroupDetail(group) {
       <div class="note" style="margin:2px 0">Quick stat blocks for players without a full character sheet yet -- used by the combat module.</div>
       <ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${tempCharsHtml}</ul>
     </div>` : ''}
+    <div class="form-group" style="margin-top:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <label style="margin:0">Combat</label>
+        ${isGM ? `<button class="btn btn-neon" style="font-size:11px;padding:3px 8px" onclick="openStartCombatModal('${group.id}')">+ Start New Combat</button>` : ''}
+      </div>
+      <ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${encountersHtml}</ul>
+    </div>
     <hr class="divider">
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Time — Reckoning of Nebler</div>
     <div class="computed-item" style="margin-bottom:8px"><span class="ci-value" style="font-size:16px;cursor:pointer;text-decoration:underline dotted" onclick="openGoesiModal('${group.id}')" title="Open the Goesi (month) calendar">${ronDateLabel(groupClock)}</span></div>
@@ -3161,6 +3180,395 @@ async function deleteTempCharacter(id, groupId) {
   const { error } = await sb.from('bestiary_entries').delete().eq('id', id);
   if (error) { alert('Failed to delete: ' + error.message); return; }
   renderGroupModule();
+}
+
+// ============================================================
+// COMBAT MODULE (segment-based initiative tracker) -- see
+// project_combat_initiative_tracker_spec memory for the full design.
+// Category order is the coarse tiebreak (spell > non-combat > missile >
+// melee); manual_order is the GM's final ▲▼ tiebreak for anything the
+// schema doesn't otherwise resolve (e.g. Coordination isn't modeled here --
+// next_segment being numeric lets a GM encode finer ordering directly by
+// typing e.g. 12.5 instead of 13 when they want to).
+// ============================================================
+const COMBAT_CATEGORY_RANK = { spell: 0, 'non-combat': 1, missile: 2, melee: 3 };
+const COMBAT_CATEGORY_LABELS = { spell: 'Spell', 'non-combat': 'Non-Combat', missile: 'Missile', melee: 'Melee' };
+
+let activeEncounterId = null;
+let encounterCache = null;
+let combatantsCache = [];
+let actionTracksCache = [];
+let combatLogCache = [];
+let combatOwnerByCharId = {}; // character_id -> owner_id, for this encounter's home group
+
+function openStartCombatModal(groupId) {
+  openModal(`
+    <h3>Start New Combat</h3>
+    <div class="form-group" style="margin-bottom:8px"><label>Name</label><input id="sc-name" style="width:100%" placeholder="e.g. Ambush on the Old Road"></div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="createEncounter('${groupId}')">Start</button></div>`);
+}
+
+async function createEncounter(groupId) {
+  const name = document.getElementById('sc-name').value.trim();
+  if (!name) { alert('Name is required.'); return; }
+  const { data, error } = await sb.from('combat_encounters').insert({ group_id: groupId, created_by: currentUser.id, name }).select('id').single();
+  if (error) { alert('Failed to start combat: ' + error.message); return; }
+  closeModal();
+  openEncounter(data.id);
+}
+
+function openEncounter(id) {
+  activeEncounterId = id;
+  state.activeView = 'encounter';
+  renderEncounterModule();
+}
+
+function closeEncounter() {
+  const groupId = encounterCache ? encounterCache.group_id : activeGroupId;
+  activeEncounterId = null;
+  encounterCache = null;
+  state.activeView = 'group';
+  activeGroupId = groupId;
+  renderGroupModule();
+}
+
+async function renderEncounterModule() {
+  document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body">Loading combat…</div></div>`;
+  await fetchMyGroups();
+  const { data: enc, error: encErr } = await sb.from('combat_encounters').select('*').eq('id', activeEncounterId).single();
+  if (encErr || !enc) {
+    document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body" style="color:var(--red-b)">Failed to load combat: ${escapeHtml(encErr ? encErr.message : 'not found')}</div></div>`;
+    return;
+  }
+  encounterCache = enc;
+  const group = myGroups.find(g => g.id === enc.group_id);
+  const isGM = !!(group && group.myRole === 'gm');
+
+  const [{ data: combatants, error: ccErr }, { data: roster, error: rErr2 }] = await Promise.all([
+    sb.from('combat_combatants').select('*').eq('encounter_id', enc.id).order('manual_order', { ascending: true }),
+    sb.from('group_roster').select('id, owner_id').eq('group_id', enc.group_id)
+  ]);
+  if (ccErr || rErr2) {
+    document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body" style="color:var(--red-b)">Failed to load combat: ${escapeHtml((ccErr||rErr2).message)}</div></div>`;
+    return;
+  }
+  combatantsCache = combatants || [];
+  combatOwnerByCharId = {};
+  for (const r of roster || []) combatOwnerByCharId[r.id] = r.owner_id;
+
+  const combatantIds = combatantsCache.map(c => c.id);
+  const [{ data: tracks, error: tErr }, { data: log, error: lErr }] = await Promise.all([
+    combatantIds.length ? sb.from('combat_action_tracks').select('*').in('combatant_id', combatantIds) : Promise.resolve({ data: [], error: null }),
+    sb.from('combat_log_entries').select('*').eq('encounter_id', enc.id).order('created_at', { ascending: false }).limit(40)
+  ]);
+  if (tErr || lErr) {
+    document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body" style="color:var(--red-b)">Failed to load combat: ${escapeHtml((tErr||lErr).message)}</div></div>`;
+    return;
+  }
+  actionTracksCache = tracks || [];
+  combatLogCache = log || [];
+
+  document.getElementById('main').innerHTML = renderEncounterHtml(enc, isGM);
+}
+
+function combatantStatusColor(cur, max) {
+  if (cur == null || max == null || max <= 0) return 'var(--text-dim)';
+  if (cur <= 0) return '#c0524a';
+  const pct = cur / max;
+  if (pct <= 0.34) return '#c0524a';
+  if (pct <= 0.7) return '#c9a227';
+  return '#4a9460';
+}
+
+function combatantHpBadge(c, isGM) {
+  const mine = !!(c.character_id && combatOwnerByCharId[c.character_id] === currentUser.id);
+  const dead = c.current_hp != null && c.current_hp <= 0;
+  if (isGM || mine) {
+    const color = combatantStatusColor(c.current_hp, c.max_hp);
+    return `<span style="color:${color};font-weight:${dead?'bold':'normal'}">${c.current_hp != null ? c.current_hp : '?'}/${c.max_hp != null ? c.max_hp : '?'} HP</span>`;
+  }
+  return `<span style="color:${combatantStatusColor(c.current_hp, c.max_hp)}">●</span>`;
+}
+
+function renderEncounterHtml(enc, isGM) {
+  const dueSegment = enc.current_segment;
+  const byId = {};
+  for (const c of combatantsCache) byId[c.id] = c;
+  const tracksByCombatant = {};
+  for (const t of actionTracksCache) {
+    (tracksByCombatant[t.combatant_id] = tracksByCombatant[t.combatant_id] || []).push(t);
+  }
+
+  const targetOptionsHtml = (currentId, selectedId) => `<option value="">(no target)</option>` +
+    combatantsCache.filter(c => c.id !== currentId).map(c => `<option value="${c.id}" ${c.id===selectedId?'selected':''}>${escapeHtml(c.display_name)}</option>`).join('');
+
+  const combatantsHtml = combatantsCache.length ? combatantsCache.map((c, i) => {
+    const mine = !!(c.character_id && combatOwnerByCharId[c.character_id] === currentUser.id);
+    const canEdit = isGM || mine;
+    const dead = c.current_hp != null && c.current_hp <= 0;
+    const nameStyle = dead ? 'text-decoration:line-through' : '';
+    const tracks = tracksByCombatant[c.id] || [];
+    const tracksHtml = tracks.map(t => {
+      const due = t.next_segment != null && t.next_segment <= dueSegment;
+      return `<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin:2px 0;font-size:11px">
+        ${canEdit ? `<input value="${escapeHtml(t.label||'')}" placeholder="Label" style="width:90px;font-size:11px" onchange="updateActionTrack('${t.id}','label',this.value)">
+        <select style="font-size:11px" onchange="updateActionTrack('${t.id}','action_category',this.value||null)">
+          <option value="">(category)</option>
+          ${Object.keys(COMBAT_CATEGORY_RANK).map(k => `<option value="${k}" ${t.action_category===k?'selected':''}>${COMBAT_CATEGORY_LABELS[k]}</option>`).join('')}
+        </select>
+        <input type="number" step="any" class="w80" style="font-size:11px" value="${t.next_segment != null ? t.next_segment : ''}" placeholder="segment" onchange="updateActionTrack('${t.id}','next_segment',this.value===''?null:parseFloat(this.value))">
+        ${due && t.next_segment != null ? `<button class="btn btn-gold" style="font-size:10px;padding:1px 6px" onclick="resolveActionTrack('${t.id}')">Resolve</button>` : ''}
+        <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="deleteActionTrack('${t.id}')">✕</button>` :
+        `<span>${escapeHtml(t.label||'(action)')} ${t.action_category?COMBAT_CATEGORY_LABELS[t.action_category]:''} ${t.next_segment!=null?'@ '+t.next_segment:'(standing by)'}</span>`}
+      </div>`;
+    }).join('');
+    const effects = c.effects || [];
+    const effectsHtml = effects.map((eff, ei) => {
+      const expired = eff.expires_at_segment != null && eff.expires_at_segment <= dueSegment;
+      return `<span style="font-size:10px;color:var(--gold-dim);margin-right:6px;${expired?'text-decoration:line-through':''}" title="Expires at segment ${eff.expires_at_segment}">${escapeHtml(eff.label)}${canEdit?` <a href="#" onclick="removeEffect('${c.id}',${ei});return false" style="color:var(--red-b)">✕</a>`:''}</span>`;
+    }).join('');
+    return `<div style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span style="${nameStyle}">${escapeHtml(c.display_name)}</span>
+        ${canEdit ? `<input value="${escapeHtml(c.team||'')}" placeholder="Team" style="width:80px;font-size:11px" onchange="updateCombatantField('${c.id}','team',this.value)">`
+          : `<span style="font-size:10px;color:var(--text-dim)">${escapeHtml(c.team||'')}</span>`}
+        ${combatantHpBadge(c, isGM)}
+        ${canEdit ? `<input type="number" class="w60" style="font-size:11px" value="${c.current_hp!=null?c.current_hp:''}" title="Current HP" onchange="updateCombatantField('${c.id}','current_hp',this.value===''?null:parseFloat(this.value))">
+        / <input type="number" class="w60" style="font-size:11px" value="${c.max_hp!=null?c.max_hp:''}" title="Max HP" onchange="updateCombatantField('${c.id}','max_hp',this.value===''?null:parseFloat(this.value))">` : ''}
+        <select style="font-size:11px" onchange="updateCombatantField('${c.id}','target_combatant_id',this.value||null)">${targetOptionsHtml(c.id, c.target_combatant_id)}</select>
+        ${isGM ? `
+        <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===0?'disabled':''} onclick="moveCombatant('${c.id}',-1)">▲</button>
+        <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===combatantsCache.length-1?'disabled':''} onclick="moveCombatant('${c.id}',1)">▼</button>
+        <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="removeCombatant('${c.id}')">Remove</button>` : ''}
+      </div>
+      <div style="margin-top:4px">${tracksHtml}</div>
+      ${canEdit ? `<button class="btn btn-dim" style="font-size:10px;padding:1px 6px;margin-top:2px" onclick="addActionTrack('${c.id}')">+ Track</button>
+      <button class="btn btn-dim" style="font-size:10px;padding:1px 6px;margin-top:2px" onclick="openAddEffectModal('${c.id}')">+ Effect</button>` : ''}
+      <div style="margin-top:2px">${effectsHtml}</div>
+    </div>`;
+  }).join('') : '<div class="note">No combatants yet.</div>';
+
+  const logHtml = combatLogCache.length ? `<table class="skill-table"><thead><tr><th>Seg</th><th>Combatant</th><th>Target</th><th>Action</th><th>Dmg</th></tr></thead><tbody>
+    ${combatLogCache.map(l => {
+      const actor = byId[l.combatant_id];
+      const target = byId[l.target_combatant_id];
+      const dmgParts = [];
+      if (l.damage_dealt != null) dmgParts.push(`${l.damage_dealt} dealt`);
+      if (l.damage_taken != null) dmgParts.push(`${l.damage_taken} taken`);
+      if (l.damage_prevented != null) dmgParts.push(`${l.damage_prevented} prevented`);
+      return `<tr><td>${l.segment}</td><td>${escapeHtml(actor?actor.display_name:'—')}</td><td>${escapeHtml(target?target.display_name:'—')}</td><td>${escapeHtml(l.action_summary)}</td><td style="font-size:11px">${dmgParts.join(', ')}</td></tr>`;
+    }).join('')}
+  </tbody></table>` : '<div class="note">No log entries yet.</div>';
+
+  return `<div class="panel"><div class="panel-body">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn btn-dim" onclick="closeEncounter()">← Back to Group</button>
+        <h2 style="margin:0">${escapeHtml(enc.name)}</h2>
+        <span style="font-size:11px;color:var(--text-dim)">(${enc.status})</span>
+      </div>
+      ${isGM ? `
+      <div style="display:flex;gap:6px;align-items:center">
+        <select onchange="updateEncounterField('status',this.value)">
+          ${['active','paused','ended'].map(s => `<option value="${s}" ${enc.status===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+        <button class="btn btn-dim" onclick="openAddCombatantModal()">+ Add Combatant</button>
+      </div>` : ''}
+    </div>
+    <div class="form-row" style="margin:8px 0;align-items:center">
+      <div class="form-group"><label>Current Segment</label>
+        ${isGM ? `<input type="number" step="any" class="w100" value="${enc.current_segment}" onchange="updateEncounterField('current_segment',parseFloat(this.value)||0)">` : `<div>${enc.current_segment}</div>`}
+      </div>
+      ${isGM ? `<div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="advanceToNextSegment('${enc.id}')">Advance to Next Queued Action</button></div>` : ''}
+    </div>
+    <div class="note" style="margin-bottom:6px">Resolution order within a tied segment: Spell → Non-Combat → Missile → Melee, then the ▲▼ order above as the final tiebreak. Everything here is an editable suggestion -- adjust freely.</div>
+    ${combatantsHtml}
+    <hr class="divider">
+    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Log an Action</div>
+    <div class="form-row">
+      <div class="form-group"><label>Combatant</label><select id="log-combatant">${combatantsCache.map(c=>`<option value="${c.id}">${escapeHtml(c.display_name)}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Target</label><select id="log-target"><option value="">(none)</option>${combatantsCache.map(c=>`<option value="${c.id}">${escapeHtml(c.display_name)}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-group" style="margin:6px 0"><label>Action Summary</label><input id="log-summary" style="width:100%" placeholder="e.g. Swings longsword, hits for 8"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Damage Dealt</label><input id="log-dealt" type="number" class="w80"></div>
+      <div class="form-group"><label>Damage Taken</label><input id="log-taken" type="number" class="w80"></div>
+      <div class="form-group"><label>Damage Prevented</label><input id="log-prevented" type="number" class="w80"></div>
+      <div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="addLogEntry('${enc.id}')">Add to Log</button></div>
+    </div>
+    <hr class="divider">
+    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Recent Log</div>
+    ${logHtml}
+  </div></div>`;
+}
+
+async function updateEncounterField(field, value) {
+  const { error } = await sb.from('combat_encounters').update({ [field]: value }).eq('id', activeEncounterId);
+  if (error) { alert('Failed to update: ' + error.message); return; }
+  renderEncounterModule();
+}
+
+async function advanceToNextSegment(encId) {
+  const upcoming = actionTracksCache.filter(t => t.next_segment != null).map(t => t.next_segment);
+  if (!upcoming.length) { alert('No queued actions to advance to.'); return; }
+  const next = Math.min(...upcoming);
+  const { error } = await sb.from('combat_encounters').update({ current_segment: next }).eq('id', encId);
+  if (error) { alert('Failed to advance: ' + error.message); return; }
+  renderEncounterModule();
+}
+
+async function updateCombatantField(id, field, value) {
+  const { error } = await sb.from('combat_combatants').update({ [field]: value }).eq('id', id);
+  if (error) { alert('Failed to update: ' + error.message); return; }
+  renderEncounterModule();
+}
+
+async function moveCombatant(id, direction) {
+  const idx = combatantsCache.findIndex(c => c.id === id);
+  if (idx < 0) return;
+  const targetIdx = idx + direction;
+  if (targetIdx < 0 || targetIdx >= combatantsCache.length) return;
+  const reordered = combatantsCache.slice();
+  [reordered[idx], reordered[targetIdx]] = [reordered[targetIdx], reordered[idx]];
+  const results = await Promise.all(reordered.map((c, i) => sb.from('combat_combatants').update({ manual_order: i }).eq('id', c.id)));
+  const failed = results.find(r => r.error);
+  if (failed) { alert('Failed to reorder: ' + failed.error.message); return; }
+  renderEncounterModule();
+}
+
+async function removeCombatant(id) {
+  if (!confirm('Remove this combatant from the fight?')) return;
+  const { error } = await sb.from('combat_combatants').delete().eq('id', id);
+  if (error) { alert('Failed to remove: ' + error.message); return; }
+  renderEncounterModule();
+}
+
+async function addActionTrack(combatantId) {
+  const label = prompt('Track label (e.g. "Main Hand", "Off Hand", or leave blank):', '') || '';
+  const { error } = await sb.from('combat_action_tracks').insert({ combatant_id: combatantId, label, next_segment: null, action_category: null });
+  if (error) { alert('Failed to add track: ' + error.message); return; }
+  renderEncounterModule();
+}
+
+async function updateActionTrack(id, field, value) {
+  const { error } = await sb.from('combat_action_tracks').update({ [field]: value }).eq('id', id);
+  if (error) { alert('Failed to update: ' + error.message); return; }
+  renderEncounterModule();
+}
+
+async function deleteActionTrack(id) {
+  const { error } = await sb.from('combat_action_tracks').delete().eq('id', id);
+  if (error) { alert('Failed to delete: ' + error.message); return; }
+  renderEncounterModule();
+}
+
+async function resolveActionTrack(id) {
+  const { error } = await sb.from('combat_action_tracks').update({ next_segment: null }).eq('id', id);
+  if (error) { alert('Failed to resolve: ' + error.message); return; }
+  renderEncounterModule();
+}
+
+function openAddEffectModal(combatantId) {
+  openModal(`
+    <h3>Add Effect</h3>
+    <div class="form-group" style="margin-bottom:8px"><label>Label</label><input id="eff-label" style="width:100%" placeholder="e.g. Shaken, -10 to hit"></div>
+    <div class="form-group" style="margin-bottom:8px"><label>Expires at Segment</label><input id="eff-expiry" type="number" step="any" class="w100"></div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="addEffect('${combatantId}')">Add</button></div>`);
+}
+
+async function addEffect(combatantId) {
+  const label = document.getElementById('eff-label').value.trim();
+  if (!label) { alert('Label is required.'); return; }
+  const expiryRaw = document.getElementById('eff-expiry').value;
+  const c = combatantsCache.find(x => x.id === combatantId);
+  const effects = (c && c.effects) ? c.effects.slice() : [];
+  effects.push({ label, expires_at_segment: expiryRaw === '' ? null : parseFloat(expiryRaw) });
+  const { error } = await sb.from('combat_combatants').update({ effects }).eq('id', combatantId);
+  if (error) { alert('Failed to add effect: ' + error.message); return; }
+  closeModal();
+  renderEncounterModule();
+}
+
+async function removeEffect(combatantId, idx) {
+  const c = combatantsCache.find(x => x.id === combatantId);
+  if (!c) return;
+  const effects = (c.effects || []).slice();
+  effects.splice(idx, 1);
+  const { error } = await sb.from('combat_combatants').update({ effects }).eq('id', combatantId);
+  if (error) { alert('Failed to remove effect: ' + error.message); return; }
+  renderEncounterModule();
+}
+
+async function addLogEntry(encId) {
+  const combatantId = document.getElementById('log-combatant').value || null;
+  const targetId = document.getElementById('log-target').value || null;
+  const summary = document.getElementById('log-summary').value.trim();
+  if (!summary) { alert('Action summary is required.'); return; }
+  const dealt = document.getElementById('log-dealt').value;
+  const taken = document.getElementById('log-taken').value;
+  const prevented = document.getElementById('log-prevented').value;
+  const { error } = await sb.from('combat_log_entries').insert({
+    encounter_id: encId,
+    segment: encounterCache.current_segment,
+    combatant_id: combatantId,
+    target_combatant_id: targetId,
+    action_summary: summary,
+    damage_dealt: dealt === '' ? null : parseFloat(dealt),
+    damage_taken: taken === '' ? null : parseFloat(taken),
+    damage_prevented: prevented === '' ? null : parseFloat(prevented),
+    created_by: currentUser.id
+  });
+  if (error) { alert('Failed to log action: ' + error.message); return; }
+  renderEncounterModule();
+}
+
+async function openAddCombatantModal() {
+  const enc = encounterCache;
+  const existingCharIds = new Set(combatantsCache.filter(c => c.character_id).map(c => c.character_id));
+  const existingBestIds = new Set(combatantsCache.filter(c => c.bestiary_entry_id).map(c => c.bestiary_entry_id));
+  const [{ data: roster }, { data: tempChars }, { data: foes }] = await Promise.all([
+    sb.from('characters').select('id,name').eq('group_id', enc.group_id),
+    sb.from('bestiary_entries').select('id,name').eq('group_id', enc.group_id).eq('is_temp_pc', true),
+    sb.from('bestiary_entries').select('id,name').eq('is_temp_pc', false).order('name', { ascending: true })
+  ]);
+  const rosterHtml = (roster||[]).filter(r => !existingCharIds.has(r.id)).map(r =>
+    `<li style="cursor:pointer;color:var(--gold)" onclick="addCombatantFromSource('character','${r.id}')">${escapeHtml(r.name)}</li>`).join('') || '<li class="note">None available.</li>';
+  const tempHtml = (tempChars||[]).filter(t => !existingBestIds.has(t.id)).map(t =>
+    `<li style="cursor:pointer;color:var(--gold)" onclick="addCombatantFromSource('bestiary','${t.id}')">${escapeHtml(t.name)}</li>`).join('') || '<li class="note">None available.</li>';
+  const foesHtml = (foes||[]).filter(f => !existingBestIds.has(f.id)).map(f =>
+    `<li style="cursor:pointer;color:var(--gold)" onclick="addCombatantFromSource('bestiary','${f.id}')">${escapeHtml(f.name)}</li>`).join('') || '<li class="note">None available.</li>';
+  openModal(`
+    <h3>Add Combatant</h3>
+    <div class="form-row" style="align-items:flex-start">
+      <div class="form-group" style="flex:1"><label>Player Characters</label><ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${rosterHtml}</ul></div>
+      <div class="form-group" style="flex:1"><label>Temp Characters</label><ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${tempHtml}</ul></div>
+      <div class="form-group" style="flex:1"><label>Foes (Beastiary)</label><ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${foesHtml}</ul></div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button></div>`, { wide: true });
+}
+
+async function addCombatantFromSource(kind, sourceId) {
+  let row = { encounter_id: activeEncounterId, team: '', manual_order: combatantsCache.length };
+  if (kind === 'character') {
+    const { data: c, error } = await sb.from('characters').select('id,name,data').eq('id', sourceId).single();
+    if (error || !c) { alert('Failed to load character: ' + (error?error.message:'not found')); return; }
+    const hp = computeHP(c.data || {});
+    const cur = hp.system === 'collegium' ? (hp.physicalCurrent + hp.enduranceCurrent) : hp.currentHP;
+    const max = hp.system === 'collegium' ? (hp.physicalMax + hp.enduranceMax) : hp.totalHP;
+    row = { ...row, character_id: c.id, display_name: c.name, current_hp: cur, max_hp: max, team: 'Party' };
+  } else {
+    const { data: b, error } = await sb.from('bestiary_entries').select('id,name,max_hp,current_hp,avg_hp,is_temp_pc').eq('id', sourceId).single();
+    if (error || !b) { alert('Failed to load: ' + (error?error.message:'not found')); return; }
+    const max = b.max_hp != null ? b.max_hp : Math.round(b.avg_hp || 0);
+    const cur = b.current_hp != null ? b.current_hp : max;
+    row = { ...row, bestiary_entry_id: b.id, display_name: b.name, current_hp: cur, max_hp: max, team: b.is_temp_pc ? 'Party' : 'Foes' };
+  }
+  const { data: inserted, error: insErr } = await sb.from('combat_combatants').insert(row).select('id').single();
+  if (insErr) { alert('Failed to add combatant: ' + insErr.message); return; }
+  const { error: trackErr } = await sb.from('combat_action_tracks').insert({ combatant_id: inserted.id, label: '', next_segment: null, action_category: null });
+  if (trackErr) { alert('Combatant added, but failed to create its action track: ' + trackErr.message); }
+  closeModal();
+  renderEncounterModule();
 }
 
 function openCreateGroupModal() {
