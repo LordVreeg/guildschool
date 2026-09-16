@@ -3536,11 +3536,14 @@ async function openAddCombatantModal() {
   const enc = encounterCache;
   const existingCharIds = new Set(combatantsCache.filter(c => c.character_id).map(c => c.character_id));
   const existingBestIds = new Set(combatantsCache.filter(c => c.bestiary_entry_id).map(c => c.bestiary_entry_id));
-  const [{ data: roster }, { data: tempChars }, { data: foes }] = await Promise.all([
-    sb.from('characters').select('id,name').eq('group_id', enc.group_id),
+  // characters has no bare "name" column (it lives in the data jsonb blob) --
+  // character_lookup is the existing view that already extracts it.
+  const [{ data: roster, error: rErr }, { data: tempChars, error: tcErr }, { data: foes, error: fErr }] = await Promise.all([
+    sb.from('character_lookup').select('id,name').eq('group_id', enc.group_id),
     sb.from('bestiary_entries').select('id,name').eq('group_id', enc.group_id).eq('is_temp_pc', true),
     sb.from('bestiary_entries').select('id,name').eq('is_temp_pc', false).order('name', { ascending: true })
   ]);
+  if (rErr || tcErr || fErr) { alert('Failed to load combatant sources: ' + (rErr||tcErr||fErr).message); return; }
   const rosterHtml = (roster||[]).filter(r => !existingCharIds.has(r.id)).map(r =>
     `<li style="cursor:pointer;color:var(--gold)" onclick="addCombatantFromSource('character','${r.id}')">${escapeHtml(r.name)}</li>`).join('') || '<li class="note">None available.</li>';
   const tempHtml = (tempChars||[]).filter(t => !existingBestIds.has(t.id)).map(t =>
@@ -3560,12 +3563,12 @@ async function openAddCombatantModal() {
 async function addCombatantFromSource(kind, sourceId) {
   let row = { encounter_id: activeEncounterId, team: '', manual_order: combatantsCache.length };
   if (kind === 'character') {
-    const { data: c, error } = await sb.from('characters').select('id,name,data').eq('id', sourceId).single();
+    const { data: c, error } = await sb.from('characters').select('id,data').eq('id', sourceId).single();
     if (error || !c) { alert('Failed to load character: ' + (error?error.message:'not found')); return; }
     const hp = computeHP(c.data || {});
     const cur = hp.system === 'collegium' ? (hp.physicalCurrent + hp.enduranceCurrent) : hp.currentHP;
     const max = hp.system === 'collegium' ? (hp.physicalMax + hp.enduranceMax) : hp.totalHP;
-    row = { ...row, character_id: c.id, display_name: c.name, current_hp: cur, max_hp: max, team: 'Party' };
+    row = { ...row, character_id: c.id, display_name: (c.data && c.data.name) || '(unnamed)', current_hp: cur, max_hp: max, team: 'Party' };
   } else {
     const { data: b, error } = await sb.from('bestiary_entries').select('id,name,max_hp,current_hp,avg_hp,is_temp_pc').eq('id', sourceId).single();
     if (error || !b) { alert('Failed to load: ' + (error?error.message:'not found')); return; }
