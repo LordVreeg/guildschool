@@ -2089,7 +2089,7 @@ async function renderBestiaryModule() {
 
 function blankBestiaryDraft() {
   return {
-    name: '', race: '', location: '', group_id: null, hp_formula: '', avg_hp: 0, armor_name: '', shield_name: '',
+    name: '', race: '', location: '', group_id: null, is_temp_pc: false, hp_formula: '', avg_hp: 0, armor_name: '', shield_name: '',
     avoidance: 0, protection: 0, bmod: 0, avg_damage: 0, multi: 0,
     level: 1, max_hp: null, current_hp: null,
     cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
@@ -2097,6 +2097,11 @@ function blankBestiaryDraft() {
     attacks: [], level_capable: false, possible_classes: [], items: [], spells: [], notes: ''
   };
 }
+
+// Set true by openNewTempCharacter/openEditTempCharacter so Save/Cancel land
+// back on the Group page instead of the Beastiary list -- a temp character
+// is quick-added FROM a group, not browsed to from the Beastiary tab.
+let bestiaryReturnToGroup = false;
 
 // key is "wiki:<name>" (built-in BESTIARY_RACE_TEMPLATES) or "custom:<id>" (this GM's own saved bestiary_templates row)
 function loadBestiaryTemplate(key) {
@@ -2184,9 +2189,42 @@ function openEditBestiaryEntry(id) {
   renderBestiaryEditor();
 }
 
+// Quick-add path from a Group page, for a player who hasn't built a real
+// character sheet yet -- a temp character is just a Beastiary entry flagged
+// is_temp_pc, tied to that specific group, using the exact same editor.
+function openNewTempCharacter(groupId) {
+  bestiaryEditingId = 'new';
+  bestiaryDraft = blankBestiaryDraft();
+  bestiaryDraft.group_id = groupId;
+  bestiaryDraft.is_temp_pc = true;
+  bestiaryReturnToGroup = true;
+  state.activeView = 'bestiary';
+  renderBestiaryEditor();
+}
+
+// Edits a temp character from the Group page directly -- doesn't rely on
+// bestiaryCache (the Beastiary list's own cache), since a GM might jump
+// here without ever having opened the Beastiary tab this session.
+async function openEditTempCharacter(id) {
+  const { data: e, error } = await sb.from('bestiary_entries').select('*').eq('id', id).single();
+  if (error || !e) { alert('Failed to load: ' + (error ? error.message : 'not found')); return; }
+  bestiaryEditingId = id;
+  bestiaryDraft = e;
+  bestiaryDraft.avg_hp = Math.round(bestiaryDraft.avg_hp || 0);
+  bestiaryReturnToGroup = true;
+  state.activeView = 'bestiary';
+  renderBestiaryEditor();
+}
+
 function closeBestiaryEditor() {
   bestiaryEditingId = null;
   bestiaryDraft = null;
+  if (bestiaryReturnToGroup) {
+    bestiaryReturnToGroup = false;
+    state.activeView = 'group';
+    renderGroupModule();
+    return;
+  }
   renderBestiaryModule();
 }
 
@@ -2668,7 +2706,8 @@ async function saveBestiaryEntry() {
     possible_classes: bestiaryDraft.possible_classes || [],
     items: bestiaryDraft.items || [],
     spells: bestiaryDraft.spells || [],
-    notes: bestiaryDraft.notes || null
+    notes: bestiaryDraft.notes || null,
+    is_temp_pc: !!bestiaryDraft.is_temp_pc
   };
   let error;
   if (bestiaryEditingId === 'new') {
@@ -2679,6 +2718,12 @@ async function saveBestiaryEntry() {
   if (error) { alert('Failed to save: ' + error.message); return; }
   bestiaryEditingId = null;
   bestiaryDraft = null;
+  if (bestiaryReturnToGroup) {
+    bestiaryReturnToGroup = false;
+    state.activeView = 'group';
+    renderGroupModule();
+    return;
+  }
   renderBestiaryModule();
 }
 
@@ -2886,14 +2931,20 @@ function setRosterOrderMode(mode) {
 
 async function renderGroupDetail(group) {
   const isGM = group.myRole === 'gm';
-  const [{ data: roster, error: rErr }, { data: volumes, error: volErr }] = await Promise.all([
+  const [{ data: roster, error: rErr }, { data: volumes, error: volErr }, { data: tempChars, error: tcErr }] = await Promise.all([
     sb.from('group_roster').select('id, owner_id, name, is_npc, travel_order, trap_order, door_order, hp_damaged, hp_critical').eq('group_id', group.id),
-    sb.from('group_note_volumes').select('id, title, start_seconds, end_seconds').eq('group_id', group.id).order('start_seconds', { ascending: true })
+    sb.from('group_note_volumes').select('id, title, start_seconds, end_seconds').eq('group_id', group.id).order('start_seconds', { ascending: true }),
+    // bestiary_entries RLS is scoped to created_by = auth.uid(), so this only
+    // ever returns rows for the GM who created them -- skip it for players
+    // rather than show a section that will always read empty for them.
+    group.myRole === 'gm'
+      ? sb.from('bestiary_entries').select('id, name, max_hp, current_hp, avg_hp').eq('group_id', group.id).eq('is_temp_pc', true).order('name', { ascending: true })
+      : Promise.resolve({ data: [], error: null })
   ]);
   const el = document.getElementById('group-detail');
   if (!el) return;
-  if (rErr || volErr) {
-    el.innerHTML = `<div style="color:var(--red-b)">Failed to load group: ${escapeHtml((rErr||volErr).message)}</div>`;
+  if (rErr || volErr || tcErr) {
+    el.innerHTML = `<div style="color:var(--red-b)">Failed to load group: ${escapeHtml((rErr||volErr||tcErr).message)}</div>`;
     return;
   }
   groupVolumesCache = volumes || [];
@@ -3002,6 +3053,19 @@ async function renderGroupDetail(group) {
       }).join('')
     : '<tr><td colspan="2" class="note">No notes yet.</td></tr>';
 
+  const tempCharsHtml = (tempChars || []).length
+    ? tempChars.map(t => {
+        const hp = t.current_hp != null ? t.current_hp : Math.round(t.avg_hp || 0);
+        const maxHp = t.max_hp != null ? t.max_hp : Math.round(t.avg_hp || 0);
+        return `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+        <span>${escapeHtml(t.name)}</span> <span style="color:var(--text-dim)">(${hp}/${maxHp} HP)</span>
+        ${isGM ? `
+        <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="openEditTempCharacter('${t.id}')">Edit</button>
+        <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="deleteTempCharacter('${t.id}','${group.id}')">Delete</button>` : ''}
+      </li>`;
+      }).join('')
+    : '<li class="note">No temp characters yet.</li>';
+
   const groupClock = ronFromSeconds(group.clock_seconds);
   el.innerHTML = `
     <hr class="divider">
@@ -3016,6 +3080,15 @@ async function renderGroupDetail(group) {
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0">${orderToggleHtml}</div>
       <ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${rosterHtml}</ul>
     </div>
+    ${isGM ? `
+    <div class="form-group" style="margin-top:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <label style="margin:0">Temp Characters</label>
+        <button class="btn btn-dim" style="font-size:11px;padding:3px 8px" onclick="openNewTempCharacter('${group.id}')">+ Add Temp Character</button>
+      </div>
+      <div class="note" style="margin:2px 0">Quick stat blocks for players without a full character sheet yet -- used by the combat module.</div>
+      <ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${tempCharsHtml}</ul>
+    </div>` : ''}
     <hr class="divider">
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Time — Reckoning of Nebler</div>
     <div class="computed-item" style="margin-bottom:8px"><span class="ci-value" style="font-size:16px;cursor:pointer;text-decoration:underline dotted" onclick="openGoesiModal('${group.id}')" title="Open the Goesi (month) calendar">${ronDateLabel(groupClock)}</span></div>
@@ -3080,6 +3153,13 @@ async function moveRosterMember(groupId, characterId, direction) {
   const results = await Promise.all(reordered.map((c, i) => sb.rpc('gm_set_roster_order', { p_character_id: c.id, p_order_type: rosterOrderMode, p_order: i })));
   const failed = results.find(r => r.error);
   if (failed) { alert('Failed to update order: ' + failed.error.message); return; }
+  renderGroupModule();
+}
+
+async function deleteTempCharacter(id, groupId) {
+  if (!confirm('Delete this temp character? This cannot be undone.')) return;
+  const { error } = await sb.from('bestiary_entries').delete().eq('id', id);
+  if (error) { alert('Failed to delete: ' + error.message); return; }
   renderGroupModule();
 }
 
