@@ -947,10 +947,18 @@ function computeWeapon(character, item) {
       (character.items || [])[item.ammunitionItemIdx] : null;
     const ammoMagicToHit = ammoItem ? (parseFloat(ammoItem.magicBonusToHit) || 0) : 0;
     const rawHit = ((a.ST||0)-missileStn)*stmod + ((a.CD||0)-missileCdn)*cdmod + skillAbility + magicBonusToHit + ammoMagicToHit;
-    const rangeMod = range > 0 ? Math.max(0, 1 - (targetDistance / range)) : 1;
+    // Spears only: thrown range moves by the strength to-hit bonus/malus (a
+    // second dip on top of the to-hit itself), but a malus can never cut the
+    // listed range below half.
+    let effectiveRange = range;
+    if (item.weaponClass === 'Basic Spears' && range > 0) {
+      const strMod = ((a.ST||0)-missileStn)*stmod;
+      effectiveRange = Math.max(range / 2, range + strMod);
+    }
+    const rangeMod = effectiveRange > 0 ? Math.max(0, 1 - (targetDistance / effectiveRange)) : 1;
     const finalHit = rawHit * rangeMod;
     const cf = critFumble(finalHit);
-    missile = { rawHit, rangeMod, finalHit, ammoItem, speedMissile, usedGrip: oneHandUsable ? '1H' : '2H', critChance: cf.critChance, fumbleThreshold: cf.fumbleThreshold, fumbleChance: cf.fumbleChance };
+    missile = { rawHit, rangeMod, effectiveRange, finalHit, ammoItem, speedMissile, usedGrip: oneHandUsable ? '1H' : '2H', critChance: cf.critChance, fumbleThreshold: cf.fumbleThreshold, fumbleChance: cf.fumbleChance };
   }
 
   return { skillAbility, baseWeaponSkval, singleWeapSpec, critHitBonusSkval, parrySkval, parryPointsUsed, multipleAttackSkval, oneHand, twoHand, missile };
@@ -4756,6 +4764,7 @@ function renderCombatModule() {
               </div>
             </div>
             <div class="computed-row">
+              ${it.weaponClass === 'Basic Spears' ? `<div class="computed-item"><span class="ci-label">Effective Range (ST-adjusted)</span><span class="ci-value">${Math.round(w.missile.effectiveRange*10)/10}</span></div>` : ''}
               <div class="computed-item"><span class="ci-label">Range Modifier</span><span class="ci-value">${Math.round(w.missile.rangeMod*100)}</span></div>
               <div class="computed-item"><span class="ci-label">Missile To-Hit</span><span class="ci-value skval">${Math.round(w.missile.finalHit)}</span></div>
               <div class="computed-item"><span class="ci-label">Crit %</span><span class="ci-value">${fmtCrit(w.missile.critChance)}</span></div>
