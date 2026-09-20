@@ -949,16 +949,19 @@ function computeWeapon(character, item) {
     const rawHit = ((a.ST||0)-missileStn)*stmod + ((a.CD||0)-missileCdn)*cdmod + skillAbility + magicBonusToHit + ammoMagicToHit;
     // Spears only: thrown range moves by the strength to-hit bonus/malus (a
     // second dip on top of the to-hit itself), but a malus can never cut the
-    // listed range below half.
+    // listed range below half. Spear Thrown then adds 1 range per 4 points of
+    // the skill on top of that, so a weak thrower can make up ground.
     let effectiveRange = range;
+    let spearThrownRange = 0;
     if (item.weaponClass === 'Basic Spears' && range > 0) {
       const strMod = ((a.ST||0)-missileStn)*stmod;
-      effectiveRange = Math.max(range / 2, range + strMod);
+      spearThrownRange = Math.floor(getSkillSkval(character, 'Spear Thrown') / 4);
+      effectiveRange = Math.max(range / 2, range + strMod) + spearThrownRange;
     }
     const rangeMod = effectiveRange > 0 ? Math.max(0, 1 - (targetDistance / effectiveRange)) : 1;
     const finalHit = rawHit * rangeMod;
     const cf = critFumble(finalHit);
-    missile = { rawHit, rangeMod, effectiveRange, finalHit, ammoItem, speedMissile, usedGrip: oneHandUsable ? '1H' : '2H', critChance: cf.critChance, fumbleThreshold: cf.fumbleThreshold, fumbleChance: cf.fumbleChance };
+    missile = { rawHit, rangeMod, effectiveRange, spearThrownRange, finalHit, ammoItem, speedMissile, usedGrip: oneHandUsable ? '1H' : '2H', critChance: cf.critChance, fumbleThreshold: cf.fumbleThreshold, fumbleChance: cf.fumbleChance };
   }
 
   return { skillAbility, baseWeaponSkval, singleWeapSpec, critHitBonusSkval, parrySkval, parryPointsUsed, multipleAttackSkval, oneHand, twoHand, missile };
@@ -4764,7 +4767,7 @@ function renderCombatModule() {
               </div>
             </div>
             <div class="computed-row">
-              ${it.weaponClass === 'Basic Spears' ? `<div class="computed-item"><span class="ci-label">Effective Range (ST-adjusted)</span><span class="ci-value">${Math.round(w.missile.effectiveRange*10)/10}</span></div>` : ''}
+              ${it.weaponClass === 'Basic Spears' ? `<div class="computed-item"><span class="ci-label">Effective Range (ST + Spear Thrown)</span><span class="ci-value">${Math.round(w.missile.effectiveRange*10)/10}${w.missile.spearThrownRange ? ` <span class="note">(+${w.missile.spearThrownRange} from skill)</span>` : ''}</span></div>` : ''}
               <div class="computed-item"><span class="ci-label">Range Modifier</span><span class="ci-value">${Math.round(w.missile.rangeMod*100)}</span></div>
               <div class="computed-item"><span class="ci-label">Missile To-Hit</span><span class="ci-value skval">${Math.round(w.missile.finalHit)}</span></div>
               <div class="computed-item"><span class="ci-label">Crit %</span><span class="ci-value">${fmtCrit(w.missile.critChance)}</span></div>
