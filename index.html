@@ -823,7 +823,14 @@ function computeWeight(character) {
   const ignoreEnc = getSkillSkval(character, 'Ignore encumbrance');
   const possible = Math.round((a.ST||0)*90 + (a.HE||0)*10 + basicMove*10 + ignoreEnc*10);
   const items = character.items || [];
-  const carried = items.filter(it => !it.location).reduce((sum, it) => sum + ((parseFloat(it.weight) || 0) * (parseFloat(it.qty) || 1)), 0);
+  // Blank location = on the person. A named container also counts if the
+  // player marked it "on person" (a backpack they're wearing) -- so they can
+  // track its contents without losing the weight.
+  const onPerson = character.storageOnPerson || {};
+  const carried = items.filter(it => {
+    const loc = it.location ? it.location.trim() : '';
+    return !loc || onPerson[loc];
+  }).reduce((sum, it) => sum + ((parseFloat(it.weight) || 0) * (parseFloat(it.qty) || 1)), 0);
   return { possible, carried };
 }
 
@@ -855,6 +862,7 @@ function computeStorageSummary(character) {
     const cap = capacities[g.location];
     g.capacity = (g.location === 'On Person (Carried)' || cap === undefined || cap === null) ? null : parseFloat(cap);
     g.over = g.capacity !== null && g.weight > g.capacity;
+    g.onPerson = g.location === 'On Person (Carried)' || !!(character.storageOnPerson || {})[g.location];
   }
   return Object.values(groups).sort((a, b) => a.location === 'On Person (Carried)' ? -1 : b.location === 'On Person (Carried)' ? 1 : a.location.localeCompare(b.location));
 }
@@ -4542,7 +4550,7 @@ function renderGeneralModule() {
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weapons, Armor & Items
         <span style="color:var(--gold);text-transform:none;letter-spacing:normal;font-size:13px;margin-left:12px">Total Worth: ${((char.items||[]).reduce((sum,it)=>sum+((parseFloat(it.worth)||0)*(parseFloat(it.qty)||1)),0)).toLocaleString()}</span>
       </div>
-      <div class="note" style="margin-bottom:6px">Leave Location blank for items carried on your person (counts toward Weight Carried above). Anything else — a bank, a bag of holding, a specific stash — is tracked but doesn't weigh you down.</div>
+      <div class="note" style="margin-bottom:6px">Leave Location blank for items carried on your person (counts toward Weight Carried above). Anything else — a bank, a bag of holding, a specific stash — is tracked but doesn't weigh you down, unless you tick its On Person box in Storage Locations below (a backpack you're wearing).</div>
       <datalist id="item-location-list">${[...new Set((char.items||[]).map(it=>it.location).filter(Boolean))].map(loc=>`<option value="${escapeHtml(loc)}">`).join('')}</datalist>
       <table class="item-table">
         <thead><tr><th>Item</th><th>Type</th><th>Class</th><th>Model</th><th>AV</th><th>PR</th><th>Qty</th><th>Unit Wt</th><th>Total Wt</th><th>Unit Worth</th><th>Total Worth</th><th>MW/Magic</th><th>Location</th><th>Notes</th><th></th></tr></thead>
@@ -4607,15 +4615,16 @@ function renderGeneralModule() {
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px">Storage Locations</div>
       <div class="note" style="margin-bottom:6px">Set a Capacity on a bag/satchel/etc. to flag it when overloaded. Leave blank for no limit. To add an empty container before putting anything in it, give it a name and capacity here.</div>
       <table class="skill-table">
-        <thead><tr><th>Location</th><th>Items</th><th>Weight</th><th>Capacity</th><th>Worth</th></tr></thead>
+        <thead><tr><th>Location</th><th>On Person</th><th>Items</th><th>Weight</th><th>Capacity</th><th>Worth</th></tr></thead>
         <tbody>
           ${computeStorageSummary(char).map(g => `<tr>
             <td>${escapeHtml(g.location)}</td>
+            <td>${g.location==='On Person (Carried)' ? '<span class="note">always</span>' : `<input type="checkbox" ${g.onPerson?'checked':''} title="Checked: this container's weight counts toward Weight Carried" onchange="updateStorageOnPerson('${g.location.replace(/'/g,"\\'")}',this.checked)">`}</td>
             <td>${g.count}</td>
             <td style="${g.over?'color:#c05050;font-weight:bold':''}">${g.weight.toLocaleString()}${g.over?' OVER':''}</td>
             <td>${g.location==='On Person (Carried)' ? '<span class="note">see Weight above</span>' : `<input type="number" class="w100" value="${g.capacity!==null?g.capacity:''}" placeholder="none" onchange="updateStorageCapacity('${g.location.replace(/'/g,"\\'")}',this.value)">`}</td>
             <td>${g.worth.toLocaleString()}</td>
-          </tr>`).join('') || '<tr><td colspan="5" class="note">No items yet.</td></tr>'}
+          </tr>`).join('') || '<tr><td colspan="6" class="note">No items yet.</td></tr>'}
         </tbody>
       </table>
       <div class="form-row" style="margin-top:6px">
@@ -5819,6 +5828,14 @@ function addItem() {
   renderGeneralModule();
 }
 
+function updateStorageOnPerson(location, checked) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  if (!char.storageOnPerson) char.storageOnPerson = {};
+  if (checked) char.storageOnPerson[location] = true; else delete char.storageOnPerson[location];
+  saveState();
+  renderGeneralModule();
+}
 function updateStorageCapacity(location, value) {
   const char = state.characters[state.activeChar];
   if (!char) return;
