@@ -3036,7 +3036,7 @@ function showGroupModule() {
 async function fetchMyGroups() {
   if (!currentUser) return [];
   const { data: memberships, error } = await sb.from('group_members')
-    .select('role, groups(id,name,created_by,clock_seconds)')
+    .select('role, groups(id,name,created_by,clock_seconds,roster_order_notes)')
     .eq('user_id', currentUser.id);
   if (error) { console.error('Failed to load groups', error); return myGroups; }
   myGroups = (memberships || []).filter(m => m.groups).map(m => ({ ...m.groups, myRole: m.role }));
@@ -3080,6 +3080,17 @@ let rosterOrderMode = 'travel';
 
 function setRosterOrderMode(mode) {
   rosterOrderMode = mode;
+  renderGroupModule();
+}
+
+// One small freeform note per marching-order mode (e.g. "front: shield
+// wall, rear: healer" for Travel) -- stored on the group row itself, not
+// per-character, since it describes the formation as a whole.
+async function updateRosterOrderNote(groupId, mode, value) {
+  const group = myGroups.find(g => g.id === groupId);
+  const notes = { ...((group && group.roster_order_notes) || {}), [mode]: value };
+  const { error } = await sb.from('groups').update({ roster_order_notes: notes }).eq('id', groupId);
+  if (error) { alert('Failed to save note: ' + error.message); return; }
   renderGroupModule();
 }
 
@@ -3243,6 +3254,11 @@ async function renderGroupDetail(group) {
     <div class="form-group" style="margin-top:8px"><label>Roster (PCs &amp; NPCs)</label>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0">${orderToggleHtml}</div>
       <ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${rosterHtml}</ul>
+      <div style="margin-top:6px">
+        ${isGM
+          ? `<textarea rows="2" style="width:100%;font-size:12px" placeholder="Note for ${ROSTER_ORDER_MODES[rosterOrderMode].label} (e.g. who's where, and why)" onchange="updateRosterOrderNote('${group.id}','${rosterOrderMode}',this.value)">${escapeHtml((group.roster_order_notes||{})[rosterOrderMode]||'')}</textarea>`
+          : ((group.roster_order_notes||{})[rosterOrderMode] ? `<div class="note" style="white-space:pre-wrap">${escapeHtml(group.roster_order_notes[rosterOrderMode])}</div>` : '')}
+      </div>
     </div>
     ${isGM ? `
     <div class="form-group" style="margin-top:8px">
