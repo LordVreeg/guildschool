@@ -4588,7 +4588,8 @@ function renderGeneralModule() {
             ${myGroups.map(g=>`<option value="${g.id}" ${char.playGroupId===g.id?'selected':''}>${escapeHtml(g.name)}</option>`).join('')}
           </select>
         </div>
-        <div class="form-group id-field"><label>Social Tier</label><input type="number" class="w80" value="${char.socialNumber!==undefined?char.socialNumber:''}" onchange="updateChar('socialNumber',this.value)"></div>
+        <div class="form-group id-field"><label>Starting Social Tier</label><input type="number" class="w80" value="${char.socialNumber!==undefined?char.socialNumber:''}" onchange="updateChar('socialNumber',this.value)"></div>
+        <div class="form-group id-field"><label>Current Social Tier</label><input type="number" class="w80" value="${char.currentSocialNumber!==undefined&&char.currentSocialNumber!==null?char.currentSocialNumber:(char.socialNumber!==undefined?char.socialNumber:'')}" onchange="updateChar('currentSocialNumber',this.value)"></div>
         <div class="form-group" style="justify-content:flex-end">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
             <input type="checkbox" ${char.isNPC?'checked':''} onchange="updateChar('isNPC',this.checked)">
@@ -5678,6 +5679,7 @@ function createChar() {
       char.darksight = rolled.darksight;
       char.gender = gender;
       char.socialNumber = rolled.socialNumber;
+      char.currentSocialNumber = rolled.socialNumber;
       char.startingWealth = rolled.startingWealth;
       char.historyNotes = (char.historyNotes||'') + `\n[Rolled character generation log]\n` + rolled.log.join('\n');
       char.skills = char.skills || [];
@@ -6736,7 +6738,8 @@ function buildCharacterSheetHtml(char) {
       <div class="pv-item"><b>Darksight</b>${char.darksight||'—'}</div>
       <div class="pv-item"><b>Locale</b>${char.locale||'—'}</div>
       <div class="pv-item"><b>Group</b>${(myGroups.find(g=>g.id===char.playGroupId)||{}).name||'—'}</div>
-      <div class="pv-item"><b>Social Tier</b>${char.socialNumber!==undefined?char.socialNumber:'—'}</div>
+      <div class="pv-item"><b>Starting Social Tier</b>${char.socialNumber!==undefined?char.socialNumber:'—'}</div>
+      <div class="pv-item"><b>Current Social Tier</b>${char.currentSocialNumber!==undefined&&char.currentSocialNumber!==null?char.currentSocialNumber:(char.socialNumber!==undefined?char.socialNumber:'—')}</div>
     </div>
     ${char.appearanceNotes ? `<h2>Appearance</h2><div class="pv-item">${char.appearanceNotes}</div>` : ''}
     ${char.personalNotes ? `<h2>Personal Notes</h2><div class="pv-item">${char.personalNotes}</div>` : ''}
