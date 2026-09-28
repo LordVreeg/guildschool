@@ -3673,13 +3673,14 @@ function renderEncounterHtml(enc, isGM) {
     }).join('')}
   </tbody></table>` : '<div class="note">No log entries yet.</div>';
 
-  // Left rail: at a glance, who's up next and when -- across every action
-  // track, not grouped by combatant, since that's the question a table
-  // actually needs answered fast during play. Same 3-level tiebreak as
-  // "Advance to Next Queued Action" (segment, then category, then the
-  // GM's manual ▲▼ order) so this list's order matches what actually
-  // resolves first.
-  const upcoming = actionTracksCache
+  // Left rail: a Roll20-style Turn Order list -- every action track, not
+  // grouped by combatant, since that's the question a table actually needs
+  // answered fast during play. Queued tracks sort by the same 3-level
+  // tiebreak as "Advance to Next Queued Action" (segment, then category,
+  // then the GM's manual ▲▼ order); standing-by tracks (no segment set
+  // yet) sort to the bottom rather than being hidden, so "who hasn't
+  // declared yet" is still visible at a glance.
+  const queuedTracks = actionTracksCache
     .filter(t => t.next_segment != null && byId[t.combatant_id])
     .slice()
     .sort((a, b) => {
@@ -3688,21 +3689,22 @@ function renderEncounterHtml(enc, isGM) {
       const rankB = COMBAT_CATEGORY_RANK[b.action_category] != null ? COMBAT_CATEGORY_RANK[b.action_category] : 99;
       if (rankA !== rankB) return rankA - rankB;
       return (byId[a.combatant_id].manual_order||0) - (byId[b.combatant_id].manual_order||0);
-    })
-    .slice(0, 10);
-  const upcomingHtml = upcoming.length ? upcoming.map(t => {
+    });
+  const standbyTracks = actionTracksCache.filter(t => t.next_segment == null && byId[t.combatant_id]);
+  const orderedTracks = queuedTracks.concat(standbyTracks);
+  const upcomingHtml = orderedTracks.length ? orderedTracks.map(t => {
     const c = byId[t.combatant_id];
     const dead = c.current_hp != null && c.current_hp <= 0;
-    const due = t.next_segment <= dueSegment;
-    return `<div style="display:flex;align-items:baseline;gap:8px;padding:5px 2px;border-bottom:1px solid var(--border)${due?';background:rgba(110,27,34,.06)':''}">
-      <span style="font-size:16px;font-weight:bold;color:var(--gold);width:2.2em;text-align:right;flex-shrink:0">${t.next_segment}</span>
-      <span style="min-width:0">
+    const due = t.next_segment != null && t.next_segment <= dueSegment;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border)${due?';background:rgba(74,148,96,.18)':''}">
+      <span style="flex:1;min-width:0">
         <span style="${dead?'text-decoration:line-through':''}">${escapeHtml(c.display_name)}</span>
         ${t.label ? `<span style="font-size:11px;color:var(--text-dim)"> ${escapeHtml(t.label)}</span>` : ''}
         ${t.action_category ? `<span style="display:block;font-size:10px;color:var(--text-dim)">${COMBAT_CATEGORY_LABELS[t.action_category]}</span>` : ''}
       </span>
+      <span style="font-size:20px;font-weight:bold;color:${t.next_segment!=null?'var(--gold)':'var(--text-dim)'};flex-shrink:0">${t.next_segment!=null?t.next_segment:'—'}</span>
     </div>`;
-  }).join('') : '<div class="note">No queued actions.</div>';
+  }).join('') : '<div class="note">No combatants yet.</div>';
 
   return `<div class="panel"><div class="panel-body">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -3727,8 +3729,11 @@ function renderEncounterHtml(enc, isGM) {
     </div>
     <div class="note" style="margin-bottom:6px">Resolution order within a tied segment: Spell → Non-Combat → Missile → Melee, then the ▲▼ order above as the final tiebreak. Everything here is an editable suggestion -- adjust freely.</div>
     <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
-      <div style="width:210px;flex-shrink:0">
-        <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Next Up</div>
+      <div style="width:230px;flex-shrink:0;border:1px solid var(--border);border-radius:4px;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;background:var(--header-bg);padding:5px 8px">
+          <span style="font-size:11px;color:var(--header-text);text-transform:uppercase;letter-spacing:1px">Turn Order</span>
+          <span style="font-size:10px;color:var(--header-text);opacity:.7">Count: ${orderedTracks.length}</span>
+        </div>
         ${upcomingHtml}
       </div>
       <div style="flex:1;min-width:280px">
