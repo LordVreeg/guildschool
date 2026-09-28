@@ -3673,6 +3673,37 @@ function renderEncounterHtml(enc, isGM) {
     }).join('')}
   </tbody></table>` : '<div class="note">No log entries yet.</div>';
 
+  // Left rail: at a glance, who's up next and when -- across every action
+  // track, not grouped by combatant, since that's the question a table
+  // actually needs answered fast during play. Same 3-level tiebreak as
+  // "Advance to Next Queued Action" (segment, then category, then the
+  // GM's manual ▲▼ order) so this list's order matches what actually
+  // resolves first.
+  const upcoming = actionTracksCache
+    .filter(t => t.next_segment != null && byId[t.combatant_id])
+    .slice()
+    .sort((a, b) => {
+      if (a.next_segment !== b.next_segment) return a.next_segment - b.next_segment;
+      const rankA = COMBAT_CATEGORY_RANK[a.action_category] != null ? COMBAT_CATEGORY_RANK[a.action_category] : 99;
+      const rankB = COMBAT_CATEGORY_RANK[b.action_category] != null ? COMBAT_CATEGORY_RANK[b.action_category] : 99;
+      if (rankA !== rankB) return rankA - rankB;
+      return (byId[a.combatant_id].manual_order||0) - (byId[b.combatant_id].manual_order||0);
+    })
+    .slice(0, 10);
+  const upcomingHtml = upcoming.length ? upcoming.map(t => {
+    const c = byId[t.combatant_id];
+    const dead = c.current_hp != null && c.current_hp <= 0;
+    const due = t.next_segment <= dueSegment;
+    return `<div style="display:flex;align-items:baseline;gap:8px;padding:5px 2px;border-bottom:1px solid var(--border)${due?';background:rgba(110,27,34,.06)':''}">
+      <span style="font-size:16px;font-weight:bold;color:var(--gold);width:2.2em;text-align:right;flex-shrink:0">${t.next_segment}</span>
+      <span style="min-width:0">
+        <span style="${dead?'text-decoration:line-through':''}">${escapeHtml(c.display_name)}</span>
+        ${t.label ? `<span style="font-size:11px;color:var(--text-dim)"> ${escapeHtml(t.label)}</span>` : ''}
+        ${t.action_category ? `<span style="display:block;font-size:10px;color:var(--text-dim)">${COMBAT_CATEGORY_LABELS[t.action_category]}</span>` : ''}
+      </span>
+    </div>`;
+  }).join('') : '<div class="note">No queued actions.</div>';
+
   return `<div class="panel"><div class="panel-body">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
       <div style="display:flex;align-items:center;gap:10px">
@@ -3695,23 +3726,31 @@ function renderEncounterHtml(enc, isGM) {
       ${isGM ? `<div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="advanceToNextSegment('${enc.id}')">Advance to Next Queued Action</button></div>` : ''}
     </div>
     <div class="note" style="margin-bottom:6px">Resolution order within a tied segment: Spell → Non-Combat → Missile → Melee, then the ▲▼ order above as the final tiebreak. Everything here is an editable suggestion -- adjust freely.</div>
-    ${combatantsHtml}
-    <hr class="divider">
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Log an Action</div>
-    <div class="form-row">
-      <div class="form-group"><label>Combatant</label><select id="log-combatant">${combatantsCache.map(c=>`<option value="${c.id}">${escapeHtml(c.display_name)}</option>`).join('')}</select></div>
-      <div class="form-group"><label>Target</label><select id="log-target"><option value="">(none)</option>${combatantsCache.map(c=>`<option value="${c.id}">${escapeHtml(c.display_name)}</option>`).join('')}</select></div>
+    <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+      <div style="width:210px;flex-shrink:0">
+        <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Next Up</div>
+        ${upcomingHtml}
+      </div>
+      <div style="flex:1;min-width:280px">
+        ${combatantsHtml}
+        <hr class="divider">
+        <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Log an Action</div>
+        <div class="form-row">
+          <div class="form-group"><label>Combatant</label><select id="log-combatant">${combatantsCache.map(c=>`<option value="${c.id}">${escapeHtml(c.display_name)}</option>`).join('')}</select></div>
+          <div class="form-group"><label>Target</label><select id="log-target"><option value="">(none)</option>${combatantsCache.map(c=>`<option value="${c.id}">${escapeHtml(c.display_name)}</option>`).join('')}</select></div>
+        </div>
+        <div class="form-group" style="margin:6px 0"><label>Action Summary</label><input id="log-summary" style="width:100%" placeholder="e.g. Swings longsword, hits for 8"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Damage Dealt</label><input id="log-dealt" type="number" class="w80"></div>
+          <div class="form-group"><label>Damage Taken</label><input id="log-taken" type="number" class="w80"></div>
+          <div class="form-group"><label>Damage Prevented</label><input id="log-prevented" type="number" class="w80"></div>
+          <div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="addLogEntry('${enc.id}')">Add to Log</button></div>
+        </div>
+        <hr class="divider">
+        <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Recent Log</div>
+        ${logHtml}
+      </div>
     </div>
-    <div class="form-group" style="margin:6px 0"><label>Action Summary</label><input id="log-summary" style="width:100%" placeholder="e.g. Swings longsword, hits for 8"></div>
-    <div class="form-row">
-      <div class="form-group"><label>Damage Dealt</label><input id="log-dealt" type="number" class="w80"></div>
-      <div class="form-group"><label>Damage Taken</label><input id="log-taken" type="number" class="w80"></div>
-      <div class="form-group"><label>Damage Prevented</label><input id="log-prevented" type="number" class="w80"></div>
-      <div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="addLogEntry('${enc.id}')">Add to Log</button></div>
-    </div>
-    <hr class="divider">
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Recent Log</div>
-    ${logHtml}
   </div></div>`;
 }
 
