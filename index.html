@@ -3696,13 +3696,13 @@ function renderEncounterHtml(enc, isGM) {
     const c = byId[t.combatant_id];
     const dead = c.current_hp != null && c.current_hp <= 0;
     const due = t.next_segment != null && t.next_segment <= dueSegment;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border)${due?';background:rgba(74,148,96,.18)':''}">
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border)${due?';background:rgba(74,148,96,.22)':''}">
       <span style="flex:1;min-width:0">
-        <span style="${dead?'text-decoration:line-through':''}">${escapeHtml(c.display_name)}</span>
-        ${t.label ? `<span style="font-size:11px;color:var(--text-dim)"> ${escapeHtml(t.label)}</span>` : ''}
-        ${t.action_category ? `<span style="display:block;font-size:10px;color:var(--text-dim)">${COMBAT_CATEGORY_LABELS[t.action_category]}</span>` : ''}
+        <span style="font-size:17px;font-weight:bold;${dead?'text-decoration:line-through':''}">${escapeHtml(c.display_name)}</span>
+        ${t.label ? `<span style="font-size:12px;color:var(--text-dim)"> ${escapeHtml(t.label)}</span>` : ''}
+        ${t.action_category ? `<span style="display:block;font-size:11px;color:var(--text-dim)">${COMBAT_CATEGORY_LABELS[t.action_category]}</span>` : ''}
       </span>
-      <span style="font-size:20px;font-weight:bold;color:${t.next_segment!=null?'var(--gold)':'var(--text-dim)'};flex-shrink:0">${t.next_segment!=null?t.next_segment:'—'}</span>
+      <span style="font-size:32px;font-weight:bold;line-height:1;color:${t.next_segment!=null?'var(--gold)':'var(--text-dim)'};flex-shrink:0">${t.next_segment!=null?t.next_segment:'—'}</span>
     </div>`;
   }).join('') : '<div class="note">No combatants yet.</div>';
 
@@ -3729,10 +3729,10 @@ function renderEncounterHtml(enc, isGM) {
     </div>
     <div class="note" style="margin-bottom:6px">Resolution order within a tied segment: Spell → Non-Combat → Missile → Melee, then the ▲▼ order above as the final tiebreak. Everything here is an editable suggestion -- adjust freely.</div>
     <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
-      <div style="width:230px;flex-shrink:0;border:1px solid var(--border);border-radius:4px;overflow:hidden">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;background:var(--header-bg);padding:5px 8px">
-          <span style="font-size:11px;color:var(--header-text);text-transform:uppercase;letter-spacing:1px">Turn Order</span>
-          <span style="font-size:10px;color:var(--header-text);opacity:.7">Count: ${orderedTracks.length}</span>
+      <div style="width:300px;flex-shrink:0;border:2px solid var(--gold-dim);border-radius:4px;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;background:var(--header-bg);padding:8px 12px">
+          <span style="font-size:14px;font-weight:bold;color:var(--header-text);text-transform:uppercase;letter-spacing:1px">Turn Order</span>
+          <span style="font-size:11px;color:var(--header-text);opacity:.7">Count: ${orderedTracks.length}</span>
         </div>
         ${upcomingHtml}
       </div>
