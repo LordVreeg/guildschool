@@ -3636,23 +3636,30 @@ function renderEncounterHtml(enc, isGM) {
     const tracksHtml = tracks.map(t => {
       const due = t.next_segment != null && t.next_segment <= dueSegment;
       // Initiative is the one thing that has to be fast for both sides of the
-      // table: a big, bold segment number up front with one-tap nudge buttons,
-      // not buried after label/category. Label/category stay editable but
-      // small and secondary.
-      return `<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin:3px 0">
+      // table: a big, bold segment number up front with one-tap nudge
+      // buttons. The intended-action text turned out to be a real freeform
+      // description ("biting Bastardo", "casting Source charge"), not a
+      // short tag, so it gets its own full-width row and room to type.
+      return `<div style="margin:3px 0">
         ${canEdit ? `
-        <button class="btn btn-dim" style="font-size:14px;padding:1px 9px;font-weight:bold" onclick="nudgeActionTrack('${t.id}',-1)" title="-1 segment">−</button>
-        <input type="number" step="any" style="width:64px;font-size:16px;font-weight:bold;text-align:center;color:var(--gold)" value="${t.next_segment != null ? t.next_segment : ''}" placeholder="—" onchange="updateActionTrack('${t.id}','next_segment',this.value===''?null:parseFloat(this.value))">
-        <button class="btn btn-dim" style="font-size:14px;padding:1px 9px;font-weight:bold" onclick="nudgeActionTrack('${t.id}',1)" title="+1 segment">+</button>
-        ${t.next_segment == null ? `<button class="btn btn-gold" style="font-size:10px;padding:2px 6px" onclick="updateActionTrack('${t.id}','next_segment',${dueSegment})">Join Now (seg ${dueSegment})</button>` : ''}
-        ${due && t.next_segment != null ? `<button class="btn btn-gold" style="font-size:10px;padding:2px 6px" onclick="resolveActionTrack('${t.id}')">Resolve</button>` : ''}
-        <input value="${escapeHtml(t.label||'')}" placeholder="Label" style="width:75px;font-size:10px" onchange="updateActionTrack('${t.id}','label',this.value)">
-        <select style="font-size:10px" onchange="updateActionTrack('${t.id}','action_category',this.value||null)">
-          <option value="">(category)</option>
-          ${Object.keys(COMBAT_CATEGORY_RANK).map(k => `<option value="${k}" ${t.action_category===k?'selected':''}>${COMBAT_CATEGORY_LABELS[k]}</option>`).join('')}
-        </select>
-        <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="deleteActionTrack('${t.id}')">✕</button>` :
-        `<span style="font-size:15px;font-weight:bold;color:var(--gold)">${t.next_segment!=null?'@ '+t.next_segment:'(standing by)'}</span> <span style="font-size:11px;color:var(--text-dim)">${escapeHtml(t.label||'')} ${t.action_category?COMBAT_CATEGORY_LABELS[t.action_category]:''}</span>`}
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+          <button class="btn btn-dim" style="font-size:14px;padding:1px 9px;font-weight:bold" onclick="nudgeActionTrack('${t.id}',-1)" title="-1 segment">−</button>
+          <input type="number" step="any" style="width:64px;font-size:16px;font-weight:bold;text-align:center;color:var(--gold)" value="${t.next_segment != null ? t.next_segment : ''}" placeholder="—" onchange="updateActionTrack('${t.id}','next_segment',this.value===''?null:parseFloat(this.value))">
+          <button class="btn btn-dim" style="font-size:14px;padding:1px 9px;font-weight:bold" onclick="nudgeActionTrack('${t.id}',1)" title="+1 segment">+</button>
+          ${t.next_segment == null ? `<button class="btn btn-gold" style="font-size:10px;padding:2px 6px" onclick="updateActionTrack('${t.id}','next_segment',${dueSegment})">Join Now (seg ${dueSegment})</button>` : ''}
+          ${due && t.next_segment != null ? `<button class="btn btn-gold" style="font-size:10px;padding:2px 6px" onclick="resolveActionTrack('${t.id}')">Resolve</button>` : ''}
+          <select style="font-size:11px" onchange="updateActionTrack('${t.id}','action_category',this.value||null)">
+            <option value="">(category)</option>
+            ${Object.keys(COMBAT_CATEGORY_RANK).map(k => `<option value="${k}" ${t.action_category===k?'selected':''}>${COMBAT_CATEGORY_LABELS[k]}</option>`).join('')}
+          </select>
+          <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="deleteActionTrack('${t.id}')">✕</button>
+        </div>
+        <input value="${escapeHtml(t.label||'')}" placeholder="Intended action (e.g. biting Bastardo, casting Source charge)" style="width:100%;font-size:13px;margin-top:3px" onchange="updateActionTrack('${t.id}','label',this.value)">` :
+        `<div>
+          <span style="font-size:15px;font-weight:bold;color:var(--gold)">${t.next_segment!=null?'@ '+t.next_segment:'(standing by)'}</span>
+          ${t.action_category ? `<span style="font-size:11px;color:var(--text-dim)"> ${COMBAT_CATEGORY_LABELS[t.action_category]}</span>` : ''}
+          ${t.label ? `<div style="font-size:13px">${escapeHtml(t.label)}</div>` : ''}
+        </div>`}
       </div>`;
     }).join('');
     const effects = c.effects || [];
