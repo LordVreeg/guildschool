@@ -3488,6 +3488,13 @@ let combatantsCache = [];
 let actionTracksCache = [];
 let combatLogCache = [];
 let combatOwnerByCharId = {}; // character_id -> owner_id, for this encounter's home group
+// Bumped at the start of every renderEncounterModule() call; a call only
+// commits its fetched data / repaints if it's still the most recent one by
+// the time its fetches finish. Without this, two edits fired in quick
+// succession (a nudge, then Resolve, then typing a new value) can have
+// their multi-step fetch chains finish out of order -- an earlier, slower
+// call reading stale data can land last and stomp a newer, correct render.
+let encounterRenderSeq = 0;
 
 // The Group page's one Combat button: a campaign can rack up 20-30
 // encounters over time, so this can't just guess which one to jump back
@@ -3538,14 +3545,19 @@ function closeEncounter() {
 }
 
 async function renderEncounterModule() {
-  document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body">Loading combat…</div></div>`;
+  const mySeq = ++encounterRenderSeq;
+  const stillCurrent = () => mySeq === encounterRenderSeq;
+  // Only the very first call in a burst shows the loading state -- if a
+  // newer call has already started, its own paint (or this one's, whichever
+  // finishes last while still current) is all that should reach the screen.
+  if (stillCurrent()) document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body">Loading combat…</div></div>`;
   await fetchMyGroups();
   const { data: enc, error: encErr } = await sb.from('combat_encounters').select('*').eq('id', activeEncounterId).single();
+  if (!stillCurrent()) return;
   if (encErr || !enc) {
     document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body" style="color:var(--red-b)">Failed to load combat: ${escapeHtml(encErr ? encErr.message : 'not found')}</div></div>`;
     return;
   }
-  encounterCache = enc;
   const group = myGroups.find(g => g.id === enc.group_id);
   const isGM = !!(group && group.myRole === 'gm');
 
@@ -3553,26 +3565,34 @@ async function renderEncounterModule() {
     sb.from('combat_combatants').select('*').eq('encounter_id', enc.id).order('manual_order', { ascending: true }),
     sb.from('group_roster').select('id, owner_id').eq('group_id', enc.group_id)
   ]);
+  if (!stillCurrent()) return;
   if (ccErr || rErr2) {
     document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body" style="color:var(--red-b)">Failed to load combat: ${escapeHtml((ccErr||rErr2).message)}</div></div>`;
     return;
   }
-  combatantsCache = combatants || [];
-  combatOwnerByCharId = {};
-  for (const r of roster || []) combatOwnerByCharId[r.id] = r.owner_id;
+  const combatantRows = combatants || [];
+  const ownerByCharId = {};
+  for (const r of roster || []) ownerByCharId[r.id] = r.owner_id;
 
-  const combatantIds = combatantsCache.map(c => c.id);
+  const combatantIds = combatantRows.map(c => c.id);
   const [{ data: tracks, error: tErr }, { data: log, error: lErr }] = await Promise.all([
     combatantIds.length ? sb.from('combat_action_tracks').select('*').in('combatant_id', combatantIds) : Promise.resolve({ data: [], error: null }),
     sb.from('combat_log_entries').select('*').eq('encounter_id', enc.id).order('created_at', { ascending: false }).limit(40)
   ]);
+  if (!stillCurrent()) return;
   if (tErr || lErr) {
     document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body" style="color:var(--red-b)">Failed to load combat: ${escapeHtml((tErr||lErr).message)}</div></div>`;
     return;
   }
+
+  // Commit everything together, only once this call is confirmed to still
+  // be the latest -- never partially overwrite the shared caches with a
+  // response that a newer call has already superseded.
+  encounterCache = enc;
+  combatantsCache = combatantRows;
+  combatOwnerByCharId = ownerByCharId;
   actionTracksCache = tracks || [];
   combatLogCache = log || [];
-
   document.getElementById('main').innerHTML = renderEncounterHtml(enc, isGM);
 }
 
