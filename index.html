@@ -3953,16 +3953,22 @@ async function openAddCombatantModal() {
   // character_lookup is the existing view that already extracts it.
   const [{ data: roster, error: rErr }, { data: tempChars, error: tcErr }, { data: foes, error: fErr }] = await Promise.all([
     sb.from('character_lookup').select('id,name').eq('group_id', enc.group_id),
-    sb.from('bestiary_entries').select('id,name').eq('group_id', enc.group_id).eq('is_temp_pc', true),
-    sb.from('bestiary_entries').select('id,name').eq('is_temp_pc', false).order('name', { ascending: true })
+    sb.from('bestiary_entries').select('id,name,race').eq('group_id', enc.group_id).eq('is_temp_pc', true),
+    sb.from('bestiary_entries').select('id,name,race').eq('is_temp_pc', false).order('name', { ascending: true })
   ]);
   if (rErr || tcErr || fErr) { alert('Failed to load combatant sources: ' + (rErr||tcErr||fErr).message); return; }
+  // Custom names ("Barty", "Groll the Gnoll", "Fire LizardBiffin"...) don't
+  // always make the underlying creature type obvious, so show it in
+  // parentheses when it differs from the name -- that's the thing a GM
+  // is actually scanning this list for.
+  const withType = x => x.race && x.race.trim() && x.race.trim().toLowerCase() !== x.name.trim().toLowerCase()
+    ? `${escapeHtml(x.name)} <span style="color:var(--text-dim)">(${escapeHtml(x.race)})</span>` : escapeHtml(x.name);
   const rosterHtml = (roster||[]).filter(r => !existingCharIds.has(r.id)).map(r =>
     `<li style="cursor:pointer;color:var(--gold)" onclick="addCombatantFromSource('character','${r.id}')">${escapeHtml(r.name)}</li>`).join('') || '<li class="note">None available.</li>';
   const tempHtml = (tempChars||[]).filter(t => !existingBestIds.has(t.id)).map(t =>
-    `<li style="cursor:pointer;color:var(--gold)" onclick="addCombatantFromSource('bestiary','${t.id}')">${escapeHtml(t.name)}</li>`).join('') || '<li class="note">None available.</li>';
+    `<li style="cursor:pointer;color:var(--gold)" onclick="addCombatantFromSource('bestiary','${t.id}')">${withType(t)}</li>`).join('') || '<li class="note">None available.</li>';
   const foesHtml = (foes||[]).filter(f => !existingBestIds.has(f.id)).map(f =>
-    `<li style="cursor:pointer;color:var(--gold)" onclick="addCombatantFromSource('bestiary','${f.id}')">${escapeHtml(f.name)}</li>`).join('') || '<li class="note">None available.</li>';
+    `<li style="cursor:pointer;color:var(--gold)" onclick="addCombatantFromSource('bestiary','${f.id}')">${withType(f)}</li>`).join('') || '<li class="note">None available.</li>';
   openModal(`
     <h3>Add Combatant</h3>
     <div class="form-row" style="align-items:flex-start">
