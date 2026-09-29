@@ -3719,6 +3719,13 @@ function renderEncounterHtml(enc, isGM) {
     });
   const standbyTracks = actionTracksCache.filter(t => t.next_segment == null && byId[t.combatant_id]);
   const orderedTracks = queuedTracks.concat(standbyTracks);
+
+  // "Log an Action" should default to whoever's actually up -- the same
+  // due entry highlighted green at the top of Turn Order -- so the common
+  // case (log the thing the current combatant just did) needs no dropdown
+  // fumbling. Falls back to whoever's soonest if nothing's due yet.
+  const dueTrack = queuedTracks.find(t => t.next_segment <= dueSegment);
+  const currentTurnCombatantId = (dueTrack || queuedTracks[0] || {}).combatant_id;
   const upcomingHtml = orderedTracks.length ? orderedTracks.map(t => {
     const c = byId[t.combatant_id];
     const dead = c.current_hp != null && c.current_hp <= 0;
@@ -3768,7 +3775,7 @@ function renderEncounterHtml(enc, isGM) {
         <hr class="divider">
         <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Log an Action</div>
         <div class="form-row">
-          <div class="form-group"><label>Combatant</label><select id="log-combatant">${combatantsCache.map(c=>`<option value="${c.id}">${escapeHtml(c.display_name)}</option>`).join('')}</select></div>
+          <div class="form-group"><label>Combatant</label><select id="log-combatant">${combatantsCache.map(c=>`<option value="${c.id}" ${c.id===currentTurnCombatantId?'selected':''}>${escapeHtml(c.display_name)}</option>`).join('')}</select></div>
           <div class="form-group"><label>Target</label><select id="log-target"><option value="">(none)</option>${combatantsCache.map(c=>`<option value="${c.id}">${escapeHtml(c.display_name)}</option>`).join('')}</select></div>
         </div>
         <div class="form-group" style="margin:6px 0"><label>Action Summary</label><input id="log-summary" style="width:100%" placeholder="e.g. Swings longsword, hits for 8"></div>
