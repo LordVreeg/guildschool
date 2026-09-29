@@ -3623,15 +3623,30 @@ function renderEncounterHtml(enc, isGM) {
   for (const t of actionTracksCache) {
     (tracksByCombatant[t.combatant_id] = tracksByCombatant[t.combatant_id] || []).push(t);
   }
+  // The one visibility rule for the whole page: a player sees full detail
+  // (HP numbers, team, target, action tracks, effects) only for the GM, or
+  // for their own linked character -- everyone else collapses to a bare
+  // name and the existing color-coded HP status. No separate per-field
+  // toggles; "can edit it" and "can see its detail" are the same question.
+  const canEditCombatant = (c) => isGM || !!(c && c.character_id && combatOwnerByCharId[c.character_id] === currentUser.id);
 
   const targetOptionsHtml = (currentId, selectedId) => `<option value="">(no target)</option>` +
     combatantsCache.filter(c => c.id !== currentId).map(c => `<option value="${c.id}" ${c.id===selectedId?'selected':''}>${escapeHtml(c.display_name)}</option>`).join('');
 
   const combatantsHtml = combatantsCache.length ? combatantsCache.map((c, i) => {
-    const mine = !!(c.character_id && combatOwnerByCharId[c.character_id] === currentUser.id);
-    const canEdit = isGM || mine;
+    const canEdit = canEditCombatant(c);
     const dead = c.current_hp != null && c.current_hp <= 0;
     const nameStyle = dead ? 'text-decoration:line-through' : '';
+    // A player only gets the full card -- team, exact HP, target, action
+    // tracks, effects -- for their own combatant (or the GM's, for
+    // everyone). Anyone else's card collapses to just a name and the
+    // existing color-coded HP status: no other creature info leaks.
+    if (!canEdit) {
+      return `<div style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin-bottom:6px;display:flex;align-items:center;gap:8px">
+        <span style="${nameStyle}">${escapeHtml(c.display_name)}</span>
+        ${combatantHpBadge(c, isGM)}
+      </div>`;
+    }
     const tracks = tracksByCombatant[c.id] || [];
     const tracksHtml = tracks.map(t => {
       const due = t.next_segment != null && t.next_segment <= dueSegment;
@@ -3726,7 +3741,12 @@ function renderEncounterHtml(enc, isGM) {
   // fumbling. Falls back to whoever's soonest if nothing's due yet.
   const dueTrack = queuedTracks.find(t => t.next_segment <= dueSegment);
   const currentTurnCombatantId = (dueTrack || queuedTracks[0] || {}).combatant_id;
-  const upcomingHtml = orderedTracks.length ? orderedTracks.map(t => {
+  // Turn Order itself is creature info -- a player only sees rows for
+  // combatants they can already see the full card for (their own, or the
+  // GM's view of everyone); other creatures' place in the order, and
+  // whatever they're about to do, isn't shown at all.
+  const visibleOrderedTracks = orderedTracks.filter(t => canEditCombatant(byId[t.combatant_id]));
+  const upcomingHtml = visibleOrderedTracks.length ? visibleOrderedTracks.map(t => {
     const c = byId[t.combatant_id];
     const dead = c.current_hp != null && c.current_hp <= 0;
     const due = t.next_segment != null && t.next_segment <= dueSegment;
@@ -3738,7 +3758,7 @@ function renderEncounterHtml(enc, isGM) {
       </span>
       <span style="font-size:32px;font-weight:bold;line-height:1;color:${t.next_segment!=null?'var(--gold)':'var(--text-dim)'};flex-shrink:0">${t.next_segment!=null?t.next_segment:'—'}</span>
     </div>`;
-  }).join('') : '<div class="note">No combatants yet.</div>';
+  }).join('') : `<div class="note">${orderedTracks.length ? 'Nothing of yours in the order yet.' : 'No combatants yet.'}</div>`;
 
   return `<div class="panel"><div class="panel-body">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -3766,7 +3786,7 @@ function renderEncounterHtml(enc, isGM) {
       <div style="width:300px;flex-shrink:0;border:2px solid var(--gold-dim);border-radius:4px;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:baseline;background:var(--header-bg);padding:8px 12px">
           <span style="font-size:14px;font-weight:bold;color:var(--header-text);text-transform:uppercase;letter-spacing:1px">Turn Order</span>
-          <span style="font-size:11px;color:var(--header-text);opacity:.7">Count: ${orderedTracks.length}</span>
+          <span style="font-size:11px;color:var(--header-text);opacity:.7">Count: ${visibleOrderedTracks.length}</span>
         </div>
         ${upcomingHtml}
       </div>
