@@ -3629,14 +3629,19 @@ function renderEncounterHtml(enc, isGM) {
   // name and the existing color-coded HP status. No separate per-field
   // toggles; "can edit it" and "can see its detail" are the same question.
   const canEditCombatant = (c) => isGM || !!(c && c.character_id && combatOwnerByCharId[c.character_id] === currentUser.id);
+  // A combatant's overall state -- active/waiting/incapacitated/killed --
+  // set by hand (GM or the owning player), never inferred from HP. Legacy
+  // rows with no status yet default to 'active'.
+  const combatantStatus = (c) => (c && c.status) || 'active';
 
   const targetOptionsHtml = (currentId, selectedId) => `<option value="">(no target)</option>` +
     combatantsCache.filter(c => c.id !== currentId).map(c => `<option value="${c.id}" ${c.id===selectedId?'selected':''}>${escapeHtml(c.display_name)}</option>`).join('');
 
   const combatantsHtml = combatantsCache.length ? combatantsCache.map((c, i) => {
     const canEdit = canEditCombatant(c);
-    const dead = c.current_hp != null && c.current_hp <= 0;
-    const nameStyle = dead ? 'text-decoration:line-through' : '';
+    const status = combatantStatus(c);
+    const nameStyle = (status === 'incapacitated' || status === 'killed')
+      ? `text-decoration:line-through${status==='killed' ? ';color:#a03030' : ''}` : '';
     // A player only gets the full card -- team, exact HP, target, action
     // tracks, effects -- for their own combatant (or the GM's, for
     // everyone). Anyone else's card collapses to just a name and the
@@ -3691,6 +3696,9 @@ function renderEncounterHtml(enc, isGM) {
         ${canEdit ? `<input type="number" class="w60" style="font-size:11px" value="${c.current_hp!=null?c.current_hp:''}" title="Current HP" onchange="updateCombatantField('${c.id}','current_hp',this.value===''?null:parseFloat(this.value))">
         / <input type="number" class="w60" style="font-size:11px" value="${c.max_hp!=null?c.max_hp:''}" title="Max HP" onchange="updateCombatantField('${c.id}','max_hp',this.value===''?null:parseFloat(this.value))">` : ''}
         <select style="font-size:11px" onchange="updateCombatantField('${c.id}','target_combatant_id',this.value||null)">${targetOptionsHtml(c.id, c.target_combatant_id)}</select>
+        <select style="font-size:11px" onchange="updateCombatantField('${c.id}','status',this.value)" title="Status -- drives Turn Order placement and name styling">
+          ${['active','waiting','incapacitated','killed'].map(s => `<option value="${s}" ${status===s?'selected':''}>${s[0].toUpperCase()+s.slice(1)}</option>`).join('')}
+        </select>
         ${isGM ? `<button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="removeCombatant('${c.id}')">Remove</button>` : ''}
       </div>
       <div style="margin-top:4px">${tracksHtml}</div>
@@ -3719,8 +3727,20 @@ function renderEncounterHtml(enc, isGM) {
   // then the GM's manual ▲▼ order); standing-by tracks (no segment set
   // yet) sort to the bottom rather than being hidden, so "who hasn't
   // declared yet" is still visible at a glance.
+  //
+  // Waiting/Killed combatants are pulled out of the segment-sorted order
+  // entirely -- one row per combatant (not per track), parked at the very
+  // bottom, Waiting first then Killed, alphabetical within each so they
+  // don't reshuffle on their own. Incapacitated stays mixed in normally
+  // (it still has a real init); only its name renders struck through.
+  const sidelinedCombatants = combatantsCache.filter(c => {
+    const s = combatantStatus(c);
+    return s === 'waiting' || s === 'killed';
+  });
+  const sidelinedIds = new Set(sidelinedCombatants.map(c => c.id));
+
   const queuedTracks = actionTracksCache
-    .filter(t => t.next_segment != null && byId[t.combatant_id])
+    .filter(t => t.next_segment != null && byId[t.combatant_id] && !sidelinedIds.has(t.combatant_id))
     .slice()
     .sort((a, b) => {
       if (a.next_segment !== b.next_segment) return a.next_segment - b.next_segment;
@@ -3729,7 +3749,7 @@ function renderEncounterHtml(enc, isGM) {
       if (rankA !== rankB) return rankA - rankB;
       return (byId[a.combatant_id].manual_order||0) - (byId[b.combatant_id].manual_order||0);
     });
-  const standbyTracks = actionTracksCache.filter(t => t.next_segment == null && byId[t.combatant_id]);
+  const standbyTracks = actionTracksCache.filter(t => t.next_segment == null && byId[t.combatant_id] && !sidelinedIds.has(t.combatant_id));
   const orderedTracks = queuedTracks.concat(standbyTracks);
 
   // "Log an Action" should default to whoever's actually up -- the same
@@ -3743,6 +3763,14 @@ function renderEncounterHtml(enc, isGM) {
   // GM's view of everyone); other creatures' place in the order, and
   // whatever they're about to do, isn't shown at all.
   const visibleOrderedTracks = orderedTracks.filter(t => canEditCombatant(byId[t.combatant_id]));
+  const visibleSidelined = sidelinedCombatants
+    .filter(c => canEditCombatant(c))
+    .sort((a, b) => {
+      const rank = s => s === 'waiting' ? 0 : 1;
+      const ra = rank(combatantStatus(a)), rb = rank(combatantStatus(b));
+      if (ra !== rb) return ra - rb;
+      return a.display_name.localeCompare(b.display_name);
+    });
   // Ties can only be adjudicated at the segment that's actually tied, so
   // group queued tracks by segment once and give the GM ▲▼ right on the
   // row, scoped to that group -- not a general "move it anywhere" control.
@@ -3750,9 +3778,10 @@ function renderEncounterHtml(enc, isGM) {
   for (const t of queuedTracks) {
     (tieGroupsBySegment[t.next_segment] = tieGroupsBySegment[t.next_segment] || []).push(t);
   }
-  const upcomingHtml = visibleOrderedTracks.length ? visibleOrderedTracks.map(t => {
+  const trackRowHtml = visibleOrderedTracks.map(t => {
     const c = byId[t.combatant_id];
-    const dead = c.current_hp != null && c.current_hp <= 0;
+    const status = combatantStatus(c);
+    const nameStyle = status === 'incapacitated' ? 'text-decoration:line-through' : '';
     const due = t.next_segment != null && t.next_segment <= dueSegment;
     const tieGroup = t.next_segment != null ? tieGroupsBySegment[t.next_segment] : null;
     const tieIdx = tieGroup ? tieGroup.findIndex(x => x.id === t.id) : -1;
@@ -3764,13 +3793,26 @@ function renderEncounterHtml(enc, isGM) {
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border)${due?';background:rgba(74,148,96,.22)':''}">
       ${tieControlsHtml}
       <span style="flex:1;min-width:0">
-        <span style="font-size:17px;font-weight:bold;${dead?'text-decoration:line-through':''}">${escapeHtml(c.display_name)}</span>
+        <span style="font-size:17px;font-weight:bold;${nameStyle}">${escapeHtml(c.display_name)}</span>
         ${t.label ? `<span style="font-size:12px;color:var(--text-dim)"> ${escapeHtml(t.label)}</span>` : ''}
         ${t.action_category ? `<span style="display:block;font-size:11px;color:var(--text-dim)">${COMBAT_CATEGORY_LABELS[t.action_category]}</span>` : ''}
       </span>
       <span style="font-size:32px;font-weight:bold;line-height:1;color:${t.next_segment!=null?'var(--gold)':'var(--text-dim)'};flex-shrink:0">${t.next_segment!=null?t.next_segment:'—'}</span>
     </div>`;
-  }).join('') : `<div class="note">${orderedTracks.length ? 'Nothing of yours in the order yet.' : 'No combatants yet.'}</div>`;
+  }).join('');
+  const sidelinedRowHtml = visibleSidelined.map(c => {
+    const status = combatantStatus(c);
+    const killed = status === 'killed';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);opacity:.75">
+      <span style="flex:1;min-width:0">
+        <span style="font-size:17px;font-weight:bold;text-decoration:${killed?'line-through':'none'};color:${killed?'#a03030':'inherit'}">${escapeHtml(c.display_name)}</span>
+        <span style="display:block;font-size:11px;color:var(--text-dim)">${killed?'Killed':'Waiting'}</span>
+      </span>
+      <span style="font-size:24px;font-weight:bold;line-height:1;color:${killed?'#a03030':'var(--text-dim)'};flex-shrink:0">${killed?'KIA':'W'}</span>
+    </div>`;
+  }).join('');
+  const upcomingHtml = (trackRowHtml || sidelinedRowHtml) ? (trackRowHtml + sidelinedRowHtml)
+    : `<div class="note">${(orderedTracks.length || sidelinedCombatants.length) ? 'Nothing of yours in the order yet.' : 'No combatants yet.'}</div>`;
 
   return `<div class="panel"><div class="panel-body">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -3798,7 +3840,7 @@ function renderEncounterHtml(enc, isGM) {
       <div style="width:300px;flex-shrink:0;border:2px solid var(--gold-dim);border-radius:4px;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:baseline;background:var(--header-bg);padding:8px 12px">
           <span style="font-size:14px;font-weight:bold;color:var(--header-text);text-transform:uppercase;letter-spacing:1px">Turn Order</span>
-          <span style="font-size:11px;color:var(--header-text);opacity:.7">Count: ${visibleOrderedTracks.length}</span>
+          <span style="font-size:11px;color:var(--header-text);opacity:.7">Count: ${visibleOrderedTracks.length + visibleSidelined.length}</span>
         </div>
         ${upcomingHtml}
       </div>
