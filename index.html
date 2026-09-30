@@ -3875,7 +3875,23 @@ async function updateEncounterField(field, value) {
 }
 
 async function advanceToNextSegment(encId) {
-  const upcoming = actionTracksCache.filter(t => t.next_segment != null).map(t => t.next_segment);
+  const byIdLocal = {};
+  for (const c of combatantsCache) byIdLocal[c.id] = c;
+  const current = encounterCache ? encounterCache.current_segment : 0;
+  // Only tracks strictly in the future count -- an overdue-but-unresolved
+  // track (or a leftover value stuck at an old, lower segment) used to make
+  // this jump BACKWARD to it instead of forward, since the old version had
+  // no lower bound at all. Also skip Waiting/Killed combatants' tracks,
+  // same as the Turn Order display: their segment value is stale/inert
+  // once sidelined, not something to advance toward.
+  const upcoming = actionTracksCache
+    .filter(t => t.next_segment != null && t.next_segment > current)
+    .filter(t => {
+      const c = byIdLocal[t.combatant_id];
+      const status = c ? (c.status || 'active') : 'active';
+      return c && status !== 'waiting' && status !== 'killed';
+    })
+    .map(t => t.next_segment);
   if (!upcoming.length) { alert('No queued actions to advance to.'); return; }
   const next = Math.min(...upcoming);
   const { error } = await sb.from('combat_encounters').update({ current_segment: next }).eq('id', encId);
