@@ -3691,10 +3691,7 @@ function renderEncounterHtml(enc, isGM) {
         ${canEdit ? `<input type="number" class="w60" style="font-size:11px" value="${c.current_hp!=null?c.current_hp:''}" title="Current HP" onchange="updateCombatantField('${c.id}','current_hp',this.value===''?null:parseFloat(this.value))">
         / <input type="number" class="w60" style="font-size:11px" value="${c.max_hp!=null?c.max_hp:''}" title="Max HP" onchange="updateCombatantField('${c.id}','max_hp',this.value===''?null:parseFloat(this.value))">` : ''}
         <select style="font-size:11px" onchange="updateCombatantField('${c.id}','target_combatant_id',this.value||null)">${targetOptionsHtml(c.id, c.target_combatant_id)}</select>
-        ${isGM ? `
-        <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===0?'disabled':''} onclick="moveCombatant('${c.id}',-1)">▲</button>
-        <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===combatantsCache.length-1?'disabled':''} onclick="moveCombatant('${c.id}',1)">▼</button>
-        <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="removeCombatant('${c.id}')">Remove</button>` : ''}
+        ${isGM ? `<button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="removeCombatant('${c.id}')">Remove</button>` : ''}
       </div>
       <div style="margin-top:4px">${tracksHtml}</div>
       ${canEdit ? `<button class="btn btn-dim" style="font-size:10px;padding:1px 6px;margin-top:2px" onclick="addActionTrack('${c.id}')">+ Track</button>
@@ -3746,11 +3743,26 @@ function renderEncounterHtml(enc, isGM) {
   // GM's view of everyone); other creatures' place in the order, and
   // whatever they're about to do, isn't shown at all.
   const visibleOrderedTracks = orderedTracks.filter(t => canEditCombatant(byId[t.combatant_id]));
+  // Ties can only be adjudicated at the segment that's actually tied, so
+  // group queued tracks by segment once and give the GM ▲▼ right on the
+  // row, scoped to that group -- not a general "move it anywhere" control.
+  const tieGroupsBySegment = {};
+  for (const t of queuedTracks) {
+    (tieGroupsBySegment[t.next_segment] = tieGroupsBySegment[t.next_segment] || []).push(t);
+  }
   const upcomingHtml = visibleOrderedTracks.length ? visibleOrderedTracks.map(t => {
     const c = byId[t.combatant_id];
     const dead = c.current_hp != null && c.current_hp <= 0;
     const due = t.next_segment != null && t.next_segment <= dueSegment;
+    const tieGroup = t.next_segment != null ? tieGroupsBySegment[t.next_segment] : null;
+    const tieIdx = tieGroup ? tieGroup.findIndex(x => x.id === t.id) : -1;
+    const tieControlsHtml = (isGM && tieGroup && tieGroup.length > 1) ? `
+      <span style="display:flex;flex-direction:column;flex-shrink:0">
+        <button class="btn btn-dim" style="font-size:9px;line-height:1;padding:1px 5px" ${tieIdx===0?'disabled':''} onclick="moveTrackWithinTie('${t.id}',-1)" title="Move up within this tied segment">▲</button>
+        <button class="btn btn-dim" style="font-size:9px;line-height:1;padding:1px 5px" ${tieIdx===tieGroup.length-1?'disabled':''} onclick="moveTrackWithinTie('${t.id}',1)" title="Move down within this tied segment">▼</button>
+      </span>` : '';
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border)${due?';background:rgba(74,148,96,.22)':''}">
+      ${tieControlsHtml}
       <span style="flex:1;min-width:0">
         <span style="font-size:17px;font-weight:bold;${dead?'text-decoration:line-through':''}">${escapeHtml(c.display_name)}</span>
         ${t.label ? `<span style="font-size:12px;color:var(--text-dim)"> ${escapeHtml(t.label)}</span>` : ''}
@@ -3835,14 +3847,27 @@ async function updateCombatantField(id, field, value) {
   renderEncounterModule();
 }
 
-async function moveCombatant(id, direction) {
-  const idx = combatantsCache.findIndex(c => c.id === id);
-  if (idx < 0) return;
+// manual_order's only job is breaking a tied segment in Turn Order (see the
+// note text above the combatant list), so reordering has to operate on the
+// tie group itself -- swapping a combatant against whichever neighbor is
+// adjacent in the FULL list did nothing useful when that neighbor wasn't
+// even part of the same tie. Renumbers just the tied combatants, 0..n-1 in
+// the swapped order; leaves everyone else's manual_order untouched.
+async function moveTrackWithinTie(trackId, direction) {
+  const track = actionTracksCache.find(t => t.id === trackId);
+  if (!track || track.next_segment == null) return;
+  const byIdLocal = {};
+  for (const c of combatantsCache) byIdLocal[c.id] = c;
+  const tieGroup = actionTracksCache
+    .filter(t => t.next_segment === track.next_segment && byIdLocal[t.combatant_id])
+    .sort((a, b) => (byIdLocal[a.combatant_id].manual_order||0) - (byIdLocal[b.combatant_id].manual_order||0));
+  if (tieGroup.length < 2) return;
+  const idx = tieGroup.findIndex(t => t.id === trackId);
   const targetIdx = idx + direction;
-  if (targetIdx < 0 || targetIdx >= combatantsCache.length) return;
-  const reordered = combatantsCache.slice();
+  if (targetIdx < 0 || targetIdx >= tieGroup.length) return;
+  const reordered = tieGroup.slice();
   [reordered[idx], reordered[targetIdx]] = [reordered[targetIdx], reordered[idx]];
-  const results = await Promise.all(reordered.map((c, i) => sb.from('combat_combatants').update({ manual_order: i }).eq('id', c.id)));
+  const results = await Promise.all(reordered.map((t, i) => sb.from('combat_combatants').update({ manual_order: i }).eq('id', byIdLocal[t.combatant_id].id)));
   const failed = results.find(r => r.error);
   if (failed) { alert('Failed to reorder: ' + failed.error.message); return; }
   renderEncounterModule();
