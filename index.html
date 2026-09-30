@@ -897,6 +897,21 @@ function fmtFumble(fumbleThreshold) {
   return `${start}-00`;
 }
 
+// Same formula as a character weapon's critFumble() inside computeWeapon
+// (7 + toHit/10 + .10*crit bonus, capped at toHit/2, floored at 3; fumble
+// at 93-up unless toHit itself pushes higher) -- just without the
+// character-only pieces (threat range, a Critical Hit Bonus skill value)
+// that a Beastiary foe has no equivalent of. Crit Bonus here is a flat
+// stat field on the foe instead of a skill value.
+function bestiaryCritFumble(toHit, critBonus) {
+  const hit = parseFloat(toHit) || 0;
+  const rawCrit = 7 + Math.floor(hit/10) + (0.10 * (parseFloat(critBonus) || 0));
+  const critChance = Math.max(Math.min(rawCrit, hit/2), 3);
+  const fumbleThreshold = Math.max(93, hit);
+  const fumbleChance = Math.max(0, 101 - fumbleThreshold);
+  return { critChance, fumbleThreshold, fumbleChance };
+}
+
 function computeWeapon(character, item) {
   const a = character.attrs || {};
   const stn1h = parseFloat(item.stn1h) || 0;
@@ -2351,7 +2366,7 @@ async function renderBestiaryModule() {
 function blankBestiaryDraft() {
   return {
     name: '', race: '', location: '', group_id: null, is_temp_pc: false, hp_formula: '', avg_hp: 0, armor_name: '', shield_name: '',
-    avoidance: 0, protection: 0, bmod: 0, avg_damage: 0, multi: 0,
+    avoidance: 0, protection: 0, bmod: 0, avg_damage: 0, multi: 0, crit_bonus: 0,
     level: 1, max_hp: null, current_hp: null,
     cc_fortitude: null, cc_reflex: null, cc_will: null, cc_surprise: null, cc_social: null,
     bonus_abilities: [], special_abilities: [], exceptional_abilities: [],
@@ -2813,6 +2828,7 @@ function renderBestiaryEditor() {
         <div class="form-group"><label>Bmod</label><input type="number" class="w80" value="${d.bmod||0}" onchange="updateBestiaryNum('bmod',this.value)"></div>
         <div class="form-group"><label>Avg damage</label><input type="number" class="w80" value="${d.avg_damage||0}" onchange="updateBestiaryNum('avg_damage',this.value)"></div>
         <div class="form-group"><label>Multi</label><input type="number" class="w80" value="${d.multi||0}" onchange="updateBestiaryNum('multi',this.value)"></div>
+        <div class="form-group"><label>Crit Bonus</label><input type="number" class="w80" value="${d.crit_bonus||0}" onchange="updateBestiaryNum('crit_bonus',this.value)"></div>
       </div>
       <div class="note" style="margin-bottom:10px">Bmod × Avg HP = ${Math.round((parseFloat(d.bmod)||0) * (parseFloat(d.avg_hp)||0) * 100) / 100} -- basic chance to hit.</div>
       <div class="form-row" style="margin-bottom:10px">
@@ -2857,24 +2873,30 @@ function renderBestiaryEditor() {
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Attacks</div>
       <table class="skill-table">
-        <thead><tr><th>Name</th><th>Weapon</th><th>To-hit</th><th>Damage dice</th><th>Speed</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Weapon</th><th>To-hit</th><th>Crit %</th><th>Fumble %</th><th>Damage dice</th><th>Speed</th><th></th></tr></thead>
         <tbody>
-          ${(d.attacks||[]).map((a,i)=>`<tr>
+          ${(d.attacks||[]).map((a,i)=>{
+            const cf = bestiaryCritFumble(a.toHit, d.crit_bonus);
+            return `<tr>
             <td><input value="${escapeHtml(a.name||'')}" onchange="updateBestiaryAttack(${i},'name',this.value)"></td>
             <td><select onchange="selectBestiaryAttackWeapon(${i},this.value)">
               <option value="">— natural —</option>
               ${WEAPONS.map(w=>`<option ${a.weaponName===w.name?'selected':''}>${escapeHtml(w.name)}</option>`).join('')}
             </select></td>
             <td><input value="${escapeHtml(a.toHit||'')}" onchange="updateBestiaryAttack(${i},'toHit',this.value)" class="w60"></td>
+            <td class="note">${fmtCrit(cf.critChance)}</td>
+            <td class="note">${fmtFumble(cf.fumbleThreshold)}</td>
             <td><input value="${escapeHtml(a.damageDice||'')}" onchange="updateBestiaryAttack(${i},'damageDice',this.value)"></td>
             <td><input value="${escapeHtml(a.speed||'')}" onchange="updateBestiaryAttack(${i},'speed',this.value)" class="w60"></td>
             <td style="text-align:center;color:var(--red-b);cursor:pointer" onclick="removeBestiaryAttack(${i})">✕</td>
-          </tr>`).join('')}
-          ${(d.attacks||[]).length===0 ? '<tr><td colspan="6" class="note" style="padding:8px 0">No attacks yet.</td></tr>' : ''}
+          </tr>`;
+          }).join('')}
+          ${(d.attacks||[]).length===0 ? '<tr><td colspan="8" class="note" style="padding:8px 0">No attacks yet.</td></tr>' : ''}
         </tbody>
       </table>
       <button class="btn btn-dim" onclick="addBestiaryAttack()">+ Add attack</button>
       <div class="note" style="margin-top:6px">To-Hit defaults to Bmod × Max HP once both are set -- only fills a blank To-Hit, so per-attack overrides you type stick even after re-rolling HP or changing Bmod.</div>
+      <div class="note" style="margin-top:2px">Crit %/Fumble % are computed the same way as a character weapon's: 7 + To-hit÷10 + .10×Crit Bonus (capped at half To-hit, floor 3); Fumble is 93-up unless To-hit itself is higher.</div>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Abilities</div>
       <div class="form-row" style="align-items:flex-start">
@@ -2951,6 +2973,7 @@ async function saveBestiaryEntry() {
     bmod: bestiaryDraft.bmod || 0,
     avg_damage: bestiaryDraft.avg_damage || 0,
     multi: bestiaryDraft.multi || 0,
+    crit_bonus: bestiaryDraft.crit_bonus || 0,
     level: bestiaryDraft.level || 1,
     max_hp: bestiaryDraft.max_hp != null ? bestiaryDraft.max_hp : null,
     current_hp: bestiaryDraft.current_hp != null ? bestiaryDraft.current_hp : null,
