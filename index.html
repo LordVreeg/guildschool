@@ -3630,12 +3630,23 @@ function combatantStatusColor(cur, max) {
 
 function combatantHpBadge(c, isGM) {
   const mine = !!(c.character_id && combatOwnerByCharId[c.character_id] === currentUser.id);
-  const dead = c.current_hp != null && c.current_hp <= 0;
+  // Collegium's whole point is that Physical and Endurance mean different
+  // things -- 0 Physical with Endurance left is a real emergency, the
+  // reverse isn't -- so a merged total can't drive status color/dead the
+  // way it does for a standard-HP combatant. Same convention the
+  // character sheet itself already uses (Physical = real injury).
+  const isCollegium = c.hp_system === 'collegium';
+  const statusCur = isCollegium ? c.physical_current : c.current_hp;
+  const statusMax = isCollegium ? c.physical_max : c.max_hp;
+  const dead = statusCur != null && statusCur <= 0;
   if (isGM || mine) {
-    const color = combatantStatusColor(c.current_hp, c.max_hp);
-    return `<span style="color:${color};font-weight:${dead?'bold':'normal'}">${c.current_hp != null ? c.current_hp : '?'}/${c.max_hp != null ? c.max_hp : '?'} HP</span>`;
+    const color = combatantStatusColor(statusCur, statusMax);
+    const text = isCollegium
+      ? `Phys ${c.physical_current!=null?c.physical_current:'?'}/${c.physical_max!=null?c.physical_max:'?'}, End ${c.endurance_current!=null?c.endurance_current:'?'}/${c.endurance_max!=null?c.endurance_max:'?'}`
+      : `${c.current_hp != null ? c.current_hp : '?'}/${c.max_hp != null ? c.max_hp : '?'} HP`;
+    return `<span style="color:${color};font-weight:${dead?'bold':'normal'}">${text}</span>`;
   }
-  return `<span style="color:${combatantStatusColor(c.current_hp, c.max_hp)}">●</span>`;
+  return `<span style="color:${combatantStatusColor(statusCur, statusMax)}">●</span>`;
 }
 
 function renderEncounterHtml(enc, isGM) {
@@ -3716,8 +3727,15 @@ function renderEncounterHtml(enc, isGM) {
         ${canEdit ? `<input value="${escapeHtml(c.team||'')}" placeholder="Team" style="width:80px;font-size:11px" onchange="updateCombatantField('${c.id}','team',this.value)">`
           : `<span style="font-size:10px;color:var(--text-dim)">${escapeHtml(c.team||'')}</span>`}
         ${combatantHpBadge(c, isGM)}
-        ${canEdit ? `<input type="number" class="w60" style="font-size:11px" value="${c.current_hp!=null?c.current_hp:''}" title="Current HP" onchange="updateCombatantField('${c.id}','current_hp',this.value===''?null:parseFloat(this.value))">
-        / <input type="number" class="w60" style="font-size:11px" value="${c.max_hp!=null?c.max_hp:''}" title="Max HP" onchange="updateCombatantField('${c.id}','max_hp',this.value===''?null:parseFloat(this.value))">` : ''}
+        ${canEdit ? (c.hp_system === 'collegium' ? `
+        <span style="font-size:10px;color:var(--text-dim)">Phys</span>
+        <input type="number" class="w60" style="font-size:11px" value="${c.physical_current!=null?c.physical_current:''}" title="Physical Current" onchange="updateCollegiumHp('${c.id}','physical_current',this.value)">
+        / <input type="number" class="w60" style="font-size:11px" value="${c.physical_max!=null?c.physical_max:''}" title="Physical Max" onchange="updateCollegiumHp('${c.id}','physical_max',this.value)">
+        <span style="font-size:10px;color:var(--text-dim)">End</span>
+        <input type="number" class="w60" style="font-size:11px" value="${c.endurance_current!=null?c.endurance_current:''}" title="Endurance Current" onchange="updateCollegiumHp('${c.id}','endurance_current',this.value)">
+        / <input type="number" class="w60" style="font-size:11px" value="${c.endurance_max!=null?c.endurance_max:''}" title="Endurance Max" onchange="updateCollegiumHp('${c.id}','endurance_max',this.value)">` : `
+        <input type="number" class="w60" style="font-size:11px" value="${c.current_hp!=null?c.current_hp:''}" title="Current HP" onchange="updateCombatantField('${c.id}','current_hp',this.value===''?null:parseFloat(this.value))">
+        / <input type="number" class="w60" style="font-size:11px" value="${c.max_hp!=null?c.max_hp:''}" title="Max HP" onchange="updateCombatantField('${c.id}','max_hp',this.value===''?null:parseFloat(this.value))">`) : ''}
         <select style="font-size:11px" onchange="updateCombatantField('${c.id}','target_combatant_id',this.value||null)">${targetOptionsHtml(c.id, c.target_combatant_id)}</select>
         <select style="font-size:11px" onchange="updateCombatantField('${c.id}','status',this.value)" title="Status -- drives Turn Order placement and name styling">
           ${['active','waiting','incapacitated','killed'].map(s => `<option value="${s}" ${status===s?'selected':''}>${s[0].toUpperCase()+s.slice(1)}</option>`).join('')}
@@ -3928,6 +3946,23 @@ async function updateCombatantField(id, field, value) {
   renderEncounterModule();
 }
 
+// Writes one Physical/Endurance field and recomputes the merged
+// current_hp/max_hp total alongside it, so that total (still used for
+// sorting and any non-Collegium-aware display) never drifts out of sync
+// with the split the player/GM is actually editing.
+async function updateCollegiumHp(id, field, value) {
+  const c = combatantsCache.find(x => x.id === id);
+  if (!c) return;
+  const v = value === '' ? null : parseFloat(value);
+  const merged = { ...c, [field]: v };
+  const fields = { [field]: v };
+  if (merged.physical_current != null && merged.endurance_current != null) fields.current_hp = merged.physical_current + merged.endurance_current;
+  if (merged.physical_max != null && merged.endurance_max != null) fields.max_hp = merged.physical_max + merged.endurance_max;
+  const { error } = await sb.from('combat_combatants').update(fields).eq('id', id);
+  if (error) { alert('Failed to update: ' + error.message); return; }
+  renderEncounterModule();
+}
+
 // manual_order's only job is breaking a tied segment in Turn Order (see the
 // note text above the combatant list), so reordering has to operate on the
 // tie group itself -- swapping a combatant against whichever neighbor is
@@ -4091,9 +4126,13 @@ async function addCombatantFromSource(kind, sourceId) {
     const { data: c, error } = await sb.from('characters').select('id,data').eq('id', sourceId).single();
     if (error || !c) { alert('Failed to load character: ' + (error?error.message:'not found')); return; }
     const hp = computeHP(c.data || {});
-    const cur = hp.system === 'collegium' ? (hp.physicalCurrent + hp.enduranceCurrent) : hp.currentHP;
-    const max = hp.system === 'collegium' ? (hp.physicalMax + hp.enduranceMax) : hp.totalHP;
-    row = { ...row, character_id: c.id, display_name: (c.data && c.data.name) || '(unnamed)', current_hp: cur, max_hp: max, team: 'Party' };
+    const isCollegium = hp.system === 'collegium';
+    const cur = isCollegium ? (hp.physicalCurrent + hp.enduranceCurrent) : hp.currentHP;
+    const max = isCollegium ? (hp.physicalMax + hp.enduranceMax) : hp.totalHP;
+    row = { ...row, character_id: c.id, display_name: (c.data && c.data.name) || '(unnamed)', current_hp: cur, max_hp: max, team: 'Party',
+      hp_system: isCollegium ? 'collegium' : 'standard',
+      physical_current: isCollegium ? hp.physicalCurrent : null, physical_max: isCollegium ? hp.physicalMax : null,
+      endurance_current: isCollegium ? hp.enduranceCurrent : null, endurance_max: isCollegium ? hp.enduranceMax : null };
   } else {
     const { data: b, error } = await sb.from('bestiary_entries').select('id,name,max_hp,current_hp,avg_hp,is_temp_pc').eq('id', sourceId).single();
     if (error || !b) { alert('Failed to load: ' + (error?error.message:'not found')); return; }
