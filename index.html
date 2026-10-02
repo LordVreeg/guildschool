@@ -3943,6 +3943,10 @@ async function advanceToNextSegment(encId) {
 async function updateCombatantField(id, field, value) {
   const { error } = await sb.from('combat_combatants').update({ [field]: value }).eq('id', id);
   if (error) { alert('Failed to update: ' + error.message); return; }
+  if (field === 'current_hp') {
+    const c = combatantsCache.find(x => x.id === id);
+    if (c && c.character_id) await syncCombatHpToCharacter(c.character_id, { currentHP: value });
+  }
   renderEncounterModule();
 }
 
@@ -3960,7 +3964,32 @@ async function updateCollegiumHp(id, field, value) {
   if (merged.physical_max != null && merged.endurance_max != null) fields.max_hp = merged.physical_max + merged.endurance_max;
   const { error } = await sb.from('combat_combatants').update(fields).eq('id', id);
   if (error) { alert('Failed to update: ' + error.message); return; }
+  if ((field === 'physical_current' || field === 'endurance_current') && c.character_id) {
+    await syncCombatHpToCharacter(c.character_id, { physicalCurrent: merged.physical_current, enduranceCurrent: merged.endurance_current });
+  }
   renderEncounterModule();
+}
+
+// A combatant with a real character_id (not a bestiary foe/temp-PC) feeds
+// its HP changes back to the actual character sheet, so damage taken in an
+// active encounter persists -- and the Group roster's damaged/critical cue
+// (characters.hp_damaged/hp_critical, the only HP info a non-owner group
+// member can see) stays accurate too. Fetches the character's current data
+// fresh rather than trusting any locally-cached copy, since the GM editing
+// a player's HP in combat has no other synced view of that player's sheet.
+async function syncCombatHpToCharacter(characterId, hpPatch) {
+  const { data: row, error } = await sb.from('characters').select('data').eq('id', characterId).single();
+  if (error || !row) { console.error('Combat HP sync: failed to load character', characterId, error); return; }
+  const charData = row.data || {};
+  charData.hpState = { ...(charData.hpState || {}), ...hpPatch };
+  const hpStatus = computeHpStatus(charData);
+  const { error: rpcErr } = await sb.rpc('gm_apply_combat_hp', {
+    p_character_id: characterId,
+    p_hp_state: charData.hpState,
+    p_hp_damaged: hpStatus.damaged,
+    p_hp_critical: hpStatus.critical
+  });
+  if (rpcErr) console.error('Combat HP sync failed for', characterId, rpcErr);
 }
 
 // manual_order's only job is breaking a tied segment in Turn Order (see the
