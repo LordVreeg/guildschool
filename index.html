@@ -1248,7 +1248,8 @@ function renderCharSelect() {
   const mode = state.charSortMode || 'name';
   if (sortSel) sortSel.value = mode;
 
-  const label = c => `${c.name}${c.isNPC ? ' (NPC)' : ''}`;
+  const charXP = c => (c.skills || []).reduce((sum, si) => sum + (parseFloat(si.rawXP) || 0), 0);
+  const label = c => `${c.name}${c.isNPC ? ' (NPC)' : ''} (${charXP(c).toLocaleString()} XP)`;
   const groupName = c => { const g = myGroups.find(x => x.id === c.playGroupId); return g ? g.name : null; };
 
   let html = '<option value="">— select character —</option>';
