@@ -3296,6 +3296,8 @@ async function renderGroupDetail(group) {
   const hpByCharId = {};
   const spSigilByCharId = {};
   const deadByCharId = {};
+  const xpByCharId = {};
+  const totalRawXP = (c) => (c.skills || []).reduce((sum, si) => sum + (parseFloat(si.rawXP) || 0), 0);
   if (isGM && groupRosterCache.length) {
     const { data: fullChars } = await sb.from('characters').select('id, data').in('id', groupRosterCache.map(c => c.id));
     for (const row of fullChars || []) {
@@ -3304,6 +3306,7 @@ async function renderGroupDetail(group) {
         hpByCharId[row.id] = hp;
         spSigilByCharId[row.id] = spellHealthSigilHtml(row.data);
         deadByCharId[row.id] = isCharacterDead(row.data, hp);
+        xpByCharId[row.id] = totalRawXP(row.data);
       }
     }
   } else {
@@ -3315,6 +3318,7 @@ async function renderGroupDetail(group) {
         hpByCharId[mine.id] = hp;
         spSigilByCharId[mine.id] = spellHealthSigilHtml(state.characters[appId]);
         deadByCharId[mine.id] = isCharacterDead(state.characters[appId], hp);
+        xpByCharId[mine.id] = totalRawXP(state.characters[appId]);
       }
     }
   }
@@ -3347,9 +3351,10 @@ async function renderGroupDetail(group) {
         const isDead = !!deadByCharId[c.id];
         if (isDead) nameStyle += ';text-decoration:line-through';
         const spSigil = spSigilByCharId[c.id] || '';
+        const xpTag = xpByCharId[c.id] != null ? ` <span style="color:var(--text-dim)">(${xpByCharId[c.id].toLocaleString()} XP)</span>` : '';
         return `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
         <span style="color:var(--text-dim);width:1.5em;display:inline-block;text-align:right">${i+1}.</span>
-        <span style="${nameStyle}" ${isDead?'title="Past the point of stabilizing -- can no longer make the Fortitude roll"':''}>${escapeHtml(c.name || '(unnamed)')}</span>${c.is_npc ? ' <span style="font-size:10px;color:var(--gold-dim)">(NPC)</span>' : ''}${hpTag}${spSigil}
+        <span style="${nameStyle}" ${isDead?'title="Past the point of stabilizing -- can no longer make the Fortitude roll"':''}>${escapeHtml(c.name || '(unnamed)')}</span>${c.is_npc ? ' <span style="font-size:10px;color:var(--gold-dim)">(NPC)</span>' : ''}${hpTag}${xpTag}${spSigil}
         ${isGM ? `
         <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===0?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',-1)">▲</button>
         <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===groupRosterCache.length-1?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',1)">▼</button>` : ''}
