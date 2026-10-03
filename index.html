@@ -4161,24 +4161,45 @@ async function openAddCombatantModal() {
   // is actually scanning this list for.
   const withType = x => x.race && x.race.trim() && x.race.trim().toLowerCase() !== x.name.trim().toLowerCase()
     ? `${escapeHtml(x.name)} <span style="color:var(--text-dim)">(${escapeHtml(x.race)})</span>` : escapeHtml(x.name);
-  const rosterHtml = (roster||[]).filter(r => !existingCharIds.has(r.id)).map(r =>
-    `<li style="cursor:pointer;color:var(--gold)" onclick="addCombatantFromSource('character','${r.id}')">${escapeHtml(r.name)}</li>`).join('') || '<li class="note">None available.</li>';
-  const tempHtml = (tempChars||[]).filter(t => !existingBestIds.has(t.id)).map(t =>
-    `<li style="cursor:pointer;color:var(--gold)" onclick="addCombatantFromSource('bestiary','${t.id}')">${withType(t)}</li>`).join('') || '<li class="note">None available.</li>';
-  const foesHtml = (foes||[]).filter(f => !existingBestIds.has(f.id)).map(f =>
-    `<li style="cursor:pointer;color:var(--gold)" onclick="addCombatantFromSource('bestiary','${f.id}')">${withType(f)}</li>`).join('') || '<li class="note">None available.</li>';
+  const pickRow = (kind, x, labelHtml) =>
+    `<li style="list-style:none;margin-left:-16px"><label style="cursor:pointer;color:var(--gold);display:flex;align-items:baseline;gap:6px"><input type="checkbox" class="add-combatant-cb" data-kind="${kind}" data-id="${x.id}" onchange="updateAddCombatantCount()"><span>${labelHtml}</span></label></li>`;
+  const rosterHtml = (roster||[]).filter(r => !existingCharIds.has(r.id)).map(r => pickRow('character', r, escapeHtml(r.name))).join('') || '<li class="note">None available.</li>';
+  const tempHtml = (tempChars||[]).filter(t => !existingBestIds.has(t.id)).map(t => pickRow('bestiary', t, withType(t))).join('') || '<li class="note">None available.</li>';
+  const foesHtml = (foes||[]).filter(f => !existingBestIds.has(f.id)).map(f => pickRow('bestiary', f, withType(f))).join('') || '<li class="note">None available.</li>';
   openModal(`
-    <h3>Add Combatant</h3>
+    <h3>Add Combatants</h3>
+    <div class="note" style="margin-bottom:6px">Tick as many as you like, then Add Selected.</div>
     <div class="form-row" style="align-items:flex-start">
       <div class="form-group" style="flex:1"><label>Player Characters</label><ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${rosterHtml}</ul></div>
       <div class="form-group" style="flex:1"><label>Temp Characters</label><ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${tempHtml}</ul></div>
       <div class="form-group" style="flex:1"><label>Foes (Beastiary)</label><ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${foesHtml}</ul></div>
     </div>
-    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button></div>`, { wide: true });
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" id="add-combatants-btn" disabled onclick="addSelectedCombatants()">Add Selected (0)</button></div>`, { wide: true });
 }
 
-async function addCombatantFromSource(kind, sourceId) {
-  let row = { encounter_id: activeEncounterId, team: '', manual_order: combatantsCache.length };
+function updateAddCombatantCount() {
+  const n = document.querySelectorAll('.add-combatant-cb:checked').length;
+  const btn = document.getElementById('add-combatants-btn');
+  if (!btn) return;
+  btn.textContent = `Add Selected (${n})`;
+  btn.disabled = n === 0;
+}
+
+async function addSelectedCombatants() {
+  const picks = Array.from(document.querySelectorAll('.add-combatant-cb:checked')).map(cb => ({ kind: cb.dataset.kind, id: cb.dataset.id }));
+  if (!picks.length) return;
+  const btn = document.getElementById('add-combatants-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Adding...'; }
+  const baseOrder = combatantsCache.length;
+  for (let i = 0; i < picks.length; i++) {
+    await addCombatantFromSource(picks[i].kind, picks[i].id, { manualOrder: baseOrder + i, batch: true });
+  }
+  closeModal();
+  renderEncounterModule();
+}
+
+async function addCombatantFromSource(kind, sourceId, opts = {}) {
+  let row = { encounter_id: activeEncounterId, team: '', manual_order: opts.manualOrder != null ? opts.manualOrder : combatantsCache.length };
   if (kind === 'character') {
     const { data: c, error } = await sb.from('characters').select('id,data').eq('id', sourceId).single();
     if (error || !c) { alert('Failed to load character: ' + (error?error.message:'not found')); return; }
@@ -4201,6 +4222,7 @@ async function addCombatantFromSource(kind, sourceId) {
   if (insErr) { alert('Failed to add combatant: ' + insErr.message); return; }
   const { error: trackErr } = await sb.from('combat_action_tracks').insert({ combatant_id: inserted.id, label: '', next_segment: null, action_category: null });
   if (trackErr) { alert('Combatant added, but failed to create its action track: ' + trackErr.message); }
+  if (opts.batch) return;
   closeModal();
   renderEncounterModule();
 }
