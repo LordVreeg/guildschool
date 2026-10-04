@@ -4163,7 +4163,9 @@ async function openAddCombatantModal() {
     ? `${escapeHtml(x.name)} <span style="color:var(--text-dim)">(${escapeHtml(x.race)})</span>` : escapeHtml(x.name);
   const pickRow = (kind, x, labelHtml) =>
     `<li style="list-style:none;margin-left:-16px"><label style="cursor:pointer;color:var(--gold);display:flex;align-items:baseline;gap:6px"><input type="checkbox" class="add-combatant-cb" data-kind="${kind}" data-id="${x.id}" onchange="updateAddCombatantCount()"><span>${labelHtml}</span></label></li>`;
-  const rosterHtml = (roster||[]).filter(r => !existingCharIds.has(r.id)).map(r => pickRow('character', r, escapeHtml(r.name))).join('') || '<li class="note">None available.</li>';
+  const availableRoster = (roster||[]).filter(r => !existingCharIds.has(r.id));
+  const rosterHtml = (availableRoster.map(r => pickRow('character', r, escapeHtml(r.name))).join('') || '<li class="note">None available.</li>')
+    + (availableRoster.length > 1 ? `<li style="list-style:none;margin-left:-16px;margin-top:4px"><label style="cursor:pointer;color:var(--text-dim);display:flex;align-items:baseline;gap:6px"><input type="checkbox" id="add-all-pcs-cb" onchange="toggleAllPcs(this.checked)"><span>Add all</span></label></li>` : '');
   const tempHtml = (tempChars||[]).filter(t => !existingBestIds.has(t.id)).map(t => pickRow('bestiary', t, withType(t))).join('') || '<li class="note">None available.</li>';
   const foesHtml = (foes||[]).filter(f => !existingBestIds.has(f.id)).map(f => pickRow('bestiary', f, withType(f))).join('') || '<li class="note">None available.</li>';
   openModal(`
@@ -4177,7 +4179,15 @@ async function openAddCombatantModal() {
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" id="add-combatants-btn" disabled onclick="addSelectedCombatants()">Add Selected (0)</button></div>`, { wide: true });
 }
 
+function toggleAllPcs(checked) {
+  document.querySelectorAll('.add-combatant-cb[data-kind="character"]').forEach(cb => { cb.checked = checked; });
+  updateAddCombatantCount();
+}
+
 function updateAddCombatantCount() {
+  const pcBoxes = document.querySelectorAll('.add-combatant-cb[data-kind="character"]');
+  const allBox = document.getElementById('add-all-pcs-cb');
+  if (allBox) allBox.checked = pcBoxes.length > 0 && Array.from(pcBoxes).every(cb => cb.checked);
   const n = document.querySelectorAll('.add-combatant-cb:checked').length;
   const btn = document.getElementById('add-combatants-btn');
   if (!btn) return;
