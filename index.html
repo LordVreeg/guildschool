@@ -3756,7 +3756,8 @@ function renderEncounterHtml(enc, isGM) {
     const effects = c.effects || [];
     const effectsHtml = effects.map((eff, ei) => {
       const expired = eff.expires_at_segment != null && eff.expires_at_segment <= dueSegment;
-      return `<span style="font-size:10px;color:var(--gold-dim);margin-right:6px;${expired?'text-decoration:line-through':''}" title="Expires at segment ${eff.expires_at_segment}">${escapeHtml(eff.label)}${canEdit?` <a href="#" onclick="removeEffect('${c.id}',${ei});return false" style="color:var(--red-b)">✕</a>`:''}</span>`;
+      const endsTag = eff.expires_at_segment != null ? ` (${expired ? 'ended' : 'ends'} @ ${eff.expires_at_segment})` : '';
+      return `<span style="font-size:11px;color:var(--gold-dim);margin-right:8px;${expired?'text-decoration:line-through':''}" title="Expires at segment ${eff.expires_at_segment}">${escapeHtml(eff.label)}${endsTag}${canEdit?` <a href="#" onclick="removeEffect('${c.id}',${ei});return false" style="color:var(--red-b)">✕</a>`:''}</span>`;
     }).join('');
     return `<div style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin-bottom:6px">
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -3856,7 +3857,7 @@ function renderEncounterHtml(enc, isGM) {
   for (const t of queuedTracks) {
     (tieGroupsBySegment[t.next_segment] = tieGroupsBySegment[t.next_segment] || []).push(t);
   }
-  const trackRowHtml = visibleOrderedTracks.map(t => {
+  const renderTrackRow = (t) => {
     const c = byId[t.combatant_id];
     const status = combatantStatus(c);
     const nameStyle = status === 'incapacitated' ? 'text-decoration:line-through' : '';
@@ -3877,7 +3878,36 @@ function renderEncounterHtml(enc, isGM) {
       </span>
       <span style="font-size:32px;font-weight:bold;line-height:1;color:${t.next_segment!=null?'var(--gold)':'var(--text-dim)'};flex-shrink:0">${t.next_segment!=null?t.next_segment:'—'}</span>
     </div>`;
-  }).join('');
+  };
+  // A timed effect (Blessings, a buff, a debuff) gets its own row in the
+  // order at the segment it ends, so the table sees it coming and sees it
+  // lapse -- same visibility rule as everything else here, so a player only
+  // gets rows for combatants they can already see. Sorted in after any
+  // actions at the same segment.
+  const effectItems = [];
+  for (const c of combatantsCache) {
+    const s = combatantStatus(c);
+    if (s === 'waiting' || s === 'killed' || !canEditCombatant(c)) continue;
+    (c.effects || []).forEach((eff, ei) => {
+      if (eff.expires_at_segment != null) effectItems.push({ c, ei, eff });
+    });
+  }
+  const renderEffectRow = ({ c, ei, eff }) => {
+    const ended = eff.expires_at_segment <= dueSegment;
+    const left = Math.round((eff.expires_at_segment - dueSegment) * 100) / 100;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);font-style:italic;background:${ended?'rgba(201,162,39,.25)':'rgba(120,100,60,.08)'}">
+      <span style="flex:1;min-width:0">
+        <span style="font-size:15px;font-weight:bold">✦ ${escapeHtml(eff.label)}</span>
+        <span style="display:block;font-size:11px;color:var(--text-dim)">on ${escapeHtml(c.display_name)} -- ${ended ? 'ended' : left + ' seg left'} <a href="#" onclick="removeEffect('${c.id}',${ei});return false" style="color:var(--red-b)">✕ clear</a></span>
+      </span>
+      <span style="font-size:26px;font-weight:bold;line-height:1;color:var(--text-dim);flex-shrink:0">${eff.expires_at_segment}</span>
+    </div>`;
+  };
+  const timeline = visibleOrderedTracks.filter(t => t.next_segment != null).map(t => ({ seg: t.next_segment, html: renderTrackRow(t) }))
+    .concat(effectItems.map(e => ({ seg: e.eff.expires_at_segment, html: renderEffectRow(e) })))
+    .sort((a, b) => a.seg - b.seg);
+  const trackRowHtml = timeline.map(x => x.html).join('')
+    + visibleOrderedTracks.filter(t => t.next_segment == null).map(renderTrackRow).join('');
   const sidelinedRowHtml = visibleSidelined.map(c => {
     const status = combatantStatus(c);
     const killed = status === 'killed';
@@ -3970,6 +4000,15 @@ async function advanceToNextSegment(encId) {
       return c && status !== 'waiting' && status !== 'killed';
     })
     .map(t => t.next_segment);
+  // A timed effect ending is also a stop on the clock, so it can't slide by
+  // unnoticed between two actions.
+  for (const c of combatantsCache) {
+    const status = c.status || 'active';
+    if (status === 'waiting' || status === 'killed') continue;
+    for (const eff of (c.effects || [])) {
+      if (eff.expires_at_segment != null && eff.expires_at_segment > current) upcoming.push(eff.expires_at_segment);
+    }
+  }
   if (!upcoming.length) { alert('No queued actions to advance to.'); return; }
   const next = Math.min(...upcoming);
   const { error } = await sb.from('combat_encounters').update({ current_segment: next }).eq('id', encId);
@@ -4099,20 +4138,30 @@ async function resolveActionTrack(id) {
 }
 
 function openAddEffectModal(combatantId) {
+  const now = encounterCache ? encounterCache.current_segment : 0;
   openModal(`
     <h3>Add Effect</h3>
-    <div class="form-group" style="margin-bottom:8px"><label>Label</label><input id="eff-label" style="width:100%" placeholder="e.g. Shaken, -10 to hit"></div>
-    <div class="form-group" style="margin-bottom:8px"><label>Expires at Segment</label><input id="eff-expiry" type="number" step="any" class="w100"></div>
+    <div class="form-group" style="margin-bottom:8px"><label>Label</label><input id="eff-label" style="width:100%" placeholder="e.g. Blessings, Shaken (-10 to hit)"></div>
+    <div class="form-row" style="margin-bottom:8px">
+      <div class="form-group"><label>Lasts (segments from now)</label><input id="eff-duration" type="number" step="any" class="w100" placeholder="e.g. 30"></div>
+      <div class="form-group"><label>or Ends at Segment</label><input id="eff-expiry" type="number" step="any" class="w100"></div>
+    </div>
+    <div class="note" style="margin-bottom:8px">Now is segment ${now}. Fill in one (Lasts wins if both); leave both blank for no time limit. Timed effects show in the Turn Order at the segment they end.</div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="addEffect('${combatantId}')">Add</button></div>`);
 }
 
 async function addEffect(combatantId) {
   const label = document.getElementById('eff-label').value.trim();
   if (!label) { alert('Label is required.'); return; }
+  const durationRaw = document.getElementById('eff-duration').value;
   const expiryRaw = document.getElementById('eff-expiry').value;
+  const now = encounterCache ? encounterCache.current_segment : 0;
+  let expires = null;
+  if (durationRaw !== '') expires = Math.round((now + parseFloat(durationRaw)) * 100) / 100;
+  else if (expiryRaw !== '') expires = parseFloat(expiryRaw);
   const c = combatantsCache.find(x => x.id === combatantId);
   const effects = (c && c.effects) ? c.effects.slice() : [];
-  effects.push({ label, expires_at_segment: expiryRaw === '' ? null : parseFloat(expiryRaw) });
+  effects.push({ label, expires_at_segment: expires, started_at_segment: now });
   const { error } = await sb.from('combat_combatants').update({ effects }).eq('id', combatantId);
   if (error) { alert('Failed to add effect: ' + error.message); return; }
   closeModal();
