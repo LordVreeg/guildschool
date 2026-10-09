@@ -3555,6 +3555,7 @@ let combatOwnerByCharId = {}; // character_id -> owner_id, for this encounter's 
 // their multi-step fetch chains finish out of order -- an earlier, slower
 // call reading stale data can land last and stomp a newer, correct render.
 let encounterRenderSeq = 0;
+let encounterIsGM = false; // set on every render so modals outside renderEncounterHtml can apply the same edit-rights rule
 
 // The Group page's one Combat button: a campaign can rack up 20-30
 // encounters over time, so this can't just guess which one to jump back
@@ -3653,6 +3654,7 @@ async function renderEncounterModule() {
   combatOwnerByCharId = ownerByCharId;
   actionTracksCache = tracks || [];
   combatLogCache = log || [];
+  encounterIsGM = isGM;
   document.getElementById('main').innerHTML = renderEncounterHtml(enc, isGM);
 }
 
@@ -3884,21 +3886,30 @@ function renderEncounterHtml(enc, isGM) {
   // lapse -- same visibility rule as everything else here, so a player only
   // gets rows for combatants they can already see. Sorted in after any
   // actions at the same segment.
-  const effectItems = [];
+  // One row per shared effect (copies carry the same effect_id), listing
+  // every affected combatant the viewer can see; legacy/single effects with
+  // no effect_id stay one row each.
+  const effectGroups = {};
   for (const c of combatantsCache) {
     const s = combatantStatus(c);
     if (s === 'waiting' || s === 'killed' || !canEditCombatant(c)) continue;
     (c.effects || []).forEach((eff, ei) => {
-      if (eff.expires_at_segment != null) effectItems.push({ c, ei, eff });
+      if (eff.expires_at_segment == null) return;
+      const key = eff.effect_id || `${c.id}:${ei}`;
+      if (!effectGroups[key]) effectGroups[key] = { key, eff, ei, combatants: [], shared: !!eff.effect_id };
+      effectGroups[key].combatants.push(c);
     });
   }
-  const renderEffectRow = ({ c, ei, eff }) => {
+  const effectItems = Object.values(effectGroups);
+  const renderEffectRow = ({ combatants, ei, eff, shared }) => {
     const ended = eff.expires_at_segment <= dueSegment;
     const left = Math.round((eff.expires_at_segment - dueSegment) * 100) / 100;
+    const names = combatants.map(c => escapeHtml(c.display_name)).join(', ');
+    const clearCall = shared ? `removeEffectEverywhere('${eff.effect_id}')` : `removeEffect('${combatants[0].id}',${ei})`;
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);font-style:italic;background:${ended?'rgba(201,162,39,.25)':'rgba(120,100,60,.08)'}">
       <span style="flex:1;min-width:0">
         <span style="font-size:15px;font-weight:bold">✦ ${escapeHtml(eff.label)}</span>
-        <span style="display:block;font-size:11px;color:var(--text-dim)">on ${escapeHtml(c.display_name)} -- ${ended ? 'ended' : left + ' seg left'} <a href="#" onclick="removeEffect('${c.id}',${ei});return false" style="color:var(--red-b)">✕ clear</a></span>
+        <span style="display:block;font-size:11px;color:var(--text-dim)">on ${names} -- ${ended ? 'ended' : left + ' seg left'} <a href="#" onclick="${clearCall};return false" style="color:var(--red-b)">✕ clear${shared && combatants.length > 1 ? ' all' : ''}</a></span>
       </span>
       <span style="font-size:26px;font-weight:bold;line-height:1;color:var(--text-dim);flex-shrink:0">${eff.expires_at_segment}</span>
     </div>`;
@@ -4139,6 +4150,14 @@ async function resolveActionTrack(id) {
 
 function openAddEffectModal(combatantId) {
   const now = encounterCache ? encounterCache.current_segment : 0;
+  // Same rule as the cards: the GM can touch everyone, a player only their
+  // own character (that's all the database lets them write to).
+  const editable = combatantsCache.filter(c => encounterIsGM || !!(c.character_id && combatOwnerByCharId[c.character_id] === currentUser.id));
+  const teams = [...new Set(editable.map(c => (c.team || '').trim()).filter(Boolean))];
+  const targetsHtml = editable.map(c => `<label style="display:flex;align-items:baseline;gap:6px;cursor:pointer;font-size:13px">
+      <input type="checkbox" class="eff-target-cb" data-id="${c.id}" data-team="${escapeHtml((c.team || '').trim())}" ${c.id === combatantId ? 'checked' : ''}>
+      <span>${escapeHtml(c.display_name)}${c.team ? ` <span style="color:var(--text-dim)">(${escapeHtml(c.team)})</span>` : ''}</span></label>`).join('');
+  const quickBtn = (label, key) => `<button type="button" class="btn btn-dim" style="font-size:10px;padding:1px 7px" data-team="${escapeHtml(key)}" onclick="setEffectTargets(this.dataset.team)">${escapeHtml(label)}</button>`;
   openModal(`
     <h3>Add Effect</h3>
     <div class="form-group" style="margin-bottom:8px"><label>Label</label><input id="eff-label" style="width:100%" placeholder="e.g. Blessings, Shaken (-10 to hit)"></div>
@@ -4147,23 +4166,43 @@ function openAddEffectModal(combatantId) {
       <div class="form-group"><label>or Ends at Segment</label><input id="eff-expiry" type="number" step="any" class="w100"></div>
     </div>
     <div class="note" style="margin-bottom:8px">Now is segment ${now}. Fill in one (Lasts wins if both); leave both blank for no time limit. Timed effects show in the Turn Order at the segment they end.</div>
-    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="addEffect('${combatantId}')">Add</button></div>`);
+    <div class="form-group" style="margin-bottom:8px"><label>Who is affected</label>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin:2px 0 6px">${quickBtn('All', '__all')}${teams.map(t => quickBtn(t, t)).join('')}${quickBtn('None', '__none')}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:3px 12px;max-height:220px;overflow-y:auto">${targetsHtml}</div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="addEffect()">Add</button></div>`, { wide: true });
 }
 
-async function addEffect(combatantId) {
+// 'All' / 'None' / a team name: a team button selects exactly that team.
+function setEffectTargets(key) {
+  document.querySelectorAll('.eff-target-cb').forEach(cb => {
+    cb.checked = key === '__all' ? true : key === '__none' ? false : cb.dataset.team === key;
+  });
+}
+
+async function addEffect() {
   const label = document.getElementById('eff-label').value.trim();
   if (!label) { alert('Label is required.'); return; }
+  const targetIds = Array.from(document.querySelectorAll('.eff-target-cb:checked')).map(cb => cb.dataset.id);
+  if (!targetIds.length) { alert('Pick at least one combatant who is affected.'); return; }
   const durationRaw = document.getElementById('eff-duration').value;
   const expiryRaw = document.getElementById('eff-expiry').value;
   const now = encounterCache ? encounterCache.current_segment : 0;
   let expires = null;
   if (durationRaw !== '') expires = Math.round((now + parseFloat(durationRaw)) * 100) / 100;
   else if (expiryRaw !== '') expires = parseFloat(expiryRaw);
-  const c = combatantsCache.find(x => x.id === combatantId);
-  const effects = (c && c.effects) ? c.effects.slice() : [];
-  effects.push({ label, expires_at_segment: expires, started_at_segment: now });
-  const { error } = await sb.from('combat_combatants').update({ effects }).eq('id', combatantId);
-  if (error) { alert('Failed to add effect: ' + error.message); return; }
+  // One shared id ties the copies together, so the Turn Order can show a
+  // single row ("Blessings on A, B, C") and clear them all at once, while
+  // each combatant's card still carries its own copy.
+  const effectId = 'eff_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const results = await Promise.all(targetIds.map(id => {
+    const c = combatantsCache.find(x => x.id === id);
+    const effects = (c && c.effects) ? c.effects.slice() : [];
+    effects.push({ label, expires_at_segment: expires, started_at_segment: now, effect_id: effectId });
+    return sb.from('combat_combatants').update({ effects }).eq('id', id);
+  }));
+  const failed = results.find(r => r.error);
+  if (failed) { alert('Failed to add effect: ' + failed.error.message); }
   closeModal();
   renderEncounterModule();
 }
@@ -4175,6 +4214,18 @@ async function removeEffect(combatantId, idx) {
   effects.splice(idx, 1);
   const { error } = await sb.from('combat_combatants').update({ effects }).eq('id', combatantId);
   if (error) { alert('Failed to remove effect: ' + error.message); return; }
+  renderEncounterModule();
+}
+
+// Clears one shared effect from everyone it's on that this user is allowed
+// to edit (the GM: all of them).
+async function removeEffectEverywhere(effectId) {
+  const results = await Promise.all(combatantsCache
+    .filter(c => (c.effects || []).some(e => e.effect_id === effectId))
+    .filter(c => encounterIsGM || !!(c.character_id && combatOwnerByCharId[c.character_id] === currentUser.id))
+    .map(c => sb.from('combat_combatants').update({ effects: c.effects.filter(e => e.effect_id !== effectId) }).eq('id', c.id)));
+  const failed = results.find(r => r.error);
+  if (failed) { alert('Failed to remove effect: ' + failed.error.message); return; }
   renderEncounterModule();
 }
 
