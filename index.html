@@ -3358,7 +3358,8 @@ async function renderGroupDetail(group) {
         <span style="${nameStyle}" ${isDead?'title="Past the point of stabilizing -- can no longer make the Fortitude roll"':''}>${escapeHtml(c.name || '(unnamed)')}</span>${c.is_npc ? ' <span style="font-size:10px;color:var(--gold-dim)">(NPC)</span>' : ''}${hpTag}${xpTag}${spSigil}
         ${isGM ? `
         <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===0?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',-1)">▲</button>
-        <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===groupRosterCache.length-1?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',1)">▼</button>` : ''}
+        <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===groupRosterCache.length-1?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',1)">▼</button>
+        <button class="btn btn-dim" style="font-size:10px;padding:1px 6px;color:var(--red-b)" title="Remove from group" onclick="removeRosterMember('${c.id}')">✕</button>` : ''}
       </li>`;
       }).join('')
     : '<li class="note">No characters linked to this group yet.</li>';
@@ -3511,6 +3512,14 @@ async function moveRosterMember(groupId, characterId, direction) {
   const results = await Promise.all(reordered.map((c, i) => sb.rpc('gm_set_roster_order', { p_character_id: c.id, p_order_type: rosterOrderMode, p_order: i })));
   const failed = results.find(r => r.error);
   if (failed) { alert('Failed to update order: ' + failed.error.message); return; }
+  renderGroupModule();
+}
+
+async function removeRosterMember(characterId) {
+  const c = groupRosterCache.find(x => x.id === characterId);
+  if (!confirm(`Remove ${c && c.name ? c.name : 'this character'} from the group? The character itself is not deleted.`)) return;
+  const { error } = await sb.rpc('gm_remove_character_from_group', { p_character_id: characterId });
+  if (error) { alert('Failed to remove from group: ' + error.message); return; }
   renderGroupModule();
 }
 
