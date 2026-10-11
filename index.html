@@ -6851,7 +6851,7 @@ function renderHardcastModal() {
         }).join('')}
       </tbody>
     </table>
-    <div class="computed-item" style="margin-bottom:8px"><span class="ci-label">Success Chance (before d50 roll)</span><span class="ci-value skval" style="font-size:20px">${totalSuccess}</span></div>
+    <div class="computed-item" style="margin-bottom:8px"><span class="ci-label">Success Chance (before the GM's d50)</span><span class="ci-value skval" style="font-size:20px">${totalSuccess}</span></div>
     <div class="note">Base ${hs.spellSuccessBase} + Spirit Success [${spiritSuccessSkval}] + ${hs.school} Success [${majorSuccessSkval}] + Magic Bonus [${successBonus}]${mode==='hardcast' ? ` + Overcast [${overcastBonus}]` : ''}</div>
 
     <div class="modal-actions">
@@ -6888,27 +6888,65 @@ function confirmHardcast() {
   openSpellResolveModal();
 }
 
-// Whether the spell was successfully cast: a d50 roll against the success
-// chance already shown in the cast modal, roll <= target succeeds. Only on
-// success does marking a duration make sense (see openMarkDurationModal).
+// Two rolls, per the Spell Success Rules: the GM's random roll (normally a
+// d50) is added to the caster's success %, setting the target; the caster
+// then rolls a d100 and must roll at or under that target. Either roll can be
+// typed in (physical dice) or rolled online. Only on success does marking a
+// duration make sense (see openMarkDurationModal).
 function openSpellResolveModal() {
   const hs = hardcastState;
   if (!hs) return;
   openModal(`
     <h3>Resolve: ${escapeHtml(hs.spellName)}</h3>
-    <div class="note" style="margin-bottom:8px">d50 roll, roll ≤ target succeeds.</div>
-    <div class="computed-item" style="margin-bottom:10px"><span class="ci-label">Target</span><span class="ci-value skval" style="font-size:20px">${hs.totalSuccess}</span></div>
-    <div class="form-row">
-      <div class="form-group"><label>Roll</label><input type="number" id="spell-resolve-roll" class="w80" min="1" max="50"></div>
-      <div class="form-group" style="justify-content:flex-end"><button class="btn btn-dim" onclick="rollSpellResolveOnline()">Roll Online</button></div>
+    <div class="note" style="margin-bottom:10px">Success chance ${hs.totalSuccess}% plus the GM's d50 roll sets the target. Then the caster rolls d100 and must roll at or under the target to succeed.</div>
+
+    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">1. GM roll (d50)</div>
+    <div class="form-row" style="align-items:flex-end;margin-bottom:6px">
+      <div class="form-group"><label>d50</label><input type="number" id="spell-gm-roll" class="w80" min="1" max="50" oninput="updateSpellResolve()"></div>
+      <div class="form-group"><button class="btn btn-dim" onclick="rollSpellDie('spell-gm-roll',50)">Roll d50</button></div>
     </div>
+    <div class="computed-item" style="margin-bottom:12px"><span class="ci-label">Target</span><span class="ci-value skval" id="spell-target" style="font-size:20px">—</span></div>
+
+    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">2. Caster roll (d100)</div>
+    <div class="form-row" style="align-items:flex-end;margin-bottom:6px">
+      <div class="form-group"><label>d100</label><input type="number" id="spell-cast-roll" class="w80" min="1" max="100" oninput="updateSpellResolve()"></div>
+      <div class="form-group"><button class="btn btn-dim" onclick="rollSpellDie('spell-cast-roll',100)">Roll d100</button></div>
+    </div>
+    <div id="spell-resolve-result" style="min-height:22px;font-weight:bold;margin-bottom:8px"></div>
+
     <div class="modal-actions"><button class="btn btn-dim" onclick="skipSpellResolve()">Skip</button><button class="btn btn-gold" onclick="confirmSpellResolve()">Confirm</button></div>`);
 }
 
-function rollSpellResolveOnline() {
-  const roll = rollDie(50);
-  const input = document.getElementById('spell-resolve-roll');
-  if (input) input.value = roll;
+function rollSpellDie(inputId, sides) {
+  const input = document.getElementById(inputId);
+  if (input) input.value = rollDie(sides);
+  updateSpellResolve();
+}
+
+// Reads both rolls and shows the target and, once both are in, the outcome.
+// Returns { gm, cast, target, success } with nulls for whatever is missing.
+function readSpellResolve() {
+  const hs = hardcastState;
+  const g = document.getElementById('spell-gm-roll'), c = document.getElementById('spell-cast-roll');
+  const gm = g ? parseInt(g.value) : NaN, cast = c ? parseInt(c.value) : NaN;
+  const gmOk = gm >= 1 && gm <= 50, castOk = cast >= 1 && cast <= 100;
+  const target = hs && gmOk ? Math.round((hs.totalSuccess + gm) * 10) / 10 : null;
+  return { gm: gmOk ? gm : null, cast: castOk ? cast : null, target, success: target != null && castOk ? cast <= target : null };
+}
+
+function updateSpellResolve() {
+  const hs = hardcastState;
+  if (!hs) return;
+  const r = readSpellResolve();
+  const tEl = document.getElementById('spell-target');
+  if (tEl) tEl.textContent = r.target != null ? `${hs.totalSuccess} + ${r.gm} = ${r.target}` : '—';
+  const out = document.getElementById('spell-resolve-result');
+  if (out) {
+    if (r.success == null) out.innerHTML = '';
+    else out.innerHTML = r.success
+      ? `<span style="color:var(--trained-b)">Success — rolled ${r.cast} against ${r.target}</span>`
+      : `<span style="color:#c05050">Failed — rolled ${r.cast} against ${r.target}</span>`;
+  }
 }
 
 function skipSpellResolve() {
@@ -6920,13 +6958,12 @@ function skipSpellResolve() {
 function confirmSpellResolve() {
   const hs = hardcastState;
   if (!hs) return;
-  const input = document.getElementById('spell-resolve-roll');
-  const roll = input ? parseInt(input.value) : NaN;
-  if (!roll || roll < 1 || roll > 50) return;
-  const success = roll <= hs.totalSuccess;
+  const r = readSpellResolve();
+  if (r.gm == null || r.cast == null) { alert('Enter or roll both the GM d50 and the caster d100.'); return; }
+  hs.gmRoll = r.gm; hs.castRoll = r.cast; hs.finalTarget = r.target;
   const char = state.characters[state.activeChar];
-  if (success && char && char.playGroupId) {
-    openMarkDurationModal(roll);
+  if (r.success && char && char.playGroupId) {
+    openMarkDurationModal(r.cast);
   } else {
     hardcastState = null;
     closeModal();
@@ -6944,7 +6981,7 @@ function openMarkDurationModal(roll) {
   if (!hs) return;
   openModal(`
     <h3>${escapeHtml(hs.spellName)} — Success!</h3>
-    <div class="note" style="margin-bottom:8px">Rolled ${roll} vs target ${hs.totalSuccess}.${hs.duration ? ` Listed duration: ${escapeHtml(hs.duration)}` : ''}</div>
+    <div class="note" style="margin-bottom:8px">Rolled ${roll} against a target of ${hs.finalTarget} (${hs.totalSuccess}% + GM d50 ${hs.gmRoll}).${hs.duration ? ` Listed duration: ${escapeHtml(hs.duration)}` : ''}</div>
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:8px">
       <input type="checkbox" id="mark-duration-check" onchange="document.getElementById('mark-duration-fields').style.display=this.checked?'flex':'none'">
       Mark duration?
