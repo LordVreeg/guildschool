@@ -3559,6 +3559,7 @@ let combatOwnerByCharId = {}; // character_id -> owner_id, for this encounter's 
 // call reading stale data can land last and stomp a newer, correct render.
 let encounterRenderSeq = 0;
 let encounterIsGM = false; // set on every render so modals outside renderEncounterHtml can apply the same edit-rights rule
+let combatFoeXp = {};      // combatant id -> XP value of that foe (GM only; computeFoeXP on its Beastiary entry)
 
 // The Group page's one Combat button: a campaign can rack up 20-30
 // encounters over time, so this can't just guess which one to jump back
@@ -3649,6 +3650,25 @@ async function renderEncounterModule() {
     return;
   }
 
+  // Foe XP values, for the GM: each foe combatant's Beastiary entry run
+  // through the same computeFoeXP the Beastiary uses, with this fight's own
+  // max HP (a foe rolled tougher or weaker than its template is worth that).
+  // Temp PCs share the Beastiary table but aren't foes, so they're skipped.
+  const foeXp = {};
+  if (isGM) {
+    const entryIds = [...new Set(combatantRows.filter(c => c.bestiary_entry_id).map(c => c.bestiary_entry_id))];
+    if (entryIds.length) {
+      const { data: entries } = await sb.from('bestiary_entries').select('*').in('id', entryIds);
+      const entryById = {};
+      for (const e of entries || []) entryById[e.id] = e;
+      for (const c of combatantRows) {
+        const e = c.bestiary_entry_id ? entryById[c.bestiary_entry_id] : null;
+        if (e && !e.is_temp_pc) foeXp[c.id] = Math.round(computeFoeXP({ ...e, max_hp: c.max_hp != null ? c.max_hp : e.max_hp }));
+      }
+    }
+    if (!stillCurrent()) return;
+  }
+
   // Commit everything together, only once this call is confirmed to still
   // be the latest -- never partially overwrite the shared caches with a
   // response that a newer call has already superseded.
@@ -3658,6 +3678,7 @@ async function renderEncounterModule() {
   actionTracksCache = tracks || [];
   combatLogCache = log || [];
   encounterIsGM = isGM;
+  combatFoeXp = foeXp;
   document.getElementById('main').innerHTML = renderEncounterHtml(enc, isGM);
 }
 
@@ -3723,7 +3744,7 @@ function renderEncounterHtml(enc, isGM) {
     // everyone). Anyone else's card collapses to just a name and the
     // existing color-coded HP status: no other creature info leaks.
     if (!canEdit) {
-      return `<div style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin-bottom:6px;display:flex;align-items:center;gap:8px">
+      return `<div id="cc-card-${c.id}" style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin-bottom:6px;display:flex;align-items:center;gap:8px;transition:box-shadow .3s">
         <span style="${nameStyle}">${escapeHtml(c.display_name)}</span>
         ${combatantHpBadge(c, isGM)}
       </div>`;
@@ -3764,9 +3785,10 @@ function renderEncounterHtml(enc, isGM) {
       const endsTag = eff.expires_at_segment != null ? ` (${expired ? 'ended' : 'ends'} @ ${eff.expires_at_segment})` : '';
       return `<span style="font-size:11px;color:var(--gold-dim);margin-right:8px;${expired?'text-decoration:line-through':''}" title="Expires at segment ${eff.expires_at_segment}">${escapeHtml(eff.label)}${endsTag}${canEdit?` <a href="#" onclick="removeEffect('${c.id}',${ei});return false" style="color:var(--red-b)">✕</a>`:''}</span>`;
     }).join('');
-    return `<div style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin-bottom:6px">
+    return `<div id="cc-card-${c.id}" style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin-bottom:6px;transition:box-shadow .3s">
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <span style="${nameStyle}">${escapeHtml(c.display_name)}</span>
+        ${combatFoeXp[c.id] != null ? `<span style="font-size:11px;color:var(--gold-dim)" title="Experience value of this foe (Beastiary formula)">XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
         ${canEdit ? `<input value="${escapeHtml(c.team||'')}" placeholder="Team" style="width:80px;font-size:11px" onchange="updateCombatantField('${c.id}','team',this.value)">`
           : `<span style="font-size:10px;color:var(--text-dim)">${escapeHtml(c.team||'')}</span>`}
         ${combatantHpBadge(c, isGM)}
@@ -3826,13 +3848,7 @@ function renderEncounterHtml(enc, isGM) {
   const queuedTracks = actionTracksCache
     .filter(t => t.next_segment != null && byId[t.combatant_id] && !sidelinedIds.has(t.combatant_id))
     .slice()
-    .sort((a, b) => {
-      if (a.next_segment !== b.next_segment) return a.next_segment - b.next_segment;
-      const rankA = COMBAT_CATEGORY_RANK[a.action_category] != null ? COMBAT_CATEGORY_RANK[a.action_category] : 99;
-      const rankB = COMBAT_CATEGORY_RANK[b.action_category] != null ? COMBAT_CATEGORY_RANK[b.action_category] : 99;
-      if (rankA !== rankB) return rankA - rankB;
-      return (byId[a.combatant_id].manual_order||0) - (byId[b.combatant_id].manual_order||0);
-    });
+    .sort((a, b) => compareQueuedTracks(a, b, byId));
   const standbyTracks = actionTracksCache.filter(t => t.next_segment == null && byId[t.combatant_id] && !sidelinedIds.has(t.combatant_id));
   const orderedTracks = queuedTracks.concat(standbyTracks);
 
@@ -3877,7 +3893,8 @@ function renderEncounterHtml(enc, isGM) {
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border)${due?';background:rgba(74,148,96,.22)':''}">
       ${tieControlsHtml}
       <span style="flex:1;min-width:0">
-        <span style="font-size:17px;font-weight:bold;${nameStyle}">${escapeHtml(c.display_name)}</span>
+        <span style="font-size:17px;font-weight:bold;cursor:pointer;${nameStyle}" title="Show on the right" onclick="focusCombatantCard('${c.id}')">${escapeHtml(c.display_name)}</span>
+        ${combatFoeXp[c.id] != null ? `<span style="font-size:11px;color:var(--gold-dim)"> XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
         ${t.label ? `<span style="font-size:12px;color:var(--text-dim)"> ${escapeHtml(t.label)}</span>` : ''}
         ${t.action_category ? `<span style="display:block;font-size:11px;color:var(--text-dim)">${COMBAT_CATEGORY_LABELS[t.action_category]}</span>` : ''}
       </span>
@@ -3907,7 +3924,7 @@ function renderEncounterHtml(enc, isGM) {
   const renderEffectRow = ({ combatants, ei, eff, shared }) => {
     const ended = eff.expires_at_segment <= dueSegment;
     const left = Math.round((eff.expires_at_segment - dueSegment) * 100) / 100;
-    const names = combatants.map(c => escapeHtml(c.display_name)).join(', ');
+    const names = combatants.map(c => `<span style="cursor:pointer;text-decoration:underline dotted" title="Show on the right" onclick="focusCombatantCard('${c.id}')">${escapeHtml(c.display_name)}</span>`).join(', ');
     const clearCall = shared ? `removeEffectEverywhere('${eff.effect_id}')` : `removeEffect('${combatants[0].id}',${ei})`;
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);font-style:italic;background:${ended?'rgba(201,162,39,.25)':'rgba(120,100,60,.08)'}">
       <span style="flex:1;min-width:0">
@@ -3927,12 +3944,22 @@ function renderEncounterHtml(enc, isGM) {
     const killed = status === 'killed';
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);opacity:.75">
       <span style="flex:1;min-width:0">
-        <span style="font-size:17px;font-weight:bold;text-decoration:${killed?'line-through':'none'};color:${killed?'#a03030':'inherit'}">${escapeHtml(c.display_name)}</span>
+        <span style="font-size:17px;font-weight:bold;cursor:pointer;text-decoration:${killed?'line-through':'none'};color:${killed?'#a03030':'inherit'}" title="Show on the right" onclick="focusCombatantCard('${c.id}')">${escapeHtml(c.display_name)}</span>
+        ${combatFoeXp[c.id] != null ? `<span style="font-size:11px;color:var(--gold-dim)"> XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
         <span style="display:block;font-size:11px;color:var(--text-dim)">${killed?'Killed':'Waiting'}</span>
       </span>
       <span style="font-size:24px;font-weight:bold;line-height:1;color:${killed?'#a03030':'var(--text-dim)'};flex-shrink:0">${killed?'KIA':'W'}</span>
     </div>`;
   }).join('');
+  // GM-only: what the foes in this fight are worth, and how much of that is
+  // already down (Killed) -- the number the end-of-fight XP award starts from.
+  let foeXpHeaderHtml = '';
+  const foeIds = Object.keys(combatFoeXp);
+  if (isGM && foeIds.length) {
+    const sum = ids => ids.reduce((a, id) => a + (combatFoeXp[id] || 0), 0);
+    const downIds = foeIds.filter(id => byId[id] && combatantStatus(byId[id]) === 'killed');
+    foeXpHeaderHtml = `<div class="form-group"><label>Foe XP</label><div><b>${sum(foeIds).toLocaleString()}</b> total<span style="color:var(--text-dim)"> -- ${sum(downIds).toLocaleString()} defeated (${downIds.length}/${foeIds.length})</span></div></div>`;
+  }
   const upcomingHtml = (trackRowHtml || sidelinedRowHtml) ? (trackRowHtml + sidelinedRowHtml)
     : `<div class="note">${(orderedTracks.length || sidelinedCombatants.length) ? 'Nothing of yours in the order yet.' : 'No combatants yet.'}</div>`;
 
@@ -3956,8 +3983,9 @@ function renderEncounterHtml(enc, isGM) {
         ${isGM ? `<input type="number" step="any" class="w100" value="${enc.current_segment}" onchange="updateEncounterField('current_segment',parseFloat(this.value)||0)">` : `<div>${enc.current_segment}</div>`}
       </div>
       ${isGM ? `<div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="advanceToNextSegment('${enc.id}')">Advance to Next Queued Action</button></div>` : ''}
+      ${foeXpHeaderHtml}
     </div>
-    <div class="note" style="margin-bottom:6px">Resolution order within a tied segment: Spell → Non-Combat → Missile → Melee, then the ▲▼ order above as the final tiebreak. Everything here is an editable suggestion -- adjust freely.</div>
+    <div class="note" style="margin-bottom:6px">Default order within a tied segment: Spell → Non-Combat → Missile → Melee. Use the ▲▼ on a tied row in the Turn Order to put whoever you like first. Click a name there to jump to their card. Everything here is an editable suggestion -- adjust freely.</div>
     <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
       <div style="width:300px;flex-shrink:0;border:2px solid var(--gold-dim);border-radius:4px;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:baseline;background:var(--header-bg);padding:8px 12px">
@@ -4082,30 +4110,57 @@ async function syncCombatHpToCharacter(characterId, hpPatch) {
   if (rpcErr) console.error('Combat HP sync failed for', characterId, rpcErr);
 }
 
-// manual_order's only job is breaking a tied segment in Turn Order (see the
-// note text above the combatant list), so reordering has to operate on the
-// tie group itself -- swapping a combatant against whichever neighbor is
-// adjacent in the FULL list did nothing useful when that neighbor wasn't
-// even part of the same tie. Renumbers just the tied combatants, 0..n-1 in
-// the swapped order; leaves everyone else's manual_order untouched.
+// The one ordering used by the Turn Order and by its ▲▼ arrows, so what the
+// arrows move is exactly what's on screen: segment, then an explicit
+// tie_order the GM set (none sorts after those), then category (Spell >
+// Non-Combat > Missile > Melee), then the combatant's manual_order.
+function compareQueuedTracks(a, b, byId) {
+  if (a.next_segment !== b.next_segment) return a.next_segment - b.next_segment;
+  const ta = a.tie_order != null ? Number(a.tie_order) : Infinity;
+  const tb = b.tie_order != null ? Number(b.tie_order) : Infinity;
+  if (ta !== tb) return ta < tb ? -1 : 1;
+  const rankA = COMBAT_CATEGORY_RANK[a.action_category] != null ? COMBAT_CATEGORY_RANK[a.action_category] : 99;
+  const rankB = COMBAT_CATEGORY_RANK[b.action_category] != null ? COMBAT_CATEGORY_RANK[b.action_category] : 99;
+  if (rankA !== rankB) return rankA - rankB;
+  const ca = byId[a.combatant_id], cb = byId[b.combatant_id];
+  return ((ca && ca.manual_order) || 0) - ((cb && cb.manual_order) || 0);
+}
+
+// Moves one action up or down within its tied segment. Takes the tie group
+// in the order it is currently DISPLAYED, swaps the two neighbors, and
+// writes an explicit tie_order (0..n-1) onto every track in the group --
+// per track, so two actions by the same combatant can be ordered too, and
+// the swap holds even across categories.
 async function moveTrackWithinTie(trackId, direction) {
   const track = actionTracksCache.find(t => t.id === trackId);
   if (!track || track.next_segment == null) return;
+  if (!actionTracksCache.some(t => 'tie_order' in t)) { alert('Run schema_v26_track_tie_order.sql in Supabase first -- the up/down arrows need its tie_order column.'); return; }
   const byIdLocal = {};
   for (const c of combatantsCache) byIdLocal[c.id] = c;
+  const sidelined = c => { const s = (c && c.status) || 'active'; return s === 'waiting' || s === 'killed'; };
   const tieGroup = actionTracksCache
-    .filter(t => t.next_segment === track.next_segment && byIdLocal[t.combatant_id])
-    .sort((a, b) => (byIdLocal[a.combatant_id].manual_order||0) - (byIdLocal[b.combatant_id].manual_order||0));
+    .filter(t => t.next_segment === track.next_segment && byIdLocal[t.combatant_id] && !sidelined(byIdLocal[t.combatant_id]))
+    .sort((a, b) => compareQueuedTracks(a, b, byIdLocal));
   if (tieGroup.length < 2) return;
   const idx = tieGroup.findIndex(t => t.id === trackId);
   const targetIdx = idx + direction;
   if (targetIdx < 0 || targetIdx >= tieGroup.length) return;
   const reordered = tieGroup.slice();
   [reordered[idx], reordered[targetIdx]] = [reordered[targetIdx], reordered[idx]];
-  const results = await Promise.all(reordered.map((t, i) => sb.from('combat_combatants').update({ manual_order: i }).eq('id', byIdLocal[t.combatant_id].id)));
+  const results = await Promise.all(reordered.map((t, i) => sb.from('combat_action_tracks').update({ tie_order: i }).eq('id', t.id)));
   const failed = results.find(r => r.error);
   if (failed) { alert('Failed to reorder: ' + failed.error.message); return; }
   renderEncounterModule();
+}
+
+// Click-through from a Turn Order name to that combatant's card on the right.
+function focusCombatantCard(combatantId) {
+  const el = document.getElementById('cc-card-' + combatantId);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const prev = el.style.boxShadow;
+  el.style.boxShadow = '0 0 0 3px var(--gold)';
+  setTimeout(() => { el.style.boxShadow = prev; }, 1600);
 }
 
 async function removeCombatant(id) {
@@ -4122,8 +4177,15 @@ async function addActionTrack(combatantId) {
   renderEncounterModule();
 }
 
+// True once schema_v26 has been run -- select('*') only returns a column
+// that exists, so its presence on any loaded track is the check.
+function tracksHaveTieOrder() { return actionTracksCache.some(t => 'tie_order' in t); }
+
 async function updateActionTrack(id, field, value) {
-  const { error } = await sb.from('combat_action_tracks').update({ [field]: value }).eq('id', id);
+  const patch = { [field]: value };
+  // A tie position only means something at the segment it was set for.
+  if (field === 'next_segment' && tracksHaveTieOrder()) patch.tie_order = null;
+  const { error } = await sb.from('combat_action_tracks').update(patch).eq('id', id);
   if (error) { alert('Failed to update: ' + error.message); return; }
   renderEncounterModule();
 }
@@ -4146,7 +4208,9 @@ async function deleteActionTrack(id) {
 }
 
 async function resolveActionTrack(id) {
-  const { error } = await sb.from('combat_action_tracks').update({ next_segment: null }).eq('id', id);
+  const patch = { next_segment: null };
+  if (tracksHaveTieOrder()) patch.tie_order = null;
+  const { error } = await sb.from('combat_action_tracks').update(patch).eq('id', id);
   if (error) { alert('Failed to resolve: ' + error.message); return; }
   renderEncounterModule();
 }
