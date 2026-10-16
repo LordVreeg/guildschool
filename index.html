@@ -4656,6 +4656,7 @@ function renderHpRollModal(groupId, uptoSeconds) {
   openModal(`
     <h3>Nightly HP Recovery Due</h3>
     <div class="note" style="margin-bottom:8px">A full night's rest completed for these characters. Enter each player's Fortitude CC roll (d100, roll ≤ target succeeds), or roll online.</div>
+    <div style="margin-bottom:8px"><button class="btn btn-gold" onclick="rollAllHpOnline()" title="Rolls a d100 for every row that doesn't have a roll yet; rolls you've typed in are kept">Roll all</button></div>
     <table class="skill-table"><thead><tr><th>Character</th><th>Fort CC Target</th><th>Roll</th><th></th></tr></thead><tbody>${rows}</tbody></table>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Skip For Now</button><button class="btn btn-gold" onclick="applyHpRolls('${groupId}', ${uptoSeconds})">Apply</button></div>`);
 }
@@ -4663,6 +4664,15 @@ function rollHpOnline(idx) {
   const roll = rollDie(100);
   const input = document.getElementById(`hproll-${idx}`);
   if (input) input.value = roll;
+}
+// Rolls every row that has no valid roll yet, so a roll a player already
+// made at the table (typed in) is never overwritten.
+function rollAllHpOnline() {
+  for (const q of pendingHpRolls) {
+    const input = document.getElementById(`hproll-${q.idx}`);
+    const existing = input ? parseInt(input.value) : NaN;
+    if (input && !(existing >= 1 && existing <= 100)) input.value = rollDie(100);
+  }
 }
 async function applyHpRolls(groupId, uptoSeconds) {
   const summary = [];
