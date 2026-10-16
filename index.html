@@ -1110,10 +1110,16 @@ function computeHpStatus(character) {
 // isResting/focusPools when a GM has explicitly reported a rest span (see the
 // Group module's resting prompt on clock advances > 2 hours). Mutates
 // character.spellState / character.recoveryState in place.
+// Rules for Magic: a sleeping caster can reclaim up to 5 different spell
+// point types per hour (3 awake). "Recover furthest down" spends that on the
+// pools with the most points missing.
+const SLEEP_POOL_CAP = 5;
+
 function settleCharacterRecovery(character, uptoSeconds, opts) {
   opts = opts || {};
   const focusPools = opts.focusPools || null;
   const isResting = !!opts.isResting;
+  const furthestDown = isResting && !!opts.furthestDown;
   if (!character.recoveryState) character.recoveryState = {};
   const rs = character.recoveryState;
   const last = (rs.lastCheckSeconds != null) ? rs.lastCheckSeconds : uptoSeconds;
@@ -1121,22 +1127,46 @@ function settleCharacterRecovery(character, uptoSeconds, opts) {
   const spGains = [];
   if (elapsedSec > 0) {
     const elapsedHours = elapsedSec / 3600;
-    const pools = computeSpellPools(character);
     if (!character.spellState) character.spellState = {};
-    for (const pool of pools) {
-      if (pool.currentSP >= pool.maxSP) continue;
-      const usingSleepRate = isResting && focusPools && focusPools.includes(pool.name);
-      const rate = usingSleepRate ? pool.recoverSleep : pool.recoverAwake;
-      if (rate <= 0) continue;
-      const next = Math.min(pool.maxSP, pool.currentSP + rate * elapsedHours);
-      const gained = Math.round((next - pool.currentSP) * 10) / 10;
-      if (gained > 0) {
-        // Always apply the fractional gain so it keeps accumulating silently
-        // across settlements, but only mention it once it adds up to a full point.
-        if (!character.spellState[pool.name]) character.spellState[pool.name] = {};
-        character.spellState[pool.name].current = next;
-        if (gained >= 1) spGains.push(`+${Math.floor(gained)} ${pool.name}`);
+    const before = {};
+    for (const p of computeSpellPools(character)) before[p.name] = p.currentSP;
+    // One slice of time: pools in sleepNames reclaim at the sleep rate, the
+    // rest at the awake rate. Always applies the fractional gain so it keeps
+    // accumulating silently across settlements.
+    const applySlice = (dtHours, sleepNames) => {
+      for (const pool of computeSpellPools(character)) {
+        if (pool.currentSP >= pool.maxSP) continue;
+        const rate = sleepNames.has(pool.name) ? pool.recoverSleep : pool.recoverAwake;
+        if (rate <= 0) continue;
+        const next = Math.min(pool.maxSP, pool.currentSP + rate * dtHours);
+        if (next > pool.currentSP) {
+          if (!character.spellState[pool.name]) character.spellState[pool.name] = {};
+          character.spellState[pool.name].current = next;
+        }
       }
+    };
+    if (furthestDown) {
+      // Re-pick every hour: whichever pools are furthest below max right now
+      // (most points missing, up to the sleeping cap) get the sleep rate, so
+      // the biggest holes close first and focus moves on as they fill.
+      let remaining = elapsedHours;
+      while (remaining > 1e-9) {
+        const dt = Math.min(1, remaining);
+        remaining -= dt;
+        const focus = computeSpellPools(character)
+          .filter(p => p.currentSP < p.maxSP && p.recoverSleep > 0)
+          .sort((a, b) => (b.maxSP - b.currentSP) - (a.maxSP - a.currentSP))
+          .slice(0, SLEEP_POOL_CAP)
+          .map(p => p.name);
+        applySlice(dt, new Set(focus));
+      }
+    } else {
+      applySlice(elapsedHours, new Set(isResting && focusPools ? focusPools : []));
+    }
+    for (const p of computeSpellPools(character)) {
+      const gained = Math.round((p.currentSP - (before[p.name] || 0)) * 10) / 10;
+      // Only mention a pool once it adds up to a full point.
+      if (gained >= 1) spGains.push(`+${Math.floor(gained)} ${p.name}`);
     }
     if (isResting) rs.restHoursAccrued = (rs.restHoursAccrued || 0) + elapsedHours;
   }
@@ -4540,21 +4570,52 @@ async function maybePromptResting(groupId, nextSeconds, elapsedSeconds) {
   openModal(`
     <h3>Advancing ${hours} hours — who was resting?</h3>
     <div class="note" style="margin-bottom:8px">Resting means asleep or trying to sleep. Anyone left unchecked is assumed active and still recovers spell points automatically at the normal awake rate.</div>
+    <div style="margin-bottom:10px"><button class="btn btn-gold" onclick="restAllFurthestDown()" title="Marks everyone resting and sends their sleep recovery to whichever pools are furthest below max">Recover all furthest down</button></div>
     ${restingPromptRoster.map(r => {
       const pools = computeSpellPools(r.data);
       const poolBoxes = pools.map(p => `<label style="display:inline-flex;align-items:center;gap:4px;margin-right:10px;font-size:12px"><input type="checkbox" class="rest-pool" data-char="${r.id}" value="${escapeHtml(p.name)}"> ${escapeHtml(p.name)}</label>`).join('');
+      const down = pools.filter(p => p.currentSP < p.maxSP).sort((a, b) => (b.maxSP - b.currentSP) - (a.maxSP - a.currentSP)).slice(0, 3)
+        .map(p => `${escapeHtml(p.name)} -${Math.round((p.maxSP - p.currentSP) * 10) / 10}`).join(', ');
       return `<div style="margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-          <input type="checkbox" class="rest-toggle" id="rest-${r.id}" onchange="document.getElementById('rest-pools-${r.id}').style.display=this.checked?'block':'none'">
+          <input type="checkbox" class="rest-toggle" id="rest-${r.id}" onchange="syncRestSection('${r.id}')">
           <b>${escapeHtml(r.data.name || '(unnamed)')}</b> was resting
         </label>
         <div id="rest-pools-${r.id}" style="display:none;margin:6px 0 0 22px">
-          <div class="note" style="margin-bottom:4px">Which spell points were they working on reclaiming? (unchecked pools still recover at the normal awake rate)</div>
-          ${poolBoxes || '<span class="note">No trained spell pools.</span>'}
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:6px">
+            <input type="checkbox" class="rest-furthest" id="rest-furthest-${r.id}" onchange="syncRestSection('${r.id}')">
+            <span><b>Recover furthest down</b> <span class="note">(sleep rate goes to the pools with the most points missing, up to ${SLEEP_POOL_CAP}, re-picked every hour)</span></span>
+          </label>
+          <div class="note" style="margin-bottom:4px">${down ? `Furthest down now: ${down}.` : 'No pool is below max right now.'}</div>
+          <div id="rest-manual-${r.id}">
+            <div class="note" style="margin-bottom:4px">Or pick which spell points they were working on reclaiming (unchecked pools still recover at the normal awake rate)</div>
+            ${poolBoxes || '<span class="note">No trained spell pools.</span>'}
+          </div>
         </div>
       </div>`;
     }).join('')}
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="confirmRestingPrompt('${groupId}', ${nextSeconds})">Apply</button></div>`);
+}
+
+// Shows/hides one character's recovery options to match their "was resting"
+// and "recover furthest down" boxes (furthest down replaces the manual list).
+function syncRestSection(charId) {
+  const resting = document.getElementById(`rest-${charId}`);
+  const furthest = document.getElementById(`rest-furthest-${charId}`);
+  const section = document.getElementById(`rest-pools-${charId}`);
+  const manual = document.getElementById(`rest-manual-${charId}`);
+  if (section) section.style.display = resting && resting.checked ? 'block' : 'none';
+  if (manual) manual.style.display = furthest && furthest.checked ? 'none' : 'block';
+}
+
+function restAllFurthestDown() {
+  for (const r of restingPromptRoster) {
+    const resting = document.getElementById(`rest-${r.id}`);
+    const furthest = document.getElementById(`rest-furthest-${r.id}`);
+    if (resting) resting.checked = true;
+    if (furthest) furthest.checked = true;
+    syncRestSection(r.id);
+  }
 }
 
 async function confirmRestingPrompt(groupId, nextSeconds) {
@@ -4562,8 +4623,9 @@ async function confirmRestingPrompt(groupId, nextSeconds) {
   for (const r of restingPromptRoster) {
     const toggle = document.getElementById(`rest-${r.id}`);
     if (toggle && toggle.checked) {
-      const focusPools = Array.from(document.querySelectorAll(`.rest-pool[data-char="${r.id}"]:checked`)).map(el => el.value);
-      restingMap[r.id] = { isResting: true, focusPools };
+      const furthestDown = !!(document.getElementById(`rest-furthest-${r.id}`) || {}).checked;
+      const focusPools = furthestDown ? [] : Array.from(document.querySelectorAll(`.rest-pool[data-char="${r.id}"]:checked`)).map(el => el.value);
+      restingMap[r.id] = { isResting: true, focusPools, furthestDown };
     }
   }
   const { error } = await sb.from('groups').update({ clock_seconds: nextSeconds }).eq('id', groupId);
