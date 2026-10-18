@@ -282,8 +282,74 @@ function escapeHtml(s) {
 // instead, collapsed by default except whichever location already holds the
 // current value. Renders a button that opens it; onSelect gets the chosen
 // guild name (or '' for "— none —").
+// Short "what is this guild" blurbs shown on hover in the picker. A guild is
+// the same guild wherever it sits ("The Eye is the Eye"), so blurbs are keyed
+// by the guild's base name with its locale stripped -- Igbar: The Eye,
+// Ocodig: The Eye and Miston: The Eye all share one. Guilds with no blurb
+// yet get a generic placeholder; add the text to GUILD_BLURBS below.
+const GUILD_BLURB_PLACEHOLDER = "A guild or faction of Celtricia. A fuller description hasn't been written for this one yet.";
+function guildBlurbKey(name) {
+  let s = String(name || '').replace(/^[^:]*:\s*/, '').replace(/\([^)]*\)/g, ' ').toLowerCase().replace(/&/g, ' and ');
+  for (const re of [/steel isle town/g, /steel island/g, /steel isle/g]) s = s.replace(re, ' ');
+  const stop = new Set(['the', 'of', 'and', 'a', 'an']);
+  const locales = new Set(['igbar', 'ocodig', 'hopiton', 'miston']);
+  return s.replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(w => w && !stop.has(w) && !locales.has(w)).join(' ');
+}
+function guildBlurb(name) { return GUILD_BLURBS[guildBlurbKey(name)] || ''; }
+function guildBlurbOrPlaceholder(name) { return guildBlurb(name) || GUILD_BLURB_PLACEHOLDER; }
+const GUILD_BLURBS = {
+  "alt school magic": "To create a cooperative magic school that is not under the heel of the huge Collegiom Arcana.",
+  "armor trade": "The protectors and martial arm of the Platform of Trade; this knighthood protects the priesthood and partners of that church. Warriors and sword defenders of those that honestly trade, they particularly hate bandits and those that try to cheat the system.",
+  "bertrand s bardic school": "A violent anti-gryphon/anti-argus group, this school is very martial, and well known to drum the beats of rumor, as well as their small conical trelling drums and huge kettle drums.",
+  "blackstripes": "Firstly about theft, but also about territory. Blackstripes specialize in bribery and graft.",
+  "blue turtles": "The Blue Turtles were founded to combat warrior brotherhoods that place the nobility above the defence of the weak.",
+  "blue turtles honorable warriors": "The Blue Turtles were founded to combat warrior brotherhoods that place the nobility above the defence of the weak.",
+  "bone knights orcus": "Large-scale, to maintain the sanctity of the resting places of the dead, currently, to beat back the undead in Igbar.",
+  "bowyers ceminiar": "To protect the Tenets of the Great Woodsman, Ceminiar. Also, to oppose the servants of Geryon and the Wild Hunt.",
+  "breath truth": "To Educate future governmental figures in Igbar.",
+  "church direction": "To aid in those that are lost, to seek priority and order. To show the value of working together and to bring to light the hidden facets of a journey.",
+  "church fortune": "The Church of Fortune gives succor to those that have been burnt by the vagaries of fate, and those that seek to curry favors with luck. Ishma is also the patron of the spider and of making one's own luck.",
+  "church green mother": "To protect the wilderness and the cultivate the urban/wilderness interface.",
+  "church grren mother": "To Educate future governmental figures in Igbar.",
+  "church hosting": "To promote the teachings of the Lord of the Hosting, and to be part of the organic network they believe each population center to be.",
+  "church hunt": "To grow the rights of the individual, the grow the forests, and to ennoble the hunt.",
+  "collegium arcana": "The Collegium Arcana wishes to have every non-church aligned caster under their control and umbrella.",
+  "corobar s iron way": "To create educated, uniquely skilled warriors to grow with a house of nobility, to bring honor to the Way.",
+  "defenders land": "To create a harmony with the people living on the waking dream and the creatures that exist in it.",
+  "defenders land madrak": "To create a harmony with the people living on the waking dream and the creatures that exist in it.",
+  "dire tones bardic consortium": "To explore the grim mysteries hidden in the tortured mind of the poetic... to wear black, smoke cloves, and play music, while being depressed...and to wear all black and dye the hair black and have sort of romantic ideal of the undead.",
+  "eye": "The Eye is one of the three large multinational Thieves' Guilds in the Continent of Celtricia. Control of turf, and extraction.",
+  "frigid song": "To create the present in bardic terms that will become history.",
+  "green flame": "To Support the Eye of Igbar and provide magical and alchemical backing for them.",
+  "gurellium traders": "Like many trading guilds, profit is an overwhelming interest. But The Gurelliums are also ' Nativists ', Islandres who wish to minimize the political influence of the mainland.",
+  "heralds night": "Shrouded in mystery. They are as much bards who seek information and who work in taverns and in the nobility as they are killers.",
+  "holders straight way": "This is not a church, but a group of holy assassins/warriors attached to the Church of Belial the True and Clear. They are not public knowledge, though they are not a hidden group to other underworld types.",
+  "hunters shade": "To track and hunt and husband the giant beasts of Verbren; to martially protect those ways that mankind uses to traverse the forest.",
+  "intrepid engineers": "To teach the basics of engineering and the applications of same while warning the students of the possibilities.",
+  "manxian lancers": "Guarding the property and caravans of the Rexians.",
+  "mysteriarchs lathe": "Insulated, they seek to counteract the dragonriders and to track and keep count on sauroid influence.",
+  "order stenron": "The Order began as a means to fight the humanoids and undead that threaten every civilized locale. They spend times on short and long patrols with the town. They are decent trackers and have some member with earth and animist void abilities.",
+  "order white paladin": "To wear white and like it? This guild of fighters exists to create a band of warriors trained to protect the weak and especially to defend those that speak the truth at their own peril.",
+  "path earth": "To support and defend all churches of earth and animism.",
+  "puror s mixers": "To embody the Earth-Trickster, Saint Tedu Redescu, and give the best quality potions and mixtures at reasonable prices, and to find more mixtures that are undiscovered.",
+  "restitution arlieng": "To feed all underworld, political, or mercantile information back to Vinivixias.",
+  "scarlet deductors": "To determine the root causes of crimes too difficult for the ordinary Pilums, and to bring those causes before the Unicorn Courts. Unofficially, to give the Spear-Lord an instrument for matters he does not wish handled by the ordinary watch, when it becomes delicate, or difficult.",
+  "scarlet pilums": "Currently, to fulfill their decade contract with Trabler. Long term, to increase their mercenary brotherhood.",
+  "shrine winding skein": "To discover mysteries and to build secure homesteads. This Church is small, and is very often only in shrine levels. They tend towards order and a belief in fate.",
+  "tower": "The tower exists to study air and weather magic. They are a known commodity for all seagoing vessels, being able to summon wind elementals and to change weather patterns.",
+  "trombic fanfare": "To be the horns of the call, the valhalla harbingers. This group performs regularly, solo or in smaller groups, and seeks out news and deeds of renown.",
+  "unicorn ministry": "To Educate future governmental figures in Igbar."
+};
+
+function showGuildBlurb(name) {
+  const el = document.getElementById('guild-blurb-preview');
+  if (!el) return;
+  const b = guildBlurb(name);
+  el.innerHTML = `<b>${escapeHtml(name)}</b><br><span style="${b ? '' : 'color:var(--text-dim);font-style:italic'}">${escapeHtml(b || GUILD_BLURB_PLACEHOLDER)}</span>`;
+}
+
 function guildPickerButton(currentValue, onSelectExpr) {
-  return `<button type="button" class="btn btn-dim" style="width:100%;text-align:left" onclick="openGuildPickerModal('${escapeHtml((currentValue||'').replace(/'/g,"\\'"))}', ${onSelectExpr})">${currentValue ? escapeHtml(currentValue) : '— none —'}</button>`;
+  return `<button type="button" class="btn btn-dim" style="width:100%;text-align:left" ${currentValue ? `title="${escapeHtml(guildBlurbOrPlaceholder(currentValue))}"` : ''} onclick="openGuildPickerModal('${escapeHtml((currentValue||'').replace(/'/g,"\\'"))}', ${onSelectExpr})">${currentValue ? escapeHtml(currentValue) : '— none —'}</button>`;
 }
 
 let guildPickerCallback = null;
@@ -303,10 +369,11 @@ function openGuildPickerModal(currentValue, onSelect) {
       ${locations.map(loc => `<details ${groups[loc].includes(currentValue) ? 'open' : ''} style="margin-bottom:4px">
         <summary style="cursor:pointer;font-weight:bold;color:var(--gold-dim);padding:4px 0">${escapeHtml(loc)} <span class="note">(${groups[loc].length})</span></summary>
         <div style="margin-left:16px">
-          ${groups[loc].map(g => `<div style="padding:2px 0;cursor:pointer;${g===currentValue?'color:var(--gold);font-weight:bold':''}" onclick="selectGuildFromPicker('${g.replace(/'/g,"\\'")}')">${escapeHtml(g)}</div>`).join('')}
+          ${groups[loc].map(g => `<div style="padding:2px 0;cursor:pointer;${g===currentValue?'color:var(--gold);font-weight:bold':''}" title="${escapeHtml(guildBlurbOrPlaceholder(g))}" data-guild="${escapeHtml(g)}" onmouseover="showGuildBlurb(this.dataset.guild)" onclick="selectGuildFromPicker('${g.replace(/'/g,"\\'")}')">${escapeHtml(g)}</div>`).join('')}
         </div>
       </details>`).join('')}
     </div>
+    <div id="guild-blurb-preview" class="note" style="margin-top:8px;min-height:3.2em;border-top:1px solid var(--border);padding-top:6px">Hover a guild to read a short description of it.</div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button></div>`, { wide: true });
 }
 
