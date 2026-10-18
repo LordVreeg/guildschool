@@ -1395,6 +1395,7 @@ function showCombatModule() {
   state.activeView = 'combat';
   renderSidebar();
   renderCombatModule();
+  showPageIntroOnce('combat', 'The Combat page', COMBAT_PAGE_INTRO_HTML);
 }
 
 function showSpellModule() {
@@ -1402,6 +1403,52 @@ function showSpellModule() {
   state.activeView = 'spell';
   renderSidebar();
   renderSpellModule();
+  showPageIntroOnce('spell', 'The Spells page', SPELL_PAGE_INTRO_HTML);
+}
+
+// A short explainer the first time someone opens the Combat or Spells page
+// in this browser. Remembered in localStorage (and in memory, for browsers
+// that block it), so it never nags again.
+const pageIntrosShown = new Set();
+function showPageIntroOnce(key, title, bodyHtml) {
+  let seen = pageIntrosShown.has(key);
+  try { if (!seen) seen = localStorage.getItem('gs_intro_' + key) === '1'; } catch (e) {}
+  if (seen) return;
+  pageIntrosShown.add(key);
+  try { localStorage.setItem('gs_intro_' + key, '1'); } catch (e) {}
+  openModal(`
+    <h3>${title}</h3>
+    <div style="font-size:13px;line-height:1.5">${bodyHtml}</div>
+    <div class="modal-actions"><button class="btn btn-gold" onclick="closeModal()">Got it</button></div>`, { wide: true });
+}
+
+const COMBAT_PAGE_INTRO_HTML = `
+  <p>This page builds itself from your inventory.</p>
+  <ul style="margin:6px 0 6px 18px;padding:0">
+    <li><b>Weapons:</b> any item of type Weapon in your inventory (General Info, then <i>+ Add Item</i>) appears here with its to-hit, damage bonus, speed, crit and fumble chances, and parry, worked out from your attributes and your skill in that weapon's class. Set the weapon's class to the skill you trained (for example Basic Spears).</li>
+    <li><b>Armor and shields:</b> items of type Armor or Shield add to your Avoidance and Protection totals here. Your Avoidance and Protection skills are applied on top.</li>
+    <li><b>Hit Points:</b> track your current HP here. It uses your Hit Points skill and works for both the Standard and Collegium systems.</li>
+    <li><b>Nothing is entered twice:</b> add, change or remove an item in your inventory and this page updates to match.</li>
+  </ul>`;
+
+const SPELL_PAGE_INTRO_HTML = `
+  <p>This page holds your spell points and your spellbook.</p>
+  <ul style="margin:6px 0 6px 18px;padding:0">
+    <li><b>The whole library is open to you.</b> Add a line to your spellbook, choose a school, then pick the spell from the full list for that school; its cost fills in.</li>
+    <li><b>Spell points:</b> your pools come from the spell skills you have trained (Spirit SP plus each school). Short in a school? Spirit can cover the gap at a conversion ratio.</li>
+    <li><b>Casting:</b> press <i>Cast</i> on a spell and choose Hardcast, Plaque or Scrollcast. It works out the cost and your success chance, spends the points, then rolls (or lets you enter) the GM's d50 and your d100.</li>
+    <li><b>Recovery:</b> if your character is linked to a group, spell points come back as the group's clock moves forward.</li>
+  </ul>`;
+
+// Brand-new characters (the creation screen sets welcomeShown) are nudged
+// until they have chosen a main guild. Imported and older characters, and
+// NPCs, are left alone.
+function mainGuildBannerHtml(char, onGeneralPage) {
+  if (char.guild || char.isNPC || char.welcomeShown === undefined) return '';
+  return `<div style="border:2px solid var(--gold);border-radius:4px;padding:10px 12px;margin-bottom:12px;background:rgba(201,162,39,.12)">
+    <b>Pick your main Guild/School first.</b> Do this before anything else. Your guild decides what you are better and worse at: it adjusts how fast every skill levels (the EXP modifier), so some skills come easily and others slowly. Skills you add afterwards are tagged to it.
+    ${onGeneralPage ? '<div class="note" style="margin-top:4px">Set it under Guilds, Primary Guild, further down this page.</div>' : '<div style="margin-top:6px"><button class="btn btn-gold" onclick="showGeneralModule()">Choose Primary Guild</button></div>'}
+  </div>`;
 }
 
 function showUtilitiesModule() {
@@ -5217,6 +5264,7 @@ function renderOverview() {
   <div class="panel">
     <div class="panel-header"><h2 style="font-family:'Cormorant Garamond','Georgia',serif;font-style:italic;font-weight:bold">${char.name}</h2>${char.nickname ? `<span class="type-badge" style="font-style:italic">"${char.nickname}"</span>` : ''}${char.isNPC ? '<span class="type-badge" style="color:var(--gold)">NPC</span>' : ''}<span class="type-badge">${char.race || ''} ${char.subrace || ''}</span><span class="type-badge">${char.guild || ''}</span></div>
     <div class="panel-body">
+      ${mainGuildBannerHtml(char, false)}
       <div class="form-row" style="margin-bottom:4px">
         ${['ST','IN','WI','CD','HE','CH','AP'].map(a=>`<div class="computed-item"><span class="ci-label">${a}</span><span class="ci-value">${(char.attrs||{})[a]||'—'}</span></div>`).join('')}
         <div class="computed-item" style="margin-left:auto"><span class="ci-label">Total Raw XP</span><span class="ci-value">${totalXP.toLocaleString()}</span></div>
@@ -5279,6 +5327,7 @@ function renderGeneralModule() {
       ${char.unspentInitialExp > 0 ? `<div class="computed-item"><span class="ci-label">Unspent Initial Raw XP</span><span class="ci-value" style="font-size:16px">${char.unspentInitialExp.toLocaleString()}</span></div>` : ''}
     </div>
     <div class="panel-body">
+      ${mainGuildBannerHtml(char, true)}
       <div class="form-row">
         <div class="form-group id-field"><label>Name</label><input class="w200" value="${char.name||''}" onchange="updateChar('name',this.value)"></div>
         <div class="form-group id-field"><label>Nickname / Title</label><input class="w200" value="${char.nickname||''}" onchange="updateChar('nickname',this.value)"></div>
@@ -5538,9 +5587,17 @@ function renderGeneralModule() {
     saveState();
     openModal(`
       <h3>Welcome, ${escapeHtml(char.name || 'traveler')}!</h3>
-      <p>Great, this character now exists. Your first move from here, after you read through social rolls and all, is to choose your Guild/School. That's where your skills all derive from, where your history is from, and your link to the world of Celtricia.</p>
-      <p>From there, you'll see you already have some skills, and you'll need to spend your starting experience on new skills.</p>
-      <div class="modal-actions"><button class="btn btn-gold" onclick="closeModal()">Got it</button></div>`);
+      <div style="font-size:13px;line-height:1.5">
+      <p>Great, this character now exists. Here is how to get going.</p>
+      <ol style="margin:6px 0 6px 18px;padding:0">
+        <li><b>Pick your main Guild/School first</b>, before anything else. On General Info, set your Primary Guild. Your guild decides what you are better and worse at: it adjusts how fast you learn every skill (the EXP modifier), so what your guild favors comes quickly and what it doesn't comes slowly. It is also where your history comes from and your link to the world of Celtricia.</li>
+        <li><b>Spend your starting experience.</b> You already have a few skills; add the rest with <i>+ Add Skill</i> in the sidebar. A broad skill gives you a little ability in the specialties under it (the dropdown rule).</li>
+        <li><b>Put your gear in your inventory.</b> On General Info, add weapons, armor and shields as items. They go live on the Combat page by themselves: weapons show to-hit, damage, speed and crit chances worked out from your skills and attributes, and armor and shields add to your Avoidance and Protection.</li>
+        <li><b>Spells.</b> The Spells page keeps your spell points and your spellbook, and it can draw on the entire spell library.</li>
+        <li><b>Playing with a group.</b> The Groups button in the top bar is where your GM keeps the shared clock, the party roster and notes, and where combat is run: a Combat tracker with turn order, hit points and effects. You can link your character to a group from General Info.</li>
+      </ol>
+      </div>
+      <div class="modal-actions"><button class="btn btn-gold" onclick="closeModal()">Got it</button></div>`, { wide: true });
   }
 }
 
@@ -6164,6 +6221,18 @@ function openCharTutorial(formPreset) {
     <p>Furthermore, one of the major ideas in this particular skill based system is the idea that expertise in a broad-based skill gives you some little ability in specialty skills underneath it. A thief with the basic trap skill has a small amount of skill in finding traps, removing traps, and setting traps. This rule is called the <strong>"dropdown" rule</strong>.</p>
     <p>This is a departure from most systems, and something developed decades ago to model the actual learning experience. There are other skill based systems out there, but in most of them each skill stands alone, and a character who gets better at painting or basic merchant is not assumed to get better at other skills that would be, in reality, related.</p>
     <p>Another major ideal of the GuildSchool game is that one only gets better in skills that are used. Experience points and levels are kept in each skill, and a thief only gets better at finding the aforementioned trap by using that skill. No one gets better at finding traps by killing other creatures, contrary to the design of most RPGs.</p>
+    <hr class="divider">
+    <p><strong>Start here</strong></p>
+    <p>Pick your main Guild/School before anything else. Your guild decides what you are better and worse at: it adjusts how fast every skill levels, so some skills come easily and others slowly.</p>
+    <hr class="divider">
+    <p><strong>What is in the tool</strong></p>
+    <ul style="margin:6px 0 6px 18px;padding:0">
+      <li><b>Overview and General Info:</b> your skills at a glance, your identity, your guilds, and your inventory.</li>
+      <li><b>Combat page:</b> weapons, armor, shields and hit points, built from whatever you put in your inventory.</li>
+      <li><b>Spells page:</b> spell points, the entire spell library, and casting.</li>
+      <li><b>Groups:</b> for a GM and their players. A shared game clock, the party roster, session notes, and spell point and hit point recovery as time passes.</li>
+      <li><b>Combat module:</b> inside a Group, the GM starts a combat and everyone sees the turn order with initiative, hit points and effects that run over time. GMs also have a Beastiary of foes to draw from.</li>
+    </ul>
     </div>
     <div class="modal-actions">
       <button class="btn btn-gold" onclick="openNewCharModal(charTutorialReturnState)">Back to New Character</button>
