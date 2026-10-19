@@ -468,9 +468,7 @@ async function handleSignedIn() {
   await fetchMyGroups();
   updateExportIndicator();
   loadData().then(() => {
-    // Characters that already had Basic Martial artist XP before this rule
-    // existed get their Hand/Foot weapon as soon as the weapon catalog is in.
-    if (ensureHandFootForAll()) { saveState(); if (typeof renderApp === 'function') renderApp(); }
+    if (removeAutoHandFootForAll()) { saveState(); if (typeof renderApp === 'function') renderApp(); }
   }).catch(err => {
     document.getElementById('main').innerHTML = `<div style="padding:40px;color:var(--red-b)">
       <strong>Could not load data.</strong><br><br>${err.message}
@@ -478,51 +476,97 @@ async function handleSignedIn() {
   });
 }
 
-// Anyone who has put experience into Basic Martial artist fights with hands
-// and feet, so the "Hand" weapon (stats from the weapon catalog) is given to
-// them automatically, listed as Hand/Foot, on the Combat page via their
-// inventory. Granted once (the flag keeps a deliberately deleted one from
-// coming back) and never duplicated if they already have one.
-function ensureHandFootWeapon(char) {
-  if (!char || char.handFootGranted) return false;
-  const martial = (char.skills || []).find(s => s.skillName === 'Basic Martial artist');
-  if (!martial || !(parseFloat(martial.rawXP) > 0)) return false;
-  if (!char.items) char.items = [];
-  const alreadyHas = char.items.some(it => it.type === 'Weapon' &&
-    (it.weaponModel === 'Hand' || /^((open\s+)?hand(\s*\/\s*foot)?|unarmed)$/i.test(String(it.name || '').trim())));
-  if (alreadyHas) { char.handFootGranted = true; return false; }
+// Hand/Foot is NOT an inventory item. Anyone with experience in Basic Martial
+// artist always has hands and feet to fight with, so the Combat page and the
+// print sheet show an automatic Hand/Foot weapon for them, built from the
+// weapon catalog's Hand stats. Returns an item-shaped object (never stored in
+// the inventory), or null for anyone without martial arts experience.
+function handFootWeapon(char) {
+  const martial = ((char && char.skills) || []).find(s => s.skillName === 'Basic Martial artist');
+  if (!martial || !(parseFloat(martial.rawXP) > 0)) return null;
   const def = (typeof WEAPONS !== 'undefined' ? WEAPONS : []).find(w => w.name === 'Hand');
-  if (!def) return false;
-  char.items.push({
-    name: 'Hand/Foot', type: 'Weapon', qty: 1, weight: def.weight, worth: '',
-    notes: 'Unarmed -- hands and feet. Added automatically with Basic Martial artist.',
+  if (!def) return null;
+  return {
+    name: 'Hand/Foot', type: 'Weapon', qty: 1, weight: 0, automatic: true,
     weaponClass: 'Basic Martial artist', weaponModel: def.name,
     stn1h: def.stn_1h, stn2h: def.stn_2h, stmod: def.stmod, cdn1h: def.cdn_1h, cdn2h: def.cdn_2h, cdmod: def.cdmod,
     damageDice: def.damage_dice, dividingDie: def.dividing_die,
     speedMissile: def.speed_missile, speedMelee: def.speed_melee, speedReadied: def.speed_readied,
     weaponProtection: def.protection, threatRange: def.threat_range, range: def.range,
-    magicBonusToHit: '0', magicDamageAfterDivider: '0'
-  });
-  char.handFootGranted = true;
-  return true;
+    magicBonusToHit: '0', magicDamageAfterDivider: '0',
+    parryPointsUsed: char.handFootParryUsed || 0
+  };
 }
+
+// An earlier version added Hand/Foot to the inventory as a real item. Take
+// those back out (only the ones it added itself, recognised by their note).
+const AUTO_HANDFOOT_NOTE = 'Unarmed -- hands and feet. Added automatically with Basic Martial artist.';
+function removeAutoHandFootItems(char) {
+  if (!char) return false;
+  let changed = false;
+  if (char.items) {
+    // Also the unedited "open hand" weapon the old-spreadsheet import gave martial artists:
+    // Hand/Foot is automatic now, so that one is redundant.
+    const oldImportedOpenHand = it => it.type === 'Weapon' && /^open hand$/i.test(String(it.name || '').trim()) &&
+      it.weaponClass === 'Basic Martial artist' && !it.weaponModel && /^Old sheet damage 3-8\/d6/.test(String(it.notes || ''));
+    const kept = char.items.filter(it => !(it.type === 'Weapon' && it.name === 'Hand/Foot' && it.notes === AUTO_HANDFOOT_NOTE) && !oldImportedOpenHand(it));
+    if (kept.length !== char.items.length) { char.items = kept; changed = true; }
+  }
+  if (char.handFootGranted !== undefined) { delete char.handFootGranted; changed = true; }
+  return changed;
+}
+
 // Weapon choices for a weapon class. Martial arts and daggers overlap: every
 // weapon marked "(martial)" and the Katar is a choice under both Martial
-// artist and Dagger, and martial artists also get the unarmed Hand (which the
-// catalog files under Blunt).
+// artist and Dagger.
 function weaponModelsForClass(weaponClass, catName) {
   const sharesMartialAndDagger = w => /martial|katar/i.test(w.name);
   const isMartialOrDagger = weaponClass === 'Basic Martial artist' || weaponClass === 'Basic Dagger';
   const seen = new Set();
   return WEAPONS.filter(w =>
     w.category === catName ||
-    (isMartialOrDagger && sharesMartialAndDagger(w) && (w.category === 'Martial' || w.category === 'Daggers')) ||
-    (weaponClass === 'Basic Martial artist' && w.name === 'Hand')
+    (isMartialOrDagger && sharesMartialAndDagger(w) && (w.category === 'Martial' || w.category === 'Daggers'))
   ).filter(w => !seen.has(w.name) && seen.add(w.name));
 }
-function ensureHandFootForAll() {
+// The automatic Hand/Foot weapon's panel on the Combat page: same numbers as
+// any weapon, but read-only (it is not an inventory item) apart from how many
+// Parry points are committed to it.
+function renderHandFootPanel(char) {
+  const hf = handFootWeapon(char);
+  if (!hf) return '';
+  const w = computeWeapon(char, hf);
+  const parryCell = `<input type="number" min="0" max="${w.parrySkval}" class="w60" value="${w.parryPointsUsed}" onchange="updateHandFootParry(this.value)">`;
+  return `
+  <div class="panel" style="margin-bottom:10px">
+    <div class="panel-header"><h2 style="font-size:13px">Hand/Foot</h2><span class="type-badge">Basic Martial artist</span><span class="type-badge" style="color:var(--gold)">automatic</span></div>
+    <div class="panel-body">
+      <div class="note" style="margin-bottom:8px;font-style:italic">Comes with Basic Martial artist: always available, no inventory item needed. Damage ${hf.damageDice} / ${hf.dividingDie}, speed ${hf.speedMelee}, threat range ${hf.threatRange}.</div>
+      <div class="note">Skill Ability: ${w.baseWeaponSkval} (${hf.weaponClass}) + ${w.singleWeapSpec} (Single Weap Spec) = ${w.skillAbility}</div>
+      <hr class="divider">
+      <table class="skill-table">
+        <thead><tr><th></th><th>To-Hit</th><th>Dmg Bonus</th><th>Speed</th><th>Parry</th><th>Parry Used</th><th>Multiple Attack</th><th>Crit %</th><th>Fumble %</th></tr></thead>
+        <tbody>
+          <tr>${w.oneHand ? `<td>One-Handed</td><td class="skval-cell">${Math.round(w.oneHand.hit)}</td><td>${Math.round(w.oneHand.dmgBonus)}</td><td>${Math.round(w.oneHand.speed)}</td><td>${w.parrySkval}</td><td>${parryCell}</td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.oneHand.critChance)}</td><td>${fmtFumble(w.oneHand.fumbleThreshold)}</td>` : ''}</tr>
+        </tbody>
+      </table>
+      <div class="note">Parry Used is capped at your Parry skill for this weapon; every point subtracts from its To-Hit and adds to your Protection (PR), against melee attacks only.</div>
+    </div>
+  </div>`;
+}
+
+function updateHandFootParry(value) {
+  const char = state.characters[state.activeChar];
+  const hf = handFootWeapon(char);
+  if (!char || !hf) return;
+  const cap = computeWeapon(char, { ...hf, parryPointsUsed: 0 }).parrySkval;
+  char.handFootParryUsed = Math.max(0, Math.min(cap, parseFloat(value) || 0));
+  saveState();
+  renderCombatModule();
+}
+
+function removeAutoHandFootForAll() {
   let changed = false;
-  for (const c of Object.values(state.characters || {})) if (ensureHandFootWeapon(c)) changed = true;
+  for (const c of Object.values(state.characters || {})) if (removeAutoHandFootItems(c)) changed = true;
   return changed;
 }
 
@@ -1354,7 +1398,9 @@ function computeArmor(character) {
   const sumOtherPR = otherBonuses.reduce((sum, b) => sum + (parseFloat(b && b.pr) || 0), 0);
 
   const weaponItems = items.filter(it => it.type === 'Weapon');
-  const parryPointsTotal = weaponItems.reduce((sum, it) => sum + computeWeapon(character, it).parryPointsUsed, 0);
+  const handFoot = handFootWeapon(character);
+  const parryPointsTotal = weaponItems.reduce((sum, it) => sum + computeWeapon(character, it).parryPointsUsed, 0)
+    + (handFoot ? computeWeapon(character, handFoot).parryPointsUsed : 0);
 
   function buildTotals(includeShield) {
     const sumAV = sumArmorAV + (includeShield ? sumShieldAV : 0);
@@ -5462,7 +5508,6 @@ function renderOverview() {
 function renderGeneralModule() {
   const char = state.characters[state.activeChar];
   if (!char) return;
-  if (ensureHandFootWeapon(char)) saveState();
   const customChoices = loadCustomData();
   const a = char.attrs || {};
   const races = ['Human','Omwo~','Gartier','Gnollic','Orcash','Goblic','Ograk Strain','FratreCanis','Klaxik','Hobytalia','Gnomic','Cross'];
@@ -5763,7 +5808,6 @@ function renderGeneralModule() {
 function renderCombatModule() {
   const char = state.characters[state.activeChar];
   if (!char) return;
-  if (ensureHandFootWeapon(char)) saveState();
   const armor = computeArmor(char);
 
   document.getElementById('main').innerHTML = `
@@ -5819,7 +5863,8 @@ function renderCombatModule() {
 
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weapons</div>
-      ${(char.items||[]).filter(it=>it.type==='Weapon').length===0 ? '<div class="note" style="padding:6px 0">No weapon items on General page.</div>' : ''}
+      ${(char.items||[]).filter(it=>it.type==='Weapon').length===0 && !handFootWeapon(char) ? '<div class="note" style="padding:6px 0">No weapon items on General page.</div>' : ''}
+      ${renderHandFootPanel(char)}
       ${(char.items||[]).map((it, idx) => it.type!=='Weapon' ? '' : (() => {
         const w = computeWeapon(char, it);
         return `
@@ -6186,7 +6231,7 @@ function renderSkillModule(skillId) {
         <div class="form-group"><label>Specific Weapon (not a class — this skill trains on one weapon only)</label>
           <select class="w250" onchange="updateSkill('${skillId}','binding',this.value)">
             <option value="">— select —</option>
-            ${(char.items||[]).filter(it=>it.type==='Weapon').map(it=>`<option ${si.binding===it.name?'selected':''}>${it.name||'(unnamed weapon)'}</option>`).join('')}
+            ${((char.items||[]).filter(it=>it.type==='Weapon').concat(handFootWeapon(char) ? [handFootWeapon(char)] : [])).map(it=>`<option ${si.binding===it.name?'selected':''}>${it.name||'(unnamed weapon)'}</option>`).join('')}
           </select>
           <div class="note" style="margin-top:4px">Single Weapon Specialization trains on one exact weapon, not a whole weapon type — a character with two curved swords could be specialized in one and not the other.</div>
         </div>` : `
@@ -7561,7 +7606,6 @@ function updateSkill(skillId, field, value) {
   if (field === 'rawXP' && wasZero && parseFloat(value) > 0 && !si.dropdownOnly) {
     autoPopulateDropdownChildren(char, si);
   }
-  if (field === 'rawXP') ensureHandFootWeapon(char);
   saveState();
   renderSkillModule(skillId);
   renderSidebar();
@@ -7704,7 +7748,7 @@ function buildCharacterSheetHtml(char) {
 
   const itemRows = items.map(it => `<tr style="${it.masterwork?'font-style:italic':''}"><td>${it.name||''}</td><td>${it.type||''}</td><td>${it.qty||1}</td><td>${it.weight||0}</td><td>${it.worth||0}</td><td>${it.location||'Carried'}</td></tr>`).join('');
 
-  const weaponPanels = items.filter(it => it.type === 'Weapon').map(it => {
+  const weaponPanels = items.filter(it => it.type === 'Weapon').concat(handFootWeapon(char) ? [handFootWeapon(char)] : []).map(it => {
     const wv = computeWeapon(char, it);
     return `<h2>${it.name} ${it.weaponModel ? '— '+it.weaponModel : ''}</h2>
       <div class="pv-item"><b>Damage</b>${it.damageDice||'—'} / ${it.dividingDie||'—'}</div>
@@ -7939,7 +7983,6 @@ function importData() {
         if (imported.characters && Object.keys(imported.characters).length > 0) {
           const count = Object.keys(imported.characters).length;
           Object.assign(state.characters, imported.characters);
-          ensureHandFootForAll();
           saveState();
           renderApp();
           alert(`Import successful: ${count} character(s) loaded.`);
