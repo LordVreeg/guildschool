@@ -532,15 +532,21 @@ function weaponModelsForClass(weaponClass, catName) {
 // The automatic Hand/Foot weapon's panel on the Combat page: same numbers as
 // any weapon, but read-only (it is not an inventory item) apart from how many
 // Parry points are committed to it.
-function renderHandFootPanel(char) {
+function renderHandFootPanel(char, pos, total) {
   const hf = handFootWeapon(char);
   if (!hf) return '';
   const w = computeWeapon(char, hf);
   const parryCell = `<input type="number" min="0" max="${w.parrySkval}" class="w60" value="${w.parryPointsUsed}" onchange="updateHandFootParry(this.value)">`;
+  const collapsed = !!char.handFootCollapsed;
   return `
   <div class="panel" style="margin-bottom:10px">
-    <div class="panel-header"><h2 style="font-size:13px">Hand/Foot</h2><span class="type-badge">Basic Martial artist</span><span class="type-badge" style="color:var(--gold)">automatic</span></div>
-    <div class="panel-body">
+    <div class="panel-header" style="cursor:pointer;display:flex;align-items:center;gap:8px;flex-wrap:wrap" onclick="toggleHandFootOpen()" title="Click to ${collapsed ? 'open' : 'close'}">
+      <span style="font-size:10px;width:10px">${collapsed ? '▶' : '▼'}</span>
+      <h2 style="font-size:13px">Hand/Foot</h2><span class="type-badge">Basic Martial artist</span><span class="type-badge" style="color:var(--gold)">automatic</span>
+      ${collapsed ? weaponSummaryHtml(hf, w) : ''}
+      ${weaponMoveButtonsHtml(pos || 0, total || 1)}
+    </div>
+    <div class="panel-body" style="display:${collapsed ? 'none' : 'block'}">
       <div class="note" style="margin-bottom:8px;font-style:italic">Comes with Basic Martial artist: always available, no inventory item needed. Damage ${hf.damageDice} / ${hf.dividingDie}, speed ${hf.speedMelee}, threat range ${hf.threatRange}.</div>
       <div class="note">Skill Ability: ${w.baseWeaponSkval} (${hf.weaponClass}) + ${w.singleWeapSpec} (Single Weap Spec) = ${w.skillAbility}</div>
       <hr class="divider">
@@ -553,6 +559,81 @@ function renderHandFootPanel(char) {
       <div class="note">Parry Used is capped at your Parry skill for this weapon; every point subtracts from its To-Hit and adds to your Protection (PR), against melee attacks only.</div>
     </div>
   </div>`;
+}
+
+// The Combat page's weapon list in display order: every weapon item (with its
+// index in char.items) plus the automatic Hand/Foot, which sits at
+// char.handFootPos among them (first by default).
+function combatWeaponEntries(char) {
+  const entries = [];
+  (char.items || []).forEach((it, idx) => { if (it.type === 'Weapon') entries.push({ kind: 'item', idx, it }); });
+  if (handFootWeapon(char)) {
+    const pos = Math.max(0, Math.min(entries.length, parseInt(char.handFootPos) || 0));
+    entries.splice(pos, 0, { kind: 'hand' });
+  }
+  return entries;
+}
+
+function weaponMoveButtonsHtml(pos, total) {
+  return `<span style="margin-left:auto;display:flex;gap:4px" onclick="event.stopPropagation()">
+    <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${pos === 0 ? 'disabled' : ''} onclick="moveWeapon(${pos},-1)" title="Move up">▲</button>
+    <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${pos === total - 1 ? 'disabled' : ''} onclick="moveWeapon(${pos},1)" title="Move down">▼</button>
+  </span>`;
+}
+
+// What a closed weapon still shows in its header line.
+function weaponSummaryHtml(it, w) {
+  const bits = [];
+  bits.push(w.oneHand ? `to-hit ${Math.round(w.oneHand.hit)}` : `2H to-hit ${Math.round(w.twoHand.hit)}`);
+  if (it.damageDice) bits.push(`${it.damageDice} / ${it.dividingDie || '—'}`);
+  return `<span class="note" style="font-size:11px">${bits.join(' · ')}</span>`;
+}
+
+function toggleWeaponOpen(idx) {
+  const char = state.characters[state.activeChar];
+  const it = char && char.items && char.items[idx];
+  if (!it) return;
+  it.collapsed = !it.collapsed;
+  saveState();
+  renderCombatModule();
+}
+
+function toggleHandFootOpen() {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  char.handFootCollapsed = !char.handFootCollapsed;
+  saveState();
+  renderCombatModule();
+}
+
+function setAllWeaponsOpen(open) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  for (const it of char.items || []) if (it.type === 'Weapon') it.collapsed = !open;
+  char.handFootCollapsed = !open;
+  saveState();
+  renderCombatModule();
+}
+
+// Moves a weapon up or down the list as displayed. Two weapon items trade
+// places in the inventory (other items stay put, so ammunition references
+// are unaffected); moving past the automatic Hand/Foot just moves its slot.
+function moveWeapon(pos, dir) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const entries = combatWeaponEntries(char);
+  const a = entries[pos], b = entries[pos + dir];
+  if (!a || !b) return;
+  if (a.kind === 'item' && b.kind === 'item') {
+    const items = char.items;
+    [items[a.idx], items[b.idx]] = [items[b.idx], items[a.idx]];
+  } else if (a.kind === 'hand') {
+    char.handFootPos = pos + dir;
+  } else {
+    char.handFootPos = pos;
+  }
+  saveState();
+  renderCombatModule();
 }
 
 function updateHandFootParry(value) {
@@ -5810,6 +5891,7 @@ function renderCombatModule() {
   const char = state.characters[state.activeChar];
   if (!char) return;
   const armor = computeArmor(char);
+  const weaponEntries = combatWeaponEntries(char);
 
   document.getElementById('main').innerHTML = `
   <div class="panel">
@@ -5864,14 +5946,23 @@ function renderCombatModule() {
 
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weapons</div>
-      ${(char.items||[]).filter(it=>it.type==='Weapon').length===0 && !handFootWeapon(char) ? '<div class="note" style="padding:6px 0">No weapon items on General page.</div>' : ''}
-      ${renderHandFootPanel(char)}
-      ${(char.items||[]).map((it, idx) => it.type!=='Weapon' ? '' : (() => {
+      ${weaponEntries.length === 0 ? '<div class="note" style="padding:6px 0">No weapon items on General page.</div>' : `
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="btn btn-dim" style="font-size:11px;padding:2px 8px" onclick="setAllWeaponsOpen(true)">Open all</button>
+        <button class="btn btn-dim" style="font-size:11px;padding:2px 8px" onclick="setAllWeaponsOpen(false)">Close all</button>
+      </div>`}
+      ${weaponEntries.map((entry, pos) => entry.kind === 'hand' ? renderHandFootPanel(char, pos, weaponEntries.length) : (() => {
+        const it = entry.it, idx = entry.idx;
         const w = computeWeapon(char, it);
         return `
         <div class="panel" style="margin-bottom:10px">
-          <div class="panel-header"><h2 style="font-size:13px">${it.name||'(unnamed weapon)'}${it.weaponModel?' — '+it.weaponModel:''}</h2><span class="type-badge">${it.weaponClass||'unbound'}</span></div>
-          <div class="panel-body">
+          <div class="panel-header" style="cursor:pointer;display:flex;align-items:center;gap:8px;flex-wrap:wrap" onclick="toggleWeaponOpen(${idx})" title="Click to ${it.collapsed ? 'open' : 'close'}">
+            <span style="font-size:10px;width:10px">${it.collapsed ? '▶' : '▼'}</span>
+            <h2 style="font-size:13px">${it.name||'(unnamed weapon)'}${it.weaponModel?' — '+it.weaponModel:''}</h2><span class="type-badge">${it.weaponClass||'unbound'}</span>
+            ${it.collapsed ? weaponSummaryHtml(it, w) : ''}
+            ${weaponMoveButtonsHtml(pos, weaponEntries.length)}
+          </div>
+          <div class="panel-body" style="display:${it.collapsed ? 'none' : 'block'}">
             <input value="${it.notes||''}" placeholder="Special history, charges, quirks..." style="width:100%;margin-bottom:8px;font-style:italic" onchange="updateItem(${idx},'notes',this.value);renderCombatModule()">
             <div class="form-row">
               ${[['stn1h','STN 1H'],['stn2h','STN 2H'],['stmod','STMOD'],['cdn1h','CDN 1H'],['cdn2h','CDN 2H'],['cdmod','CDMOD']].map(([f,l])=>`
