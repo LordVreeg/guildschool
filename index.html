@@ -492,7 +492,8 @@ function handFootWeapon(char) {
     stn1h: def.stn_1h, stn2h: def.stn_2h, stmod: def.stmod, cdn1h: def.cdn_1h, cdn2h: def.cdn_2h, cdmod: def.cdmod,
     damageDice: def.damage_dice, dividingDie: def.dividing_die,
     speedMissile: def.speed_missile, speedMelee: def.speed_melee, speedReadied: def.speed_readied,
-    weaponProtection: def.protection, threatRange: def.threat_range, range: def.range,
+    // The catalog's Hand has a -3 threat range; a trained martial artist's hands and feet are +1.
+    weaponProtection: def.protection, threatRange: 1, range: def.range,
     magicBonusToHit: '0', magicDamageAfterDivider: '0',
     parryPointsUsed: char.handFootParryUsed || 0
   };
