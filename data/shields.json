@@ -1,0 +1,65 @@
+[
+  {
+    "name": "Buckler",
+    "description": "Small handheld, 18 in diam",
+    "av": 3,
+    "pr": 6,
+    "weight": 30,
+    "cost": 20,
+    "commonality": 90
+  },
+  {
+    "name": "Roundas",
+    "description": "Argive (Greek)/Ronsache, 24-26 in diam",
+    "av": 5,
+    "pr": 10,
+    "weight": 210,
+    "cost": 60,
+    "commonality": 80
+  },
+  {
+    "name": "Klaxim",
+    "description": "Clournora (celtic), oblong and curved, 24x36 in",
+    "av": 8,
+    "pr": 14,
+    "weight": 220,
+    "cost": 140,
+    "commonality": 70
+  },
+  {
+    "name": "Heater",
+    "description": "small kite",
+    "av": 10,
+    "pr": 16,
+    "weight": 190,
+    "cost": 220,
+    "commonality": 70
+  },
+  {
+    "name": "Klaxika",
+    "description": "Large Round/Viking, 28-30 in diam with central boss",
+    "av": 11,
+    "pr": 17,
+    "weight": 245,
+    "cost": 260,
+    "commonality": 60
+  },
+  {
+    "name": "Long Heater",
+    "description": "long kite",
+    "av": 12,
+    "pr": 18,
+    "weight": 285,
+    "cost": 380,
+    "commonality": 65
+  },
+  {
+    "name": "Tower",
+    "description": "scutum",
+    "av": 18,
+    "pr": 20,
+    "weight": 350,
+    "cost": 220,
+    "commonality": 60
+  }
+]

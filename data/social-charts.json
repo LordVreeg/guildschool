@@ -1,0 +1,146 @@
+{
+  "familySocialClass": [
+    {
+      "min": 1,
+      "max": 20,
+      "class": "Serf",
+      "base": 0
+    },
+    {
+      "min": 21,
+      "max": 60,
+      "class": "Lower",
+      "base": 10
+    },
+    {
+      "min": 61,
+      "max": 88,
+      "class": "Middle",
+      "base": 20
+    },
+    {
+      "min": 89,
+      "max": 98,
+      "class": "Upper",
+      "base": 40
+    },
+    {
+      "min": 99,
+      "max": 100,
+      "class": "Noble",
+      "base": 70
+    }
+  ],
+  "parentTier": [
+    {
+      "min": 0,
+      "max": 10,
+      "tier": "Lowest",
+      "dice": "1d4"
+    },
+    {
+      "min": 11,
+      "max": 25,
+      "tier": "Low",
+      "dice": "1d6+1"
+    },
+    {
+      "min": 26,
+      "max": 40,
+      "tier": "Lower Middle",
+      "dice": "1d8+1"
+    },
+    {
+      "min": 41,
+      "max": 60,
+      "tier": "Middle",
+      "dice": "2d6+1"
+    },
+    {
+      "min": 61,
+      "max": 75,
+      "tier": "Upper Middle",
+      "dice": "2d8+1"
+    },
+    {
+      "min": 76,
+      "max": 90,
+      "tier": "Lower Upper",
+      "dice": "2d10+1"
+    },
+    {
+      "min": 91,
+      "max": 98,
+      "tier": "Middle Upper",
+      "dice": "3d8+1"
+    },
+    {
+      "min": 99,
+      "max": 100,
+      "tier": "Upper Upper",
+      "dice": "3d10+1"
+    }
+  ],
+  "socialNumberDesc": [
+    {
+      "min": -999,
+      "max": 5,
+      "desc": "slave / criminal or criminal parents / on the street / destitute",
+      "bonus": "-10% x5 rolls"
+    },
+    {
+      "min": 6,
+      "max": 10,
+      "desc": "unlanded/tenant worker/menial/peasant/freed slave/guild expulsion/former or current debtors",
+      "bonus": "0% x5 rolls"
+    },
+    {
+      "min": 11,
+      "max": 17,
+      "desc": "unlanded/minor guild and church memberships/little formal schooling/possibly recently sponsored guild membership/apprenticeship/parents working for somebody else in a trade (top 45%)",
+      "bonus": "+5% x5 rolls"
+    },
+    {
+      "min": 18,
+      "max": 25,
+      "desc": "guild or church position/some schooling/mercantile guild member/possible military/individual business/possible plot of land or in-town plot owned/farmer (top 20%)",
+      "bonus": "+10% x5 rolls"
+    },
+    {
+      "min": 26,
+      "max": 40,
+      "desc": "parents have higher guild or church positions/rankings/formal schooling/probable investments/small business with few employees (top 10%)",
+      "bonus": "+10% x3 rolls, +15% x2 rolls"
+    },
+    {
+      "min": 41,
+      "max": 55,
+      "desc": "parents are property owners, business principals or ranking guild/church positions/formal schooling (top 5%)",
+      "bonus": "+15% x5 rolls"
+    },
+    {
+      "min": 56,
+      "max": 70,
+      "desc": "lower landed gentry/larger business owner/small estate/ranking regional guild or church position (top 2%)",
+      "bonus": "+15% x3 rolls, +20% x2 rolls"
+    },
+    {
+      "min": 71,
+      "max": 88,
+      "desc": "gentry, landed, minor noble, lower title, large estate (top 1%)",
+      "bonus": "+20% x4 rolls, +25% x1 roll"
+    },
+    {
+      "min": 89,
+      "max": 99,
+      "desc": "landed nobility, multiple holdings or major holdings, major title, likely keep or castle/line to throne is possible",
+      "bonus": "+25% x4 rolls, +30% x1 roll"
+    },
+    {
+      "min": 100,
+      "max": 9999,
+      "desc": "top tier nobility, character is prince or princess in line of succession",
+      "bonus": "+30% x5 rolls"
+    }
+  ]
+}

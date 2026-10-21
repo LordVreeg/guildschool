@@ -1,0 +1,383 @@
+{
+  "Human": {
+    "Mixed": [],
+    "Southern": [
+      {
+        "skill": "Hit Points",
+        "bonus": 0.02
+      },
+      {
+        "skill": "Basic Curved Swords",
+        "bonus": 0.05
+      }
+    ],
+    "Gwynellian": [
+      {
+        "skill": "Basic Martial artist",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Basic meditate",
+        "bonus": 0.05
+      }
+    ],
+    "Omnian": [
+      {
+        "skill": "Basic Martial artist",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Basic merchant",
+        "bonus": 0.06
+      }
+    ],
+    "Delvan": [
+      {
+        "skill": "Basic Spears",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Basic Song",
+        "bonus": 0.05
+      }
+    ],
+    "Grey March": [
+      {
+        "skill": "Basic Spears",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Basic Song",
+        "bonus": 0.05
+      }
+    ],
+    "Gesana": [
+      {
+        "skill": "Basic Spears",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Basic Song",
+        "bonus": 0.05
+      }
+    ]
+  },
+  "Omwo~": {
+    "Meadow (Metto~)": [
+      {
+        "skill": "Read/write",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Spirit SP",
+        "bonus": 0.05
+      }
+    ],
+    "Seafaring (Cmao)": [
+      {
+        "skill": "Read/write",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Spirit SP",
+        "bonus": 0.05
+      },
+      {
+        "skill": "House of Water SP",
+        "bonus": 0.05
+      }
+    ],
+    "Vale (Vanir)": [
+      {
+        "skill": "Read/write",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Spirit SP",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Mentalist SP",
+        "bonus": 0.05
+      }
+    ],
+    "Wood (Wolden)": [
+      {
+        "skill": "Read/write",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Spirit SP",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Basic Outdoor",
+        "bonus": 0.05
+      }
+    ],
+    "Noble (Huet)": [
+      {
+        "skill": "Read/write",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Spirit SP",
+        "bonus": 0.05
+      }
+    ],
+    "High (Imo)": [
+      {
+        "skill": "Read/write",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Spirit SP",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Restorative SP",
+        "bonus": 0.05
+      }
+    ]
+  },
+  "Gartier": {
+    "Mixed": [
+      {
+        "skill": "Hit Points",
+        "bonus": 0.05
+      }
+    ],
+    "Dexter (White Bear)": [
+      {
+        "skill": "Hit Points",
+        "bonus": 0.05
+      }
+    ],
+    "New": [
+      {
+        "skill": "Hit Points",
+        "bonus": 0.05
+      }
+    ]
+  },
+  "Orcash": {
+    "Mixed": [
+      {
+        "skill": "Basic Axe",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Basic Spears",
+        "bonus": 0.05
+      }
+    ],
+    "Orcashgrak": [
+      {
+        "skill": "Hit Points",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Basic Axe",
+        "bonus": 0.05
+      }
+    ],
+    "Zyjmanese": [
+      {
+        "skill": "Basic Axe",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Basic Spears",
+        "bonus": 0.05
+      }
+    ]
+  },
+  "Ograk Strain": {
+    "Half-Ogre": [
+      {
+        "skill": "Hit Points",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Protection",
+        "bonus": 0.05
+      }
+    ]
+  },
+  "FratreCanis": {
+    "Common": [
+      {
+        "skill": "Basic Outdoor",
+        "bonus": 0.1
+      }
+    ],
+    "Gnollic": [
+      {
+        "skill": "Basic Outdoor",
+        "bonus": 0.1
+      }
+    ]
+  },
+  "Klaxik": {
+    "Hill": [
+      {
+        "skill": "Hit Points",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Resist",
+        "bonus": 0.05
+      }
+    ],
+    "Hybern": [
+      {
+        "skill": "Hit Points",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Resist",
+        "bonus": 0.05
+      }
+    ],
+    "Black": [
+      {
+        "skill": "Hit Points",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Resist",
+        "bonus": 0.05
+      },
+      {
+        "skill": "House of Water SP",
+        "bonus": 0.05
+      }
+    ],
+    "Gastax": [
+      {
+        "skill": "Hit Points",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Resist",
+        "bonus": 0.05
+      },
+      {
+        "skill": "House of Earth SP",
+        "bonus": 0.05
+      }
+    ],
+    "Deep (Kann)": [
+      {
+        "skill": "Hit Points",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Resist",
+        "bonus": 0.05
+      }
+    ]
+  },
+  "Hobytalia": {
+    "Burrowed": [
+      {
+        "skill": "Basic social",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Resist",
+        "bonus": 0.1
+      }
+    ],
+    "Gastax": [
+      {
+        "skill": "Basic social",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Resist",
+        "bonus": 0.1
+      }
+    ],
+    "Red": [
+      {
+        "skill": "Basic social",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Resist",
+        "bonus": 0.1
+      },
+      {
+        "skill": "Basic Defense",
+        "bonus": 0.05
+      }
+    ],
+    "Shrum": [
+      {
+        "skill": "Basic social",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Resist",
+        "bonus": 0.1
+      },
+      {
+        "skill": "Basic Chemistry",
+        "bonus": 0.1
+      }
+    ],
+    "Underearth": [
+      {
+        "skill": "Basic social",
+        "bonus": 0.05
+      },
+      {
+        "skill": "Resist",
+        "bonus": 0.1
+      }
+    ]
+  },
+  "Gnomic": {
+    "Grey": [
+      {
+        "skill": "Basic Cure/Bind Wounds",
+        "bonus": 0.1
+      },
+      {
+        "skill": "Basic Priest",
+        "bonus": 0.1
+      }
+    ],
+    "Deep": [
+      {
+        "skill": "Basic Cure/Bind Wounds",
+        "bonus": 0.1
+      },
+      {
+        "skill": "Basic Priest",
+        "bonus": 0.1
+      }
+    ],
+    "Half-Orc-Gnome": [
+      {
+        "skill": "Basic Cure/Bind Wounds",
+        "bonus": 0.1
+      },
+      {
+        "skill": "Basic Priest",
+        "bonus": 0.1
+      }
+    ],
+    "Brotherhood": [
+      {
+        "skill": "Basic Cure/Bind Wounds",
+        "bonus": 0.1
+      },
+      {
+        "skill": "Basic Priest",
+        "bonus": 0.1
+      }
+    ]
+  }
+}

@@ -1,0 +1,2920 @@
+[
+  {
+    "name": "Argussian Hind",
+    "hp_formula": "3d8+12",
+    "avg_hp": 25.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 25,
+    "protection": 12,
+    "bmod": 1.15,
+    "avg_damage": 0,
+    "multi": 10,
+    "cc_fortitude": 55,
+    "cc_reflex": 70,
+    "cc_will": 20,
+    "cc_surprise": 70,
+    "cc_social": 15,
+    "attacks": [
+      {
+        "name": "Kick",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+6)/d6)+0",
+        "speed": "SPD 4"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Type-Beast. Great deer of the Argussian lands, 6-7' at the shoulder, 1400-1800 lbs, browsing forest edges and open uplands in herds of 8-30 with 2-3 sentinels standing watch. Nothing aggressive about them -- everything about them is enormous; a fleeing hind goes through whatever is in front of it without meaning to. INT 2 (animal). Move 40'. Bolt: always flees rather than fights unless cornered, wounded past half, or standing over a calf -- a bolting hind moves at full Move on its first action regardless of initiative. Sentinel Herd: the herd can't be approached unnoticed in open ground; sentinels give the whole herd 80% Surprise in daylight. Keen Scent: can't be surprised by anything approaching from upwind within 120'. Run Through: anything in the path of a bolting hind takes ((2d6+6)/d6)+0 and must make a Reflex check or be knocked down -- not an attack, and the hind doesn't stop. A carcass is 400-500 lbs of meat and a hide large enough for a three-man tent; Argussian hunting law exists largely because of these deer."
+  },
+  {
+    "name": "Argussian Stag",
+    "hp_formula": "4d8+21",
+    "avg_hp": 39,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 20,
+    "protection": 20,
+    "bmod": 1.3,
+    "avg_damage": 0,
+    "multi": 15,
+    "cc_fortitude": 65,
+    "cc_reflex": 55,
+    "cc_will": 35,
+    "cc_surprise": 60,
+    "cc_social": 20,
+    "attacks": [
+      {
+        "name": "Antler",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d8+12)/d6)+2",
+        "speed": "SPD 6"
+      },
+      {
+        "name": "Kick",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+8)/d6)+1",
+        "speed": "SPD 4"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Type-Beast. Encountered singly or with a herd in season, 8-9' at the shoulder, 2400-3000 lbs, antler rack spread 10-12' and weighing as much as a man. Shy as the hinds outside the rut; the most dangerous animal in the province inside it. INT 2-3. Move 38'. Charge: with 30' of open ground the Antler attack becomes ((3d8+12)/d4)+2 and the target must make a Reflex check or be knocked down and lose the following action. Rut: in season the stag doesn't flee, attacks anything entering his ground (including far larger things), gains +10% to hit, and pursues -- every Argussian hunting death on record happened in the season. Rack: antler spread is treated as reach 12', and a stag turning his head sweeps anyone standing beside him; where a Multi roll grants three or more attacks, they may be divided across everything within the rack. Keen Scent: can't be surprised by anything approaching from upwind within 120'. A rack is worth more than the meat; a matched pair is a gift fit for a lord."
+  },
+  {
+    "name": "Barastal Earth Spectre",
+    "hp_formula": "50",
+    "avg_hp": 50,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": -10,
+    "protection": 84,
+    "bmod": 0,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": null,
+    "cc_reflex": null,
+    "cc_will": null,
+    "cc_surprise": null,
+    "cc_social": null,
+    "attacks": [
+      {
+        "name": "3 pilum of adamant",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+14)/d5)+5",
+        "speed": "SPD 5 (ready 5)"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [
+      "Undead perm damage"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "A rank-1 named spectre ('Jellicose') attuned to the House of Earth, in ectoplasmic and stone-like armor, wielding three adamant pilums. Fear aura 15'. Its cursed weapon inflicts permanent HP damage on a failed Will save (will+10 penalty). MR 15%, +30 vs earth-based effects. Protection scales up sharply against lower-quality weapons: 84 vs magic+10/magic, 94 special, 104 silver, 114 plain. Resistances: Spirit 30, Earth 35, Death 20, Necromantic 20. Source sheet lists a separate 'Bmod-NATURAL 50' stat not mapped to the bmod field above."
+  },
+  {
+    "name": "Barastal Wight",
+    "hp_formula": "24",
+    "avg_hp": 24,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 18,
+    "protection": 27,
+    "bmod": 0,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": null,
+    "cc_reflex": null,
+    "cc_will": null,
+    "cc_surprise": null,
+    "cc_social": null,
+    "attacks": [
+      {
+        "name": "scimitar, bloodletter",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((1d8+1d6+11)/d6)+3",
+        "speed": "SPD 5 (ready 5)"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [
+      "Undead perm damage"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "A rank-2 named Wight ('Barastals') of the Omwo~ race, in rags over ancient scale mail, wielding a cursed bloodletting scimitar (undead touch, permanent HP damage on a missed CC roll at will+10). Protection scales: 27 vs magic, 37 special, 47 silver, 57 plain weapons. Carries treasure including a Book of Prayers of St. Arbor, coin, and a skull-motif ring."
+  },
+  {
+    "name": "Barastal Wraith",
+    "hp_formula": "33",
+    "avg_hp": 33,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 15,
+    "protection": 42,
+    "bmod": 0,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": null,
+    "cc_reflex": null,
+    "cc_will": null,
+    "cc_surprise": null,
+    "cc_social": null,
+    "attacks": [
+      {
+        "name": "scimitar, bloodletter",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((1d8+1d6+11)/d6)+4",
+        "speed": "SPD 5 (ready 5)"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [
+      "Undead perm damage"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "A rank-2 named Wraith ('Barastal wraith'), in rags over ancient plate armor, wielding a cursed bloodletting scimitar that permanently drains HP on a failed Will CC. Protection scales: 42 vs magic, 52 special, 62 silver, 72 plain weapons. Resistances: Spirit 20, Death 10, Necromantic 10."
+  },
+  {
+    "name": "Basilisk",
+    "hp_formula": "3d8+10",
+    "avg_hp": 23.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 30,
+    "protection": 55,
+    "bmod": 0.9,
+    "avg_damage": 0,
+    "multi": 10,
+    "cc_fortitude": 70,
+    "cc_reflex": 30,
+    "cc_will": 40,
+    "cc_surprise": 15,
+    "cc_social": 0,
+    "attacks": [
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+11)/d6)+1",
+        "speed": "Speed 6"
+      }
+    ],
+    "bonus_abilities": [
+      "Petrifying Blood"
+    ],
+    "special_abilities": [
+      "Petrifying Gaze"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "House of Earth. Heavy, slow-moving, pony-sized eight-legged reptile with thick armored hide (grey-green to deep brown); not fast or subtle but persistent, following prey for hours. Move 9'. INT 2-4 (animal, patient, persistent). Found in swampy/boggy terrain and areas of Earth-house magical presence. Immune to its own gaze and other Basilisks' gaze; +20% to saves vs Earth-school magic. No special weapon requirements to damage. Petrifying Gaze (special): a creature meeting its eyes directly must make a Fort CC or begin petrifying -- a failed save slows the target 50% (move/initiative) as stone creeps in from the extremities; a second failed save within 60 seconds fully petrifies (helpless, requires Stone to Flesh or equivalent to reverse, does not heal naturally). Looking away/using a mirror prevents the gaze but imposes -20% to all attacks; a Reflex roll -10 must be made every 15 segs to keep the gaze averted. Requires line of sight/conscious targeting -- not a passive aura. Petrifying Blood (bonus): contact with exposed skin requires Fort CC-5% or -10% to Reflex CCs for 30 min as flesh stiffens; resolves on its own, not a full petrification. Blood and ground eye are valuable alchemical components (ground eye + silver is a material component for the Lizard Eye spell)."
+  },
+  {
+    "name": "Bolgan",
+    "hp_formula": "16-35 + 2-5/plev",
+    "avg_hp": 25.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 55,
+    "protection": 85,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": 80,
+    "cc_reflex": 55,
+    "cc_will": 45,
+    "cc_surprise": null,
+    "cc_social": null,
+    "attacks": [],
+    "bonus_abilities": [
+      "Darksight 25'+"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [],
+    "notes": "An Ograk-offshoot Ogrillite found almost exclusively underground, squatter than surface Ograks, averaging 8-10' tall, 500-750 lbs, ST around 18. Longtime servants of Gartier underground; understand smithing/ironworking, social with some other underground races despite a violent temper. Darksight 75'. Combat skill described as similar to Hill Giants, 'very hard'. Noisy: -10 to hide checks. Normally wears armor. Page gives flat Reflex 55/Fort 80/Will 45 baselines rather than a full CC block with a Social value."
+  },
+  {
+    "name": "Bugbear",
+    "hp_formula": "2d8+4 + d5/plev",
+    "avg_hp": 13,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 30,
+    "protection": 48,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 7,
+    "cc_fortitude": 67,
+    "cc_reflex": 55,
+    "cc_will": 50,
+    "cc_surprise": null,
+    "cc_social": 39,
+    "attacks": [
+      {
+        "name": "mace (favored)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+11)/d6)+3",
+        "speed": "SPD 6"
+      },
+      {
+        "name": "halberd (alternate)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((1d12+18)/d5)+3",
+        "speed": "Speed 8"
+      },
+      {
+        "name": "shortbow (alternate loadout)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "same stats as mace loadout, 20% multi",
+        "speed": ""
+      }
+    ],
+    "bonus_abilities": [
+      "Darksight 25'+"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [
+      "Cleric",
+      "Thief",
+      "Mage"
+    ],
+    "notes": "Type-Ogrillite (Gartier). 6-8' tall, thick and muscular, furred, with a penchant for sarcasm; averages 14-18 Int. Often acculturate but otherwise prefer Hobgoblin company. Basic Outdoors 30%. Assumed to wear studded leather or light scaled leather with a shield. Alternate loadout: shortbow instead of mace/halberd, same stats but 20% multi. Note: the wiki page's descriptive text appears to reuse Hobgoblin phrasing ('renowned for their keen brains...leaders and thinkers for the Ogrillites') rather than describing Bugbears distinctly -- flagged here rather than silently corrected."
+  },
+  {
+    "name": "Candle Corpse",
+    "hp_formula": "d8+4",
+    "avg_hp": 8.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 10,
+    "protection": 20,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 10,
+    "cc_fortitude": 80,
+    "cc_reflex": 20,
+    "cc_will": 15,
+    "cc_surprise": 15,
+    "cc_social": 0,
+    "attacks": [
+      {
+        "name": "Claw (x2)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((1d6+4)/d6)+1",
+        "speed": "SPD 6"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Mindless undead that arise spontaneously from unshriven burials, or can be deliberately created via a graveside variant of the Corpse Candle rite. No cunning or hunger -- a single compulsion to guard their burial ground. Guttering Flame: a destroyed corpse reforms at graveside in 1d4 hours unless the inner candle flame is doused (holy water, consecrated salt, or fire/fire magic). Cannot be feared, routed, or compelled to flee. Won't pursue more than 30' from its grave; cannot be moved/commanded more than 60' from it. Immune to sleep, charm, fear/morale, poison, disease, mind-affecting effects. Vulnerable to fire. Commonly found in groups of 3-12."
+  },
+  {
+    "name": "Carrion Crawler",
+    "hp_formula": "2d8+20",
+    "avg_hp": 29,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 20,
+    "protection": 27,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 25,
+    "cc_fortitude": 45,
+    "cc_reflex": 40,
+    "cc_will": 10,
+    "cc_surprise": 35,
+    "cc_social": 0,
+    "attacks": [
+      {
+        "name": "Tentacles (x8)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d6+2)/d8)+1",
+        "speed": "SPD 6"
+      },
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+2)/d6)",
+        "speed": "SPD 7"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [
+      "Poison"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Huge, pale, centipede-like underworld scavenger, 10'+ long, moving fast on dozens of short legs despite its bulk. Drawn to death and decay; as likely to be found feeding on a corpse as hunting live prey. INT 1-2. Move 12'. Tentacle glands retain their paralytic property after death and are a valued (if dangerous) alchemical component. Number Appearing 1-3. Multi 25% -- any number of the 8 tentacles may strike a single target that fails to avoid the creature's reach; only one bite lands per round. Paralytic Tentacles: each successful tentacle hit deals its damage and forces a separate Fort CC-15%; a single failure paralyzes the target for 2d4 rounds (multiple hits in one round each save separately, but duration doesn't stack -- a second failure while paralyzed just refreshes it). A paralyzed target is automatically hit by the bite and any other attacks. Immune to its own paralytic secretion and that of other Carrion Crawlers. No special weapon requirements to damage."
+  },
+  {
+    "name": "Carrion Creeper, Greater",
+    "hp_formula": "5d8+35",
+    "avg_hp": 57.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 28,
+    "protection": 40,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 35,
+    "cc_fortitude": 60,
+    "cc_reflex": 45,
+    "cc_will": 15,
+    "cc_surprise": 30,
+    "cc_social": 0,
+    "attacks": [
+      {
+        "name": "Tentacles (x10)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((4d6+3)/d8)+2",
+        "speed": "SPD 5"
+      },
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d6+5)/d6)+1",
+        "speed": "SPD 6"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [
+      "Poison"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "An old, large specimen of the same stock as the common Carrion Crawler -- 15'+ long, more heavily built, a ring of 10 tentacles (vs the common variety's 8) each edged with harder/larger bone and shell, and a noticeably more potent paralytic secretion. Rare, typically found only in long-undisturbed ruins or deep underworld reaches. INT 2-3 (a real memory of past hunts and prey patterns). Move 14'. Number Appearing 1. Multi 35% -- any number of the 10 tentacles may strike a single target that fails to avoid its reach; only one bite lands per round. Greater Paralytic Tentacles: each successful tentacle hit deals its damage and forces a separate Fort CC-25%; a single failure paralyzes the target for 3d4 rounds (duration doesn't stack on repeat failures). A paralyzed target is automatically hit by the bite and any other attacks. Immune to its own paralytic secretion and that of Carrion Crawlers/other Creepers; resistant to poison/toxin effects generally (+15% to saves) from decades of exposure. No special weapon requirements to damage."
+  },
+  {
+    "name": "Chimera",
+    "hp_formula": "6d8+20",
+    "avg_hp": 47,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 15,
+    "protection": 45,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 22,
+    "cc_fortitude": 75,
+    "cc_reflex": 55,
+    "cc_will": 35,
+    "cc_surprise": 15,
+    "cc_social": 0,
+    "attacks": [
+      {
+        "name": "Lion claws (x2)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+8)/d4)+1",
+        "speed": "SPD 4"
+      },
+      {
+        "name": "Lion bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+9)/d6)+1",
+        "speed": "SPD 5"
+      },
+      {
+        "name": "Goat-head gore",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((1d8+6)/d4)",
+        "speed": "SPD 6"
+      },
+      {
+        "name": "Drake-head bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d8+10)/d6)+2",
+        "speed": "SPD 5"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [
+      "Minor Breath Weapon"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "One of the Artificer Korang's crueler splices -- a lion's body (draft-horse-sized at the shoulder) with a second, ill-tempered horned goat head at the shoulder and a serpentine drake head/neck in place of a tail. The three minds don't always agree, making it unpredictable, but acting in concert it's not far short of a young dragon in a lion's body. INT 5-8 (three-part, occasionally discordant; cunning as a whole). Move 14'. Multi 22% -- any two heads may act in the same round; the third requires a full action to line up (only two of three acting without a whole-creature -15% penalty from split attention). Drake Breath: once per 3 rounds, a 20'x8' fire cone for (4d6+8)/d4 damage (half on Reflex CC); requires the drake head to have had a clear line of sight the round prior, so it can't open a surprise attack. Immune to fear (goat-head stubbornness overrides fright in the other two heads). Resistant to Fire (+15% to saves, half damage from fire sources). No special weapon requirements to damage. Parts (breath sac, claws, horns) fetch a strong price among artificers and alchemists."
+  },
+  {
+    "name": "Cloud Giant",
+    "hp_formula": "43+5d10 + 1-8/plev",
+    "avg_hp": 70.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 36,
+    "protection": 115,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 14,
+    "cc_fortitude": null,
+    "cc_reflex": null,
+    "cc_will": null,
+    "cc_surprise": null,
+    "cc_social": null,
+    "attacks": [
+      {
+        "name": "weapon (by weapon, favors swords)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((4d6+22)/D5)+6",
+        "speed": "SPD 8"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [],
+    "notes": "Large tribal giants of northern climes, equally at home underground near magma as in tropical climes, 15-17' tall, avg ST 21. Favor swords and boulder-throwing, wise in the wild. CAVEAT: this page's stat text is word-for-word identical to the Fire Giant page, including fire-themed spells (Heat Generation, Firebank, Flame Blade) and immunity to heat/fire -- almost certainly an uncorrected wiki copy/paste, treat these particular numbers/abilities with suspicion. Outdoor skill 35%. Spellcasting at 9th-level equivalent."
+  },
+  {
+    "name": "Crypt Captain",
+    "hp_formula": "2d6+4",
+    "avg_hp": 11,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 40,
+    "protection": 30,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": 60,
+    "cc_reflex": 50,
+    "cc_will": 50,
+    "cc_surprise": 13,
+    "cc_social": 10,
+    "attacks": [
+      {
+        "name": "weapon (by weapon)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+6)/d6)+2",
+        "speed": ""
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Relentless, mindless humanoid undead -- occur naturally when a weak spirit inhabits a skeletal body, but more often created as servants; a sturdier counterpart to the Crypt Warrior. Cannot reason; can only be given commands up to 16 words. Average ST 13, average speed. Retain no skills from the soul splinters within them. Named for the fact that, when occurring naturally, most of the body (and often armor) is still assembled. Normally wears armor, averaging 40/30 av/pro. +10 Protection vs piercing weapons. Immune to sleep and charm. Not casters, or at least cannot remember casting. Often flock to the banner of Wights or other powerful undead in a boneyard or old battle scene."
+  },
+  {
+    "name": "Crypt Warrior",
+    "hp_formula": "1d8+4",
+    "avg_hp": 8.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 40,
+    "protection": 25,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": 40,
+    "cc_reflex": 38,
+    "cc_will": 35,
+    "cc_surprise": 10,
+    "cc_social": 0,
+    "attacks": [
+      {
+        "name": "weapon (by weapon)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+4)/d6)+1",
+        "speed": ""
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Relentless, mindless humanoid undead -- occur naturally when a weak spirit inhabits a skeletal body, but more often created as servants. Cannot reason; can only be given commands up to 15 words. Average ST 12, average speed. Retain no skills from the soul splinters within them. Named for the fact that, when occurring naturally, most of the body (and often armor) is still assembled. Normally wears armor, averaging 40/25 av/pro. +10 Protection vs piercing weapons. Immune to sleep and charm. Not casters, or at least cannot remember casting. Often flock to the banner of Wights or other powerful undead in a boneyard or old battle scene."
+  },
+  {
+    "name": "Dire Wolf",
+    "hp_formula": "3d8+9",
+    "avg_hp": 22.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 15,
+    "protection": 25,
+    "bmod": 1.05,
+    "avg_damage": 0,
+    "multi": 20,
+    "cc_fortitude": 55,
+    "cc_reflex": 50,
+    "cc_will": 40,
+    "cc_surprise": 60,
+    "cc_social": 35,
+    "attacks": [
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+6)/d6)+1",
+        "speed": "Speed 5"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "A larger, smarter cousin of the wolf that plans ambushes rather than running one down -- Ogrillite raiders (especially Kobolds and Goblins) prize them as trained war-mounts. Packs of 3-8, or singly as a trained mount. Up to 4' high, 90-120 lbs, INT 3-4. Pack Tactics: +15% to hit when 2+ Dire Wolves attack the same target, focuses the weakest/most isolated one. Keen Scent: cannot be surprised by anything approaching from upwind within 60'. Mount-trained individuals carry a rider without spooking and fight on regardless. Move 24'."
+  },
+  {
+    "name": "Dretch",
+    "hp_formula": "8+3d10",
+    "avg_hp": 24.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 36,
+    "protection": 40,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 10,
+    "cc_fortitude": null,
+    "cc_reflex": null,
+    "cc_will": null,
+    "cc_surprise": null,
+    "cc_social": null,
+    "attacks": [
+      {
+        "name": "Claws",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d6+15)/D6)+5",
+        "speed": "SPD 6"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [
+      "Regeneration"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Lesser demonic foot soldiers of the Eighth House (Entropic Outsiders) -- foolish, aggressive, stupid, angry. 4-5' tall, squat, reek of rotten bacon. Regenerates 1 HP per 10 segments. Requires silver or magic weapon to bypass protection."
+  },
+  {
+    "name": "Fire Beetle",
+    "hp_formula": "1d4",
+    "avg_hp": 2.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 8,
+    "protection": 5,
+    "bmod": 0.3,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": 15,
+    "cc_reflex": 20,
+    "cc_will": 5,
+    "cc_surprise": 10,
+    "cc_social": 0,
+    "attacks": [
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((1d4)/d6)",
+        "speed": "SPD 9"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Small, unassuming cave/cellar/ruin scavenger, 1-2' long, with a pair of glowing glands above its eyes and a third at the base of its abdomen, burning dull amber-orange even after death until drained/removed. Not a predator -- scavenges dead matter and fungus, only bites if cornered or mishandled. INT 0-1. Move 6'. Number Appearing 1-8. Its real value is as a light source, not a threat: a harvested gland gives usable light for roughly a week, and a single beetle yields 1-3 harvestable glands (a successful Basic Chemistry-type check harvests cleanly; a failed attempt risks rupturing the gland and losing its light). A living/freshly-dead beetle sheds light in a 10' radius. Considered good luck by some Cradle Lands miners, who leave small ones undisturbed as living lanterns. No special weapon requirements to damage."
+  },
+  {
+    "name": "Fire Giant",
+    "hp_formula": "43+5d10 + 1-8/plev",
+    "avg_hp": 70.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 36,
+    "protection": 115,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 14,
+    "cc_fortitude": null,
+    "cc_reflex": null,
+    "cc_will": null,
+    "cc_surprise": null,
+    "cc_social": null,
+    "attacks": [
+      {
+        "name": "weapon (by weapon, favors swords)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((4d6+22)/D5)+6",
+        "speed": "SPD 8"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [],
+    "notes": "Large tribal giants of northern climes, equally at home underground near magma as in tropical climes, 15-17' tall, avg ST 21. Favor swords and boulder-throwing, wise in the wild, totally immune to most heat/fire. CAVEAT: this page's stat text is word-for-word identical to the Cloud Giant page -- the fire-themed abilities plausibly belong here, but the duplication means one of the two pages wasn't customized after copy/paste; treat both with some suspicion. Outdoor skill 35%. Spellcasting at 9th-level equivalent: Heat Generation 3/day, Firebank 2/day, Flame Blade 2/day."
+  },
+  {
+    "name": "Fire Lizard",
+    "hp_formula": "4d8+16",
+    "avg_hp": 34,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 30,
+    "protection": 40,
+    "bmod": 0.9,
+    "avg_damage": 0,
+    "multi": 20,
+    "cc_fortitude": 70,
+    "cc_reflex": 50,
+    "cc_will": 35,
+    "cc_surprise": 20,
+    "cc_social": 0,
+    "attacks": [
+      {
+        "name": "Bite (50% of attacks)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d6+10)/d6)+8",
+        "speed": "Speed 5"
+      },
+      {
+        "name": "Claw x2 (50% of attacks)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+6)/d6)+3 each",
+        "speed": "Speed 6"
+      },
+      {
+        "name": "Fire Breath (cone, 1/20 segs)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "(5d6+8)/d4 fire, Reflex CC for half",
+        "speed": "Speed 4"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [
+      "Immune to fire/heat (incl. magical)",
+      "Minor Breath Weapon"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Large territorial reptile related to the giant lizard, roughly draft-horse-sized, grey-green scales with a reddish-orange cast from fire-producing glands. Not intelligent but cunning as a large predator -- patient, observant, aware of its own range. Move 15'. INT 2-4 (animal, territorial). Intensely territorial, defends its ground aggressively but rarely pursues prey beyond established boundaries; most dangerous when cornered or defending a lair. No special weapon requirements to damage. Fire Breath: 20' long, 10'-wide-at-terminus cone, (5d6+8)/d4 fire damage (Reflex CC for half); usable once per 20 segments. Typically opens with the breath weapon before closing to melee, and will close to melee immediately after using it rather than waiting out the cooldown. Lairs accumulate char marks on stonework/vegetation from years of territorial use; other creatures generally learn to avoid a Fire Lizard's range entirely."
+  },
+  {
+    "name": "Frost Giant",
+    "hp_formula": "43+5d10 + 1-8/plev",
+    "avg_hp": 70.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 36,
+    "protection": 115,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 14,
+    "cc_fortitude": null,
+    "cc_reflex": null,
+    "cc_will": null,
+    "cc_surprise": null,
+    "cc_social": null,
+    "attacks": [
+      {
+        "name": "weapon (by weapon, favors axes/spears)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((4d6+22)/D5)+6",
+        "speed": "SPD 8"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [],
+    "notes": "Large tribal giants ranging northern hills and mountains covered in snow/ice, 15-17' tall, avg ST 21. Favor axes and spears plus boulder-throwing, wise in the wild, totally immune to most cold. Outdoor skill 35%. Coldsnap and Ice Slick at level 9, 1/day each. Toss boulders."
+  },
+  {
+    "name": "Gargoyle",
+    "hp_formula": "2d10+10",
+    "avg_hp": 21,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 25,
+    "protection": 40,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 20,
+    "cc_fortitude": 75,
+    "cc_reflex": 40,
+    "cc_will": 45,
+    "cc_surprise": 65,
+    "cc_social": 10,
+    "attacks": [
+      {
+        "name": "Claws (x2)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d4+9)/d6)+1",
+        "speed": "Speed 4"
+      },
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+9)/d6)+1",
+        "speed": "Speed 5"
+      },
+      {
+        "name": "Horn (Gore)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d6+11)/d6)+2",
+        "speed": "Speed 6"
+      }
+    ],
+    "bonus_abilities": [
+      "Wallclimb / swim / flight",
+      "Hide",
+      "Special or magic to hit"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Statue-like winged humanoids of the House of Earth -- true flesh-and-stone creatures, not constructs or undead, so they CAN be charmed, slept, or reasoned with despite low INT (3-4). Prized as guardians since they'll hold a post indefinitely without pay, sleep, or supervision. Attack split Claw 40%/Bite 20%/Horn 40%. Base protection is magicked (40), rising in tiers: PR50 vs Masterwork, PR60 vs Silver, PR70 vs Normal weapons. Aerial Charge: a 10'+ flight run-up reduces the damage dividing die by 1 on a connecting claw/horn, usually once per combat. Statue Mimicry: motionless it's indistinguishable from carved stone, granting automatic surprise unless spotted first. Silent flight. Move 12'/Fly 25'."
+  },
+  {
+    "name": "Ghast",
+    "hp_formula": "2d8+12",
+    "avg_hp": 21,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 25,
+    "protection": 35,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 25,
+    "cc_fortitude": 75,
+    "cc_reflex": 80,
+    "cc_will": 65,
+    "cc_surprise": null,
+    "cc_social": 5,
+    "attacks": [
+      {
+        "name": "Claws (x2)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+6)/d6)+2",
+        "speed": "Speed 3"
+      },
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+7)/d6)+2",
+        "speed": "Speed 4"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "The greater form of the Ghoul -- older, more self-aware, more dangerous, retaining enough of its former self to feel hatred and direct its ghoul pack with real tactical intent. Multi split 40% bite/60% claw. Carrion Stench: living creatures within 10' must Fort CC-10% every 10 segments or suffer -10% to all CCs/attacks for 10 segments. Paralytic Touch: Fort CC-20%, paralysis 3d6+4 segments, affects even creatures normally resistant to ghoul paralysis. Immune to sleep, charm, poison, disease, cold; requires silver/magic/masterwork weapon to bypass protection. Holds ghouls back until the stench weakens foes, then sends them in while targeting the most dangerous opponent itself. If destroyed but not dismembered, attempts to reform over 2d6 rounds unless fire, holy effects, or sufficient Necromantic magic prevents it. Move 18'."
+  },
+  {
+    "name": "Ghoul",
+    "hp_formula": "d8+8",
+    "avg_hp": 12.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 20,
+    "protection": 25,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 25,
+    "cc_fortitude": 65,
+    "cc_reflex": 75,
+    "cc_will": 50,
+    "cc_surprise": null,
+    "cc_social": 5,
+    "attacks": [
+      {
+        "name": "Claws (x2)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d4+6)/d6)+1",
+        "speed": "Speed 4"
+      },
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+7)/d6)+1",
+        "speed": "Speed 5"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Feral, cunning undead driven by hunger rather than full self-awareness, retaining just enough of a soul splinter for simple tactics -- weakest-target focus, avoiding obvious casters. Feared for its paralyzing touch. Multi split 40% bite/60% claw. Carrion Stench (lesser): living creatures within 5' must Fort CC each round or suffer -5% to CCs/attacks that round. Paralytic touch: any successful hit forces Fort CC-15%, failure = paralysis 2d6+4 segments (doesn't stack -- a second failure just resets duration); undead/necromantic-immune creatures unaffected. Immune to sleep, charm, poison, disease, cold; requires silver/magic/masterwork weapon to bypass protection. At 0 HP keeps clawing weakly for 1d4 segments unless the head is destroyed. Move 15'."
+  },
+  {
+    "name": "Giant Ant",
+    "hp_formula": "1d8+6",
+    "avg_hp": 10.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 22,
+    "protection": 20,
+    "bmod": 0.9,
+    "avg_damage": 0,
+    "multi": 8,
+    "cc_fortitude": 30,
+    "cc_reflex": 35,
+    "cc_will": 5,
+    "cc_surprise": 20,
+    "cc_social": 0,
+    "attacks": [
+      {
+        "name": "Mandibles",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d4+3)/d6)+1",
+        "speed": "SPD 6"
+      },
+      {
+        "name": "Acid spray (some colonies only, 10' range, 1/1d4 rounds)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((1d6+2)/d4)",
+        "speed": "SPD 8"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Hive insect of the Cradle Lands' wilder regions and underworld tunnels; workers stand 3-4' at the shoulder (2-3' long, 6 legs) with powerful mandibles and, in some colonies, a defensive acid spray. Not individually intelligent (INT 0-1) but colony-coordinated -- a threat to one worker is a threat the whole nearby colony responds to, committing workers to a fight in relays rather than all at once. Move 12'. Number Appearing 5-30 (colony strength; only a portion typically engages at once). Alarm Pheromone: a worker that takes damage or witnesses another die releases a pheromone that summons 1d6 additional workers from the nearest tunnel/entrance within 2-4 rounds, continuing until the colony judges the threat repelled or the intruders withdraw -- real danger is attrition/reinforcement, not any single worker. Mandibles/acid glands are a minor harvestable resource. No special weapon requirements to damage."
+  },
+  {
+    "name": "Giant Bee",
+    "hp_formula": "10+2d6",
+    "avg_hp": 17,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 20,
+    "protection": 15,
+    "bmod": 1.09,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": 40,
+    "cc_reflex": 60,
+    "cc_will": 5,
+    "cc_surprise": 35,
+    "cc_social": 0,
+    "attacks": [
+      {
+        "name": "Sting",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+4)/d8)+1",
+        "speed": "SPD 4"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [
+      "Poison"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Type-Beast (Giant Bee). Celtricia has huge hives of these in the wilds; the Waking Dream's own breed, a foot-long, striped, loud bee with the wit of a bee -- it forages, it guards, and it stings whatever comes near the hive. Encountered as foragers in 2-8 away from the hive, and in far greater numbers at the hive itself. INT 0-1 (animal, hive-driven). Move 15'. BMOD is 10 + (.5 x HP) (18.5 to-hit at average HP); the Bmod field is a pure multiplier, so it's set to 1.09 to land on that number at average HP and drifts slightly as rolled HP varies -- correct the To-Hit by hand if a roll needs it exact. Sting: ((2d6+4)/d8)+1 + venom. Venom: Fort CC; no damage if made, (2d6+1)/d6 if missed. Hive-Driven: near the hive, will not break off while an intruder remains. Giant bee honey is a known reagent (it prepares the silver ring for Fast Friends) and sells for 50-150 ep a small pot."
+  },
+  {
+    "name": "Giant Centipede",
+    "hp_formula": "1d6",
+    "avg_hp": 3.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 5,
+    "protection": 15,
+    "bmod": 1.4,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": 20,
+    "cc_reflex": 45,
+    "cc_will": 5,
+    "cc_surprise": 35,
+    "cc_social": 0,
+    "attacks": [
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+1)/d8)",
+        "speed": "SPD 8"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [
+      "Poison"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Common underworld hazard of the Cradle Lands, segmented, many-legged, fast, from arm's-length cellar specimens to several-foot nest-dwellers. Not cunning (INT 0-1) but bites hard enough to matter even through armor, and the venom behind the bite makes a single successful strike worth respecting. Move 10'. Number Appearing 3-18 (nest encounters may be considerably larger). Venomous Bite: a successful bite forces a Fort CC; on a failure, venom deals an extra ((d8+1)/d6) damage as it spreads through the wound, on top of the physical bite damage. Rarely encountered alone -- a sighting usually means a nearby nest, and a swarm's stacking venom hits can wear down even a capable party if not cleared quickly. Ground mandibles are a minor alchemical reagent (1-2 usable poison sacks per specimen if harvested promptly)."
+  },
+  {
+    "name": "Giant Necropoid Saligrak Rat",
+    "hp_formula": "2d8+1",
+    "avg_hp": 10,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 44,
+    "protection": 25,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": null,
+    "cc_reflex": 45,
+    "cc_will": 10,
+    "cc_surprise": 45,
+    "cc_social": 0,
+    "attacks": [
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+3)/d6)+1",
+        "speed": "SPD 5"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Type-Beast (undead). What a necromancer makes of a Saligrak Rat warren, or what a warren becomes where it's been nesting alongside one long enough. Encountered in 3-12, never far from whatever raised them. INT 2. Move 12'. Protection scales with weapon quality (Rotted Hide): 25 against silver or better, 35 against normal weapons -- avoidance/protection above use the silver-or-better value. Undead: immune to sleep, charm, disease and poison, turned as the necromantic rules require. No Morale: will not break, will not flee, will not stop. Its own Fort CC is left blank on the wiki page."
+  },
+  {
+    "name": "Giant Ungol",
+    "hp_formula": "2d8+14",
+    "avg_hp": 23,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 30,
+    "protection": 32,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 14,
+    "cc_fortitude": 55,
+    "cc_reflex": 70,
+    "cc_will": 25,
+    "cc_surprise": 35,
+    "cc_social": 10,
+    "attacks": [
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+9)/d6)+3",
+        "speed": "SPD 5"
+      }
+    ],
+    "bonus_abilities": [
+      "Darksight 25'+",
+      "Web / minor impair move",
+      "Wallclimb / swim / flight"
+    ],
+    "special_abilities": [
+      "Poison"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "One of several named size-variants of the Ungol giant-spider line. Territorial, rarely more than 1-2 encountered together outside a lair. Not sapient, not level/Cleric/thief capable; hunts by ambush and web. Poison (full): Fort CC-15%, (3d6+6)/d6 damage if the save is made, (4d6+16)/d6 if missed. Web: Reflex CC-15% to avoid entangle; may cocoon a downed target. Darksight 30' (vibration/heat sense). Wall/ceiling climb 90%."
+  },
+  {
+    "name": "Gnoll",
+    "hp_formula": "d8+6 + d4/plev",
+    "avg_hp": 11,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 30,
+    "protection": 40,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 8,
+    "cc_fortitude": 60,
+    "cc_reflex": 65,
+    "cc_will": 40,
+    "cc_surprise": null,
+    "cc_social": 45,
+    "attacks": [
+      {
+        "name": "scimitar (favored)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((1d8+1d6+11)/d6)+2",
+        "speed": "SPD 5"
+      },
+      {
+        "name": "halberd (alternate)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((1d12+18)/d5)+2",
+        "speed": "Speed 8"
+      },
+      {
+        "name": "shortbow (alternate loadout)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "same stats as scimitar loadout, 20% multi",
+        "speed": ""
+      }
+    ],
+    "bonus_abilities": [
+      "Darksight 25'+"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [
+      "Cleric",
+      "Thief"
+    ],
+    "notes": "Type-Ogrillite. 6-7' tall, thin and rangy, with hyena faces and light yellow fur. Disorganized, chaotic, and bullies -- but surprisingly social and honor-bound for all that, still self-interested, and rarely back down from a fight. Basic Outdoors 30%. Assumed to wear raggedy Studded Leather or light scaled leather with a shield."
+  },
+  {
+    "name": "Goblin",
+    "hp_formula": "d6 + d4/plev",
+    "avg_hp": 3.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 25,
+    "protection": 20,
+    "bmod": 1,
+    "avg_damage": 2.7,
+    "multi": 5,
+    "cc_fortitude": null,
+    "cc_reflex": null,
+    "cc_will": null,
+    "cc_surprise": null,
+    "cc_social": null,
+    "attacks": [
+      {
+        "name": "Flanged Mace",
+        "weaponName": "Flanged Mace",
+        "toHit": "",
+        "damageDice": "2d4+11",
+        "speed": "5"
+      }
+    ],
+    "bonus_abilities": [
+      "Darksight 25'+"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [
+      "Cleric",
+      "Thief"
+    ],
+    "notes": "Type-Ogrillite. 3-4' tall, yellowed skin, muscular, small fangs, high-pitched voices. Very organized and disciplined -- shock troops of a tribe. Hardy outdoors folk, females as common as males. Darksight 30'. Basic Outdoors 30%. Alternate loadout: shortbow instead of mace, Multi 20%."
+  },
+  {
+    "name": "Greater Basilisk",
+    "hp_formula": "5d8+25",
+    "avg_hp": 47.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 20,
+    "protection": 58,
+    "bmod": 0.9,
+    "avg_damage": 0,
+    "multi": 18,
+    "cc_fortitude": 85,
+    "cc_reflex": 35,
+    "cc_will": 55,
+    "cc_surprise": 15,
+    "cc_social": 0,
+    "attacks": [
+      {
+        "name": "Bite (60% of attacks)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d6+15)/d5)+2",
+        "speed": "Speed 5"
+      },
+      {
+        "name": "Tail sweep (40% of attacks)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+10)/d6)+1",
+        "speed": "Speed 7"
+      }
+    ],
+    "bonus_abilities": [
+      "Petrifying Blood (potent)",
+      "Earthsense",
+      "Special or magic to hit"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [
+      "Greater Petrifying Gaze"
+    ],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "House of Earth. Draft-horse-sized (much lower-slung), an armored eight-legged mass -- larger, older, and far more dangerous than the common Basilisk; believed effectively immortal barring violent death. Move 12'. INT 4-6 (cunning animal, territorial, remembers prior encounters). Found in areas of strong Earth-house resonance, deep wilderness or long-undisturbed sites. Immune to its own gaze and lesser Basilisks' gaze; +30% to saves vs Earth-school magic; immune to stone/petrification effects itself. Requires magic or masterwork weapons to bypass PR normally. Tail sweep hits a 10' arc behind it; Reflex CC-10% or knocked down. Multi 18%, split roughly 60% bite / 40% tail. Greater Petrifying Gaze (exceptional): functions on any living creature within 60' that merely looks in its general direction -- direct eye contact is NOT required. Fort CC-10% or petrification begins immediately; a failed save slows the target 50% as stone creeps from the extremities; a second failed save within 30 seconds (half the common Basilisk's window) fully petrifies. Stone to Flesh or equivalent required to reverse. Averting the eyes entirely prevents the effect but imposes -30% to all attack CCs; a Reflex roll -10 must be made every 15 segs to keep the gaze averted. Earthsense (bonus): senses vibration through the ground within 120', cannot be surprised by anything moving on foot in that range and does not need line of sight to detect it; cannot be snuck up on from the ground (negated by flight/levitation approach, but not the gaze). Petrifying Blood (bonus, potent): as common Basilisk but Fort CC-15%; a critical failure (missing by 30%+) partially petrifies the affected limb, -25% effectiveness for 2 hours unless treated with magical healing. Lair accumulates petrified victims over decades, sometimes mistaken for sculpture -- may hold valuable items. Blood and ground eye are extraordinarily potent, valuable alchemical components. Example: Biffin, a Greater Basilisk that has held a ruined district of Khav Verisan for 60+ years; even Ran Jaheen's servants avoid its range."
+  },
+  {
+    "name": "Greater Homunculus",
+    "hp_formula": "3d8+8",
+    "avg_hp": 21.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 22,
+    "protection": 40,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 15,
+    "cc_fortitude": 60,
+    "cc_reflex": 60,
+    "cc_will": 65,
+    "cc_surprise": 65,
+    "cc_social": 55,
+    "attacks": [
+      {
+        "name": "Bite (Devilkin ichor)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d6+5)/d6)+1",
+        "speed": "SPD 3"
+      },
+      {
+        "name": "Claws",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d4+5)/d6)+0",
+        "speed": "SPD 4"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit",
+      "Wallclimb / swim / flight"
+    ],
+    "special_abilities": [
+      "Poison"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Type-Made Creature (Familiar). A rarer, far more capable making, 2-2.5' high, darker and harder-hided, with a longer face and a clever, measuring stare: a true second mind at its maker's shoulder, some older than the casters who hold them. Made with the ichor of a Devilkin of real standing (Create Greater Homunculus), fresh or raised from an existing bonded Homunculus. INT 14-18 with great wisdom. Move 9'/Fly 36'. Multi 15% (60% bite / 40% claw). Protection is the Void Borne DR ladder: 40 magicked, 50 vs Masterwork, 60 vs Silver, 70 vs Normal. Devilkin Ichor Bite: any creature taking bite damage makes a Fort CC-20% or falls into a deep sleep for 5d6 minutes; only damage or a Cure Poison wakes them sooner. Familiar: counts against the caster's familiar and summoned creature total; while bonded it acts as a familiar enhancer at -2 spirit and -1 artificer per spell cast (stacks with magic, not with another familiar). Bond of Blood: shares senses with its maker at will within one mile and each knows the other's direction and distance; it adds 3-12 HP to the caster; if slain the maker takes 3d10 damage not reduced by protection; if the maker dies it goes on. Hand of the Maker: the maker may cast a touch-range spell through the bond, with the Greater Homunculus delivering the touch, while it is within 480'. Ordered Mind: +20% to Will CCs against Chaos spells and charms that would turn it against its maker. (The Create Greater Homunculus spell page gives PR 30 and bite/claw dice of 2d6/2d4; this follows the Homunculi page.)"
+  },
+  {
+    "name": "Greater Trollfolk",
+    "hp_formula": "4d8+35",
+    "avg_hp": 53,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 30,
+    "protection": 49,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 17,
+    "cc_fortitude": 70,
+    "cc_reflex": 65,
+    "cc_will": 50,
+    "cc_surprise": null,
+    "cc_social": 9,
+    "attacks": [
+      {
+        "name": "Claw",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d10+20)/d6)+10",
+        "speed": "SPD 5"
+      }
+    ],
+    "bonus_abilities": [
+      "Darksight 25'+"
+    ],
+    "special_abilities": [
+      "Regeneration"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "A larger, roughly 10'-tall variant of Trollfolk, sharing the base race's tribal, chaotic, hungry temperament and pack behavior (packs of 7-18, dislikes sunlight/outdoors). Darksight 70'. Basic Outdoors 30%. +15% resistant to fire and air. Regenerates 3 HP every 12 segments. The wiki page gives one AV 30 / PR 49 line for the race and does not list a separate one for this larger variant (only HP and the claw line differ), so the base values are used here."
+  },
+  {
+    "name": "Hagarous",
+    "hp_formula": "162",
+    "avg_hp": 162,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": -10,
+    "protection": 149,
+    "bmod": 0,
+    "avg_damage": 0,
+    "multi": 5,
+    "cc_fortitude": 80,
+    "cc_reflex": 40,
+    "cc_will": 90,
+    "cc_surprise": 20,
+    "cc_social": null,
+    "attacks": [
+      {
+        "name": "Ambretton Brass Huge falchion (2H)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "(22+1d12)/d5+4",
+        "speed": "Speed 9 (ready 8)"
+      },
+      {
+        "name": "Tail (poison)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "(14+3d6)/d6+2, plus poison (4-32)/d4 per 10 rounds for 40 sec if Fort CC-40 missed",
+        "speed": "Speed 3 (ready 3)"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [
+      "12%+ crit",
+      "15%+ magic resist",
+      "10%+ magic-to-hit"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "A unique named Fiend of the 'Devilkin, major' race dwelling in a monastery, 15' tall, wreathed in red-tinged smoke, two sets of arms, a long tail, huge wings. Wears Black Dragon Hide armor and wields a huge Ambretton Brass falchion two-handed, backed by a venomous tail attack. A high-level unique boss-tier NPC worth 9100 XP. Protection scales: 149 base, 105/115/125/135/145 vs +15/+5/magic/silver/masterwork weapon grades respectively. Perfect Strike 15% every hit. Crit 13%. MR 25%. Immune to acid and poison. Summons a Dretch 10% of the time, 3/day. Casts Wave of Slowing at level 14, plus Hiding Hole, Word of the Charmer, and Flesh to Stone. The sheet also shows an unlabeled '12%' figure near its one-handed falchion calc, separate from the explicit 'multi attack 5%' used above -- meaning unclear."
+  },
+  {
+    "name": "Harpy",
+    "hp_formula": "2d10+6 + d4/plev",
+    "avg_hp": 17,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 15,
+    "protection": 20,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 20,
+    "cc_fortitude": 50,
+    "cc_reflex": 50,
+    "cc_will": 40,
+    "cc_surprise": 45,
+    "cc_social": 15,
+    "attacks": [
+      {
+        "name": "Talons (x2)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d4+5)/d6)+0",
+        "speed": "SPD 4"
+      },
+      {
+        "name": "Weapon (club, bone, or scavenged blade)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+6)/d6)+1",
+        "speed": "SPD 6"
+      }
+    ],
+    "bonus_abilities": [
+      "Wallclimb / swim / flight",
+      "Fouled Talons"
+    ],
+    "special_abilities": [
+      "Luring Song"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [
+      "Cleric"
+    ],
+    "notes": "Type-Airkin. Disgusting bird-women made on the House of Air before it was destroyed: woman to the waist and carrion bird below, with filthy talons, greasy wings of 10-12' span, and faces gone hard and hungry. Survivors of the Destruction of the House of Air who have not forgiven anything for it; generations born under the two suns have left them wholly flesh and feather, so they bleed to any blade. Intelligent (6-15 on the wiki's description, INT 7-10 on its stat line), furious and loud. Female only; they steal men of all races to get them impregnated. They roost in tall trees, crags and ruins in flocks of 3-12, common in the wild uplands around old ruins such as Abuto. Every flock has an eyrie, usually within a day's flight, fouled with bones and filth, often holding a captive or two and trinkets taken from the dead. Move 12'/Fly 30'. Multi 20% (35% talon/35% talon/30% weapon); attacks 70% talon / 30% weapon. Level capable with priest; +d4 HP per level. Luring Song: one Harpy in a flock sings while the others wait; every creature within 300' that hears it makes a Will CC-10% or walks toward the singer, unresisting and unaware of danger, for as long as the song lasts plus 1d6 segments; any damage to the lured target, or physical restraint, breaks it; a new CC is made each time a new Harpy takes up the song; stopped ears give +25%. The flock carries off the men it lures and kills and eats the rest. Fouled Talons: any creature taking talon damage makes a Fort CC+10% at the end of the fight or contracts a mild sickness (per Disease and Sickness). Aerial Charge: fights from the wing and uses the Charge tactic (per Advanced Combat Strategies), diving from 10'+ of flight run-up to reduce the dividing die by 1 on a connecting talon; normally once per combat. Abduction: two Harpies together can lift a captive of up to 200 lbs at half Fly speed; one Harpy carries 80 lbs. Screeching Flock: a disturbed flock is very loud; when a fight with Harpies begins the GM makes an immediate extra wandering creature check for the area."
+  },
+  {
+    "name": "Hecuvan",
+    "hp_formula": "d6+12 + 1-4/caster-lev",
+    "avg_hp": 15.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 25,
+    "protection": 40,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 7,
+    "cc_fortitude": 70,
+    "cc_reflex": 50,
+    "cc_will": 60,
+    "cc_surprise": null,
+    "cc_social": 10,
+    "attacks": [
+      {
+        "name": "standard attack",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+10)/d6)+2",
+        "speed": "Speed 5"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [],
+    "notes": "Cunning undead created by adding further soul splinters to a skeletal Servant, capable of taking up to 24 words of command and reasoning cleverly -- avoiding priests, identifying the most dangerous opponent. Valuable servants normally found as greater tomb guardians. +10 Protection vs piercing weapons. Immune to sleep and charm. Retains some skills from its soul splinters. Normally wears armor and can use shields."
+  },
+  {
+    "name": "Hezrou",
+    "hp_formula": "45+6d10",
+    "avg_hp": 78,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 20,
+    "protection": 85,
+    "bmod": 1.2,
+    "avg_damage": 0,
+    "multi": 20,
+    "cc_fortitude": 85,
+    "cc_reflex": 55,
+    "cc_will": 55,
+    "cc_surprise": 25,
+    "cc_social": 15,
+    "attacks": [
+      {
+        "name": "Claws",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+16)/D6)+8",
+        "speed": "SPD 5"
+      },
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d6+18)/D6)+7",
+        "speed": "SPD 7"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [
+      "Regeneration"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Type-Entropic Outsider. Brutal, dim, relentless bipedal toad-demons that favor close combat over cunning and wade into a fight rather than plan one; denizens of the Eighth House. Radiate a stench potent enough to sicken the unprepared before a blow is struck. Territorial, short-tempered. 8'+ tall, 700+ lbs, mottled grey-green hide slick with foul secretion. Disdain weapons and non-entropics. Protection includes an effective +5% magic. Claws Multi 20% (used above), Bite Multi 12%. Regenerates 1 HP per 5 segments. MR 10% (25% vs Chaos). Nauseating Stench: 30' radius, Fort CC-10% or -15% to all actions for 1d4 rounds, once per encounter per victim. Spell effects calculated at level 10: Minor Fire Blast at will, Personal Minor Disruption 2/day, Static Field, Weapon Charge 2/day."
+  },
+  {
+    "name": "Hill Giant",
+    "hp_formula": "35+3d10 + d8/plev",
+    "avg_hp": 51.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 38,
+    "protection": 75,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 11,
+    "cc_fortitude": null,
+    "cc_reflex": null,
+    "cc_will": null,
+    "cc_surprise": null,
+    "cc_social": null,
+    "attacks": [
+      {
+        "name": "weapon (by weapon)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((4d6+15)/D5)+4",
+        "speed": "SPD 8"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [],
+    "notes": "A mix of Ogrillite and giant blood -- the smallest true giants and the most commonly encountered type, mingling with both greater giants and Ogrillite tribes. Slightly stronger/larger than an Ograk, 9-11' tall, avg ST 19, lower INT (4-12), simple weapons. Outdoor skill 25%. Throws boulders."
+  },
+  {
+    "name": "Hobgoblin",
+    "hp_formula": "d8+2 + d4/plev",
+    "avg_hp": 6.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 30,
+    "protection": 40,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 6,
+    "cc_fortitude": 60,
+    "cc_reflex": 60,
+    "cc_will": 40,
+    "cc_surprise": null,
+    "cc_social": 35,
+    "attacks": [
+      {
+        "name": "scimitar (favored)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((1d8+1d6+11)/d6)+1",
+        "speed": "SPD 5"
+      },
+      {
+        "name": "halberd (alternate)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((1d12+18)/d5)+1",
+        "speed": "Speed 8"
+      },
+      {
+        "name": "shortbow (alternate loadout)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "same stats as scimitar loadout, 20% multi",
+        "speed": ""
+      }
+    ],
+    "bonus_abilities": [
+      "Darksight 25'+"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [
+      "Cleric",
+      "Thief",
+      "Mage"
+    ],
+    "notes": "Larger (5-6') Ogrillites renowned for fighting ability, thick and muscular with reddish skin and a strong penchant for armor and arms. Organized and heavily tribal, often work with or lead bands of Goblins. Darksight 30'. Basic Outdoors 30%. Assumed to wear raggedy Studded Leather/light scaled leather with shield. Many weapons beyond the favored scimitar/halberd are common."
+  },
+  {
+    "name": "Homunculus",
+    "hp_formula": "2d6+4",
+    "avg_hp": 11,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 18,
+    "protection": 20,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 10,
+    "cc_fortitude": 50,
+    "cc_reflex": 60,
+    "cc_will": 55,
+    "cc_surprise": 60,
+    "cc_social": 45,
+    "attacks": [
+      {
+        "name": "Bite (Devilkin ichor)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d4+4)/d6)+0",
+        "speed": "SPD 3"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit",
+      "Wallclimb / swim / flight"
+    ],
+    "special_abilities": [
+      "Poison"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Type-Made Creature (Familiar). A foot to 18 inches high, grey-green and leathery, with bat wings, a too-large head and a mouth full of needle teeth. Not born and not summoned but made, by an old alchemical working with Void-stuff (Create Homunculus): the maker's blood is the base, quickened with Devilkin ichor and set with order and artifice. Fully aware with a will of its own that runs in straight lines: punctilious, literal, loyal to its maker, unable to leave a task half done; sly, keeps account of every slight, and obeys the letter of an order precisely when it disapproves of the spirit. INT 12-16 with high wisdom. Almost always at its maker's shoulder or on an errand; one found alone usually has a dead maker and is finishing the last order it was given. Move 6'/Fly 30'. Protection is the Void Borne DR ladder: 20 magicked, 30 vs Masterwork, 40 vs Silver, 50 vs Normal. Devilkin Ichor Bite: any creature taking bite damage makes a Fort CC-10% or falls into a deep sleep for 5d6 minutes; only damage or a Cure Poison wakes them sooner. Familiar: counts against the caster's familiar and summoned creature total; while bonded it acts as a familiar enhancer at -1 spirit and -1 artificer per spell cast (stacks with magic, not with another familiar). Bond of Blood: maker and Homunculus share senses at will within 480' and know each other's direction and distance; it adds 2-8 HP to its creator; if it is slain the maker takes 2d10 damage not reduced by protection; if the maker dies the Homunculus does not. Ordered Mind: +15% to Will CCs against Chaos spells and charms that would turn it against its maker. (The Create Homunculus spell page lists INT 10-12; this follows the Homunculi page.)"
+  },
+  {
+    "name": "Hshhhuuu",
+    "hp_formula": "10+2d6",
+    "avg_hp": 17,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 20,
+    "protection": 15,
+    "bmod": 1.09,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": 40,
+    "cc_reflex": 60,
+    "cc_will": 20,
+    "cc_surprise": 50,
+    "cc_social": 10,
+    "attacks": [
+      {
+        "name": "Sting",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+4)/d8)+1",
+        "speed": "SPD 4"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [
+      "Poison"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Type-Elemental of the House of Air (Hshhhuuu). The bee elemental kin of the Giant Bee, from the House of Air that is No Longer -- alike in body (a foot long, striped, and loud) but as intelligent as a dog (INT 2) and a good deal harder to hurt. Most often encountered 1-3 at a time, summoned; most who meet one meet it through an Animist's weapon, since the Bee Blade spells pull them in to attack whoever the blade has struck. Move 15'. BMOD is 10 + (.5 x HP) (18.5 to-hit at average HP); the Bmod field is a pure multiplier, so it's set to 1.09 to land on that number at average HP and drifts slightly as rolled HP varies -- correct the To-Hit by hand if a roll needs it exact. Sting: ((2d6+4)/d8)+1 + venom. Hshhhuuu Venom: Fort CC; no damage if made, (2d6+1)/d6 if missed. Elemental Hide: Protection 15 against silver or better, 25 against normal weapons (the Protection field holds the silver-or-better 15). Summoned: when pulled by Bee Blade, Greater Bee Blade or Angry Bee Blade, stays and fights for the duration that spell gives, and against the targets that spell names."
+  },
+  {
+    "name": "Huge Saligrak Rat",
+    "hp_formula": "2d3+3",
+    "avg_hp": 7,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 40,
+    "protection": 15,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": 45,
+    "cc_reflex": 55,
+    "cc_will": 20,
+    "cc_surprise": 50,
+    "cc_social": 5,
+    "attacks": [
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "(2d6+6)/d6",
+        "speed": "SPD 4"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Type-Beast. The greater Saligrakian, slightly larger and bolder than the common Saligrak Rat, encountered in 5-20 and often leading a warren of the lesser kind. INT 2-3. Move 12'. Disease: 5% chance per bite that lands. Keen Nose: +15% to detect. Poison Resistant: +10%. The wiki writes its HP as '2-6+3 (5-9)' -- read here as a d3-scaled roll (2d3+3, range 5-9) to match its own stated total, since a literal d6 read wouldn't reproduce that range."
+  },
+  {
+    "name": "Huge Ungol",
+    "hp_formula": "2d8+2",
+    "avg_hp": 11,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 30,
+    "protection": 25,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 10,
+    "cc_fortitude": 35,
+    "cc_reflex": 70,
+    "cc_will": 25,
+    "cc_surprise": 35,
+    "cc_social": 10,
+    "attacks": [
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+7)/d8)+2",
+        "speed": "SPD 5"
+      }
+    ],
+    "bonus_abilities": [
+      "Darksight 25'+",
+      "Web / minor impair move",
+      "Wallclimb / swim / flight"
+    ],
+    "special_abilities": [
+      "Poison"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Often found in packs of 5-8, particularly on the plains and hill country north of Igbar. Not sapient, not level/Cleric/thief capable. Poison: Fort CC-10%, (2d6+1)/d6 damage if made, (3d6+11)/d6 if missed. Web: Reflex CC-10% to avoid entangle. Darksight 30' (vibration/heat sense). Wall/ceiling climb 90%."
+  },
+  {
+    "name": "Kobold",
+    "hp_formula": "d4 + d3/plev",
+    "avg_hp": 2.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 25,
+    "protection": 20,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": 40,
+    "cc_reflex": 65,
+    "cc_will": 40,
+    "cc_surprise": null,
+    "cc_social": 25,
+    "attacks": [
+      {
+        "name": "sabre (favored)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d4+9)/D8)+0",
+        "speed": "SPD 5"
+      },
+      {
+        "name": "shortbow (alternate loadout)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "same stats as sabre loadout, 20% multi",
+        "speed": ""
+      }
+    ],
+    "bonus_abilities": [
+      "Darksight 25'+"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [
+      "Cleric",
+      "Thief"
+    ],
+    "notes": "Small (3-4') dog/lizard-like Ogrillites with high-pitched voices, somewhat organized shock troops. Self-interested cowards with little loyalty and a chip on their shoulder -- rarely fight fair, relying on numbers, traps, ambushes, and poison. Darksight 30'. Basic Outdoors 30%. Assumed to wear raggedy Studded Leather armor. NOTE: the wiki gives sabre Multi as the garbled 'Multi 0q%' -- couldn't be reliably parsed, left at 0 above; fix once you know the real number."
+  },
+  {
+    "name": "Large Ungol",
+    "hp_formula": "d8+1",
+    "avg_hp": 5.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 30,
+    "protection": 20,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 7,
+    "cc_fortitude": 35,
+    "cc_reflex": 70,
+    "cc_will": 25,
+    "cc_surprise": 35,
+    "cc_social": 10,
+    "attacks": [
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+6)/d8)+1",
+        "speed": "SPD 5"
+      }
+    ],
+    "bonus_abilities": [
+      "Darksight 25'+",
+      "Light poison",
+      "Web / minor impair move",
+      "Wallclimb / swim / flight"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "The most common Ungol found near settled lands, man- to horse-sized. Not sapient; hunts by ambush and web in wooded, swampy, or underground terrain. Solitary or in small clutches of 2-4, sometimes mixed with a few Huge Ungols. Poison (light): Fort CC, (1d6+1)/d6 damage if made, (2d6+6)/d6 if missed. Web: Reflex CC to avoid entangle. Darksight 30' (vibration/heat sense). Wall/ceiling climb 90%."
+  },
+  {
+    "name": "Lizardman",
+    "hp_formula": "6+2d4 + d6/plev",
+    "avg_hp": 11,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 35,
+    "protection": 25,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 8,
+    "cc_fortitude": 62,
+    "cc_reflex": 65,
+    "cc_will": 45,
+    "cc_surprise": null,
+    "cc_social": 20,
+    "attacks": [
+      {
+        "name": "trident (favored)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((1d12+16)/d6)+1",
+        "speed": "SPD 6"
+      }
+    ],
+    "bonus_abilities": [
+      "Darksight 25'+",
+      "Wallclimb / swim / flight"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [
+      "Cleric"
+    ],
+    "notes": "The Hssiouti -- man-sized, cannibalistic snake-men called 'Scalik' by humans, not culturally integrated, some bearing a fiendish intelligence. Roughly 4-5' tall, scale-covered, typically wielding clubs or spears. Darksight 30'. Basic Outdoors 30%. Basic Swim 90%. AV/PR improves to 40/35 with a shield. About 40% chance per group of 10 to include a shaman."
+  },
+  {
+    "name": "Minotaur",
+    "hp_formula": "4d8+11 + d4/plev",
+    "avg_hp": 29,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 30,
+    "protection": 45,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 11,
+    "cc_fortitude": 80,
+    "cc_reflex": 65,
+    "cc_will": 40,
+    "cc_surprise": null,
+    "cc_social": 30,
+    "attacks": [
+      {
+        "name": "axe (favored)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+20)/d5)+4",
+        "speed": "SPD 7"
+      },
+      {
+        "name": "halberd (alternate)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((1d12+19)/d5)+4",
+        "speed": "Speed 8"
+      },
+      {
+        "name": "charge attack (20% of the time)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+17)/d6)+5, +5% crit",
+        "speed": "SPD 4"
+      }
+    ],
+    "bonus_abilities": [
+      "Darksight 25'+"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [],
+    "notes": "Angry, bull-headed Ograks of the Korang tribal line, 7+' tall, thick and powerful, easily goaded into a fight, disorganized and chaotic bullies (INT 5-9). Rare leader types often head trines and tribes. Basic Outdoors 30%. 20% chance per attack to charge instead, using a different damage line and +5% crit chance."
+  },
+  {
+    "name": "Monstrous Centipede",
+    "hp_formula": "2d8+1",
+    "avg_hp": 10,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 18,
+    "protection": 35,
+    "bmod": 2,
+    "avg_damage": 0,
+    "multi": 10,
+    "cc_fortitude": 40,
+    "cc_reflex": 50,
+    "cc_will": 10,
+    "cc_surprise": 40,
+    "cc_social": 0,
+    "attacks": [
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d6+4)/d6)+1",
+        "speed": "SPD 7"
+      }
+    ],
+    "bonus_abilities": [
+      "Damage resistance"
+    ],
+    "special_abilities": [
+      "Poison"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Not merely a larger cousin of the common Giant Centipede -- a genuinely dangerous predator in its own right, 6-10' long, with a chitinous carapace thick enough to turn a glancing blow and mandibles that can punch through poor armor outright. Where the Giant Centipede is a swarm hazard, this is a solitary or small-pack apex predator of the deep places. INT 1-2 (basic ambush tactics). Move 12'. Number Appearing 1-4. Damage resistance tag covers its carapace: -10% damage taken from blunt weapons specifically. Venomous Bite: a successful bite forces a Fort CC-10%; on a failure, venom deals an extra ((2d8+2)/d6) damage on top of the physical bite damage. Favors ambush from cracks, rubble, and low tunnels; territorial, and will pursue intruders that retreat (unlike the common variety) until driven from its lair. Ground mandible/venom gland are valued alchemical components, more potent than the common variety's (1-2 poison sacks per specimen)."
+  },
+  {
+    "name": "Necrotic Chimera",
+    "hp_formula": "50",
+    "avg_hp": 50,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 40,
+    "protection": 64,
+    "bmod": 0,
+    "avg_damage": 0,
+    "multi": 8,
+    "cc_fortitude": 80,
+    "cc_reflex": 30,
+    "cc_will": 60,
+    "cc_surprise": 50,
+    "cc_social": null,
+    "attacks": [
+      {
+        "name": "Bite (any head: dragon/lion/goat)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "(3d6+19)/d6+4 (+3 necrotic)",
+        "speed": "Speed 5 (ready 5)"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [
+      "12%+ crit",
+      "15%+ magic resist",
+      "Minor Breath Weapon"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "An undead chimera created in Igbar bearing dragon, lion, and goat heads, all biting for identical damage (weapon skill listed as bite/bite/claw/butt). Clad in necrotic hide armor; needs silver weapons to bypass its protection fully (74 vs regular/non-silver weapons). Crit 13%. MR 25%. Immune to poison and mind-affecting effects. Breathes fire 3/day (20% chance per round): spray pattern, Reflex CC halves damage, Reflex CC by 25% quarters it, armor protection only 1/4 effective, damage (4d8+15)/d4 (avg ~17.2, under the 20-avg Minor/Major breath-weapon threshold). Source sheet lists a separate 'Bmod-NATURAL 35' stat not mapped to the bmod field above."
+  },
+  {
+    "name": "Nightmare",
+    "hp_formula": "3d8+20",
+    "avg_hp": 33.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 30,
+    "protection": 35,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 35,
+    "cc_fortitude": 80,
+    "cc_reflex": 70,
+    "cc_will": 75,
+    "cc_surprise": null,
+    "cc_social": 0,
+    "attacks": [
+      {
+        "name": "Fore hooves (x2)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+8)/d6)+2 each, cold fire damage",
+        "speed": "Speed 4"
+      },
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((d8+6)/d4)+1",
+        "speed": "Speed 5"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "A creature of the House of Death -- a great black horse with hooves of cold fire and ash-scented breath, obtained through bargains that never favor the rider long-term. Multi split 50% hooves/50% bite. Cold Fire: hoof damage bypasses 10 points of non-magical armor protection. Terror Aura: natural animals within 60' must Will CC-20% on first sight or flee 3d10 segments (trained war animals save at Will CC-10%), checked once per encounter. Dread Presence: living creatures seeing it for the first time make a Will CC or suffer -5% to all CCs for 5 segments. Immune to sleep, charm, poison, disease, normal fire/cold; cannot be turned as undead (a creature of Death, not itself undead); requires magic weapon to bypass protection. Protects a mounted rider, fighting on independently if the rider is destroyed. Move 30'/sec, INT 6-9."
+  },
+  {
+    "name": "Ograk",
+    "hp_formula": "24+2d10",
+    "avg_hp": 35,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 38,
+    "protection": 55,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 11,
+    "cc_fortitude": 80,
+    "cc_reflex": 35,
+    "cc_will": 50,
+    "cc_surprise": null,
+    "cc_social": 20,
+    "attacks": [
+      {
+        "name": "weapon (by weapon)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((4d6+14)/D5)+3",
+        "speed": "SPD 8"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [],
+    "notes": "One of the original Ogrillite races, formed by Anthraxus as his children and servants. 8-9' tall, ST around 17-19, moderate INT (4-12). Throws boulders and uses simple weapons."
+  },
+  {
+    "name": "Orcash",
+    "hp_formula": "d8 + d4/plev",
+    "avg_hp": 4.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 30,
+    "protection": 25,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 6,
+    "cc_fortitude": 60,
+    "cc_reflex": 65,
+    "cc_will": 40,
+    "cc_surprise": 35,
+    "cc_social": 25,
+    "attacks": [
+      {
+        "name": "scimitar (favored)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((1d8+1d6+11)/d6)+1",
+        "speed": "SPD 5"
+      },
+      {
+        "name": "shortbow (alternate loadout)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "same stats as scimitar loadout, 20% multi",
+        "speed": ""
+      }
+    ],
+    "bonus_abilities": [
+      "Darksight 25'+"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [
+      "Cleric",
+      "Thief"
+    ],
+    "notes": "Small (4-5') pink-green skinned Ogrillites with upturned noses and mandibular canines. Totally disorganized, chaotic bullies, self-interested with little concept of loyalty, who bully weaker Ogrillites and rarely back down from a fight. Darksight 30'. Basic Outdoors 30%. Assumed to wear raggedy Studded Leather or light scaled leather armor."
+  },
+  {
+    "name": "OwlBear",
+    "hp_formula": "4d8+23",
+    "avg_hp": 41,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 30,
+    "protection": 40,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 20,
+    "cc_fortitude": 60,
+    "cc_reflex": 40,
+    "cc_will": 25,
+    "cc_surprise": 55,
+    "cc_social": 15,
+    "attacks": [
+      {
+        "name": "Talon (60% of attacks)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+8)/d6)+2",
+        "speed": "SPD 5"
+      },
+      {
+        "name": "Beak (40% of attacks)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+16)/d6)+2",
+        "speed": "SPD 6"
+      }
+    ],
+    "bonus_abilities": [
+      "Darksight 25'+"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Another creature born of Korang the Artificer's gene vats -- a cross of huge bear and Giant Owl, 8'+ at the shoulder reared up, soft feathery pelt (often white/mottled) rather than coarse fur, a feathered head, and unblinking eyes that miss almost nothing. Forepaws end in razor talons that open armor as easily as flesh. Its distorted bear/owl cry carries for a great distance; most natural creatures give a heard Owlbear a wide berth. INT 3-6 (real owl-inherited intelligence, capable of basic problem-solving and genuine tactical coordination; 5-6 allows communication) -- possesses a rudimentary tongue for coordinating hunts/warning young within a family group. Move 12'. Number Appearing: solitary 80%, family pack of 2-9 the remaining 20%. Crushing Grasp: on a successful Talon hit, may forgo the following round's attack to crush and hold instead for an extra ((1d8+4)/d4) damage with no armor protection, preventing the target from moving away until they break free with a successful Fort CC. Keen Sight: cannot be surprised by anything within 60' it has line of sight to, no penalty fighting in low light/darkness. Silent Stalker: 35% Basic Sneak when moving through its home territory (not when charging/fighting). Territorial, defends a claimed range aggressively but doesn't typically hunt outside it. A pack coordinates genuinely (flanking, driving prey, holding some back) via its shared tongue, making a pack encounter more dangerous than raw numbers suggest. Talons/pelt are valued by artificers and hunters, though harvesting either draws other predators quickly. No special weapon requirements to damage."
+  },
+  {
+    "name": "Piercer",
+    "hp_formula": "2d6+2",
+    "avg_hp": 9,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 20,
+    "protection": 10,
+    "bmod": 0.9,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": 25,
+    "cc_reflex": 5,
+    "cc_will": 0,
+    "cc_surprise": 60,
+    "cc_social": 0,
+    "attacks": [
+      {
+        "name": "Falling Strike (surprise only, once per encounter)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((4d6+6)/d4)+2",
+        "speed": "SPD 1"
+      },
+      {
+        "name": "Peck (post-fall, if it survives)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((1d4)/d6)",
+        "speed": "SPD 9"
+      }
+    ],
+    "bonus_abilities": [
+      "Hide"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Stationary ambush predator that hangs motionless from cave/dungeon ceilings, its mottled grey-brown shell nearly indistinguishable from a stalactite until far too late. No meaningful ability to fight once committed -- its entire strategy is the fall itself, a single devastating strike from above, followed by a slow retreat back to the ceiling if it survives. Patient rather than aggressive; may hang undisturbed for months waiting for the right moment. INT 0 (purely instinctual). Move 1'-very slow. Number Appearing 1-6 (multiple Piercers often share a favorable ceiling). Falling Strike can only be used once per encounter and only against a target that hasn't noticed it -- a successful Surprise roll is required for the fall to land at all; if the target is aware first, the attack is negated entirely and the Piercer is left exposed on the ground, where its poor Reflex/Will mean it rarely survives a determined response. Shell, if recovered intact, is prized by some artificers for its natural density/impact resistance. No special weapon requirements to damage."
+  },
+  {
+    "name": "Preserved Undead (Mummy)",
+    "hp_formula": "40+6d8 (assumes level 14)",
+    "avg_hp": 67,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": -5,
+    "protection": 115,
+    "bmod": 1.2,
+    "avg_damage": 0,
+    "multi": 35,
+    "cc_fortitude": null,
+    "cc_reflex": null,
+    "cc_will": null,
+    "cc_surprise": null,
+    "cc_social": null,
+    "attacks": [
+      {
+        "name": "weapon (by weapon) plus Mummy’s Touch",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "",
+        "speed": ""
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [
+      "15%+ magic resist",
+      "Regeneration"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [],
+    "notes": "Necromancers and other casters who use preservative magic to keep their soul tied to heavily alchemized, embalmed flesh, retaining much of their former knowledge and power. Supercharged by necromancy, hard to damage, can control lesser undead; commonly blend necromantic and alchemical power. Highly intelligent. Stats given assume level 14; protection may be further boosted by unquantified magic items. Regenerates 1 HP per 10 segments. Immune to sleep/charm. 20% Magic Resistance. Aura of fear every 10 segments (Will-10% or flee 3-12 segments). Casts Chromatic Orb 4/day, Pain 4/day, Vox's Leaking Bloodletter 2/day; raises a skeletal servant 2/day; can create a potion 1/day; hardens bone 1/day."
+  },
+  {
+    "name": "Red Dragon",
+    "hp_formula": "35+3d10 per Age Category",
+    "avg_hp": 51.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 70,
+    "protection": 140,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 18,
+    "cc_fortitude": null,
+    "cc_reflex": null,
+    "cc_will": null,
+    "cc_surprise": null,
+    "cc_social": null,
+    "attacks": [
+      {
+        "name": "Claw",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((4d6+22)/D5)+(age cat x2)",
+        "speed": "SPD 8"
+      },
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((5d12+30)/d4)+(age cat x3)",
+        "speed": "SPD 15"
+      },
+      {
+        "name": "Fire Breath (3/day)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "Bite damage x1.5, Reflex CC-10 for half / CC-50 for quarter; PR only 33% effective",
+        "speed": ""
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [
+      "Hard to kill"
+    ],
+    "exceptional_abilities": [
+      "Major Breath Weapon"
+    ],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "An ancient Sauroid dragon-line -- venal and cruel, extremely logical and intelligent (INT 15-19), imbued with a connection to the Perfect Flame (3rd Station), making their fire mastery exceptional even though general spellcasting is merely decent. Hatchlings as small as 4 Are nose to tail; ancients as long as 2 Tolkar+. All stats scale by Age Category (1-Worm through 7-ancient/1501+ years) -- figures above are the per-category base; protection gains +2-8 more per category. Bite Multi 9% (separate from the 18% Claw Multi used above). Basic Detect 35%. Detect Magic 40%. Hard/Harder to Kill 1/day each. Immunity to Heat 3/day. Fear at 6th level + age category. Spellcasting (Spirit and Fire spheres, level ~1d4 x age category) plus a breath weapon. Fire Breath: damage/mechanics not on the main Bestiary page, but a DM encounter writeup (Stenron's Tomb notes, for an Age-Category-7 ancient named Karse Vantan) gives it as Bite damage x1.5, 50' range at full power/100' at half, usable 3/day, Reflex CC-10 halves and CC-50 quarters it, and armor protection works at only 33% effectiveness against it. At the per-category Bite baseline (avg ~32.55 + 3/category) that puts breath avg damage at ~53+ even at Age Category 1 -- Major/exceptional at every age, not just when ancient."
+  },
+  {
+    "name": "Saligrak Rat",
+    "hp_formula": "1d4+1",
+    "avg_hp": 3.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 35,
+    "protection": 15,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": 40,
+    "cc_reflex": 60,
+    "cc_will": 15,
+    "cc_surprise": 50,
+    "cc_social": 5,
+    "attacks": [
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "(2d6+5)/d6",
+        "speed": "SPD 4"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Type-Beast. Larger rats, hypothesized to be partially changed by magic, originally from the old Hobyt cities of Saligrak and now found in every large swamp and sewer system on the continent. Prefer wet ground and the underneath of things; commonly run with ordinary rats and as commonly serve wererats, who breed and direct them. Weak (avg ST 5) but fast, aggressive out of proportion to their size, and rarely check morale. Encountered in 10-40 in a sewer or swamp warren, more where something is feeding them. Cat-sized and heavier than they look. INT 2. Move 12'. Disease: 5% chance per bite that lands. Keen Nose: +15% to detect. Poison Resistant: +10%. Swarm: does not disperse when hurt and will not break off a feed."
+  },
+  {
+    "name": "Skeletal Legionaire",
+    "hp_formula": "1d4",
+    "avg_hp": 2.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 45,
+    "protection": 15,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": 40,
+    "cc_reflex": 30,
+    "cc_will": 20,
+    "cc_surprise": 11,
+    "cc_social": 5,
+    "attacks": [
+      {
+        "name": "weapon (by weapon, sometimes damaged)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6)/d6)",
+        "speed": "Speed 7"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "The weakest humanoid undead -- unaware and mindless, but with enough clever cunning to judge which opponents are more dangerous and avoid priests. Occurs naturally from a weak spirit inhabiting a skeletal body, or more often deliberately created as a servant. Weak (avg 10 ST), very slow. Named for the masses raised as war fodder. Retains no skills from its soul splinters. +10 Protection vs piercing weapons. Immune to sleep and charm. Normally wears armor. Not a caster (or cannot remember casting). Often flocks to the banner of Wights or powerful undead in a boneyard or old battle scene."
+  },
+  {
+    "name": "Skeletal Warrior",
+    "hp_formula": "1d4+3",
+    "avg_hp": 5.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 40,
+    "protection": 15,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": 60,
+    "cc_reflex": 35,
+    "cc_will": 30,
+    "cc_surprise": 70,
+    "cc_social": null,
+    "attacks": [
+      {
+        "name": "weapon (by weapon)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d4+5)/d8)+1",
+        "speed": "Speed 6"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "A weak humanoid undead -- unaware and mindless, and unlike the Skeletal Legionaire, cannot reason at all: obeys only the 12 words of command from its creator, or attacks anything on sight if naturally occurring. Occurs naturally from a weak spirit inhabiting a skeletal body, or more often deliberately created as a servant. Weak (avg 11 ST), very slow. Named for the masses raised as war fodder. Retains no skills from its soul splinters. +10 Protection vs piercing weapons. Immune to sleep and charm. Normally wears armor. Not a caster (or cannot remember casting). Often flocks to the banner of Wights or powerful undead in a boneyard or old battle scene."
+  },
+  {
+    "name": "Spectre",
+    "hp_formula": "42",
+    "avg_hp": 42,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 0,
+    "protection": 74,
+    "bmod": 0,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": null,
+    "cc_reflex": null,
+    "cc_will": null,
+    "cc_surprise": null,
+    "cc_social": null,
+    "attacks": [
+      {
+        "name": "morningstar",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+14)/d5)+3",
+        "speed": "Speed 8 (ready 8)"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [
+      "Undead perm damage"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "A rank-1 example spectre (no personal name given), wielding a morningstar. Ectoplasmic and undead like the Barastal Earth Spectre variant, but without the earth attunement or its elevated protection tiers. Protection scales: 74 vs magic+10, 84 vs magic, 94 special, 104 silver, 114 plain weapons. Bloodletter-style weapon causes permanent HP damage on a failed Will save (will+10 penalty). Fear effect with a Will save at 20'."
+  },
+  {
+    "name": "Stone Giant",
+    "hp_formula": "36+4d10",
+    "avg_hp": 58,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 36,
+    "protection": 95,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 12,
+    "cc_fortitude": null,
+    "cc_reflex": null,
+    "cc_will": null,
+    "cc_surprise": null,
+    "cc_social": null,
+    "attacks": [
+      {
+        "name": "weapon (by weapon)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((4d6+18)/D5)+5",
+        "speed": "SPD 8"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Also called Mountain Giant -- the least and most common of the true giants, often serving as troops/followers of greater giants. 12-14' tall, avg ST 20, modest INT (5-14), simple weapons, throws boulders. Outdoor skill 25%."
+  },
+  {
+    "name": "Trollfolk",
+    "hp_formula": "3d8+25",
+    "avg_hp": 38.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 30,
+    "protection": 49,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 13,
+    "cc_fortitude": 70,
+    "cc_reflex": 65,
+    "cc_will": 50,
+    "cc_surprise": null,
+    "cc_social": 9,
+    "attacks": [
+      {
+        "name": "Claw",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d12+18)/d6)+9",
+        "speed": "SPD 5"
+      }
+    ],
+    "bonus_abilities": [
+      "Darksight 25'+"
+    ],
+    "special_abilities": [
+      "Regeneration"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Tall (8-9'), thin, warted green Ogrillites with long noses and bristled hair, disorganized chaotic bullies who dislike sunlight and the outdoors (INT 5-8). Very hungry, rarely back down; work in packs of 7-18. A larger, roughly 10'-tall 'Greater Trollfolk' variant also exists as a separate Beastiary entry. Darksight 70'. Basic Outdoors 30%. +15% resistant to fire and air. Regenerates 3 HP every 12 segments. AV 30 / PR 49 per the wiki page."
+  },
+  {
+    "name": "True Ungol",
+    "hp_formula": "33+3d8",
+    "avg_hp": 46.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 30,
+    "protection": 36,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 18,
+    "cc_fortitude": 75,
+    "cc_reflex": 70,
+    "cc_will": 25,
+    "cc_surprise": 35,
+    "cc_social": 10,
+    "attacks": [
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d10+11)/d6)+4",
+        "speed": "SPD 6"
+      }
+    ],
+    "bonus_abilities": [
+      "Darksight 25'+",
+      "Web / minor impair move",
+      "Wallclimb / swim / flight"
+    ],
+    "special_abilities": [
+      "Poison"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "The apex of the common Ungol line, roughly 7' across the body and 5' tall at the leg -- poison- and web-heavy, capable of taking on an armored party alone. Solitary, lair territory a mile or more; actively hunts intruders rather than waiting in ambush. Has rudimentary reasoning and will flee if losing (unusual for an Ungol). Poison (heavy): Fort CC-20%, (4d6+11)/d6 damage if made, (5d6+21)/d6 if missed. Web: Reflex CC-20% to avoid entangle; will cocoon downed prey for later feeding. Darksight 30' (vibration/heat sense). Wall/ceiling climb 90%."
+  },
+  {
+    "name": "Vargoyle",
+    "hp_formula": "3+2d6",
+    "avg_hp": 10,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 15,
+    "protection": 20,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": null,
+    "cc_reflex": null,
+    "cc_will": null,
+    "cc_surprise": null,
+    "cc_social": null,
+    "attacks": [
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+7)/d6)+1, plus Poison: Fort CC-15% or ((3d4+1)/d4) + Bloodletting",
+        "speed": "Speed 3"
+      },
+      {
+        "name": "Tentacle",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d6+7)/d6)+1",
+        "speed": "Speed 4"
+      }
+    ],
+    "bonus_abilities": [
+      "Darksight 25'+",
+      "Wallclimb / swim / flight"
+    ],
+    "special_abilities": [
+      "Poison"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "A lesser creature of the House of Death, nasty, typically found in packs of 2-8 or as a servant of an undead being or necromancer. Attacks split 50/50 bite/tentacle rather than a stated Multi %. Initial Cry: on first encounter, all within 60' must Will CC-15% or flee for 3d10 segments. Move 30' flight/5' waddle. Darksight 80'. INT 5-8."
+  },
+  {
+    "name": "Vrock",
+    "hp_formula": "40+5d10",
+    "avg_hp": 67.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 25,
+    "protection": 90,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 18,
+    "cc_fortitude": 80,
+    "cc_reflex": 65,
+    "cc_will": 59,
+    "cc_surprise": 30,
+    "cc_social": 20,
+    "attacks": [
+      {
+        "name": "Claws",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+15)/D6)+8",
+        "speed": "SPD 4"
+      },
+      {
+        "name": "Spear",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d8+19)/D6)+9",
+        "speed": "SPD 8"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [
+      "Regeneration"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Angry, stupid, aggressive bipedal vulture-demons (Entropic Outsiders) that hunt in packs and often wield spears, denizens of the Eighth House who fear little. Capricious and greedy, 9' tall, black-skinned, covered in dark ooze. Claws Multi 18% (used above), Spear Multi 15%. Protection includes an effective +5% magic. Regenerates 1 HP per 5 segments. Magic Resistance 10% (25% vs Chaos effects). Spell effects calculated at level 9: Minor Fire Blast at will, Personal Minor Disruption 2/day, Static Field and Weapon Charge 2/day."
+  },
+  {
+    "name": "Wererat (Rat Form)",
+    "hp_formula": "3d8+6",
+    "avg_hp": 19.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 30,
+    "protection": 25,
+    "bmod": 0.9,
+    "avg_damage": 0,
+    "multi": 15,
+    "cc_fortitude": 50,
+    "cc_reflex": 65,
+    "cc_will": 40,
+    "cc_surprise": 60,
+    "cc_social": 25,
+    "attacks": [
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+6)/d6)+2",
+        "speed": "SPD 4"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Type-Were. Vernidale's Curse in its commonest form -- the only shape available to an animist below 6th level, so there are more wererats in the world than every other were combined. A rat the size of a large dog (a huge Saligrak, deliberately indistinguishable from one at a glance): the shape for listening at a grate and being somewhere nobody will later believe anyone could have been. INT as the person. Move 14'. Magic resistance 10% in every form. Beast-Spirit Hide (protection scales with weapon quality): 25 against magicked weapons or better, 35 against masterwork metal, 45 against silver, 55 against normal weapons -- listed protection above uses the magicked-or-better value. The Person Within: retains the cursed one's INT/WI/languages/memory/judgement; cannot speak. Rat-Kin: Saligrak rats obey without a roll, ordinary rats follow, neither will ever attack a wererat. Weres' Speech: can make itself understood to any other were. Squeeze: passes any gap a true rat its size could, and knows where they all are. Disease: 5% chance per bite that lands. A wererat with no master and decades of practice keeps a house, a trade, and a guild seat -- unlike a werewolf it takes a street, not a territory, and works it for thirty years without the street knowing."
+  },
+  {
+    "name": "Wererat (Were Form)",
+    "hp_formula": "4d8+8",
+    "avg_hp": 26,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 22,
+    "protection": 25,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 20,
+    "cc_fortitude": 55,
+    "cc_reflex": 55,
+    "cc_will": 40,
+    "cc_surprise": 55,
+    "cc_social": 35,
+    "attacks": [
+      {
+        "name": "Claw",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((1d6+5)/d6)+2",
+        "speed": "SPD 4"
+      },
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+7)/d6)+3",
+        "speed": "SPD 5"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Type-Were. Five and a half feet of hunched, wrong-shouldered thing with hands and a long face, wearing whatever it was wearing before. INT as the person. Move 12'. Magic resistance 10%. Beast-Spirit Hide as the Rat Form: 25 against magicked weapons or better, 35 masterwork, 45 silver, 55 normal (listed protection above uses the magicked-or-better value). Armed: unlike most weres this one prefers steel, and a wererat of any standing owns good steel -- if the curse was laid on a guilded fighter, it fights with that person's own weapon skills entire, in addition to (or instead of) the Claw/Bite above; no fixed numbers are given for this on the wiki page, so it isn't represented as a stat line here. The Curse Carries: anyone who loses half or more of their hit points to a wererat's bite in a single fight must make a Fort-10 check or take the curse themselves within the Goesi. Rat-Kin, Weres' Speech, Disease as the Rat Form. The Person Within: as the Rat Form, and here it can talk, bargain, and lie."
+  },
+  {
+    "name": "Werewolf (Wolf Form)",
+    "hp_formula": "4d8+12",
+    "avg_hp": 30,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 20,
+    "protection": 30,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 15,
+    "cc_fortitude": 60,
+    "cc_reflex": 60,
+    "cc_will": 35,
+    "cc_surprise": 60,
+    "cc_social": 25,
+    "attacks": [
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+7)/d6)+4",
+        "speed": "SPD 5"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Type-Were. Vernidale's Curse -- a person infused with the spirit of a wolf, by the Animist spell Vernidale's Servant (sourced to the Serpent Queen, cost 175, needs a 6th-level caster) or by descent from someone who was. A wolf half again the size of any real one, wrong to the eye in ways nobody can name until too late; real wolves won't approach one. 6-7' nose to tail, 200-260 lbs, usually in a pack of 3-8 (may be all cursed, or cursed leading cowed ordinary wolves). INT as the person -- fully self-aware in every shape, remembers afterward. Move 26'. Magic resistance 10% in every form, human shape included. Beast-Spirit Hide (protection scales with weapon quality): 30 against magicked weapons or better, 40 masterwork, 50 silver, 60 normal -- listed protection above uses the magicked-or-better value; this is why werewolf hunts are expensive and why the priest is sent for before the militia. The Person Within: retains INT/WI/languages/memory/judgement; cannot speak, but can be reasoned with by anyone who works out that reasoning is possible. Keen Scent: can't be surprised by anything upwind within 120', tracks by scent as a trained hound. Weres' Speech: understood by any other were, of any beast, at any time -- how packs form across the curse. Beasts Know: ordinary wolves/dogs/horses won't willingly come within 30'; village dogs go silent rather than barking. Compelled into this shape during the two full phases of the Goesi; taken at will otherwise."
+  },
+  {
+    "name": "Werewolf (Were Form)",
+    "hp_formula": "5d8+15",
+    "avg_hp": 37.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 20,
+    "protection": 30,
+    "bmod": 1.2,
+    "avg_damage": 0,
+    "multi": 20,
+    "cc_fortitude": 65,
+    "cc_reflex": 55,
+    "cc_will": 35,
+    "cc_surprise": 55,
+    "cc_social": 30,
+    "attacks": [
+      {
+        "name": "Claw",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+6)/d6)+3",
+        "speed": "SPD 4"
+      },
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+8)/d6)+4",
+        "speed": "SPD 6"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Type-Were. The shape between, taken when the wolf won't serve and the man won't either -- 7' standing, thick through the chest and shoulders, hands that still work; opens doors, carries off what it's killed, puts on a cloak. 350-450 lbs. INT as the person. Move 24'. Magic resistance 10% in every form, human shape included. Beast-Spirit Hide as the Wolf Form: 30 against magicked weapons or better, 40 masterwork, 50 silver, 60 normal (listed protection above uses the magicked-or-better value). The Curse Carries: anyone who loses half or more of their hit points to a werewolf's bite in a single fight must make a Fort-10 check or take the curse themselves within the Goesi -- these are the ones with no caster holding the leash. Hands: can use weapons, open latches, carry and wear; passes at a distance at night in a cloak. Rend: where two claws land on the same target in one segment, the second is rolled on a d4 divider instead of d6. The Person Within, Weres' Speech, Keen Scent, Beasts Know as the Wolf Form. A werewolf met in human shape is simply a person with whatever skills/guild/level/gear that person has -- stat the human first and let the beast forms be what they put on."
+  },
+  {
+    "name": "White Dragon",
+    "hp_formula": "22+2d10 per Age Category",
+    "avg_hp": 33,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 50,
+    "protection": 90,
+    "bmod": 1.05,
+    "avg_damage": 0,
+    "multi": 16,
+    "cc_fortitude": 60,
+    "cc_reflex": 55,
+    "cc_will": 40,
+    "cc_surprise": 70,
+    "cc_social": 15,
+    "attacks": [
+      {
+        "name": "Claw",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d6+16)/D5)+(age cat x2)",
+        "speed": "SPD 9"
+      },
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((4d10+22)/d4)+(age cat x2)",
+        "speed": "SPD 16"
+      },
+      {
+        "name": "Breath Weapon (Cone of Killing Cold)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "Hit: (3d8+10)/d6 + (age cat x2); Miss: half damage",
+        "speed": ""
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [
+      "Hard to kill",
+      "Minor Breath Weapon"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "The least of the true Sauroid dragon-lines -- smallest, least cunning, shortest-lived, but still fearsome. Sullen and territorial rather than venal, lower INT (8-12), imbued with a connection to the Endless Ocean (House of Water), giving strong Hydromancy and cold magic despite unremarkable general spellcasting. Scales run chalky ivory in youth to frost-white in age. All stats scale by Age Category -- figures above are the per-category base; protection gains +2-6 more per category. Bite Multi 8% (separate from the 16% Claw Multi used above). Basic Detect 25%. Detect Magic 30%. Hard/Harder to Kill 1/day each. Immunity to Cold 3/day. Fear at 4th level + age category. Breath Weapon (Cone of Killing Cold) 3/day: ices/slicks surfaces for 2-12 segments after, Reflex CC-15 or fall prone moving through it, Fort CC-30. Breath avg damage is ~9.6 (dice) + 2/Age Category flat -- Minor at Age Category 1-5 (under 20 avg), crosses into Major (20+ avg) at Age Category 6 and up; re-tag to Major/exceptional for an aged specimen if the GM sets its Age Category that high."
+  },
+  {
+    "name": "Wight",
+    "hp_formula": "21-32 + d4/plev",
+    "avg_hp": 26.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 25,
+    "protection": 40,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 7,
+    "cc_fortitude": 70,
+    "cc_reflex": 50,
+    "cc_will": 60,
+    "cc_surprise": null,
+    "cc_social": 10,
+    "attacks": [
+      {
+        "name": "Attack (normal damage)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+10)/d6)+3",
+        "speed": "SPD 5"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [
+      "Undead perm damage"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [],
+    "notes": "Cunning undead -- a spirit from a grave imprisoned in the ancient body, aware of its condition and hating life; can reason well enough to avoid priests and pick dangerous targets first. Strong (avg 15 ST), not slow. Retains armor/shield use. Usually spawned from a grave and spirit; can be charmed or commanded by necromancers and greater undead. +10 Protection vs piercing weapons. Requires magic, silver, or masterwork weapons to hit, or Protection effectively +10 higher. Immune to sleep and charm. Not a caster. Lesser undead often flock to a Wight's banner in a boneyard or old battle scene. Fort save -15 vs its permanent HP loss ability."
+  },
+  {
+    "name": "Wolf",
+    "hp_formula": "d8+4",
+    "avg_hp": 8.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 10,
+    "protection": 15,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 15,
+    "cc_fortitude": 45,
+    "cc_reflex": 55,
+    "cc_will": 25,
+    "cc_surprise": 55,
+    "cc_social": 30,
+    "attacks": [
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d4+3)/d6)+0",
+        "speed": "Speed 5"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Wild pack hunters found across nearly every biome in Celtricia, wary of anything larger than themselves and unwilling to press a losing fight -- but a hungry pack that isolates a weaker target is patient, coordinated, merciless. Packs of 5-12; lone wolves are exiles or scouts who avoid fights when possible. Dark-furred, 50-70 lbs. Pack Tactics: +10% to hit when 2+ wolves attack the same target, focuses the weakest/most isolated one. Keen Scent: cannot be surprised by anything approaching from upwind within 60'. Move 24', INT 2 (Animal)."
+  },
+  {
+    "name": "Wraith",
+    "hp_formula": "24-36 + 1-4/plev",
+    "avg_hp": 30,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 25,
+    "protection": 40,
+    "bmod": 1,
+    "avg_damage": 0,
+    "multi": 0,
+    "cc_fortitude": 70,
+    "cc_reflex": 50,
+    "cc_will": 65,
+    "cc_surprise": null,
+    "cc_social": 10,
+    "attacks": [
+      {
+        "name": "scimitar, bloodletter",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((1d8+1d6+11)/d6+3)",
+        "speed": "Speed 5 (ready 5)"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [
+      "Undead perm damage"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": true,
+    "possible_classes": [],
+    "notes": "Cunning undead similar to Wights but less corporeal -- a spirit from a grave imprisoned in its ancient body, aware and hating life, cunning enough to prioritize dangerous foes and avoid priests. Strong (avg 15 ST), retains armor/shield use. Unlike Wights, not created by necromancy spells, but can be charmed or commanded by necromancers and greater undead; lesser undead flock to its banner too. +10 Protection vs piercing weapons. Requires magic weapon to hit. Immune to sleep and charm. Not a caster. Permanently drains HP on a failed Fort save -25 unless magically returned. The wiki page also embeds a specific rank-1 unnamed Wraith example NPC below the general description (HP 30, AV20/PRO 52, scaling to 62 vs silver/72 vs plain) whose bloodletter scimitar stats are reflected in the attack above."
+  },
+  {
+    "name": "Wyvern",
+    "hp_formula": "7d10+28",
+    "avg_hp": 66.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 65,
+    "protection": 55,
+    "bmod": 1.05,
+    "avg_damage": 0,
+    "multi": 20,
+    "cc_fortitude": 60,
+    "cc_reflex": 40,
+    "cc_will": 15,
+    "cc_surprise": 30,
+    "cc_social": 10,
+    "attacks": [
+      {
+        "name": "Sting (Poison)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+9)/d6)+3",
+        "speed": "Speed 5"
+      },
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d10+12)/d6)+4",
+        "speed": "Speed 6"
+      },
+      {
+        "name": "Talons (x2)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d8+11)/d6)+3 each",
+        "speed": "Speed 4"
+      }
+    ],
+    "bonus_abilities": [
+      "Wallclimb / swim / flight"
+    ],
+    "special_abilities": [
+      "Poison"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "A semi-intelligent, diminished cousin of true Sauroid dragons -- the line has bred true since arising and is far more fertile than true dragons, making them common in mountain country. Sauroids bear them little ill will, often keeping them as pets, hunting beasts, or half-tamed guardians. Aggressive to nearly everything, driven by hunger rather than cunning: brute weight, a plate-shearing bite, sword-length talons, and a venomous barbed tail rather than any elemental breath. Multi split 30% sting/30% bite/20% talon/20% talon. Aerial Charge reduces the damage dividing die by 1 on a connecting sting/bite. Improved Grab: both talons connecting lets it grapple as a free action; a held target is auto-struck by the sting next round; a talon crit has a 50% chance of counting as both talons connecting. Poison Sting: Fort CC-15% or (2d6/d6) immediately and again next round (a successful CC halves both). Move 12'/Fly 45'. INT 3-5. Body 20-50' nose to tail; usually alone, a mated pair, or a flight of 3-6."
+  },
+  {
+    "name": "Zombie",
+    "hp_formula": "7+d8",
+    "avg_hp": 11.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 55,
+    "protection": 30,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 6,
+    "cc_fortitude": 60,
+    "cc_reflex": 25,
+    "cc_will": 30,
+    "cc_surprise": null,
+    "cc_social": 0,
+    "attacks": [
+      {
+        "name": "powerful fists",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+5)/d6)+4",
+        "speed": "SPD 8"
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Corporeal undead humanoids in various states of decay -- strong but slow, chaotic and aggressive but clumsy, famously foul-smelling. Created deliberately by necromancers or arise in the wild when a person dies unshriven. Assumed to wear raggedy clothing but feels no pain. Immune to sleep/charm/most mentalist effects."
+  }
+]

@@ -1,0 +1,209 @@
+[
+  {
+    "name": "Chicken Skin Armor",
+    "classification": "Garment, Leather",
+    "weight": 175,
+    "cost": 3,
+    "commonality": 50,
+    "av": 15,
+    "pr": 7
+  },
+  {
+    "name": "Basic Silk",
+    "classification": "Garment, fabric",
+    "weight": 125,
+    "cost": 40,
+    "commonality": 95,
+    "av": 5,
+    "pr": 5
+  },
+  {
+    "name": "Quilted Silk",
+    "classification": "Garment, fabric",
+    "weight": 190,
+    "cost": 40,
+    "commonality": 92,
+    "av": 8,
+    "pr": 7
+  },
+  {
+    "name": "Padded Silk",
+    "classification": "Garment, fabric",
+    "weight": 170,
+    "cost": 50,
+    "commonality": 90,
+    "av": 10,
+    "pr": 10
+  },
+  {
+    "name": "Sft Leather Armor",
+    "classification": "Garment, Leather",
+    "weight": 160,
+    "cost": 80,
+    "commonality": 95,
+    "av": 12,
+    "pr": 13
+  },
+  {
+    "name": "Hardened Leather",
+    "classification": "Segmented, unbacked",
+    "weight": 200,
+    "cost": 100,
+    "commonality": 90,
+    "av": 17,
+    "pr": 16
+  },
+  {
+    "name": "Studded Hardened Leather",
+    "classification": "Segmented, unbacked",
+    "weight": 210,
+    "cost": 140,
+    "commonality": 88,
+    "av": 20,
+    "pr": 18
+  },
+  {
+    "name": "Ringed Leather",
+    "classification": "Segmented, backed",
+    "weight": 230,
+    "cost": 165,
+    "commonality": 80,
+    "av": 23,
+    "pr": 19
+  },
+  {
+    "name": "Chain Leather",
+    "classification": "Segmented, backed",
+    "weight": 230,
+    "cost": 190,
+    "commonality": 75,
+    "av": 22,
+    "pr": 19
+  },
+  {
+    "name": "Ring Mail",
+    "classification": "Maille",
+    "weight": 270,
+    "cost": 260,
+    "commonality": 86,
+    "av": 32,
+    "pr": 20
+  },
+  {
+    "name": "Scale Mail",
+    "classification": "Maille",
+    "weight": 250,
+    "cost": 270,
+    "commonality": 86,
+    "av": 32,
+    "pr": 21
+  },
+  {
+    "name": "Chain Mail",
+    "classification": "Maille",
+    "weight": 240,
+    "cost": 450,
+    "commonality": 81,
+    "av": 35,
+    "pr": 22
+  },
+  {
+    "name": "Splinted Mail",
+    "classification": "Maille",
+    "weight": 265,
+    "cost": 550,
+    "commonality": 80,
+    "av": 38,
+    "pr": 24
+  },
+  {
+    "name": "Banded Mail",
+    "classification": "Maille",
+    "weight": 275,
+    "cost": 570,
+    "commonality": 77,
+    "av": 40,
+    "pr": 25
+  },
+  {
+    "name": "Plated Mail",
+    "classification": "Maille",
+    "weight": 320,
+    "cost": 650,
+    "commonality": 70,
+    "av": 43,
+    "pr": 27
+  },
+  {
+    "name": "Ring Armor",
+    "classification": "Segmented, backed",
+    "weight": 310,
+    "cost": 970,
+    "commonality": 75,
+    "av": 46,
+    "pr": 29
+  },
+  {
+    "name": "Scale Armor",
+    "classification": "Segmented, backed",
+    "weight": 300,
+    "cost": 1050,
+    "commonality": 72,
+    "av": 51,
+    "pr": 33
+  },
+  {
+    "name": "Chain Armor",
+    "classification": "Segmented, backed",
+    "weight": 280,
+    "cost": 1480,
+    "commonality": 68,
+    "av": 50,
+    "pr": 35
+  },
+  {
+    "name": "Splint Armor",
+    "classification": "Segmented, backed",
+    "weight": 380,
+    "cost": 1650,
+    "commonality": 65,
+    "av": 52,
+    "pr": 39
+  },
+  {
+    "name": "Lorica segmentata",
+    "classification": "Segmented, backed",
+    "weight": 300,
+    "cost": 1800,
+    "commonality": 60,
+    "av": 54,
+    "pr": 41
+  },
+  {
+    "name": "Lammellar",
+    "classification": "Segmented, unbacked",
+    "weight": 470,
+    "cost": 2400,
+    "commonality": 55,
+    "av": 56,
+    "pr": 44
+  },
+  {
+    "name": "Plate Armor",
+    "classification": "Plate",
+    "weight": 505,
+    "cost": 3100,
+    "commonality": 59,
+    "av": 58,
+    "pr": 46
+  },
+  {
+    "name": "Field Plate",
+    "classification": "Plate",
+    "weight": 475,
+    "cost": 4200,
+    "commonality": 40,
+    "av": 60,
+    "pr": 50
+  }
+]

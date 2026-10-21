@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Strips",
+    "metal": "Copper",
+    "weight": 1,
+    "worthInHorn": 0.005
+  },
+  {
+    "name": "Children",
+    "metal": "Silver",
+    "weight": 1,
+    "worthInHorn": 0.05
+  },
+  {
+    "name": "Goodwives",
+    "metal": "Electrum",
+    "weight": 1,
+    "worthInHorn": 0.5
+  },
+  {
+    "name": "Horn",
+    "metal": "Gold",
+    "weight": 1,
+    "worthInHorn": 1
+  },
+  {
+    "name": "Unicorns",
+    "metal": "Platinum",
+    "weight": 1,
+    "worthInHorn": 5
+  }
+]

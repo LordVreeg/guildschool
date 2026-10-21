@@ -1,0 +1,80 @@
+[
+  {
+    "name": "Bolt, Crossbow",
+    "cost": 1,
+    "weight": 1,
+    "size": 14,
+    "range_mod": 0,
+    "damage_dice": "1d10",
+    "dividing_die": 6,
+    "real_min": 0.17,
+    "max_dam": 10,
+    "av_dam": 5.08,
+    "compatible_with": "Crossbow"
+  },
+  {
+    "name": "Blunt Tip Arrow (.3 real dam)",
+    "cost": 2,
+    "weight": 5,
+    "size": 24,
+    "range_mod": -10,
+    "damage_dice": "1d10",
+    "dividing_die": 6,
+    "real_min": 0.17,
+    "max_dam": 10,
+    "av_dam": 5.08,
+    "compatible_with": "Bows"
+  },
+  {
+    "name": "Normal Arrow",
+    "cost": 0.5,
+    "weight": 2,
+    "size": 26,
+    "range_mod": 0,
+    "damage_dice": "2d6",
+    "dividing_die": 6,
+    "real_min": 0.33,
+    "max_dam": 12,
+    "av_dam": 6.17,
+    "compatible_with": "Bows"
+  },
+  {
+    "name": "Hollow vein arrow",
+    "cost": 10,
+    "weight": 4,
+    "size": 24,
+    "range_mod": 0,
+    "damage_dice": "2d6",
+    "dividing_die": 6,
+    "real_min": 0.33,
+    "max_dam": 12,
+    "av_dam": 6.17,
+    "compatible_with": "Bows"
+  },
+  {
+    "name": "Hunting Arrow",
+    "cost": 1.5,
+    "weight": 3,
+    "size": 36,
+    "range_mod": 20,
+    "damage_dice": "2d6+1",
+    "dividing_die": 6,
+    "real_min": 0.5,
+    "max_dam": 13,
+    "av_dam": 6.75,
+    "compatible_with": "Bows"
+  },
+  {
+    "name": "Heavy Head serrated Arrow",
+    "cost": 16,
+    "weight": 4,
+    "size": 30,
+    "range_mod": -15,
+    "damage_dice": "4d4",
+    "dividing_die": 6,
+    "real_min": 0.67,
+    "max_dam": 16,
+    "av_dam": 8.33,
+    "compatible_with": "Bows"
+  }
+]

@@ -1,0 +1,766 @@
+[
+  {
+    "min": -9999,
+    "max": 0,
+    "raw": "Item: Dead animal (rats are nice)",
+    "type": "item"
+  },
+  {
+    "min": 1,
+    "max": 1,
+    "raw": "Item: Family net or compass",
+    "type": "item"
+  },
+  {
+    "min": 2,
+    "max": 2,
+    "raw": "Item- leather scrollcase",
+    "type": "item"
+  },
+  {
+    "min": 3,
+    "max": 3,
+    "raw": "Item- 6 wax candles",
+    "type": "item"
+  },
+  {
+    "min": 4,
+    "max": 4,
+    "raw": "Item-juggling balls",
+    "type": "item"
+  },
+  {
+    "min": 5,
+    "max": 5,
+    "raw": "Item-Tinder box w/ flint and steel",
+    "type": "item"
+  },
+  {
+    "min": 6,
+    "max": 6,
+    "raw": "Item-Blessed Food",
+    "type": "item"
+  },
+  {
+    "min": 7,
+    "max": 7,
+    "raw": "Item-Ginger or pepper, 6 we",
+    "type": "item"
+  },
+  {
+    "min": 8,
+    "max": 8,
+    "raw": "Item-tobacco or salt",
+    "type": "item"
+  },
+  {
+    "min": 9,
+    "max": 9,
+    "raw": "skill-Basic sail +100exp",
+    "type": "skill",
+    "skillName": null,
+    "xp": 100
+  },
+  {
+    "min": 10,
+    "max": 10,
+    "raw": "Skill-Basic Stonework +100 exp",
+    "type": "skill",
+    "skillName": null,
+    "xp": 100
+  },
+  {
+    "min": 11,
+    "max": 12,
+    "raw": "Skill-Basic Hand +100 exp",
+    "type": "skill",
+    "skillName": "Basic Hand skills",
+    "xp": 100,
+    "orChoice": null
+  },
+  {
+    "min": 13,
+    "max": 13,
+    "raw": "Skill-Basic Agriculture +100 exp",
+    "type": "skill",
+    "skillName": "Basic Agriculture",
+    "xp": 100
+  },
+  {
+    "min": 14,
+    "max": 15,
+    "raw": "Skill-Basic cooking +100 exp",
+    "type": "skill",
+    "skillName": "Basic Cooking",
+    "xp": 100
+  },
+  {
+    "min": 16,
+    "max": 16,
+    "raw": "Skill-Basic Dagger +100 exp",
+    "type": "skill",
+    "skillName": "Basic Dagger",
+    "xp": 100
+  },
+  {
+    "min": 17,
+    "max": 17,
+    "raw": "Item-Bedroll Items",
+    "type": "item"
+  },
+  {
+    "min": 18,
+    "max": 18,
+    "raw": "Item-Charring Incense",
+    "type": "item"
+  },
+  {
+    "min": 19,
+    "max": 20,
+    "raw": "Item-40' hemp rope",
+    "type": "item"
+  },
+  {
+    "min": 21,
+    "max": 21,
+    "raw": "Item-3 Torches with cloth ends",
+    "type": "item"
+  },
+  {
+    "min": 22,
+    "max": 22,
+    "raw": "Item-2 oil flasks",
+    "type": "item"
+  },
+  {
+    "min": 23,
+    "max": 23,
+    "raw": "Item-book on local history or Roll on Books chart",
+    "type": "item"
+  },
+  {
+    "min": 24,
+    "max": 25,
+    "raw": "Skill-Basic Defense +100 exp",
+    "type": "skill",
+    "skillName": "Basic Defense",
+    "xp": 100
+  },
+  {
+    "min": 24,
+    "max": 24,
+    "raw": "Skill-Basic Axe +100 exp",
+    "type": "skill",
+    "skillName": "Basic Axe",
+    "xp": 100
+  },
+  {
+    "min": 25,
+    "max": 25,
+    "raw": "Skill, Basic hand +100 exp",
+    "type": "skill",
+    "skillName": "Basic Hand skills",
+    "xp": 100,
+    "orChoice": null
+  },
+  {
+    "min": 26,
+    "max": 27,
+    "raw": "Skill-Basic Customs +150 exp",
+    "type": "skill",
+    "skillName": "Basic Customs",
+    "xp": 150
+  },
+  {
+    "min": 28,
+    "max": 28,
+    "raw": "Skill-Basic Shipwright +100 exp",
+    "type": "skill",
+    "skillName": "Basic Shipwright",
+    "xp": 100
+  },
+  {
+    "min": 29,
+    "max": 29,
+    "raw": "Skill-Basic Forester +100 exp",
+    "type": "skill",
+    "skillName": "Basic Forester",
+    "xp": 100
+  },
+  {
+    "min": 30,
+    "max": 31,
+    "raw": "Item-Bank Dagger",
+    "type": "item"
+  },
+  {
+    "min": 32,
+    "max": 32,
+    "raw": "Item-average quality long cloak",
+    "type": "item"
+  },
+  {
+    "min": 33,
+    "max": 33,
+    "raw": "Item-leather purse",
+    "type": "item"
+  },
+  {
+    "min": 34,
+    "max": 34,
+    "raw": "Item-leather low boots, average quality",
+    "type": "item"
+  },
+  {
+    "min": 35,
+    "max": 35,
+    "raw": "Item-wool hat, average quality",
+    "type": "item"
+  },
+  {
+    "min": 36,
+    "max": 36,
+    "raw": "Item-Basic silk armor",
+    "type": "item"
+  },
+  {
+    "min": 37,
+    "max": 37,
+    "raw": "Skill-Basic Defense +100 exp",
+    "type": "skill",
+    "skillName": "Basic Defense",
+    "xp": 100
+  },
+  {
+    "min": 38,
+    "max": 38,
+    "raw": "Skill-basic domestic +100 exp",
+    "type": "skill",
+    "skillName": "Basic Domestic",
+    "xp": 100
+  },
+  {
+    "min": 39,
+    "max": 39,
+    "raw": "Skill, ascend +100 exp",
+    "type": "skill",
+    "skillName": "Ascend",
+    "xp": 100
+  },
+  {
+    "min": 40,
+    "max": 41,
+    "raw": "Skill-Basic Sneak+125 exp",
+    "type": "skill",
+    "skillName": "Basic Sneak",
+    "xp": 125
+  },
+  {
+    "min": 42,
+    "max": 43,
+    "raw": "Skill Basic Spear+100 exp",
+    "type": "skill",
+    "skillName": "Basic Spears",
+    "xp": 100,
+    "orChoice": null
+  },
+  {
+    "min": 44,
+    "max": 44,
+    "raw": "Skill Basic Trap +100 exp",
+    "type": "skill",
+    "skillName": "Basic Trap",
+    "xp": 100
+  },
+  {
+    "min": 45,
+    "max": 46,
+    "raw": "Skill Basic Outdoors +100 exp",
+    "type": "skill",
+    "skillName": "Basic Outdoor",
+    "xp": 100,
+    "orChoice": null
+  },
+  {
+    "min": 47,
+    "max": 47,
+    "raw": "Item-Clay (5 lbs)",
+    "type": "item"
+  },
+  {
+    "min": 48,
+    "max": 48,
+    "raw": "Item-Standard Instrument (under 50 horn)",
+    "type": "item"
+  },
+  {
+    "min": 49,
+    "max": 49,
+    "raw": "Item-Wooden Holy Symbol or roll on religious items",
+    "type": "item"
+  },
+  {
+    "min": 50,
+    "max": 50,
+    "raw": "Item-Nice ceramic pipe",
+    "type": "item"
+  },
+  {
+    "min": 51,
+    "max": 51,
+    "raw": "Item-20 small caltrops",
+    "type": "item"
+  },
+  {
+    "min": 52,
+    "max": 52,
+    "raw": "Item-Nice vest (optional rogues vest)",
+    "type": "item"
+  },
+  {
+    "min": 53,
+    "max": 53,
+    "raw": "Item-Thief's Pick and Tools",
+    "type": "item"
+  },
+  {
+    "min": 54,
+    "max": 55,
+    "raw": "Item Backpack, leather waterproof",
+    "type": "item"
+  },
+  {
+    "min": 56,
+    "max": 56,
+    "raw": "Item-Common Spear or Q staff",
+    "type": "item"
+  },
+  {
+    "min": 57,
+    "max": 57,
+    "raw": "Item Chain Leather Helm",
+    "type": "item"
+  },
+  {
+    "min": 58,
+    "max": 58,
+    "raw": "Skill-Basic Actor +100 exp",
+    "type": "skill",
+    "skillName": "Basic Actor",
+    "xp": 100
+  },
+  {
+    "min": 59,
+    "max": 59,
+    "raw": "Item-fine ivory dice",
+    "type": "item"
+  },
+  {
+    "min": 60,
+    "max": 60,
+    "raw": "Item-Gladius",
+    "type": "item"
+  },
+  {
+    "min": 61,
+    "max": 61,
+    "raw": "Item-Lg growler bottle of Hopitup",
+    "type": "item"
+  },
+  {
+    "min": 62,
+    "max": 62,
+    "raw": "Skill-basic Engraver +100 exp",
+    "type": "skill",
+    "skillName": "Basic Engraving",
+    "xp": 100,
+    "orChoice": null
+  },
+  {
+    "min": 63,
+    "max": 63,
+    "raw": "Skill-basic artist +150 exp",
+    "type": "skill",
+    "skillName": "Basic Artist",
+    "xp": 150
+  },
+  {
+    "min": 64,
+    "max": 65,
+    "raw": "Skill-Basic Athlete +100 EXP",
+    "type": "skill",
+    "skillName": "Basic Athlete",
+    "xp": 100
+  },
+  {
+    "min": 66,
+    "max": 66,
+    "raw": "Skill Basic Detect +100 exp",
+    "type": "skill",
+    "skillName": "Basic Detect",
+    "xp": 100
+  },
+  {
+    "min": 67,
+    "max": 67,
+    "raw": "Skill-Basic Song +100 exp",
+    "type": "skill",
+    "skillName": "Basic Song",
+    "xp": 100
+  },
+  {
+    "min": 68,
+    "max": 68,
+    "raw": "Skill -Surprise+100 exp",
+    "type": "skill",
+    "skillName": "Surprise",
+    "xp": 100
+  },
+  {
+    "min": 69,
+    "max": 69,
+    "raw": "Item--Toolkit-leather workers",
+    "type": "item"
+  },
+  {
+    "min": 70,
+    "max": 70,
+    "raw": "Item--Donkey",
+    "type": "item"
+  },
+  {
+    "min": 71,
+    "max": 71,
+    "raw": "Item-dog",
+    "type": "item"
+  },
+  {
+    "min": 72,
+    "max": 72,
+    "raw": "Item-Target Shield",
+    "type": "item"
+  },
+  {
+    "min": 73,
+    "max": 73,
+    "raw": "Item-Small dome tent",
+    "type": "item"
+  },
+  {
+    "min": 74,
+    "max": 75,
+    "raw": "Skill-Hitpoints +150 exp",
+    "type": "skill",
+    "skillName": "Hit Points",
+    "xp": 150,
+    "orChoice": null
+  },
+  {
+    "min": 76,
+    "max": 76,
+    "raw": "Item-3 inkpens",
+    "type": "item"
+  },
+  {
+    "min": 77,
+    "max": 77,
+    "raw": "Skill-Basic First aid +100 exp",
+    "type": "skill",
+    "skillName": "Basic First Aid",
+    "xp": 100
+  },
+  {
+    "min": 78,
+    "max": 78,
+    "raw": "Item-heavy robe, average quality, with hood",
+    "type": "item"
+  },
+  {
+    "min": 79,
+    "max": 79,
+    "raw": "Item--Explorer's staff, shod",
+    "type": "item"
+  },
+  {
+    "min": 80,
+    "max": 80,
+    "raw": "Item-Bullseye Lantern",
+    "type": "item"
+  },
+  {
+    "min": 81,
+    "max": 82,
+    "raw": "Item-Studded leather cuirass and Full Lowe",
+    "type": "item"
+  },
+  {
+    "min": 83,
+    "max": 83,
+    "raw": "Item-Tracking kit Basic",
+    "type": "item"
+  },
+  {
+    "min": 84,
+    "max": 95,
+    "raw": "Skill-Basic Outdoors +125 exp",
+    "type": "skill",
+    "skillName": "Basic Outdoor",
+    "xp": 125,
+    "orChoice": null
+  },
+  {
+    "min": 86,
+    "max": 86,
+    "raw": "Item-Silk Rope 50'",
+    "type": "item"
+  },
+  {
+    "min": 87,
+    "max": 87,
+    "raw": "Skill-Basic Priest +100 exp",
+    "type": "skill",
+    "skillName": "Basic Priest",
+    "xp": 100
+  },
+  {
+    "min": 88,
+    "max": 88,
+    "raw": "Skill-Basic defense +100 exp",
+    "type": "skill",
+    "skillName": "Basic Defense",
+    "xp": 100
+  },
+  {
+    "min": 89,
+    "max": 89,
+    "raw": "Skill-Basic straight sword or cured sword+100 exp",
+    "type": "skill",
+    "skillName": "Basic Straight Swords",
+    "xp": 100,
+    "orChoice": "Player choice: Basic Straight Swords OR Basic Curved Swords (defaulted to Straight)"
+  },
+  {
+    "min": 90,
+    "max": 90,
+    "raw": "Skill--Westic lang +150 exp",
+    "type": "skill",
+    "skillName": "Westic (northern common)",
+    "xp": 150,
+    "orChoice": null
+  },
+  {
+    "min": 91,
+    "max": 92,
+    "raw": "Skill-read/write +100 exp",
+    "type": "skill",
+    "skillName": "Read/write",
+    "xp": 100
+  },
+  {
+    "min": 93,
+    "max": 93,
+    "raw": "Skill-Basic Priest +150 exp",
+    "type": "skill",
+    "skillName": "Basic Priest",
+    "xp": 150
+  },
+  {
+    "min": 94,
+    "max": 94,
+    "raw": "Skill-Penmanship +100 exp",
+    "type": "skill",
+    "skillName": "Penmanship",
+    "xp": 100
+  },
+  {
+    "min": 95,
+    "max": 96,
+    "raw": "Skill-Basic Horsemen+100 exp",
+    "type": "skill",
+    "skillName": "Basic Horseman",
+    "xp": 100,
+    "orChoice": null
+  },
+  {
+    "min": 97,
+    "max": 97,
+    "raw": "Skill-Basic Appraisal+100 exp",
+    "type": "skill",
+    "skillName": "Basic Appraisal",
+    "xp": 100
+  },
+  {
+    "min": 98,
+    "max": 98,
+    "raw": "Skill-Basic Chemistry +100 exp",
+    "type": "skill",
+    "skillName": "Basic Chemistry",
+    "xp": 100
+  },
+  {
+    "min": 99,
+    "max": 99,
+    "raw": "Skill-Basic Law +100 exp",
+    "type": "skill",
+    "skillName": "Basic Law",
+    "xp": 100
+  },
+  {
+    "min": 100,
+    "max": 101,
+    "raw": "Skill-Bow or pole arms +100 exp",
+    "type": "skill",
+    "skillName": "Basic Bows",
+    "xp": 100,
+    "orChoice": "Player choice: Basic Bows OR Basic Pole Weapons (defaulted to Bows)"
+  },
+  {
+    "min": 102,
+    "max": 102,
+    "raw": "Skill-Basic dance+100 exp",
+    "type": "skill",
+    "skillName": "Basic Dance",
+    "xp": 100
+  },
+  {
+    "min": 103,
+    "max": 103,
+    "raw": "Skill-Basic Detect +100 exp",
+    "type": "skill",
+    "skillName": "Basic Detect",
+    "xp": 100
+  },
+  {
+    "min": 104,
+    "max": 104,
+    "raw": "Skill-Basic Math +100 exp",
+    "type": "skill",
+    "skillName": "Basic Math",
+    "xp": 100
+  },
+  {
+    "min": 105,
+    "max": 106,
+    "raw": "Skill-Basic Social +125 exp",
+    "type": "skill",
+    "skillName": "Basic social",
+    "xp": 125
+  },
+  {
+    "min": 107,
+    "max": 107,
+    "raw": "Skill-Basic Leader +100 exp",
+    "type": "skill",
+    "skillName": "Basic Leader",
+    "xp": 100
+  },
+  {
+    "min": 108,
+    "max": 108,
+    "raw": "Skill-Spirit Spellpoints+125 exp",
+    "type": "skill",
+    "skillName": "Spirit SP",
+    "xp": 125,
+    "orChoice": null
+  },
+  {
+    "min": 109,
+    "max": 109,
+    "raw": "Item-Broadsword or light flail",
+    "type": "item"
+  },
+  {
+    "min": 110,
+    "max": 110,
+    "raw": "Item-Cuirass and full lower Scale Mail",
+    "type": "item"
+  },
+  {
+    "min": 111,
+    "max": 111,
+    "raw": "Item-Basic healer's kit",
+    "type": "item"
+  },
+  {
+    "min": 112,
+    "max": 112,
+    "raw": "Item-Knight's shield, very good quality",
+    "type": "item"
+  },
+  {
+    "min": 113,
+    "max": 114,
+    "raw": "Item Traveling cloak, silk lined, except quality",
+    "type": "item"
+  },
+  {
+    "min": 115,
+    "max": 115,
+    "raw": "Item-Light war Horse",
+    "type": "item"
+  },
+  {
+    "min": 116,
+    "max": 117,
+    "raw": "Item-Silver holy Symbol",
+    "type": "item"
+  },
+  {
+    "min": 118,
+    "max": 119,
+    "raw": "Skill-Basic Etiquette+100 exp",
+    "type": "skill",
+    "skillName": "Basic Etiquette",
+    "xp": 100
+  },
+  {
+    "min": 120,
+    "max": 120,
+    "raw": "Skill-Basic Scholar +130 exp",
+    "type": "skill",
+    "skillName": "Basic Scholar",
+    "xp": 130
+  },
+  {
+    "min": 121,
+    "max": 121,
+    "raw": "Item-Flute or lyre-Inspirational Masterwork",
+    "type": "item"
+  },
+  {
+    "min": 122,
+    "max": 122,
+    "raw": "Item-Identification or appraisal kit",
+    "type": "item"
+  },
+  {
+    "min": 123,
+    "max": 123,
+    "raw": "Item-Mapmakers toolkit",
+    "type": "item"
+  },
+  {
+    "min": 124,
+    "max": 124,
+    "raw": "Item-Medium Longbow",
+    "type": "item"
+  },
+  {
+    "min": 125,
+    "max": 125,
+    "raw": "Item-Fine magnifying glass",
+    "type": "item"
+  },
+  {
+    "min": 126,
+    "max": 126,
+    "raw": "Item-Silvered Dagger or sword",
+    "type": "item"
+  },
+  {
+    "min": 127,
+    "max": 127,
+    "raw": "Item-Silver necklace with gemstone (100horn)",
+    "type": "item"
+  }
+]

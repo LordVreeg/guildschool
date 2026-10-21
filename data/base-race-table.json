@@ -1,0 +1,220 @@
+{
+  "General": [
+    {
+      "min": 1,
+      "max": 30,
+      "race": "Human"
+    },
+    {
+      "min": 31,
+      "max": 45,
+      "race": "Omwo~"
+    },
+    {
+      "min": 46,
+      "max": 48,
+      "race": "Gartier"
+    },
+    {
+      "min": 49,
+      "max": 54,
+      "race": "Orcash"
+    },
+    {
+      "min": 55,
+      "max": 55,
+      "race": "Goblic"
+    },
+    {
+      "min": 56,
+      "max": 57,
+      "race": "Ograk Strain"
+    },
+    {
+      "min": 58,
+      "max": 58,
+      "race": "FratreCanis"
+    },
+    {
+      "min": 59,
+      "max": 71,
+      "race": "Klaxik"
+    },
+    {
+      "min": 72,
+      "max": 90,
+      "race": "Hobytalia"
+    },
+    {
+      "min": 90,
+      "max": 97,
+      "race": "Gnomic"
+    },
+    {
+      "min": 99,
+      "max": 100,
+      "race": "Cross Mixes"
+    }
+  ],
+  "Igbar": [
+    {
+      "min": 1,
+      "max": 34,
+      "race": "Human"
+    },
+    {
+      "min": 35,
+      "max": 45,
+      "race": "Omwo~"
+    },
+    {
+      "min": 46,
+      "max": 47,
+      "race": "Gartier"
+    },
+    {
+      "min": 48,
+      "max": 48,
+      "race": "Gnollic"
+    },
+    {
+      "min": 49,
+      "max": 56,
+      "race": "Orcash"
+    },
+    {
+      "min": 57,
+      "max": 57,
+      "race": "Ograk Strain"
+    },
+    {
+      "min": 58,
+      "max": 58,
+      "race": "FratreCanis"
+    },
+    {
+      "min": 59,
+      "max": 70,
+      "race": "Klaxik"
+    },
+    {
+      "min": 71,
+      "max": 84,
+      "race": "Hobytalia"
+    },
+    {
+      "min": 85,
+      "max": 93,
+      "race": "Gnomic"
+    },
+    {
+      "min": 94,
+      "max": 100,
+      "race": "Cross Mixes"
+    }
+  ],
+  "SteelIsle": [
+    {
+      "min": 1,
+      "max": 28,
+      "race": "Human"
+    },
+    {
+      "min": 29,
+      "max": 38,
+      "race": "Omwo~"
+    },
+    {
+      "min": 39,
+      "max": 42,
+      "race": "Gartier"
+    },
+    {
+      "min": 43,
+      "max": 44,
+      "race": "Gnollic"
+    },
+    {
+      "min": 45,
+      "max": 49,
+      "race": "Orcash"
+    },
+    {
+      "min": 50,
+      "max": 51,
+      "race": "Goblic"
+    },
+    {
+      "min": 52,
+      "max": 53,
+      "race": "Ograk Strain"
+    },
+    {
+      "min": 54,
+      "max": 56,
+      "race": "FratreCanis"
+    },
+    {
+      "min": 57,
+      "max": 66,
+      "race": "Klaxik"
+    },
+    {
+      "min": 67,
+      "max": 85,
+      "race": "Hobytalia"
+    },
+    {
+      "min": 86,
+      "max": 90,
+      "race": "Gnomic"
+    }
+  ],
+  "MistonGreyMarch": [
+    {
+      "min": 1,
+      "max": 31,
+      "race": "Human"
+    },
+    {
+      "min": 32,
+      "max": 46,
+      "race": "Omwo~"
+    },
+    {
+      "min": 47,
+      "max": 47,
+      "race": "Gartier"
+    },
+    {
+      "min": 48,
+      "max": 55,
+      "race": "Orcash"
+    },
+    {
+      "min": 56,
+      "max": 57,
+      "race": "Ograk Strain"
+    },
+    {
+      "min": 58,
+      "max": 69,
+      "race": "Klaxik"
+    },
+    {
+      "min": 70,
+      "max": 90,
+      "race": "Hobytalia"
+    },
+    {
+      "min": 91,
+      "max": 98,
+      "race": "Gnomic"
+    },
+    {
+      "min": 99,
+      "max": 100,
+      "race": "Cross Mixes"
+    }
+  ]
+}
