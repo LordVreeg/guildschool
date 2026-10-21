@@ -126,10 +126,12 @@ function renderSidebar() {
     if (!byType[type]) byType[type] = [];
     byType[type].push(si);
   }
-  let html = `<div class="sidebar-item active" onclick="showOverview()" style="font-weight:bold;color:var(--gold)">📋 Overview</div>`;
-  html += `<div class="sidebar-item" onclick="showGeneralModule()">👤 General Info</div>`;
-  html += `<div class="sidebar-item" onclick="showCombatModule()">⚔ Combat</div>`;
-  html += `<div class="sidebar-item" onclick="showSpellModule()">✦ Spells</div>`;
+  const view = state.activeSkillId ? 'skill' : (state.activeView || 'overview');
+  const navItem = (key, onclick, label) => `<div class="sidebar-item ${view === key ? 'active' : ''}" onclick="${onclick}">${label}</div>`;
+  let html = navItem('overview', 'showOverview()', '📋 Overview');
+  html += navItem('general', 'showGeneralModule()', '👤 General Info');
+  html += navItem('combat', 'showCombatModule()', '⚔ Combat');
+  html += navItem('spell', 'showSpellModule()', '✦ Spells');
   html += `<hr style="border-color:var(--border);margin:4px 0">`;
   const typeOrder = ['Combat','Spell','Acting','Alchemic','Art','Artisan','Curative','Dance','Detect','Engineer','Language','Mind','Movement','Music','Priest','Scholar','Social','Thieves','Torturer','Outdoor','Other'];
   const sortedTypes = typeOrder.filter(t => byType[t]).concat(Object.keys(byType).filter(t => !typeOrder.includes(t)));
@@ -258,5 +260,6 @@ function mainGuildBannerHtml(char, onGeneralPage) {
 function showUtilitiesModule() {
   state.activeSkillId = null;
   state.activeView = 'utilities';
+  renderSidebar();
   renderUtilitiesModule();
 }

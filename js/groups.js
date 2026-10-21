@@ -126,6 +126,7 @@ let groupEncountersCache = [];
 function showGroupModule() {
   state.activeSkillId = null;
   state.activeView = 'group';
+  renderSidebar();
   renderGroupModule();
 }
 

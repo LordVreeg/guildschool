@@ -25,6 +25,7 @@ function showBestiaryModule() {
   state.activeSkillId = null;
   state.activeView = 'bestiary';
   bestiaryEditingId = null;
+  renderSidebar();
   renderBestiaryModule();
 }
 
