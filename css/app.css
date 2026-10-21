@@ -70,6 +70,11 @@ body {
 .sidebar-item.active { background: rgba(110,27,34,.15); color: var(--gold); border-left: 2px solid var(--gold); padding-left: 18px; }
 .sidebar-item .lv { font-size: 11px; color: var(--text-dim); margin-left: auto; }
 .sidebar-item .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.sidebar-item.skill-node { padding-left: calc(8px + var(--depth, 0) * 14px); gap: 4px; }
+.sidebar-item.skill-node.active { padding-left: calc(6px + var(--depth, 0) * 14px); }
+.skill-toggle { width: 12px; flex-shrink: 0; text-align: center; font-size: 11px; color: var(--gold-dim); }
+.skill-toggle:not(:empty) { cursor: pointer; }
+.skill-toggle:not(:empty):hover { color: var(--gold); }
 .dot-trained { background: #4a9460; }
 .dot-dropdown { background: #5a5a9a; }
 .sidebar-add { padding: 6px 12px; }

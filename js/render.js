@@ -54,6 +54,67 @@ function toggleSection(type) {
   if (state.activeView === 'spell') renderSpellModule();
 }
 
+// Sidebar skill tree: within each type section only top-level skills show;
+// a skill's sub-skills appear when it is expanded (its ▸ toggle). Opening a
+// skill collapses everything else, leaving just the path to it and its own
+// sub-skills open.
+let expandedSkillIds = new Set();
+
+function toggleSkillExpanded(skillId, event) {
+  if (event) event.stopPropagation();
+  if (expandedSkillIds.has(skillId)) expandedSkillIds.delete(skillId);
+  else expandedSkillIds.add(skillId);
+  renderSidebar();
+}
+
+// A skill's parent is the instance it is explicitly linked to (parentSkillId),
+// else the character's instance of its catalog parent. Parents in another
+// type section don't nest, so those skills stay top-level in their own section.
+function sidebarParentId(si, sectionIds, allSkills) {
+  if (si.parentSkillId && sectionIds.has(si.parentSkillId)) return si.parentSkillId;
+  const def = SKILLS.find(s => s.name === si.skillName);
+  const parentName = def && !def.templated && def.parent ? def.parent.trim().toLowerCase() : '';
+  if (!parentName) return null;
+  const parent = allSkills.find(s => s.id !== si.id && sectionIds.has(s.id) && s.skillName.trim().toLowerCase() === parentName);
+  return parent ? parent.id : null;
+}
+
+// Map of skill id -> child instances, in sidebar order; .parentOf maps child id -> parent id.
+function skillChildrenMap(sectionSkills, allSkills) {
+  const sectionIds = new Set(sectionSkills.map(si => si.id));
+  const children = new Map();
+  children.parentOf = new Map();
+  for (const si of sectionSkills) {
+    const parentId = sidebarParentId(si, sectionIds, allSkills);
+    if (!parentId) continue;
+    // Skip a link that would loop back on itself (A under B under A).
+    let up = parentId, loops = false;
+    for (let n = 0; up && n < 50; n++) {
+      if (up === si.id) { loops = true; break; }
+      up = children.parentOf.get(up);
+    }
+    if (loops) continue;
+    children.parentOf.set(si.id, parentId);
+    if (!children.has(parentId)) children.set(parentId, []);
+    children.get(parentId).push(si);
+  }
+  return children;
+}
+
+// Expand only the active skill and its ancestors, collapsing everything else.
+function focusSkillInSidebar(skillId) {
+  const char = state.characters[state.activeChar];
+  const skills = (char && char.skills) || [];
+  const si = skills.find(s => s.id === skillId);
+  expandedSkillIds = new Set([skillId]);
+  if (!si) return;
+  const def = SKILLS.find(s => s.name === si.skillName);
+  const type = def ? def.type : 'Other';
+  const section = skills.filter(s => { const d = SKILLS.find(x => x.name === s.skillName); return (d ? d.type : 'Other') === type; });
+  const parentOf = skillChildrenMap(section, skills).parentOf;
+  for (let up = parentOf.get(skillId), n = 0; up && n < 50; up = parentOf.get(up), n++) expandedSkillIds.add(up);
+}
+
 function renderSidebar() {
   const char = state.characters[state.activeChar];
   if (!char) return;
@@ -82,16 +143,24 @@ function renderSidebar() {
       <span style="font-size:9px">${arrow}</span>${type} <span style="color:var(--text-dim);font-weight:normal">(${byType[type].length})</span>
     </div>`;
     if (isCollapsed) continue;
-    for (const si of byType[type]) {
-      const vals = computeSkillValues(si, char, char.skills || []);
+    const children = skillChildrenMap(byType[type], skills);
+    const renderNode = (si, depth) => {
+      const vals = computeSkillValues(si, char, skills);
       const dot = si.dropdownOnly ? 'dot-dropdown' : 'dot-trained';
       const active = si.id === state.activeSkillId ? 'active' : '';
-      html += `<div class="sidebar-item ${active}" onclick="showSkillModule('${si.id}')">
-        <span class="dot ${dot}"></span>
+      const kids = children.get(si.id) || [];
+      const open = expandedSkillIds.has(si.id);
+      const toggle = kids.length
+        ? `<span class="skill-toggle" title="${open ? 'Hide' : 'Show'} ${kids.length} sub-skill${kids.length === 1 ? '' : 's'}" onclick="toggleSkillExpanded('${si.id}', event)">${open ? '▾' : '▸'}</span>`
+        : `<span class="skill-toggle"></span>`;
+      html += `<div class="sidebar-item skill-node ${active}" style="--depth:${depth}" onclick="showSkillModule('${si.id}')">
+        ${toggle}<span class="dot ${dot}"></span>
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${si.skillName}${si.binding ? ` <span style="color:var(--text-dim)">(${si.binding})</span>` : ''}</span>
         <span class="lv">L${vals.level} / ${vals.skval}</span>
       </div>`;
-    }
+      if (open) for (const kid of kids) renderNode(kid, depth + 1);
+    };
+    for (const si of byType[type]) if (!children.parentOf.has(si.id)) renderNode(si, 0);
   }
   html += `<hr style="border-color:var(--border);margin:4px 0">`;
   html += `<div class="sidebar-add"><button onclick="openAddSkillModal()">+ Add Skill</button></div>`;

@@ -1,6 +1,7 @@
 function showSkillModule(skillId) {
   state.activeSkillId = skillId;
   state.activeView = 'skill';
+  focusSkillInSidebar(skillId);
   renderSidebar();
   renderSkillModule(skillId);
 }
