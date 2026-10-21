@@ -3,6 +3,13 @@
 // ============================================================
 const SUPABASE_URL = 'https://csvulokpauafokdjkvfe.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_BMCim59Ynsry_tlDUscYWw_gu0Xb0d0';
+// A password-reset email link lands back here with "type=recovery" in the URL
+// hash (or "error_description" if the link expired or was already used).
+// Read both before createClient, which consumes and clears the hash.
+const authLinkParams = new URLSearchParams(location.hash.slice(1));
+let passwordRecoveryPending = authLinkParams.get('type') === 'recovery';
+const authLinkError = authLinkParams.get('error_description');
+
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUser = null;
@@ -15,6 +22,8 @@ function showAuthGate() { document.getElementById('auth-gate').style.display = '
 function hideAuthGate() { document.getElementById('auth-gate').style.display = 'none'; }
 function showPendingGate() { document.getElementById('pending-gate').style.display = 'flex'; }
 function hidePendingGate() { document.getElementById('pending-gate').style.display = 'none'; }
+function showResetGate() { document.getElementById('reset-gate').style.display = 'flex'; }
+function hideResetGate() { document.getElementById('reset-gate').style.display = 'none'; }
 
 function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -166,6 +175,41 @@ async function handleSignUp() {
 
 async function handleSignOut() {
   await sb.auth.signOut();
+}
+
+// The reset link comes back to this same page; Supabase must list this URL
+// under Authentication > URL Configuration > Redirect URLs, or it falls back
+// to the project's Site URL.
+async function handleForgotPassword() {
+  const email = document.getElementById('auth-email').value.trim();
+  const info = document.getElementById('auth-status');
+  setAuthStatus('');
+  if (!email) { setAuthStatus('Enter your email above, then click "Forgot password?" again.'); return; }
+  info.textContent = 'Sending…';
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+  if (error) { info.textContent = ''; setAuthStatus(error.message); return; }
+  info.textContent = 'If that email has an account, a reset link is on its way. Open it to set a new password.';
+}
+
+async function handleSetNewPassword() {
+  const password = document.getElementById('reset-password').value;
+  const confirm = document.getElementById('reset-password-confirm').value;
+  const err = document.getElementById('reset-error');
+  const fail = msg => { err.textContent = msg; err.style.display = 'block'; };
+  err.style.display = 'none';
+  if (password.length < 6) { fail('Use at least 6 characters.'); return; }
+  if (password !== confirm) { fail("The two passwords don't match."); return; }
+  const { error } = await sb.auth.updateUser({ password });
+  if (error) { fail(error.message); return; }
+  passwordRecoveryPending = false;
+  hideResetGate();
+  bootOnce();
+}
+
+function bootOnce() {
+  if (bootStarted) return;
+  bootStarted = true;
+  handleSignedIn();
 }
 
 async function fetchProfile(retries = 4) {

@@ -24,7 +24,23 @@
       <button onclick="handleSignIn()" style="flex:1;padding:6px;background:var(--panel);border:1px solid var(--border);cursor:pointer">Sign In</button>
       <button onclick="handleSignUp()" style="flex:1;padding:6px;background:var(--panel);border:1px solid var(--border);cursor:pointer">Sign Up</button>
     </div>
+    <div style="margin-top:10px;font-size:11px;text-align:right"><a href="#" onclick="handleForgotPassword();return false" style="color:var(--text-dim)">Forgot password?</a></div>
     <div id="auth-status" style="font-size:11px;color:var(--text-dim);margin-top:10px"></div>
+  </div>
+</div>
+
+<div id="reset-gate" style="position:fixed;inset:0;background:var(--bg);z-index:10000;display:none;align-items:center;justify-content:center;">
+  <div style="background:var(--panel);border:1px solid var(--border);padding:24px 28px;width:320px;max-width:90vw;">
+    <h2 style="font-size:16px;margin-bottom:16px;color:var(--text-bright);text-transform:uppercase;letter-spacing:1px;">Set a New Password</h2>
+    <div id="reset-error" style="color:var(--red-b);font-size:12px;margin-bottom:8px;display:none"></div>
+    <label style="display:block;font-size:11px;color:var(--text-dim);margin-bottom:2px">New password</label>
+    <input id="reset-password" type="password" style="width:100%;padding:6px 8px;margin-bottom:10px;background:var(--input-bg);border:1px solid var(--border);font-family:inherit;color:var(--text)" autocomplete="new-password">
+    <label style="display:block;font-size:11px;color:var(--text-dim);margin-bottom:2px">Confirm new password</label>
+    <input id="reset-password-confirm" type="password" style="width:100%;padding:6px 8px;margin-bottom:14px;background:var(--input-bg);border:1px solid var(--border);font-family:inherit;color:var(--text)" autocomplete="new-password" onkeydown="if(event.key==='Enter')handleSetNewPassword()">
+    <div style="display:flex;gap:8px">
+      <button onclick="handleSetNewPassword()" style="flex:1;padding:6px;background:var(--panel);border:1px solid var(--border);cursor:pointer">Set Password</button>
+      <button onclick="handleSignOut()" style="flex:1;padding:6px;background:var(--panel);border:1px solid var(--border);cursor:pointer">Sign Out</button>
+    </div>
   </div>
 </div>
 
