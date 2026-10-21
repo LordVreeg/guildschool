@@ -2667,6 +2667,9 @@ const BESTIARY_RACE_TEMPLATES = [
 ];
 
 let bestiaryCache = [];
+let bestiaryTab = 'active';
+let bestiaryFilter = '';
+let bestiarySelected = new Set();
 let bestiaryEditingId = null; // null = list view, 'new' = new entry, or an existing id
 let bestiaryDraft = null;
 let customBestiaryTemplates = []; // GM's own saved templates, from bestiary_templates -- alongside the built-in BESTIARY_RACE_TEMPLATES
@@ -2718,8 +2721,7 @@ async function renderBestiaryModule() {
     return;
   }
   bestiaryCache = data || [];
-  const groupNameById = {};
-  for (const g of myGroups) groupNameById[g.id] = g.name;
+  bestiarySelected = new Set();
 
   document.getElementById('main').innerHTML = `
   <div class="panel">
@@ -2728,28 +2730,118 @@ async function renderBestiaryModule() {
       <button class="btn btn-neon" onclick="openNewBestiaryEntry()">+ New Foe</button>
     </div>
     <div class="panel-body">
-      <div class="note" style="margin-bottom:10px">Your personal library of foe templates — private to you, not visible to players or other GMs. Duplicate an entry to quickly build a variant.</div>
-      ${bestiaryCache.length === 0 ? '<div class="note" style="padding:10px 0">No foes yet. Click "+ New Foe" to build one.</div>' : ''}
-      ${bestiaryCache.length ? `<table class="skill-table">
-        <thead><tr><th>Name</th><th>Type</th><th>Lvl</th><th>Location</th><th>Prepped for</th><th>HP</th><th>XP</th><th></th></tr></thead>
-        <tbody>
-          ${bestiaryCache.map(e => `<tr>
-            <td style="cursor:pointer;color:var(--gold)" onclick="openEditBestiaryEntry('${e.id}')">${escapeHtml(e.name)}</td>
-            <td class="note">${e.race ? escapeHtml(e.race) : '—'}</td>
-            <td class="note">${e.level || 1}</td>
-            <td class="note">${e.location ? escapeHtml(e.location) : '—'}</td>
-            <td class="note">${e.group_id && groupNameById[e.group_id] ? escapeHtml(groupNameById[e.group_id]) : '—'}</td>
-            <td>${e.current_hp != null ? `${e.current_hp}/${e.max_hp}` : (e.avg_hp != null ? `avg ${e.avg_hp}` : '—')}</td>
-            <td class="skval-cell">${Math.round(computeFoeXP(e) * 10) / 10}</td>
-            <td style="white-space:nowrap">
-              <button class="btn btn-dim" style="font-size:10px;padding:2px 6px" onclick="duplicateBestiaryEntry('${e.id}')">Duplicate</button>
-              <button class="btn btn-dim" style="font-size:10px;padding:2px 6px;color:var(--red-b)" onclick="deleteBestiaryEntry('${e.id}')">Delete</button>
-            </td>
-          </tr>`).join('')}
-        </tbody>
-      </table>` : ''}
+      <div class="note" style="margin-bottom:10px">Your personal library of foe templates — private to you, not visible to players or other GMs. Keep the foes you use now in <b>Active</b>; tick the rest and Archive them. Archived foes stay safe here but drop out of the Add Combatants list.</div>
+      <div id="bestiary-tabs" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px"></div>
+      <div id="bestiary-list"></div>
     </div>
   </div>`;
+  paintBestiary();
+}
+
+// A foe is archived only when the schema_v27 column says so; before that
+// migration runs every row reads as active, so nothing disappears.
+function bestiaryIsArchived(e) { return !e.is_temp_pc && e.archived === true; }
+
+function bestiaryVisibleRows() {
+  const q = bestiaryFilter.trim().toLowerCase();
+  return bestiaryCache.filter(e => {
+    if (bestiaryIsArchived(e) !== (bestiaryTab === 'archive')) return false;
+    if (!q) return true;
+    return [e.name, e.race, e.location].some(v => v && String(v).toLowerCase().includes(q));
+  });
+}
+
+function paintBestiary() {
+  const tabsEl = document.getElementById('bestiary-tabs');
+  const listEl = document.getElementById('bestiary-list');
+  if (!tabsEl || !listEl) return;
+  const groupNameById = {};
+  for (const g of myGroups) groupNameById[g.id] = g.name;
+  const activeCount = bestiaryCache.filter(e => !bestiaryIsArchived(e)).length;
+  const archiveCount = bestiaryCache.length - activeCount;
+  const isArchiveTab = bestiaryTab === 'archive';
+  const tabBtn = (key, label, n) => `<button class="btn ${bestiaryTab === key ? 'btn-gold' : 'btn-dim'}" onclick="setBestiaryTab('${key}')">${label} (${n})</button>`;
+  const rows = bestiaryVisibleRows();
+  const selectable = rows.filter(e => !e.is_temp_pc);
+  const selCount = selectable.filter(e => bestiarySelected.has(e.id)).length;
+  const allTicked = selectable.length > 0 && selCount === selectable.length;
+  tabsEl.innerHTML = `
+    ${tabBtn('active', 'Active', activeCount)}${tabBtn('archive', 'Archive', archiveCount)}
+    <input type="text" id="bestiary-filter" placeholder="Filter by name, type or location" value="${escapeHtml(bestiaryFilter)}" oninput="setBestiaryFilter(this.value)" style="flex:1;min-width:160px;max-width:280px">
+    <button class="btn btn-dim" ${selCount ? '' : 'disabled'} onclick="archiveSelectedBestiary(${isArchiveTab ? 'false' : 'true'})">${isArchiveTab ? 'Restore' : 'Archive'} selected (${selCount})</button>`;
+  if (!rows.length) {
+    listEl.innerHTML = bestiaryCache.length === 0
+      ? '<div class="note" style="padding:10px 0">No foes yet. Click "+ New Foe" to build one.</div>'
+      : `<div class="note" style="padding:10px 0">${bestiaryFilter.trim() ? 'No foes match that filter.' : (isArchiveTab ? 'Nothing archived yet. Tick foes on the Active tab and choose Archive selected.' : 'No active foes. Restore some from the Archive tab, or click "+ New Foe".')}</div>`;
+    return;
+  }
+  listEl.innerHTML = `<table class="skill-table">
+    <thead><tr><th style="width:24px"><input type="checkbox" ${allTicked ? 'checked' : ''} ${selectable.length ? '' : 'disabled'} onchange="toggleAllBestiary(this.checked)" title="Tick all shown"></th><th>Name</th><th>Type</th><th>Lvl</th><th>Location</th><th>Prepped for</th><th>HP</th><th>XP</th><th></th></tr></thead>
+    <tbody>
+      ${rows.map(e => `<tr>
+        <td>${e.is_temp_pc ? '' : `<input type="checkbox" ${bestiarySelected.has(e.id) ? 'checked' : ''} onchange="toggleBestiarySelected('${e.id}', this.checked)">`}</td>
+        <td style="cursor:pointer;color:var(--gold)" onclick="openEditBestiaryEntry('${e.id}')">${escapeHtml(e.name)}</td>
+        <td class="note">${e.race ? escapeHtml(e.race) : '—'}</td>
+        <td class="note">${e.level || 1}</td>
+        <td class="note">${e.location ? escapeHtml(e.location) : '—'}</td>
+        <td class="note">${e.group_id && groupNameById[e.group_id] ? escapeHtml(groupNameById[e.group_id]) : '—'}</td>
+        <td>${e.current_hp != null ? `${e.current_hp}/${e.max_hp}` : (e.avg_hp != null ? `avg ${e.avg_hp}` : '—')}</td>
+        <td class="skval-cell">${Math.round(computeFoeXP(e) * 10) / 10}</td>
+        <td style="white-space:nowrap">
+          ${e.is_temp_pc ? '' : `<button class="btn btn-dim" style="font-size:10px;padding:2px 6px" onclick="setBestiaryArchived(['${e.id}'], ${isArchiveTab ? 'false' : 'true'})">${isArchiveTab ? 'Restore' : 'Archive'}</button>`}
+          <button class="btn btn-dim" style="font-size:10px;padding:2px 6px" onclick="duplicateBestiaryEntry('${e.id}')">Duplicate</button>
+          <button class="btn btn-dim" style="font-size:10px;padding:2px 6px;color:var(--red-b)" onclick="deleteBestiaryEntry('${e.id}')">Delete</button>
+        </td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+function setBestiaryTab(tab) {
+  bestiaryTab = tab;
+  bestiarySelected = new Set();
+  paintBestiary();
+}
+
+function setBestiaryFilter(v) {
+  bestiaryFilter = v;
+  // Repaint only the list so the filter box keeps focus while typing.
+  const keep = document.getElementById('bestiary-filter');
+  const pos = keep ? keep.selectionStart : null;
+  paintBestiary();
+  const again = document.getElementById('bestiary-filter');
+  if (again) { again.focus(); if (pos != null) again.setSelectionRange(pos, pos); }
+}
+
+function toggleBestiarySelected(id, checked) {
+  if (checked) bestiarySelected.add(id); else bestiarySelected.delete(id);
+  paintBestiary();
+}
+
+function toggleAllBestiary(checked) {
+  for (const e of bestiaryVisibleRows()) {
+    if (e.is_temp_pc) continue;
+    if (checked) bestiarySelected.add(e.id); else bestiarySelected.delete(e.id);
+  }
+  paintBestiary();
+}
+
+function archiveSelectedBestiary(archive) {
+  const ids = bestiaryVisibleRows().filter(e => !e.is_temp_pc && bestiarySelected.has(e.id)).map(e => e.id);
+  if (ids.length) setBestiaryArchived(ids, archive);
+}
+
+async function setBestiaryArchived(ids, archive) {
+  const { error } = await sb.from('bestiary_entries').update({ archived: archive }).in('id', ids);
+  if (error) {
+    alert(/archived/i.test(error.message)
+      ? 'The Beastiary archive needs a one-time database update. Run schema_v27_bestiary_archive.sql in the Supabase SQL Editor, then try again.'
+      : 'Failed to ' + (archive ? 'archive' : 'restore') + ': ' + error.message);
+    return;
+  }
+  for (const e of bestiaryCache) if (ids.includes(e.id)) e.archived = archive;
+  bestiarySelected = new Set();
+  paintBestiary();
 }
 
 function blankBestiaryDraft() {
@@ -3407,6 +3499,7 @@ async function duplicateBestiaryEntry(id) {
   delete row.id;
   delete row.created_at;
   delete row.updated_at;
+  if ('archived' in row) row.archived = false;
   row.created_by = currentUser.id;
   row.name = row.name + ' (copy)';
   const { error } = await sb.from('bestiary_entries').insert(row);
@@ -4691,7 +4784,7 @@ async function openAddCombatantModal() {
   const [{ data: roster, error: rErr }, { data: tempChars, error: tcErr }, { data: foes, error: fErr }] = await Promise.all([
     sb.from('character_lookup').select('id,name').eq('group_id', enc.group_id),
     sb.from('bestiary_entries').select('id,name,race').eq('group_id', enc.group_id).eq('is_temp_pc', true),
-    sb.from('bestiary_entries').select('id,name,race').eq('is_temp_pc', false).order('name', { ascending: true })
+    sb.from('bestiary_entries').select('*').eq('is_temp_pc', false).order('name', { ascending: true })
   ]);
   if (rErr || tcErr || fErr) { alert('Failed to load combatant sources: ' + (rErr||tcErr||fErr).message); return; }
   // Custom names ("Barty", "Groll the Gnoll", "Fire LizardBiffin"...) don't
@@ -4706,7 +4799,7 @@ async function openAddCombatantModal() {
   const rosterHtml = (availableRoster.map(r => pickRow('character', r, escapeHtml(r.name))).join('') || '<li class="note">None available.</li>')
     + (availableRoster.length > 1 ? `<li style="list-style:none;margin-left:-16px;margin-top:4px"><label style="cursor:pointer;color:var(--text-dim);display:flex;align-items:baseline;gap:6px"><input type="checkbox" id="add-all-pcs-cb" onchange="toggleAllPcs(this.checked)"><span>Add all</span></label></li>` : '');
   const tempHtml = (tempChars||[]).filter(t => !existingBestIds.has(t.id)).map(t => pickRow('bestiary', t, withType(t))).join('') || '<li class="note">None available.</li>';
-  const foesHtml = (foes||[]).filter(f => !existingBestIds.has(f.id)).map(f => pickRow('bestiary', f, withType(f))).join('') || '<li class="note">None available.</li>';
+  const foesHtml = (foes||[]).filter(f => !existingBestIds.has(f.id) && !bestiaryIsArchived(f)).map(f => pickRow('bestiary', f, withType(f))).join('') || '<li class="note">None available.</li>';
   openModal(`
     <h3>Add Combatants</h3>
     <div class="note" style="margin-bottom:6px">Tick as many as you like, then Add Selected.</div>
