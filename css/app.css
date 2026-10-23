@@ -35,7 +35,17 @@ body {
   color: var(--text); font-family: 'IM Fell English', 'Georgia', serif; font-size: 14px; min-height: 100vh; display: flex; flex-direction: column;
 }
 /* TOP BAR */
-#topbar { background: var(--header-bg); border-bottom: 2px solid var(--gold-dim); padding: 8px 16px; display: flex; align-items: center; gap: 16px; }
+#topbar { background: var(--header-bg); border-bottom: 2px solid var(--gold-dim); padding: 6px 16px; display: flex; flex-direction: column; gap: 6px; }
+#topbar .topbar-row { display: flex; align-items: center; gap: 12px; }
+#topbar .topbar-menus { gap: 4px; }
+#topbar .top-menu { position: relative; }
+#topbar .top-menu-btn { background: transparent; color: var(--header-text); border-color: transparent; }
+#topbar .top-menu.open .top-menu-btn { background: var(--panel); color: var(--text); border-color: var(--gold); }
+#topbar .top-menu-panel { display: none; position: absolute; top: 100%; left: 0; z-index: 500; min-width: 200px; margin-top: 2px; padding: 4px; background: var(--panel); border: 1px solid var(--gold-dim); box-shadow: 0 4px 12px rgba(0,0,0,.25); flex-direction: column; gap: 2px; }
+#topbar .top-menu.open .top-menu-panel { display: flex; }
+#topbar .top-menu-panel button { width: 100%; text-align: left; border-color: transparent; white-space: nowrap; }
+#topbar .top-menu-panel button:hover { background: rgba(110,27,34,.1); }
+#topbar .top-menu-panel hr { border: 0; border-top: 1px solid var(--border); margin: 3px 0; }
 #topbar h1 { color: var(--header-text); font-family: 'Cinzel', serif; font-weight: 600; font-size: 16px; letter-spacing: 2px; text-transform: uppercase; white-space: nowrap; }
 #topbar .banner-logo { height: 34px; display: block; }
 .cc-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 12px; }
@@ -61,7 +71,7 @@ body {
 #topbar select:focus, #topbar button:hover { border-color: var(--gold); outline: none; }
 #topbar .sep { flex: 1; }
 /* LAYOUT */
-#layout { display: flex; flex: 1; overflow: hidden; height: calc(100vh - 45px); }
+#layout { display: flex; flex: 1; overflow: hidden; height: calc(100vh - var(--topbar-h, 80px)); }
 /* SIDEBAR */
 #sidebar { width: 220px; min-width: 220px; background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 8px 0; }
 .sidebar-section { padding: 6px 12px 2px; font-size: 11px; color: var(--gold-dim); text-transform: uppercase; letter-spacing: 1px; }

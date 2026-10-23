@@ -46,6 +46,24 @@ function renderCharSelect() {
   sel.innerHTML = html;
 }
 
+// Top bar dropdown menus (File / Character / Other). Click a menu to open it;
+// clicking outside, pressing Escape, or picking an item closes it.
+function toggleTopMenu(name, event) {
+  if (event) event.stopPropagation();
+  document.querySelectorAll('#topbar .top-menu').forEach(m => {
+    m.classList.toggle('open', m.dataset.menu === name && !m.classList.contains('open'));
+  });
+}
+function closeTopMenus() {
+  document.querySelectorAll('#topbar .top-menu.open').forEach(m => m.classList.remove('open'));
+}
+document.addEventListener('click', e => { if (!e.target.closest('#topbar .top-menu')) closeTopMenus(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTopMenus(); });
+// The layout fills the window below the top bar, whose height can change (two rows, wrapping).
+new ResizeObserver(([entry]) => {
+  document.documentElement.style.setProperty('--topbar-h', entry.target.offsetHeight + 'px');
+}).observe(document.getElementById('topbar'));
+
 let collapsedSections = {};
 
 function toggleSection(type) {

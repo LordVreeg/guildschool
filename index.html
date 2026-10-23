@@ -53,26 +53,48 @@
 </div>
 
 <div id="topbar">
-  <img class="banner-logo" src="assets/img/logo.png" alt="Celtricia">
-  <h1>GuildSchool</h1>
-  <select id="char-select" onchange="selectChar(this.value)"><option value="">— select character —</option></select>
-  <select id="char-sort" onchange="state.charSortMode=this.value;saveState();renderCharSelect()" style="font-size:11px">
-    <option value="name">Sort: Name</option>
-    <option value="group">Sort: Group</option>
-    <option value="locale">Sort: Locale</option>
-  </select>
-  <button onclick="openNewCharModal()">Character Creation</button>
-  <div class="sep"></div>
-  <span id="auth-user-label" style="font-size:11px;color:var(--header-text);margin-right:8px"></span>
-  <button id="admin-panel-btn" onclick="openAdminPanel()" style="display:none">Admin</button>
-  <button onclick="handleSignOut()">Sign Out</button>
-  <span id="export-indicator" style="font-size:11px;margin-right:8px"></span>
-  <button onclick="printCharacterSheet()">🖨 Print Sheet</button>
-  <button onclick="showUtilitiesModule()">🔧 Utilities</button>
-  <button onclick="showGroupModule()">👥 Groups</button>
-  <button onclick="showBestiaryModule()">🐉 Beastiary</button>
-  <button onclick="exportData()">Export JSON</button>
-  <button onclick="importData()">Import JSON</button>
+  <div class="topbar-row">
+    <img class="banner-logo" src="assets/img/logo.png" alt="Celtricia">
+    <h1>GuildSchool</h1>
+    <div class="sep"></div>
+    <span id="auth-user-label" style="font-size:11px;color:var(--header-text)"></span>
+    <button onclick="handleSignOut()">Sign Out</button>
+  </div>
+  <div class="topbar-row topbar-menus">
+    <div class="top-menu" data-menu="file">
+      <button class="top-menu-btn" onclick="toggleTopMenu('file', event)">File ▾</button>
+      <div class="top-menu-panel">
+        <button onclick="closeTopMenus();printCharacterSheet()">🖨 Print Sheet</button>
+        <button onclick="closeTopMenus();exportData()">Export JSON</button>
+        <button onclick="closeTopMenus();importData()">Import JSON</button>
+        <hr>
+        <button onclick="closeTopMenus();showUtilitiesModule()">🔧 Utilities</button>
+        <button onclick="closeTopMenus();showGroupModule()">👥 Groups</button>
+      </div>
+    </div>
+    <div class="top-menu" data-menu="character">
+      <button class="top-menu-btn" onclick="toggleTopMenu('character', event)">Character ▾</button>
+      <div class="top-menu-panel">
+        <button onclick="closeTopMenus();openNewCharModal()">Create Character</button>
+        <button onclick="closeTopMenus();deleteChar()">Delete Character</button>
+      </div>
+    </div>
+    <div class="top-menu" data-menu="other">
+      <button class="top-menu-btn" onclick="toggleTopMenu('other', event)">Other ▾</button>
+      <div class="top-menu-panel">
+        <button onclick="closeTopMenus();showBestiaryModule()">🐉 Bestiary</button>
+        <button id="admin-panel-btn" onclick="closeTopMenus();openAdminPanel()" style="display:none">Admin</button>
+      </div>
+    </div>
+    <div class="sep"></div>
+    <span id="export-indicator" style="font-size:11px;margin-right:8px"></span>
+    <select id="char-select" onchange="selectChar(this.value)"><option value="">— select character —</option></select>
+    <select id="char-sort" onchange="state.charSortMode=this.value;saveState();renderCharSelect()" style="font-size:11px">
+      <option value="name">Sort: Name</option>
+      <option value="group">Sort: Group</option>
+      <option value="locale">Sort: Locale</option>
+    </select>
+  </div>
 </div>
 
 <div id="layout">

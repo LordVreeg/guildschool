@@ -741,6 +741,7 @@ function deleteSkill(skillId) {
 }
 
 function deleteChar() {
+  if (!state.activeChar) { alert('Select a character to delete first.'); return; }
   if (!confirm('Delete this character? This cannot be undone.')) return;
   const appId = state.activeChar;
   const rowId = charRowIds[appId];
