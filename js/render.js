@@ -115,6 +115,14 @@ function focusSkillInSidebar(skillId) {
   for (let up = parentOf.get(skillId), n = 0; up && n < 50; up = parentOf.get(up), n++) expandedSkillIds.add(up);
 }
 
+// The Spells page only applies once a character has at least one level of Spirit SP.
+function hasSpiritLevel(char) {
+  if (!char) return false;
+  const skills = char.skills || [];
+  return skills.some(si => si.skillName === 'Spirit SP' && !si.dropdownOnly &&
+    computeSkillValues(si, char, skills).level >= 1);
+}
+
 function renderSidebar() {
   const char = state.characters[state.activeChar];
   if (!char) return;
@@ -131,7 +139,7 @@ function renderSidebar() {
   let html = navItem('overview', 'showOverview()', '📋 Overview');
   html += navItem('general', 'showGeneralModule()', '👤 General Info');
   html += navItem('combat', 'showCombatModule()', '⚔ Combat');
-  html += navItem('spell', 'showSpellModule()', '✦ Spells');
+  if (hasSpiritLevel(char)) html += navItem('spell', 'showSpellModule()', '✦ Spells');
   html += `<hr style="border-color:var(--border);margin:4px 0">`;
   const typeOrder = ['Combat','Spell','Acting','Alchemic','Art','Artisan','Curative','Dance','Detect','Engineer','Language','Mind','Movement','Music','Priest','Scholar','Social','Thieves','Torturer','Outdoor','Other'];
   const sortedTypes = typeOrder.filter(t => byType[t]).concat(Object.keys(byType).filter(t => !typeOrder.includes(t)));
@@ -173,7 +181,10 @@ function renderMain() {
   if (!state.activeSkillId && state.activeView === 'overview') { renderOverview(); return; }
   if (state.activeView === 'general') { renderGeneralModule(); return; }
   if (state.activeView === 'combat') { renderCombatModule(); return; }
-  if (state.activeView === 'spell') { renderSpellModule(); return; }
+  if (state.activeView === 'spell') {
+    if (!hasSpiritLevel(state.characters[state.activeChar])) { showOverview(); return; }
+    renderSpellModule(); return;
+  }
   if (state.activeView === 'utilities') { renderUtilitiesModule(); return; }
   if (state.activeView === 'group') { renderGroupModule(); return; }
   if (state.activeView === 'bestiary') { renderBestiaryModule(); return; }
