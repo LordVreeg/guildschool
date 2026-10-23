@@ -53,7 +53,7 @@ function addItem() {
   if (!char.items) char.items = [];
   char.items.push({ name: '', type: 'Item', qty: 1, weight: 0, worth: '', notes: '', location: '' });
   saveState();
-  renderGeneralModule();
+  renderInventoryModule();
 }
 
 function updateStorageOnPerson(location, checked) {
@@ -62,7 +62,7 @@ function updateStorageOnPerson(location, checked) {
   if (!char.storageOnPerson) char.storageOnPerson = {};
   if (checked) char.storageOnPerson[location] = true; else delete char.storageOnPerson[location];
   saveState();
-  renderGeneralModule();
+  renderInventoryModule();
 }
 function updateStorageCapacity(location, value) {
   const char = state.characters[state.activeChar];
@@ -70,7 +70,7 @@ function updateStorageCapacity(location, value) {
   if (!char.storageCapacities) char.storageCapacities = {};
   char.storageCapacities[location] = (value === '' || value === null) ? null : (parseFloat(value) || 0);
   saveState();
-  renderGeneralModule();
+  renderInventoryModule();
 }
 
 function addStorageContainer() {
@@ -82,7 +82,7 @@ function addStorageContainer() {
   if (!char.storageCapacities) char.storageCapacities = {};
   char.storageCapacities[name] = capacity === '' ? null : (parseFloat(capacity) || 0);
   saveState();
-  renderGeneralModule();
+  renderInventoryModule();
 }
 
 function updateItem(idx, field, value) {
@@ -90,7 +90,7 @@ function updateItem(idx, field, value) {
   if (!char || !char.items || !char.items[idx]) return;
   char.items[idx][field] = value;
   saveState();
-  if (field === 'weight' || field === 'qty' || field === 'worth' || field === 'av' || field === 'pr') renderGeneralModule();
+  if (state.activeView === 'inventory' && (field === 'weight' || field === 'qty' || field === 'worth' || field === 'av' || field === 'pr')) renderInventoryModule();
 }
 
 function selectArmorType(idx, armorName) {
@@ -106,7 +106,7 @@ function selectArmorType(idx, armorName) {
     if (!item.worth) item.worth = def.cost;
   }
   saveState();
-  renderGeneralModule();
+  renderInventoryModule();
 }
 
 function updateCombatExtra(field, value) {
@@ -587,7 +587,7 @@ function selectWeaponModel(idx, weaponName) {
     item.weaponProtection = def.protection; item.threatRange = def.threat_range; item.range = def.range;
   }
   saveState();
-  renderGeneralModule();
+  renderInventoryModule();
 }
 
 function selectCoinType(idx, coinName) {
@@ -601,7 +601,7 @@ function selectCoinType(idx, coinName) {
     item.worth = def.worthInHorn;
   }
   saveState();
-  renderGeneralModule();
+  renderInventoryModule();
 }
 
 function selectAmmoType(idx, ammoName) {
@@ -618,7 +618,7 @@ function selectAmmoType(idx, ammoName) {
     if (!item.worth) item.worth = def.cost;
   }
   saveState();
-  renderGeneralModule();
+  renderInventoryModule();
 }
 
 function selectShieldType(idx, shieldName) {
@@ -634,7 +634,7 @@ function selectShieldType(idx, shieldName) {
     if (!item.worth) item.worth = def.cost;
   }
   saveState();
-  renderGeneralModule();
+  renderInventoryModule();
 }
 
 function selectBasicItem(idx, itemName) {
@@ -650,7 +650,7 @@ function selectBasicItem(idx, itemName) {
     item.notes = def.notes;
   }
   saveState();
-  renderGeneralModule();
+  renderInventoryModule();
 }
 
 function removeItem(idx) {
@@ -658,7 +658,7 @@ function removeItem(idx) {
   if (!char || !char.items) return;
   char.items.splice(idx, 1);
   saveState();
-  renderGeneralModule();
+  renderInventoryModule();
 }
 
 function updateAttr(attr, value) {

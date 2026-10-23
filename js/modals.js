@@ -91,7 +91,8 @@ function openCharTutorial(formPreset) {
     <hr class="divider">
     <p><strong>What is in the tool</strong></p>
     <ul style="margin:6px 0 6px 18px;padding:0">
-      <li><b>Overview and General Info:</b> your skills at a glance, your identity, your guilds, and your inventory.</li>
+      <li><b>Overview and General Info:</b> your skills at a glance, your identity and your guilds.</li>
+      <li><b>Weapons, Armor &amp; Items:</b> your inventory and storage locations.</li>
       <li><b>Combat page:</b> weapons, armor, shields and hit points, built from whatever you put in your inventory.</li>
       <li><b>Spells page:</b> spell points, the entire spell library, and casting.</li>
       <li><b>Groups:</b> for a GM and their players. A shared game clock, the party roster, session notes, and spell point and hit point recovery as time passes.</li>
