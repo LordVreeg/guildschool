@@ -5,6 +5,9 @@ function openModal(html, opts) {
   const box = document.getElementById('modal-box');
   box.innerHTML = html;
   box.style.maxWidth = (opts && opts.wide) ? '760px' : '';
+  // A fixed width keeps a modal whose content changes as you use it (e.g. the
+  // guild picker's hover blurb) from resizing; otherwise it fits its content.
+  box.style.width = (opts && opts.width) || '';
   document.getElementById('modal-overlay').classList.add('open');
 }
 function closeModal() {

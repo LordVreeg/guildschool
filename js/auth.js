@@ -128,7 +128,7 @@ function openGuildPickerModal(currentValue, onSelect) {
       </details>`).join('')}
     </div>
     <div id="guild-blurb-preview" class="note" style="margin-top:8px;min-height:3.2em;border-top:1px solid var(--border);padding-top:6px">Hover a guild to read a short description of it.</div>
-    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button></div>`, { wide: true });
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button></div>`, { wide: true, width: 'min(760px, 92vw)' });
 }
 
 function selectGuildFromPicker(guildName) {
