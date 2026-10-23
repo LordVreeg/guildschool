@@ -32,6 +32,27 @@ custom email provider is set up (Resend, Postmark, Gmail SMTP, etc.):
 - Players outside the team also get no sign-up confirmation email.
 - Even team members can hit the hourly limit.
 
+## Bump the version tag on every CSS, JS or data change
+
+`index.html` adds a version tag to the stylesheet and to every script tag,
+for example `css/app.css?v=2026-10-22.1`. `js/data.js` reads that same value
+and adds it to each `data/*.json` request. The tag makes browsers fetch the
+new files instead of reusing cached copies.
+
+**Rule:** any commit that changes a file in `css/`, `js/` or `data/` must
+also bump `?v=` in `index.html`. That includes wiki syncs that only touch
+`data/`.
+
+- Change all 16 tags (1 stylesheet + 15 scripts) to the same new value.
+- Use the date plus a counter for that day, e.g. `2026-10-23.1`, then
+  `2026-10-23.2`.
+- One way to do it from the repo root:
+  `sed -i -E 's/\?v=[0-9.-]+"/?v=2026-10-23.1"/' index.html`
+
+If the bump is forgotten, nothing breaks. Players just keep the old files
+for up to about 10 minutes after a deploy, until GitHub Pages' cache
+expires, or until they press Ctrl+F5.
+
 ## UI
 
 - **Top bar overflows on narrow screens.** When signed in, the header needs about
