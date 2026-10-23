@@ -794,7 +794,7 @@ function renderSkillModule(skillId) {
       <!-- CONFIGURATION -->
       <div class="form-row">
         <div class="form-group" style="width:250px"><label>GuildSchool</label>
-          ${guildPickerButton(si.guildName, `v => updateSkill('${skillId}','guildName',v)`)}
+          ${skillGuildSelect(char, si)}
         </div>
         ${def && def.templated ? (si.skillName === 'Single weap spec' ? `
         <div class="form-group"><label>Specific Weapon (not a class — this skill trains on one weapon only)</label>
@@ -897,6 +897,23 @@ function renderSkillModule(skillId) {
 
     </div>
   </div>`;
+}
+
+// A skill can only come from one of the character's own GuildSchools
+// (Primary/Secondary/Tertiary on General Info). A skill already tagged with
+// some other guild keeps it in the list, marked, so it isn't changed silently.
+function skillGuildSelect(char, si) {
+  const charGuilds = [...new Set([char.guild, char.guild2, char.guild3].filter(Boolean))];
+  const current = si.guildName || '';
+  const options = charGuilds.map(g => `<option value="${escapeHtml(g)}" ${g === current ? 'selected' : ''}>${escapeHtml(g)}</option>`);
+  if (current && !charGuilds.includes(current)) {
+    options.push(`<option value="${escapeHtml(current)}" selected>${escapeHtml(current)} (not one of this character's guilds)</option>`);
+  }
+  return `<select style="width:100%" ${current ? `title="${escapeHtml(guildBlurbOrPlaceholder(current))}"` : ''} onchange="updateSkill('${si.id}','guildName',this.value)">
+    <option value="" ${current ? '' : 'selected'}>— none —</option>
+    ${options.join('')}
+  </select>
+  ${charGuilds.length ? '' : '<div class="note" style="margin-top:2px">Set this character\'s GuildSchools on General Info first.</div>'}`;
 }
 
 function nextLevelThreshold(level) {
