@@ -3466,7 +3466,7 @@
     "per_level": "1D3",
     "commonality": 1,
     "parent": "",
-    "subskills": "Track, Wilderness forage, botanist",
+    "subskills": "Track, Wilderness forage, botanist, Wake to Combat",
     "dropdown": null,
     "templated": false
   },
@@ -3481,6 +3481,19 @@
     "parent": "Basic Outdoor",
     "subskills": "",
     "dropdown": 1,
+    "templated": false
+  },
+  {
+    "type": "Outdoor",
+    "name": "Wake to Combat",
+    "base_xp": 0.06,
+    "attmod": "(WI-12)*.012",
+    "base": 20,
+    "per_level": "1D8+1",
+    "commonality": 2,
+    "parent": "Basic Outdoor",
+    "subskills": "",
+    "dropdown": 0.3,
     "templated": false
   },
   {
