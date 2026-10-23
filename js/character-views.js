@@ -857,7 +857,7 @@ function renderSkillModule(skillId) {
       ${!si.dropdownOnly ? `
       <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
         <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px">Level Rolls (${def ? def.per_level : '?'} per level)</div>
-        ${def && def.per_level ? `<button type="button" class="btn btn-dim" style="font-size:11px;padding:2px 8px" onclick="rollAllEmptyLevels('${skillId}')" title="Rolls ${def.per_level} for every empty level below">🎲 Roll All Empty</button>` : ''}
+        ${def && def.per_level ? `<button type="button" class="btn btn-dim" style="font-size:11px;padding:2px 8px" onclick="rollAllEmptyLevels('${skillId}')" title="Rolls ${def.per_level} for every empty level up to the skill's current level (${vals.level})">🎲 Roll Skill Levels</button>` : ''}
       </div>
       <div class="rolls-grid">
         ${Array.from({length:20}, (_,i) => {

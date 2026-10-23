@@ -719,7 +719,9 @@ function rollAllEmptyLevels(skillId) {
   const def = SKILLS.find(s => s.name === si.skillName);
   if (!def || !def.per_level) return;
   if (!si.rolls) si.rolls = Array(20).fill('');
-  for (let i = 0; i < 20; i++) {
+  // Only fill slots up to the skill's current level -- higher slots aren't earned yet.
+  const level = Math.min(20, computeSkillValues(si, char, char.skills || []).level);
+  for (let i = 0; i < level; i++) {
     if (si.rolls[i] === '' || si.rolls[i] === undefined) si.rolls[i] = rollDiceExpr(def.per_level);
   }
   saveState();
