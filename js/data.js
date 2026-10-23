@@ -68,8 +68,12 @@ const WEAPON_CLASSES = [
 // fill in avg_damage by hand once loaded, if you want it to feed the XP box.
 let BESTIARY_RACE_TEMPLATES = [];
 
+// Same ?v= as this script's own tag in index.html, so bumping it there also
+// makes browsers fetch updated data files instead of cached ones.
+const ASSET_VERSION = (document.currentScript && new URL(document.currentScript.src).searchParams.get('v')) || '';
+
 async function fetchDataFile(name) {
-  const res = await fetch(`data/${name}.json`);
+  const res = await fetch(`data/${name}.json` + (ASSET_VERSION ? `?v=${encodeURIComponent(ASSET_VERSION)}` : ''));
   if (!res.ok) throw new Error(`data/${name}.json: HTTP ${res.status}`);
   return res.json();
 }
