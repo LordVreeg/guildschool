@@ -8,10 +8,168 @@ function openModal(html, opts) {
   // A fixed width keeps a modal whose content changes as you use it (e.g. the
   // guild picker's hover blurb) from resizing; otherwise it fits its content.
   box.style.width = (opts && opts.width) || '';
+  // Extra classes for this modal only (e.g. 'plain-font' for the item popup).
+  box.className = (opts && opts.className) || '';
   document.getElementById('modal-overlay').classList.add('open');
 }
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
+}
+
+// "+ Add Item" on the Inventory page: every item field in one popup. The
+// item is built in itemDraft (mutations.js) and only added on confirm.
+// Every dropdown starts at "— select —", and the other fields and the Add
+// button stay locked until each dropdown has a choice.
+function openAddItemModal(opts) {
+  opts = opts || {};
+  itemDraft = { type: '', name: '', qty: 1, weight: 0, worth: '', notes: '', location: '', masterwork: false };
+  itemPicks = {};
+  editingItemIdx = null;
+  if (!opts.keepAddNext) addNextItem = false;
+  renderAddItemModal(opts.justAdded);
+}
+
+// ✎ on an inventory row: the same popup, filled in from that item. It edits
+// a copy, so Cancel leaves the item untouched.
+function openEditItemModal(idx) {
+  const char = state.characters[state.activeChar];
+  if (!char || !char.items || !char.items[idx]) return;
+  itemDraft = JSON.parse(JSON.stringify(char.items[idx]));
+  itemPicks = itemPicksFromItem(itemDraft);
+  editingItemIdx = idx;
+  addNextItem = false;
+  renderAddItemModal();
+}
+
+function renderAddItemModal(justAdded) {
+  const char = state.characters[state.activeChar];
+  const d = itemDraft;
+  if (!char || !d) return;
+  const val = x => escapeHtml(x === undefined || x === null ? '' : x);
+  const opt = (value, label, selected) => `<option value="${val(value)}" ${selected ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+  const field = (label, control, width) => `<div class="form-group"${width ? ` style="width:${width}"` : ''}><label>${label}</label>${control}</div>`;
+  const editing = editingItemIdx !== null;
+  const ready = itemPicksComplete(d);
+  const lock = ready ? '' : 'disabled';
+
+  // The dropdowns: "— select —" first, then the list, then "— custom —" where the step has one.
+  const steps = itemPickSteps(d);
+  const dropdowns = steps.map(s => {
+    const picked = itemPicks[s.key];
+    const options = opt('', '— select —', picked === undefined) +
+      s.options.map(o => opt(o, s.labelOf ? s.labelOf(o) : o, picked === o)).join('') +
+      (s.custom ? opt(ITEM_PICK_CUSTOM, '— custom —', picked === ITEM_PICK_CUSTOM) : '');
+    return field(s.label, `<select style="width:100%" onchange="setItemPick('${s.key}',this.value)">${options}</select>`, s.key === 'type' ? '160px' : '230px');
+  }).join('');
+
+  const hasArmorStats = d.type === 'Armor' || d.type === 'Shield';
+  // Carried plus the containers/locations already set up; new ones come from "+ Add Container".
+  const location = (d.location || '').trim();
+  const locations = itemLocations(char);
+  if (location && !locations.includes(location)) locations.push(location);
+  const num = (key, extra) => `<input type="number" style="width:100%" ${extra || ''} ${lock} value="${val(d[key])}" oninput="setAddItemField('${key}',this.value)">`;
+
+  openModal(`
+    <h3>${editing ? 'Edit Item' : 'Add Item'}</h3>
+    ${justAdded ? `<div class="note" style="margin-bottom:8px;color:var(--gold-dim)">Added “${escapeHtml(justAdded)}”. Next item:</div>` : ''}
+    <div class="form-row">${dropdowns}</div>
+    <div class="form-row">
+      ${field('Name', `<input id="ai-name" style="width:100%" ${lock} value="${val(d.name)}" oninput="setAddItemField('name',this.value)">`, '100%')}
+    </div>
+    <div class="form-row">
+      ${hasArmorStats ? field('AV', num('av'), '70px') + field('PR', num('pr'), '70px') : ''}
+      ${field('Qty', num('qty', 'min="1"'), '70px')}
+      ${field('Unit Weight', num('weight'), '100px')}
+      ${field('Unit Worth', num('worth'), '100px')}
+      ${d.type === 'Magic Item' ? '' : `<div class="form-group" style="justify-content:flex-end">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
+          <input type="checkbox" ${lock} ${d.masterwork ? 'checked' : ''} onchange="setAddItemField('masterwork',this.checked)"> ${d.type === 'Item' ? 'Masterwork' : 'Masterwork / Magic'}
+        </label>
+      </div>`}
+    </div>
+    <div class="form-row">
+      ${field('Location', `<select style="width:100%" ${lock} onchange="setAddItemField('location',this.value)">${opt('', 'Carried', !location)}${locations.map(l => opt(l, l, location === l)).join('')}</select>`, '200px')}
+      ${field('Notes', `<input style="width:100%" ${lock} value="${val(d.notes)}" oninput="setAddItemField('notes',this.value)">`, 'calc(100% - 220px)')}
+    </div>
+    <div class="note" style="margin-top:2px">${ready ? 'Carried items count toward Weight Carried. To put an item in a new bag, stash or other location, add it under Storage Locations first.' : 'Choose from every list above to fill in the rest of the item.'}</div>
+    <div id="ai-error" style="color:var(--red-b);font-size:12px;margin-top:8px;display:none"></div>
+    <div class="modal-actions" style="align-items:center">
+      ${editing ? '' : `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-right:auto">
+        <input type="checkbox" ${addNextItem ? 'checked' : ''} onchange="addNextItem=this.checked"> Add next item
+      </label>`}
+      <button class="btn btn-dim" onclick="itemDraft=null;editingItemIdx=null;addNextItem=false;closeModal()">Cancel</button>
+      <button class="btn btn-gold" ${lock} onclick="confirmAddItem()">${editing ? 'Save' : 'Add Item'}</button>
+    </div>`, { wide: true, width: 'min(720px, 92vw)', className: 'plain-font' });
+}
+
+// "+ Add Container" and ✎ under Storage Locations: name, capacity (blank =
+// no limit) and whether it's on the person. Edits a draft; see confirmContainer.
+function openAddContainerModal() {
+  containerDraft = { name: '', capacity: '', onPerson: false };
+  editingContainerName = null;
+  renderContainerModal();
+}
+
+function openEditContainerModal(name) {
+  const char = state.characters[state.activeChar];
+  if (!char || name === ON_PERSON_LOCATION) return;
+  const cap = (char.storageCapacities || {})[name];
+  containerDraft = { name, capacity: cap === undefined || cap === null ? '' : cap, onPerson: !!(char.storageOnPerson || {})[name] };
+  editingContainerName = name;
+  renderContainerModal();
+}
+
+function renderContainerModal() {
+  const d = containerDraft;
+  if (!d) return;
+  const editing = editingContainerName !== null;
+  const val = x => escapeHtml(x === undefined || x === null ? '' : x);
+  openModal(`
+    <h3>${editing ? 'Edit Container' : 'Add Container'}</h3>
+    <div class="form-row">
+      <div class="form-group" style="width:100%"><label>Name</label>
+        <input style="width:100%" value="${val(d.name)}" placeholder="e.g. Backpack, Bank of Igbar, Bag of Holding" oninput="containerDraft.name=this.value">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="width:140px"><label>Capacity</label>
+        <input type="number" min="0" style="width:100%" value="${val(d.capacity)}" placeholder="no limit" oninput="containerDraft.capacity=this.value">
+      </div>
+      <div class="form-group" style="justify-content:flex-end">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
+          <input type="checkbox" ${d.onPerson ? 'checked' : ''} onchange="containerDraft.onPerson=this.checked"> On Person
+        </label>
+      </div>
+    </div>
+    <div class="note">Capacity is the weight it can hold; leave it blank for no limit. Tick On Person for something you wear or carry (a backpack), so its contents count toward Weight Carried.${editing ? ' Renaming moves its items along with it.' : ''}</div>
+    <div id="ct-error" style="color:var(--red-b);font-size:12px;margin-top:8px;display:none"></div>
+    <div class="modal-actions">
+      <button class="btn btn-dim" onclick="containerDraft=null;editingContainerName=null;closeModal()">Cancel</button>
+      <button class="btn btn-gold" onclick="confirmContainer()">${editing ? 'Save' : 'Add Container'}</button>
+    </div>`, { width: 'min(460px, 92vw)', className: 'plain-font' });
+}
+
+// ✕ under Storage Locations: confirm, and choose where the container's items
+// go -- On Person, or another existing container.
+function openDeleteContainerModal(name) {
+  const char = state.characters[state.activeChar];
+  if (!char || name === ON_PERSON_LOCATION) return;
+  const inside = (char.items || []).filter(it => !isBlankItem(it) && (it.location || '').trim() === name);
+  const others = itemLocations(char).filter(l => l !== name);
+  const count = inside.reduce((n, it) => n + (parseFloat(it.qty) || 1), 0);
+  const dest = !inside.length ? '' : others.length
+    ? `<div class="form-group" style="margin-top:10px;width:260px"><label>Move its ${count.toLocaleString()} item${count === 1 ? '' : 's'} to</label>
+        <select id="ct-move-to" style="width:100%"><option value="">On Person</option>${others.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('')}</select>
+      </div>`
+    : `<p style="margin-top:8px">Its ${count.toLocaleString()} item${count === 1 ? '' : 's'} will move to On Person.</p>`;
+  openModal(`
+    <h3>Delete Container</h3>
+    <p>Delete "${escapeHtml(name)}"?</p>
+    ${dest}
+    <div class="modal-actions">
+      <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-red" data-name="${escapeHtml(name)}" onclick="confirmDeleteContainer(this.dataset.name, (document.getElementById('ct-move-to') || {}).value || '')">Delete</button>
+    </div>`, { width: 'min(420px, 92vw)', className: 'plain-font' });
 }
 
 function openNewCharModal(preset) {
@@ -92,7 +250,7 @@ function openCharTutorial(formPreset) {
     <p><strong>What is in the tool</strong></p>
     <ul style="margin:6px 0 6px 18px;padding:0">
       <li><b>Overview and General Info:</b> your skills at a glance, your identity and your guilds.</li>
-      <li><b>Weapons, Armor &amp; Items:</b> your inventory and storage locations.</li>
+      <li><b>Inventory:</b> your weapons, armor, items and storage locations.</li>
       <li><b>Combat page:</b> weapons, armor, shields and hit points, built from whatever you put in your inventory.</li>
       <li><b>Spells page:</b> spell points, the entire spell library, and casting.</li>
       <li><b>Groups:</b> for a GM and their players. A shared game clock, the party roster, session notes, and spell point and hit point recovery as time passes.</li>

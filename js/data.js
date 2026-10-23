@@ -53,6 +53,17 @@ const WEAPON_CLASSES = [
   'Basic Martial artist', 'Basic Pole Weapons', 'Basic Shield Use',
   'Basic Spears', 'Basic Straight Swords'
 ];
+// Inventory item types, as saved on each item. Code elsewhere matches these
+// exact names (e.g. the Combat page uses 'Weapon', 'Armor', 'Shield' and
+// 'Ammunition' items), so to rename one for display, add it to
+// ITEM_TYPE_LABELS instead of changing the saved name.
+const ITEM_TYPE_LABELS = { 'Ammunition': 'Weapon, Ammunition' };
+function itemTypeLabel(type) { return ITEM_TYPE_LABELS[type] || type; }
+// Listed alphabetically by label in the Add/Edit Item popup.
+const ITEM_TYPES = ['Ammunition', 'Armor', 'Coin', 'Item', 'Magic Item', 'Shield', 'Weapon']
+  .sort((a, b) => itemTypeLabel(a).localeCompare(itemTypeLabel(b)));
+// The "Magic Item Class" choices for a Magic Item.
+const MAGIC_ITEM_CLASSES = ['Books', 'Clothing', 'Jewelry', 'Misc', 'Potions', 'Scrolls'];
 
 // Base-creature stat templates transcribed from the wiki's Bestiary section.
 // Picking one of these in the Bestiary editor pre-fills the stat fields below, same

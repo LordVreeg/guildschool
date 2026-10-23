@@ -47,41 +47,204 @@ function updateChar(field, value) {
   renderCharSelect();
 }
 
-function addItem() {
+// The Add/Edit Item popup edits itemDraft; the inventory only changes when
+// it is confirmed (see openAddItemModal / openEditItemModal in modals.js).
+// editingItemIdx is the item being edited, or null when adding a new one.
+let itemDraft = null;
+let editingItemIdx = null;
+// Which dropdowns have been chosen, by step key (see itemPickSteps): a catalog
+// name, or ITEM_PICK_CUSTOM. A missing key means it still reads "— select —".
+let itemPicks = {};
+// "Add next item": after Add, keep the popup open with a fresh item.
+let addNextItem = false;
+const ITEM_PICK_CUSTOM = '__custom__';
+
+// The popup's dropdowns for a draft, in order: Type, then the type's class
+// and/or catalog pickers. key is the draft field a class step sets; apply
+// fills the draft from a catalog pick; custom adds "— custom —" at the bottom.
+function itemPickSteps(d) {
+  const steps = [{ key: 'type', label: 'Type', options: ITEM_TYPES, labelOf: itemTypeLabel }];
+  if (d.type === 'Weapon') {
+    steps.push({ key: 'weaponClass', label: 'Weapon Class', options: WEAPON_CLASSES });
+    if (d.weaponClass) {
+      const cat = Object.entries(WEAPON_CATEGORY_TO_SKILL).find(([c, sk]) => sk === d.weaponClass);
+      const models = cat ? weaponModelsForClass(d.weaponClass, cat[0]) : [];
+      steps.push({ key: 'weaponModel', label: 'Model', options: models.map(m => m.name), custom: true, apply: applyWeaponModel });
+    }
+  } else if (d.type === 'Armor') {
+    steps.push({ key: 'armorType', label: 'Armor Type', options: ARMOR.map(a => a.name), custom: true, apply: applyArmorType });
+  } else if (d.type === 'Shield') {
+    steps.push({ key: 'shieldType', label: 'Shield Type', options: SHIELDS.map(s => s.name), custom: true, apply: applyShieldType });
+  } else if (d.type === 'Coin') {
+    steps.push({ key: 'coin', label: 'Coin', options: COINAGE.map(c => `${c.name} (${c.metal})`), apply: applyCoinType });
+  } else if (d.type === 'Ammunition') {
+    steps.push({ key: 'ammoBase', label: 'Ammunition', options: AMMUNITION.map(a => a.name), custom: true, apply: applyAmmoType });
+  } else if (d.type === 'Item') {
+    steps.push({ key: 'itemClass', label: 'Item Class', options: [...new Set(BASIC_ITEMS.map(b => b.class))].sort() });
+    if (d.itemClass) {
+      steps.push({ key: 'basicItemName', label: 'Item', options: BASIC_ITEMS.filter(b => b.class === d.itemClass).map(b => b.name), custom: true, apply: applyBasicItem });
+    }
+  } else if (d.type === 'Magic Item') {
+    steps.push({ key: 'magicItemClass', label: 'Magic Item Class', options: MAGIC_ITEM_CLASSES });
+  }
+  return steps;
+}
+
+// For editing: read back which dropdowns an existing item has chosen. A
+// catalog pick that isn't in the list (custom, or renamed since) reads as
+// "— custom —"; a class that isn't in the list reads as "— select —".
+function itemPicksFromItem(item) {
+  const picks = {};
+  const d = { type: item.type };
+  for (let i = 0; ; i++) {
+    const steps = itemPickSteps(d);
+    if (i >= steps.length) break;
+    const s = steps[i];
+    let v = s.key === 'coin' ? (COINAGE.find(c => c.name === item.name) ? s.options[COINAGE.findIndex(c => c.name === item.name)] : undefined) : item[s.key];
+    if (!s.options.includes(v)) v = s.custom ? ITEM_PICK_CUSTOM : undefined;
+    if (v === undefined) break;
+    picks[s.key] = v;
+    if (!s.apply && s.key !== 'type') d[s.key] = v;
+    if (s.key === 'type') d.type = v;
+  }
+  return picks;
+}
+
+// Every dropdown has a real choice, so the rest of the item can be filled in.
+function itemPicksComplete(d) {
+  return itemPickSteps(d).every(s => itemPicks[s.key] !== undefined);
+}
+
+// Changing any dropdown starts the item over: it keeps the choices above that
+// dropdown, clears everything below it and every field, then refills the
+// fields from the catalog pick.
+function setItemPick(key, value) {
+  if (!itemDraft) return;
+  const keys = itemPickSteps(itemDraft).map(s => s.key);
+  const idx = keys.indexOf(key);
+  const picks = {};
+  for (const k of keys.slice(0, idx)) if (itemPicks[k] !== undefined) picks[k] = itemPicks[k];
+  if (value !== '') picks[key] = value;
+  itemPicks = picks;
+  const d = { type: picks.type || '', name: '', qty: 1, weight: 0, worth: '', notes: '', location: '', masterwork: false };
+  for (let i = 1; ; i++) {
+    const steps = itemPickSteps(d);
+    if (i >= steps.length) break;
+    const s = steps[i], v = picks[s.key];
+    if (v === undefined) break;
+    if (s.apply) {
+      if (v !== ITEM_PICK_CUSTOM) {
+        s.apply(d, v);
+        if (!String(d.name || '').trim()) d.name = v;
+      }
+    } else d[s.key] = v;
+  }
+  itemDraft = d;
+  renderAddItemModal();
+}
+
+function setAddItemField(field, value) {
+  if (!itemDraft) return;
+  itemDraft[field] = value;
+}
+
+function confirmAddItem() {
   const char = state.characters[state.activeChar];
-  if (!char) return;
+  const d = itemDraft;
+  if (!char || !d || !itemPicksComplete(d)) return;
+  d.name = String(d.name || '').trim();
+  if (!d.name) {
+    const err = document.getElementById('ai-error');
+    err.textContent = 'Give the item a name.';
+    err.style.display = 'block';
+    return;
+  }
+  delete d.coin;
   if (!char.items) char.items = [];
-  char.items.push({ name: '', type: 'Item', qty: 1, weight: 0, worth: '', notes: '', location: '' });
+  const editing = editingItemIdx !== null && char.items[editingItemIdx];
+  if (editing) char.items[editingItemIdx] = d;
+  else char.items.push(d);
+  itemDraft = null;
+  editingItemIdx = null;
   saveState();
   renderInventoryModule();
+  if (!editing && addNextItem) { openAddItemModal({ keepAddNext: true, justAdded: d.name }); return; }
+  closeModal();
 }
 
-function updateStorageOnPerson(location, checked) {
+// Storage Locations: containers are the keys of char.storageCapacities (a
+// capacity, or null for no limit) plus any location an item already names;
+// char.storageOnPerson marks the ones worn/carried, whose weight counts
+// toward Weight Carried. The Add/Edit Container popup edits containerDraft;
+// editingContainerName is the container being edited, or null when adding.
+let containerDraft = null;
+let editingContainerName = null;
+
+function confirmContainer() {
   const char = state.characters[state.activeChar];
-  if (!char) return;
+  const d = containerDraft;
+  if (!char || !d) return;
+  const err = msg => { const el = document.getElementById('ct-error'); el.textContent = msg; el.style.display = 'block'; };
+  const name = String(d.name || '').trim();
+  const reserved = ['on person', 'carried', ON_PERSON_LOCATION.toLowerCase()];
+  if (!name) return err('Give the container a name.');
+  if (reserved.includes(name.toLowerCase())) return err('"' + name + '" is reserved for items carried on your person.');
+  if (name !== editingContainerName && itemLocations(char).some(l => l.toLowerCase() === name.toLowerCase())) return err('There is already a container called "' + name + '".');
+  const capText = String(d.capacity === undefined || d.capacity === null ? '' : d.capacity).trim();
+  const capacity = capText === '' ? null : parseFloat(capText);
+  if (capacity !== null && !(capacity >= 0)) return err('Capacity must be a number (or blank for no limit).');
+
+  if (!char.storageCapacities) char.storageCapacities = {};
   if (!char.storageOnPerson) char.storageOnPerson = {};
-  if (checked) char.storageOnPerson[location] = true; else delete char.storageOnPerson[location];
+  const old = editingContainerName;
+  if (old !== null && old !== name) {
+    // Renaming: the items inside follow the container
+    delete char.storageCapacities[old];
+    if (char.storageOrder) char.storageOrder = char.storageOrder.map(n => n === old ? name : n);
+    delete char.storageOnPerson[old];
+    for (const it of char.items || []) if ((it.location || '').trim() === old) it.location = name;
+  }
+  char.storageCapacities[name] = capacity;
+  if (d.onPerson) char.storageOnPerson[name] = true; else delete char.storageOnPerson[name];
+  containerDraft = null;
+  editingContainerName = null;
   saveState();
+  closeModal();
   renderInventoryModule();
 }
-function updateStorageCapacity(location, value) {
+
+// Deleting a container moves whatever is in it to moveTo ('' = On Person,
+// or another container's name).
+function confirmDeleteContainer(name, moveTo) {
   const char = state.characters[state.activeChar];
   if (!char) return;
-  if (!char.storageCapacities) char.storageCapacities = {};
-  char.storageCapacities[location] = (value === '' || value === null) ? null : (parseFloat(value) || 0);
+  for (const it of char.items || []) if ((it.location || '').trim() === name) it.location = moveTo || '';
+  if (char.storageCapacities) delete char.storageCapacities[name];
+  if (char.storageOnPerson) delete char.storageOnPerson[name];
+  if (char.storageOrder) char.storageOrder = char.storageOrder.filter(n => n !== name);
+  collapsedItemGroups.delete(name);
+  saveState();
+  closeModal();
+  renderInventoryModule();
+}
+
+// ▲/▼: move a container one place in char.storageOrder (saved with the character).
+function moveContainer(name, dir) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const list = itemLocations(char);
+  const i = list.indexOf(name), j = i + dir;
+  if (i < 0 || j < 0 || j >= list.length) return;
+  [list[i], list[j]] = [list[j], list[i]];
+  char.storageOrder = list;
   saveState();
   renderInventoryModule();
 }
 
-function addStorageContainer() {
-  const char = state.characters[state.activeChar];
-  if (!char) return;
-  const name = document.getElementById('new-storage-name').value.trim();
-  const capacity = document.getElementById('new-storage-capacity').value;
-  if (!name) return;
-  if (!char.storageCapacities) char.storageCapacities = {};
-  char.storageCapacities[name] = capacity === '' ? null : (parseFloat(capacity) || 0);
-  saveState();
+// Show/hide a location's items in the Items list (not saved).
+let collapsedItemGroups = new Set();
+function toggleItemGroup(name) {
+  if (collapsedItemGroups.has(name)) collapsedItemGroups.delete(name); else collapsedItemGroups.add(name);
   renderInventoryModule();
 }
 
@@ -93,10 +256,9 @@ function updateItem(idx, field, value) {
   if (state.activeView === 'inventory' && (field === 'weight' || field === 'qty' || field === 'worth' || field === 'av' || field === 'pr')) renderInventoryModule();
 }
 
-function selectArmorType(idx, armorName) {
-  const char = state.characters[state.activeChar];
-  if (!char || !char.items || !char.items[idx]) return;
-  const item = char.items[idx];
+// Catalog picks: each apply* fills an item's stats from the catalog entry.
+// Used by the inventory table's dropdowns (select*) and the Add Item popup.
+function applyArmorType(item, armorName) {
   item.armorType = armorName;
   const def = ARMOR.find(a => a.name === armorName);
   if (def) {
@@ -105,6 +267,65 @@ function selectArmorType(idx, armorName) {
     item.weight = def.weight;
     if (!item.worth) item.worth = def.cost;
   }
+}
+function applyWeaponModel(item, weaponName) {
+  item.weaponModel = weaponName;
+  const def = WEAPONS.find(w => w.name === weaponName);
+  if (def) {
+    item.weight = def.weight;
+    if (!item.worth) item.worth = def.cost;
+    item.stn1h = def.stn_1h; item.stn2h = def.stn_2h; item.stmod = def.stmod;
+    item.cdn1h = def.cdn_1h; item.cdn2h = def.cdn_2h; item.cdmod = def.cdmod;
+    item.damageDice = def.damage_dice; item.dividingDie = def.dividing_die;
+    item.speedMissile = def.speed_missile; item.speedMelee = def.speed_melee; item.speedReadied = def.speed_readied;
+    item.weaponProtection = def.protection; item.threatRange = def.threat_range; item.range = def.range;
+  }
+}
+function applyCoinType(item, coinName) {
+  const def = COINAGE.find(c => `${c.name} (${c.metal})` === coinName);
+  if (def) {
+    item.name = def.name;
+    item.weight = def.weight;
+    item.worth = def.worthInHorn;
+  }
+}
+function applyAmmoType(item, ammoName) {
+  if (!ammoName) { delete item.ammoBase; return; } // "— custom —"
+  const def = AMMUNITION.find(a => a.name === ammoName);
+  if (def) {
+    item.ammoBase = def.name;
+    item.name = def.name;
+    item.damageDice = def.damage_dice;
+    item.dividingDie = def.dividing_die;
+    item.weight = def.weight;
+    if (!item.worth) item.worth = def.cost;
+  }
+}
+function applyShieldType(item, shieldName) {
+  item.shieldType = shieldName;
+  const def = SHIELDS.find(s => s.name === shieldName);
+  if (def) {
+    item.av = def.av;
+    item.pr = def.pr;
+    item.weight = def.weight;
+    if (!item.worth) item.worth = def.cost;
+  }
+}
+function applyBasicItem(item, itemName) {
+  const def = BASIC_ITEMS.find(b => b.class === item.itemClass && b.name === itemName);
+  item.basicItemName = itemName;
+  if (def) {
+    item.name = def.name;
+    item.weight = def.weight;
+    item.worth = def.worth;
+    item.notes = def.notes;
+  }
+}
+
+function selectArmorType(idx, armorName) {
+  const char = state.characters[state.activeChar];
+  if (!char || !char.items || !char.items[idx]) return;
+  applyArmorType(char.items[idx], armorName);
   saveState();
   renderInventoryModule();
 }
@@ -574,18 +795,7 @@ function updateWeaponField(idx, field, value) {
 function selectWeaponModel(idx, weaponName) {
   const char = state.characters[state.activeChar];
   if (!char || !char.items || !char.items[idx]) return;
-  const item = char.items[idx];
-  item.weaponModel = weaponName;
-  const def = WEAPONS.find(w => w.name === weaponName);
-  if (def) {
-    item.weight = def.weight;
-    if (!item.worth) item.worth = def.cost;
-    item.stn1h = def.stn_1h; item.stn2h = def.stn_2h; item.stmod = def.stmod;
-    item.cdn1h = def.cdn_1h; item.cdn2h = def.cdn_2h; item.cdmod = def.cdmod;
-    item.damageDice = def.damage_dice; item.dividingDie = def.dividing_die;
-    item.speedMissile = def.speed_missile; item.speedMelee = def.speed_melee; item.speedReadied = def.speed_readied;
-    item.weaponProtection = def.protection; item.threatRange = def.threat_range; item.range = def.range;
-  }
+  applyWeaponModel(char.items[idx], weaponName);
   saveState();
   renderInventoryModule();
 }
@@ -593,13 +803,7 @@ function selectWeaponModel(idx, weaponName) {
 function selectCoinType(idx, coinName) {
   const char = state.characters[state.activeChar];
   if (!char || !char.items || !char.items[idx]) return;
-  const item = char.items[idx];
-  const def = COINAGE.find(c => `${c.name} (${c.metal})` === coinName);
-  if (def) {
-    item.name = def.name;
-    item.weight = def.weight;
-    item.worth = def.worthInHorn;
-  }
+  applyCoinType(char.items[idx], coinName);
   saveState();
   renderInventoryModule();
 }
@@ -607,16 +811,7 @@ function selectCoinType(idx, coinName) {
 function selectAmmoType(idx, ammoName) {
   const char = state.characters[state.activeChar];
   if (!char || !char.items || !char.items[idx]) return;
-  const item = char.items[idx];
-  const def = AMMUNITION.find(a => a.name === ammoName);
-  if (def) {
-    item.ammoBase = def.name;
-    item.name = def.name;
-    item.damageDice = def.damage_dice;
-    item.dividingDie = def.dividing_die;
-    item.weight = def.weight;
-    if (!item.worth) item.worth = def.cost;
-  }
+  applyAmmoType(char.items[idx], ammoName);
   saveState();
   renderInventoryModule();
 }
@@ -624,15 +819,7 @@ function selectAmmoType(idx, ammoName) {
 function selectShieldType(idx, shieldName) {
   const char = state.characters[state.activeChar];
   if (!char || !char.items || !char.items[idx]) return;
-  const item = char.items[idx];
-  item.shieldType = shieldName;
-  const def = SHIELDS.find(s => s.name === shieldName);
-  if (def) {
-    item.av = def.av;
-    item.pr = def.pr;
-    item.weight = def.weight;
-    if (!item.worth) item.worth = def.cost;
-  }
+  applyShieldType(char.items[idx], shieldName);
   saveState();
   renderInventoryModule();
 }
@@ -640,22 +827,15 @@ function selectShieldType(idx, shieldName) {
 function selectBasicItem(idx, itemName) {
   const char = state.characters[state.activeChar];
   if (!char || !char.items || !char.items[idx]) return;
-  const item = char.items[idx];
-  const def = BASIC_ITEMS.find(b => b.class === item.itemClass && b.name === itemName);
-  item.basicItemName = itemName;
-  if (def) {
-    item.name = def.name;
-    item.weight = def.weight;
-    item.worth = def.worth;
-    item.notes = def.notes;
-  }
+  applyBasicItem(char.items[idx], itemName);
   saveState();
   renderInventoryModule();
 }
 
 function removeItem(idx) {
   const char = state.characters[state.activeChar];
-  if (!char || !char.items) return;
+  if (!char || !char.items || !char.items[idx]) return;
+  if (!confirm(`Delete "${char.items[idx].name || 'this item'}" from the inventory?`)) return;
   char.items.splice(idx, 1);
   saveState();
   renderInventoryModule();

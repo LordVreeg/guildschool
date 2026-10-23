@@ -53,6 +53,21 @@ If the bump is forgotten, nothing breaks. Players just keep the old files
 for up to about 10 minutes after a deploy, until GitHub Pages' cache
 expires, or until they press Ctrl+F5.
 
+## Inventory catalog gaps
+
+In the Add/Edit Item popup, the Weapon Class list is the fixed
+`WEAPON_CLASSES` in `js/data.js`. The Model list after it comes from
+`data/weapons.json`, matched to a class through `WEAPON_CATEGORY_TO_SKILL`.
+Two entries don't match up:
+
+- **Thrown weapons can't be picked.** `data/weapons.json` has a "Thrown"
+  category, but `WEAPON_CATEGORY_TO_SKILL` maps it to no weapon class
+  (`'Thrown': null`). No Weapon Class leads to those models, so they never
+  appear in the Model list.
+- **"Basic Shield Use" has no models.** It is in `WEAPON_CLASSES`, but no
+  weapon category maps to it. Choosing it as the Weapon Class always gives
+  an empty Model list.
+
 ## UI
 
 - **Top bar overflows on narrow screens.** When signed in, the header needs about

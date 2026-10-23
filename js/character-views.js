@@ -65,7 +65,7 @@ function renderOverview() {
 }
 
 // Weight Possible / Carried with its bar, shown on General Info and on the
-// Weapons, Armor & Items page (where carried items change it).
+// Inventory page (where carried items change it).
 function weightSummaryHtml(char) {
   const w = computeWeight(char);
   const pct = w.possible > 0 ? Math.min(100, (w.carried / w.possible) * 100) : 0;
@@ -240,9 +240,6 @@ function renderGeneralModule() {
 
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Notes</div>
-      <div class="form-group" style="margin-bottom:10px"><label>Item Notes</label>
-        <textarea rows="3" style="width:100%;resize:vertical" onchange="updateChar('itemNotes',this.value)">${char.itemNotes||''}</textarea>
-      </div>
       <div class="form-group" style="margin-bottom:10px"><label>History</label>
         <textarea rows="4" style="width:100%;resize:vertical" onchange="updateChar('historyNotes',this.value)">${char.historyNotes||''}</textarea>
       </div>
@@ -272,7 +269,7 @@ function renderGeneralModule() {
       <ol style="margin:6px 0 6px 18px;padding:0">
         <li><b>Pick your main Guild/School first</b>, before anything else. On General Info, set your Primary Guild. Your guild decides what you are better and worse at: it adjusts how fast you learn every skill (the EXP modifier), so what your guild favors comes quickly and what it doesn't comes slowly. It is also where your history comes from and your link to the world of Celtricia.</li>
         <li><b>Spend your starting experience.</b> You already have a few skills; add the rest with <i>+ Add Skill</i> in the sidebar. A broad skill gives you a little ability in the specialties under it (the dropdown rule).</li>
-        <li><b>Put your gear in your inventory.</b> On the Weapons, Armor &amp; Items page, add weapons, armor and shields as items. They go live on the Combat page by themselves: weapons show to-hit, damage, speed and crit chances worked out from your skills and attributes, and armor and shields add to your Avoidance and Protection.</li>
+        <li><b>Put your gear in your inventory.</b> On the Inventory page, add weapons, armor and shields as items. They go live on the Combat page by themselves: weapons show to-hit, damage, speed and crit chances worked out from your skills and attributes, and armor and shields add to your Avoidance and Protection.</li>
         <li><b>Spells.</b> The Spells page keeps your spell points and your spellbook, and it can draw on the entire spell library.</li>
         <li><b>Playing with a group.</b> The Groups button in the top bar is where your GM keeps the shared clock, the party roster and notes, and where combat is run: a Combat tracker with turn order, hit points and effects. You can link your character to a group from General Info.</li>
       </ol>
@@ -281,101 +278,107 @@ function renderGeneralModule() {
   }
 }
 
+// The inventory's Type column: the most specific of the item's type, class
+// and model, read the same way the item popup reads it. A catalog pick shows
+// alone ("Scale Mail"); a custom one shows the level above it plus "Custom"
+// ("Armor, Custom", "Basic Axe, Custom").
+function itemKindLabel(it) {
+  const labels = Object.entries(itemPicksFromItem(it)).map(([key, v]) =>
+    v === ITEM_PICK_CUSTOM ? 'Custom' : key === 'type' ? itemTypeLabel(v) : v);
+  if (!labels.length) return itemTypeLabel(it.type || 'Item');
+  const last = labels[labels.length - 1];
+  return last === 'Custom' && labels.length > 1 ? `${labels[labels.length - 2]}, Custom` : last;
+}
+
+// Where an item can go: Carried (an empty location) plus every container
+// added under Storage Locations or already holding items.
+function itemLocations(char) {
+  const set = new Set(Object.keys(char.storageCapacities || {}));
+  for (const it of char.items || []) if (it.location && it.location.trim()) set.add(it.location.trim());
+  return orderedContainers(char, set);
+}
+
+// ▲/▼ for a container (not On Person), used in the Items group headers and
+// the Storage Locations rows. Each moves it one place in the shared order.
+function containerMoveButtons(char, name) {
+  const list = itemLocations(char);
+  const i = list.indexOf(name);
+  const b = (dir, glyph, disabled) => `<button type="button" class="btn btn-dim container-move" title="Move ${dir < 0 ? 'up' : 'down'}" ${disabled ? 'disabled' : ''} onclick="event.stopPropagation();moveContainer(this.closest('[data-container]').dataset.container, ${dir})">${glyph}</button>`;
+  return b(-1, '▲', i <= 0) + b(1, '▼', i < 0 || i >= list.length - 1);
+}
+
+// Read-only inventory rows, grouped under a header per location (Carried
+// first), with that location's totals from computeStorageSummary.
+function inventoryGroupsHtml(char) {
+  const CARRIED = 'On Person (Carried)';
+  const entries = (char.items || []).map((it, idx) => ({ it, idx })).filter(({ it }) => !isBlankItem(it));
+  const html = computeStorageSummary(char).map(g => {
+    const rows = entries.filter(({ it }) => ((it.location || '').trim() || CARRIED) === g.location);
+    if (!rows.length) return '';
+    const hidden = collapsedItemGroups.has(g.location);
+    const isContainer = g.location !== CARRIED;
+    const label = !isContainer ? 'Carried' : escapeHtml(g.location) + (g.onPerson ? ' <span class="item-group-stats">(on person)</span>' : '');
+    return `<tr class="item-group" data-group="${escapeHtml(g.location)}" data-container="${escapeHtml(g.location)}" title="${hidden ? 'Show' : 'Hide'} these items" onclick="toggleItemGroup(this.dataset.group)"><td colspan="7"><span class="item-group-toggle">${hidden ? '▸' : '▾'}</span>${label}${isContainer ? `<span class="group-move">${containerMoveButtons(char, g.location)}</span>` : ''}</td></tr>` +
+      (hidden ? '' : rows.map(({ it, idx }) => `<tr style="${it.masterwork ? 'font-style:italic' : ''}">
+        <td>${escapeHtml(it.name || '')}</td>
+        <td class="item-kind">${escapeHtml(itemKindLabel(it))}</td>
+        <td class="item-qty">${escapeHtml(it.qty || 1)}</td>
+        <td style="text-align:center">${it.masterwork ? '✓' : ''}</td>
+        <td class="item-kind">${escapeHtml(it.notes || '')}</td>
+        <td class="item-edit" title="Edit" onclick="openEditItemModal(${idx})">✎</td>
+        <td class="item-del" title="Delete" onclick="removeItem(${idx})">✕</td>
+      </tr>`).join(''));
+  }).join('');
+  return html || `<tr><td colspan="7" class="note" style="padding:8px">No items yet. Use <i>+ Add Item</i> below.</td></tr>`;
+}
+
 function renderInventoryModule() {
   const char = state.characters[state.activeChar];
   if (!char) return;
   const totalWorth = (char.items||[]).reduce((sum,it)=>sum+((parseFloat(it.worth)||0)*(parseFloat(it.qty)||1)),0);
 
   document.getElementById('main').innerHTML = `
-  <div class="panel">
-    <div class="panel-header"><h2>Weapons, Armor & Items — ${escapeHtml(char.name || '')}</h2>
+  <div class="panel plain-font">
+    <div class="panel-header"><h2>Inventory — ${escapeHtml(char.name || '')}</h2>
       <div class="computed-item" style="margin-left:auto"><span class="ci-label">Total Worth</span><span class="ci-value" style="font-size:16px">${totalWorth.toLocaleString()}</span></div>
     </div>
     <div class="panel-body">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weight</div>
       ${weightSummaryHtml(char)}
       <hr class="divider">
-      <div class="note" style="margin-bottom:6px">Leave Location blank for items carried on your person (counts toward Weight Carried above). Anything else — a bank, a bag of holding, a specific stash — is tracked but doesn't weigh you down, unless you tick its On Person box in Storage Locations below (a backpack you're wearing).</div>
-      <datalist id="item-location-list">${[...new Set((char.items||[]).map(it=>it.location).filter(Boolean))].map(loc=>`<option value="${escapeHtml(loc)}">`).join('')}</datalist>
-      <table class="item-table">
-        <thead><tr><th>Item</th><th>Type</th><th>Class</th><th>Model</th><th>AV</th><th>PR</th><th>Qty</th><th>Unit Wt</th><th>Total Wt</th><th>Unit Worth</th><th>Total Worth</th><th>MW/Magic</th><th>Location</th><th>Notes</th><th></th></tr></thead>
-        <tbody>
-          ${(char.items || []).map((it, idx) => `
-          <tr style="${it.masterwork ? 'font-style:italic' : ''}">
-            <td><input value="${it.name||''}" onchange="updateItem(${idx},'name',this.value)"></td>
-            <td><select onchange="updateItem(${idx},'type',this.value);renderInventoryModule()">
-              ${['Weapon','Armor','Shield','Coin','Ammunition','Item'].map(t=>`<option ${it.type===t?'selected':''}>${t}</option>`).join('')}
-            </select></td>
-            <td>${it.type==='Weapon' ? `<select onchange="updateItem(${idx},'weaponClass',this.value);renderInventoryModule()">
-              <option value="">— select —</option>
-              ${WEAPON_CLASSES.map(wc=>`<option ${it.weaponClass===wc?'selected':''}>${wc}</option>`).join('')}
-            </select>` : (it.type==='Armor' ? `<select onchange="selectArmorType(${idx},this.value)">
-              <option value="">— custom/magic —</option>
-              ${ARMOR.map(a=>`<option ${it.armorType===a.name?'selected':''}>${a.name}</option>`).join('')}
-            </select>` : (it.type==='Shield' ? `<select onchange="selectShieldType(${idx},this.value)">
-              <option value="">— custom/magic —</option>
-              ${SHIELDS.map(sh=>`<option ${it.shieldType===sh.name?'selected':''}>${sh.name}</option>`).join('')}
-            </select>` : (it.type==='Coin' ? `<select onchange="selectCoinType(${idx},this.value)">
-              <option value="">— select —</option>
-              ${COINAGE.map(c=>`<option ${it.name===c.name?'selected':''}>${c.name} (${c.metal})</option>`).join('')}
-            </select>` : (it.type==='Ammunition' ? `<select onchange="selectAmmoType(${idx},this.value)">
-              <option value="">— custom/magic —</option>
-              ${AMMUNITION.map(am=>`<option ${it.ammoBase===am.name?'selected':''}>${am.name}</option>`).join('')}
-            </select>` : (it.type==='Item' ? `<select onchange="updateItem(${idx},'itemClass',this.value);renderInventoryModule()">
-              <option value="">— select —</option>
-              ${[...new Set(BASIC_ITEMS.map(b=>b.class))].sort().map(c=>`<option ${it.itemClass===c?'selected':''}>${c}</option>`).join('')}
-            </select>` : '' ))))) }</td>
-            <td>${(it.type==='Weapon' && it.weaponClass) ? (() => {
-              const cat = Object.entries(WEAPON_CATEGORY_TO_SKILL).find(([c,sk])=>sk===it.weaponClass);
-              const catName = cat ? cat[0] : null;
-              const models = catName ? weaponModelsForClass(it.weaponClass, catName) : [];
-              return `<select onchange="selectWeaponModel(${idx},this.value)">
-                <option value="">— custom/magic —</option>
-                ${models.map(m=>`<option ${it.weaponModel===m.name?'selected':''}>${m.name}</option>`).join('')}
-              </select>`;
-            })() : (it.type==='Item' && it.itemClass) ? (() => {
-              const models = BASIC_ITEMS.filter(b=>b.class===it.itemClass);
-              return `<select onchange="selectBasicItem(${idx},this.value)">
-                <option value="">— custom/magic —</option>
-                ${models.map(m=>`<option ${it.basicItemName===m.name?'selected':''}>${m.name}</option>`).join('')}
-              </select>`;
-            })() : ''}</td>
-            <td class="item-qty">${(it.type==='Armor'||it.type==='Shield') ? `<input type="number" value="${it.av||0}" onchange="updateItem(${idx},'av',this.value)">` : ''}</td>
-            <td class="item-qty">${(it.type==='Armor'||it.type==='Shield') ? `<input type="number" value="${it.pr||0}" onchange="updateItem(${idx},'pr',this.value)">` : ''}</td>
-            <td class="item-qty"><input type="number" min="1" value="${it.qty||1}" onchange="updateItem(${idx},'qty',this.value)"></td>
-            <td class="item-weight"><input type="number" value="${it.weight||0}" onchange="updateItem(${idx},'weight',this.value)"></td>
-            <td class="item-total-wt">${(((parseFloat(it.weight)||0)*(parseFloat(it.qty)||1))).toLocaleString()}</td>
-            <td class="item-worth"><input type="number" value="${it.worth||0}" onchange="updateItem(${idx},'worth',this.value)"></td>
-            <td class="item-total-wt">${(((parseFloat(it.worth)||0)*(parseFloat(it.qty)||1))).toLocaleString()}</td>
-            <td style="text-align:center"><input type="checkbox" ${it.masterwork?'checked':''} onchange="updateItem(${idx},'masterwork',this.checked);renderInventoryModule()"></td>
-            <td><input value="${it.location||''}" list="item-location-list" placeholder="Carried" style="width:110px" onchange="updateItem(${idx},'location',this.value);renderInventoryModule()"></td>
-            <td><input value="${it.notes||''}" onchange="updateItem(${idx},'notes',this.value)"></td>
-
-            <td class="item-del" onclick="removeItem(${idx})">✕</td>
-          </tr>`).join('')}
-        </tbody>
+      <div class="note" style="margin-bottom:6px">Items are grouped by where they are. Carried items count toward Weight Carried above; items in a container don't, unless you tick its On Person box in Storage Locations below (a backpack you're wearing). Use ✎ to change an item.</div>
+      <table class="item-table inventory-table">
+        <thead><tr><th>Item</th><th>Type</th><th>Qty</th><th>MW/Magic</th><th>Notes</th><th></th><th></th></tr></thead>
+        <tbody>${inventoryGroupsHtml(char)}</tbody>
       </table>
-      <button class="btn btn-gold" onclick="addItem()">+ Add Item</button>
+      <button class="btn btn-gold" onclick="openAddItemModal()">+ Add Item</button>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px">Storage Locations</div>
-      <div class="note" style="margin-bottom:6px">Set a Capacity on a bag/satchel/etc. to flag it when overloaded. Leave blank for no limit. To add an empty container before putting anything in it, give it a name and capacity here.</div>
-      <table class="skill-table">
-        <thead><tr><th>Location</th><th>On Person</th><th>Items</th><th>Weight</th><th>Capacity</th><th>Worth</th></tr></thead>
+      <div class="note" style="margin-bottom:6px">Capacity is how much weight a container can hold (blank = no limit); On Person's is your Weight Possible. Tick On Person on a container you wear or carry so its contents count toward Weight Carried.</div>
+      <table class="item-table inventory-table">
+        <thead><tr><th>Container</th><th>On Person</th><th>Items</th><th>Weight</th><th>Capacity</th><th>Capacity Remaining</th><th>Worth</th><th></th><th></th><th></th></tr></thead>
         <tbody>
-          ${computeStorageSummary(char).map(g => `<tr>
-            <td>${escapeHtml(g.location)}</td>
-            <td>${g.location==='On Person (Carried)' ? '<span class="note">always</span>' : `<input type="checkbox" ${g.onPerson?'checked':''} title="Checked: this container's weight counts toward Weight Carried" onchange="updateStorageOnPerson('${g.location.replace(/'/g,"\\'")}',this.checked)">`}</td>
-            <td>${g.count}</td>
-            <td style="${g.over?'color:#c05050;font-weight:bold':''}">${g.weight.toLocaleString()}${g.over?' OVER':''}</td>
-            <td>${g.location==='On Person (Carried)' ? '<span class="note">see Weight above</span>' : `<input type="number" class="w100" value="${g.capacity!==null?g.capacity:''}" placeholder="none" onchange="updateStorageCapacity('${g.location.replace(/'/g,"\\'")}',this.value)">`}</td>
+          ${computeStorageSummary(char).map(g => {
+            const isPerson = g.location === ON_PERSON_LOCATION;
+            const over = g.over ? 'color:#c05050' : '';
+            return `<tr data-container="${escapeHtml(g.location)}">
+            <td>${isPerson ? 'On Person' : escapeHtml(g.location)}</td>
+            <td>${isPerson ? 'always' : (g.onPerson ? '✓' : '')}</td>
+            <td>${g.count.toLocaleString()}</td>
+            <td>${g.weight.toLocaleString()}</td>
+            <td>${g.capacity === null ? 'no limit' : g.capacity.toLocaleString()}</td>
+            <td style="${over}">${g.remaining === null ? '—' : g.remaining.toLocaleString() + (g.over ? ' OVER' : '')}</td>
             <td>${g.worth.toLocaleString()}</td>
-          </tr>`).join('') || '<tr><td colspan="6" class="note">No items yet.</td></tr>'}
+            <td class="container-move-cell">${isPerson ? '' : containerMoveButtons(char, g.location)}</td>
+            ${isPerson ? '<td></td><td></td>' : `<td class="item-edit" title="Edit" onclick="openEditContainerModal(this.closest('tr').dataset.container)">✎</td><td class="item-del" title="Delete" onclick="openDeleteContainerModal(this.closest('tr').dataset.container)">✕</td>`}
+          </tr>`; }).join('')}
         </tbody>
       </table>
-      <div class="form-row" style="margin-top:6px">
-        <div class="form-group"><label>New Container Name</label><input id="new-storage-name" class="w150"></div>
-        <div class="form-group"><label>Capacity</label><input id="new-storage-capacity" type="number" class="w100"></div>
-        <div class="form-group" style="justify-content:flex-end"><button class="btn btn-dim" onclick="addStorageContainer()">+ Add Container</button></div>
+      <button class="btn btn-dim" onclick="openAddContainerModal()">+ Add Container</button>
+
+      <hr class="divider">
+      <div class="form-group"><label>Item Notes</label>
+        <textarea rows="3" style="width:100%;resize:vertical" onchange="updateChar('itemNotes',this.value)">${char.itemNotes||''}</textarea>
       </div>
     </div>
   </div>`;
@@ -440,7 +443,7 @@ function renderCombatModule() {
 
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weapons</div>
-      ${weaponEntries.length === 0 ? '<div class="note" style="padding:6px 0">No weapon items yet. Add them on the Weapons, Armor &amp; Items page.</div>' : `
+      ${weaponEntries.length === 0 ? '<div class="note" style="padding:6px 0">No weapon items yet. Add them on the Inventory page.</div>' : `
       <div style="display:flex;gap:6px;margin-bottom:8px">
         <button class="btn btn-dim" style="font-size:11px;padding:2px 8px" onclick="setAllWeaponsOpen(true)">Open all</button>
         <button class="btn btn-dim" style="font-size:11px;padding:2px 8px" onclick="setAllWeaponsOpen(false)">Close all</button>
@@ -526,7 +529,7 @@ function renderCombatModule() {
       <table class="skill-table">
         <thead><tr><th>Item</th><th>AV</th><th>PR</th><th>Notes</th></tr></thead>
         <tbody>
-          ${armor.armorItems.length === 0 ? '<tr><td colspan="4" class="note" style="padding:10px 0">No armor items yet. Add them on the Weapons, Armor &amp; Items page.</td></tr>' : ''}
+          ${armor.armorItems.length === 0 ? '<tr><td colspan="4" class="note" style="padding:10px 0">No armor items yet. Add them on the Inventory page.</td></tr>' : ''}
           ${armor.armorItems.map(it => `<tr><td>${it.name||'(unnamed)'}</td><td>${it.av||0}</td><td>${it.pr||0}</td><td class="note" style="${it.notes?'font-style:italic':''}">${it.notes||''}</td></tr>`).join('')}
           <tr style="border-top:1px solid var(--gold-dim)"><td><strong>Armor Subtotal</strong></td><td><strong>${armor.armorItems.reduce((s,it)=>s+(parseFloat(it.av)||0),0)}</strong></td><td><strong>${armor.armorItems.reduce((s,it)=>s+(parseFloat(it.pr)||0),0)}</strong></td><td></td></tr>
         </tbody>

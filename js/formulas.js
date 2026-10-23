@@ -148,8 +148,30 @@ function computeWeight(character) {
 // capacity limit (character.storageCapacities[location]) -- a real bag of
 // holding or satchel only holds so much, even though its contents are
 // weightless on the character themselves.
+// An inventory entry with nothing filled in at all. The old "+ Add Item"
+// button added one of these as a blank row; they're hidden, not deleted.
+function isBlankItem(it) {
+  const blank = v => !String(v === undefined || v === null ? '' : v).trim();
+  return blank(it.name) && blank(it.notes) && blank(it.location) && !it.masterwork &&
+    !it.weaponClass && !it.weaponModel && !it.armorType && !it.shieldType && !it.ammoBase && !it.itemClass && !it.basicItemName && !it.magicItemClass &&
+    !(parseFloat(it.weight) > 0) && !(parseFloat(it.worth) > 0);
+}
+
+// The location name for items carried on the person (an item with a blank
+// location). It is always listed first and can't be renamed or deleted.
+const ON_PERSON_LOCATION = 'On Person (Carried)';
+
+// Containers (everything but On Person) in the order the player set with
+// the ▲/▼ buttons (character.storageOrder); any not placed yet go after,
+// alphabetically.
+function orderedContainers(character, names) {
+  const order = character.storageOrder || [];
+  const rank = n => { const i = order.indexOf(n); return i < 0 ? Infinity : i; };
+  return [...names].sort((a, b) => (rank(a) - rank(b)) || a.localeCompare(b));
+}
+
 function computeStorageSummary(character) {
-  const items = character.items || [];
+  const items = (character.items || []).filter(it => !isBlankItem(it));
   const capacities = character.storageCapacities || {};
   const groups = {};
   for (const it of items) {
@@ -161,18 +183,29 @@ function computeStorageSummary(character) {
     groups[key].weight += (parseFloat(it.weight) || 0) * qty;
     groups[key].worth += (parseFloat(it.worth) || 0) * qty;
   }
-  // include locations that have a defined capacity but no items yet, so an
-  // empty bag still shows up with its limit
+  // On Person is always listed, and so is any container set up with no items in it yet
+  if (!groups[ON_PERSON_LOCATION]) groups[ON_PERSON_LOCATION] = { location: ON_PERSON_LOCATION, count: 0, weight: 0, worth: 0 };
   for (const loc of Object.keys(capacities)) {
     if (!groups[loc]) groups[loc] = { location: loc, count: 0, weight: 0, worth: 0 };
   }
+  // On Person's capacity is Weight Possible, and what counts against it is
+  // Weight Carried (which includes containers marked On Person, e.g. a worn
+  // backpack). Other containers: their own capacity, if set, minus their contents.
+  const w = computeWeight(character);
   for (const g of Object.values(groups)) {
     const cap = capacities[g.location];
-    g.capacity = (g.location === 'On Person (Carried)' || cap === undefined || cap === null) ? null : parseFloat(cap);
-    g.over = g.capacity !== null && g.weight > g.capacity;
-    g.onPerson = g.location === 'On Person (Carried)' || !!(character.storageOnPerson || {})[g.location];
+    if (g.location === ON_PERSON_LOCATION) {
+      g.capacity = w.possible;
+      g.remaining = w.possible - w.carried;
+    } else {
+      g.capacity = (cap === undefined || cap === null) ? null : parseFloat(cap);
+      g.remaining = g.capacity === null ? null : g.capacity - g.weight;
+    }
+    g.over = g.remaining !== null && g.remaining < 0;
+    g.onPerson = g.location === ON_PERSON_LOCATION || !!(character.storageOnPerson || {})[g.location];
   }
-  return Object.values(groups).sort((a, b) => a.location === 'On Person (Carried)' ? -1 : b.location === 'On Person (Carried)' ? 1 : a.location.localeCompare(b.location));
+  const order = orderedContainers(character, Object.keys(groups).filter(l => l !== ON_PERSON_LOCATION));
+  return [groups[ON_PERSON_LOCATION], ...order.map(l => groups[l])];
 }
 
 function computeSpeed(character) {
