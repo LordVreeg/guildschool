@@ -1475,6 +1475,20 @@
     "spellSuccess": "20"
   },
   {
+    "name": "Minor Resistance of Snake and Spider",
+    "school": "Animist",
+    "cost": 8,
+    "costs": {
+      "Spirit": 5,
+      "Animist": 3
+    },
+    "majorSphere": "Animist",
+    "initiative": "4",
+    "range": "touch",
+    "duration": "1 hr plev",
+    "spellSuccess": "20"
+  },
+  {
     "name": "Speak with Animal",
     "school": "Animist",
     "cost": 9,
@@ -2122,6 +2136,20 @@
     "initiative": "4",
     "range": "touch",
     "duration": "10 min plev",
+    "spellSuccess": "10"
+  },
+  {
+    "name": "Resistance of Snake and Spider",
+    "school": "Animist",
+    "cost": 19,
+    "costs": {
+      "Spirit": 11,
+      "Animist": 8
+    },
+    "majorSphere": "Animist",
+    "initiative": "4",
+    "range": "touch",
+    "duration": "4 hours +1 hr plev",
     "spellSuccess": "10"
   },
   {
@@ -6362,6 +6390,21 @@
     "spellSuccess": "11"
   },
   {
+    "name": "Pain of Bloodletting, Minor",
+    "school": "Death",
+    "cost": 19,
+    "costs": {
+      "Spirit": 10,
+      "Death": 8,
+      "Necromantic": 1
+    },
+    "majorSphere": "Death",
+    "initiative": "3",
+    "range": "30\u0027+4\u0027 plev",
+    "duration": "1 min+20 sec plev",
+    "spellSuccess": "-10"
+  },
+  {
     "name": "Hands of Terror",
     "school": "Death",
     "cost": 20,
@@ -6510,6 +6553,21 @@
     "range": "3'+4'plev",
     "duration": "2 min/plev",
     "spellSuccess": "5"
+  },
+  {
+    "name": "Pain of Bloodletting",
+    "school": "Death",
+    "cost": 27,
+    "costs": {
+      "Spirit": 15,
+      "Death": 11,
+      "Necromantic": 1
+    },
+    "majorSphere": "Death",
+    "initiative": "3",
+    "range": "30\u0027+4\u0027 plev",
+    "duration": "2 min plev",
+    "spellSuccess": "-13"
   },
   {
     "name": "Rotting Spray",
@@ -12930,6 +12988,20 @@
     "spellSuccess": "20"
   },
   {
+    "name": "Apprentice Curings",
+    "school": "Restorative",
+    "cost": 12,
+    "costs": {
+      "Spirit": 8,
+      "Restorative": 4
+    },
+    "majorSphere": "Restorative",
+    "initiative": "15",
+    "range": "touch",
+    "duration": "perm",
+    "spellSuccess": "20"
+  },
+  {
     "name": "Apprentice Heal",
     "school": "Restorative",
     "cost": 17,
@@ -12975,6 +13047,20 @@
     "spellSuccess": "18"
   },
   {
+    "name": "Brothers Curings",
+    "school": "Restorative",
+    "cost": 24,
+    "costs": {
+      "Spirit": 15,
+      "Restorative": 9
+    },
+    "majorSphere": "Restorative",
+    "initiative": "15",
+    "range": "touch",
+    "duration": "perm",
+    "spellSuccess": "11"
+  },
+  {
     "name": "Greater Healing Essence",
     "school": "Restorative",
     "cost": 28,
@@ -12990,6 +13076,20 @@
     "range": "2'",
     "duration": "10 min/plev-as potion",
     "spellSuccess": "10"
+  },
+  {
+    "name": "Adepts Curings",
+    "school": "Restorative",
+    "cost": 34,
+    "costs": {
+      "Spirit": 23,
+      "Restorative": 11
+    },
+    "majorSphere": "Restorative",
+    "initiative": "15",
+    "range": "touch",
+    "duration": "perm",
+    "spellSuccess": "6"
   },
   {
     "name": "Brother's Aid",
@@ -13079,6 +13179,20 @@
     "range": "touch",
     "duration": "perm/20 min plev",
     "spellSuccess": "5"
+  },
+  {
+    "name": "Adepts Current Curings",
+    "school": "Restorative",
+    "cost": 49,
+    "costs": {
+      "Spirit": 33,
+      "Restorative": 16
+    },
+    "majorSphere": "Restorative",
+    "initiative": "15",
+    "range": "touch",
+    "duration": "perm",
+    "spellSuccess": "6"
   },
   {
     "name": "Patriarch's Aid",
