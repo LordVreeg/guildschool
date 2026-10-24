@@ -35,7 +35,7 @@ function buildCharacterSheetHtml(char) {
       <div class="pv-item"><b>Damage</b>${it.damageDice||'—'} / ${it.dividingDie||'—'}</div>
       <table><tr><th></th><th>To-Hit</th><th>Dmg Bonus</th><th>Speed</th><th>Parry</th><th>Parry Used</th><th>Multi Atk</th><th>Crit %</th><th>Fumble %</th></tr>
       ${wv.oneHand ? `<tr><td>1H</td><td>${Math.round(wv.oneHand.hit)}</td><td>${Math.round(wv.oneHand.dmgBonus)}</td><td>${Math.round(wv.oneHand.speed)}</td><td>${wv.parrySkval}</td><td>${wv.parryPointsUsed}</td><td>${wv.multipleAttackSkval}</td><td>${fmtCrit(wv.oneHand.critChance)}</td><td>${fmtFumble(wv.oneHand.fumbleThreshold)}</td></tr>` : ''}
-      <tr><td>2H</td><td>${Math.round(wv.twoHand.hit)}</td><td>${Math.round(wv.twoHand.dmgBonus)}</td><td>${Math.round(wv.twoHand.speed)}</td><td>${wv.parrySkval}</td><td>${wv.parryPointsUsed}</td><td>${wv.multipleAttackSkval}</td><td>${fmtCrit(wv.twoHand.critChance)}</td><td>${fmtFumble(wv.twoHand.fumbleThreshold)}</td></tr>
+      ${wv.twoHand ? `<tr><td>2H</td><td>${Math.round(wv.twoHand.hit)}</td><td>${Math.round(wv.twoHand.dmgBonus)}</td><td>${Math.round(wv.twoHand.speed)}</td><td>${wv.parrySkval}</td><td>${wv.parryPointsUsed}</td><td>${wv.multipleAttackSkval}</td><td>${fmtCrit(wv.twoHand.critChance)}</td><td>${fmtFumble(wv.twoHand.fumbleThreshold)}</td></tr>` : ''}
       </table>`;
   }).join('');
 

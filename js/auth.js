@@ -358,7 +358,7 @@ function weaponMoveButtonsHtml(pos, total) {
 // What a closed weapon still shows in its header line.
 function weaponSummaryHtml(it, w) {
   const bits = [];
-  bits.push(w.oneHand ? `to-hit ${Math.round(w.oneHand.hit)}` : `2H to-hit ${Math.round(w.twoHand.hit)}`);
+  bits.push(w.oneHand ? `to-hit ${Math.round(w.oneHand.hit)}` : (w.twoHand ? `2H to-hit ${Math.round(w.twoHand.hit)}` : 'to-hit —'));
   if (it.damageDice) bits.push(`${it.damageDice} / ${it.dividingDie || '—'}`);
   return `<span class="note" style="font-size:11px">${bits.join(' · ')}</span>`;
 }

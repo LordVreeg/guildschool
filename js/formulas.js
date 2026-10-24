@@ -298,7 +298,8 @@ function computeWeapon(character, item) {
 
   const oneHandUsable = !(stn1h === 0 && cdn1h === 0);
   const oneHand = oneHandUsable ? calc(stn1h, cdn1h) : null;
-  const twoHand = calc(stn2h, cdn2h);
+  // A weapon with no two-handed requirements (a spiked shield) is one-handed only.
+  const twoHand = (stn2h === 0 && cdn2h === 0) ? null : calc(stn2h, cdn2h);
 
   const speedMissile = parseFloat(item.speedMissile) || 0;
   const range = parseFloat(item.range) || 0;
@@ -555,7 +556,10 @@ function computeWielding(character) {
   const items = character.items || [];
   const weapons = items.filter(it => it.type === 'Weapon' && it.wielded).length;
   const shields = items.filter(it => it.type === 'Shield' && it.wielded).length;
-  const mode = weapons === 0 ? null : (weapons === 1 && shields === 0 ? 'two' : 'one');
+  // A lone weapon is held two-handed only if it has two-handed values at all.
+  const lone = weapons === 1 && shields === 0 ? items.find(it => it.type === 'Weapon' && it.wielded) : null;
+  const canTwoHand = lone && ((parseFloat(lone.stn2h) || 0) !== 0 || (parseFloat(lone.cdn2h) || 0) !== 0);
+  const mode = weapons === 0 ? null : (canTwoHand ? 'two' : 'one');
   return { weapons, shields, mode, active: weapons + shields > 0 };
 }
 
