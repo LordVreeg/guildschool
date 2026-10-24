@@ -455,12 +455,12 @@ function renderCombatModule() {
 
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weapons</div>
-      ${weaponEntries.length === 0 ? '<div class="note" style="padding:6px 0">No weapon items yet. Add them on the Inventory page.</div>' : `
+      ${weaponEntries.length === 0 ? '<div class="note" style="padding:6px 0">No weapon items yet. Add them on the Inventory page (a spiked shield adds its own).</div>' : `
       <div style="display:flex;gap:6px;margin-bottom:8px">
         <button class="btn btn-dim" style="font-size:11px;padding:2px 8px" onclick="setAllWeaponsOpen(true)">Open all</button>
         <button class="btn btn-dim" style="font-size:11px;padding:2px 8px" onclick="setAllWeaponsOpen(false)">Close all</button>
       </div>`}
-      ${weaponEntries.map((entry, pos) => entry.kind === 'hand' ? renderHandFootPanel(char, pos, weaponEntries.length) : (() => {
+      ${weaponEntries.map((entry, pos) => entry.kind === 'hand' ? renderHandFootPanel(char, pos, weaponEntries.length) : entry.kind === 'shield' ? renderShieldWeaponPanel(char, entry, pos, weaponEntries.length) : (() => {
         const it = entry.it, idx = entry.idx;
         const w = computeWeapon(char, it);
         return `
@@ -834,7 +834,7 @@ function renderSkillModule(skillId) {
         <div class="form-group"><label>Specific Weapon (not a class — this skill trains on one weapon only)</label>
           <select class="w250" onchange="updateSkill('${skillId}','binding',this.value)">
             <option value="">— select —</option>
-            ${((char.items||[]).filter(it=>it.type==='Weapon').concat(handFootWeapon(char) ? [handFootWeapon(char)] : [])).map(it=>`<option ${si.binding===it.name?'selected':''}>${it.name||'(unnamed weapon)'}</option>`).join('')}
+            ${allCombatWeapons(char).map(it=>`<option ${si.binding===it.name?'selected':''}>${it.name||'(unnamed weapon)'}</option>`).join('')}
           </select>
           <div class="note" style="margin-top:4px">Single Weapon Specialization trains on one exact weapon, not a whole weapon type — a character with two curved swords could be specialized in one and not the other.</div>
         </div>` : `

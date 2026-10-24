@@ -269,6 +269,38 @@ function handFootWeapon(char) {
   };
 }
 
+// A shield whose catalog entry has weapon stats (a spiked shield) is also a
+// weapon, with no second inventory item: the Combat page and the print sheet
+// show its spike automatically wherever the shield is. Returns an item-shaped
+// weapon built from the shield item at index idx (never stored), or null.
+function shieldWeaponItem(char, idx) {
+  const it = char && char.items && char.items[idx];
+  if (!it || it.type !== 'Shield') return null;
+  const def = (typeof SHIELDS !== 'undefined' ? SHIELDS : []).find(s => s.name === (it.shieldType || it.name));
+  if (!def || !def.weapon) return null;
+  const wp = def.weapon;
+  return {
+    name: (it.name || def.name) + ' (spike)', type: 'Weapon', qty: 1, weight: 0, automatic: true, shieldWeapon: true, shieldIdx: idx,
+    weaponClass: 'Basic Shield Use', weaponModel: def.name,
+    stn1h: wp.stn_1h, stn2h: 0, stmod: wp.stmod, cdn1h: wp.cdn_1h, cdn2h: 0, cdmod: wp.cdmod,
+    damageDice: wp.damage_dice, dividingDie: wp.dividing_die,
+    speedMissile: 0, speedMelee: wp.speed_melee, speedReadied: 0,
+    weaponProtection: 0, threatRange: 0, range: 0,
+    magicBonusToHit: '0', magicDamageAfterDivider: '0',
+    parryPointsUsed: it.spikeParryUsed || 0, collapsed: !!it.spikeCollapsed, wielded: !!it.wielded, notes: ''
+  };
+}
+function shieldWeaponItems(char) {
+  return ((char && char.items) || []).map((_, i) => shieldWeaponItem(char, i)).filter(Boolean);
+}
+// Every weapon the character can fight with: weapon items, the automatic
+// Hand/Foot, and the spikes of spiked shields.
+function allCombatWeapons(char) {
+  return ((char && char.items) || []).filter(it => it.type === 'Weapon')
+    .concat(handFootWeapon(char) ? [handFootWeapon(char)] : [])
+    .concat(shieldWeaponItems(char));
+}
+
 // An earlier version added Hand/Foot to the inventory as a real item. Take
 // those back out (only the ones it added itself, recognised by their note).
 const AUTO_HANDFOOT_NOTE = 'Unarmed -- hands and feet. Added automatically with Basic Martial artist.';
@@ -335,12 +367,44 @@ function renderHandFootPanel(char, pos, total) {
   </div>`;
 }
 
+// The spike of a spiked shield, on the Combat page: read-only like Hand/Foot
+// (its numbers come from the shield's catalog entry) apart from Parry points.
+function renderShieldWeaponPanel(char, entry, pos, total) {
+  const sw = entry.it, idx = entry.idx;
+  const w = computeWeapon(char, sw);
+  const parryCell = `<input type="number" min="0" max="${w.parrySkval}" class="w60" value="${w.parryPointsUsed}" onchange="updateShieldSpikeParry(${idx}, this.value)">`;
+  return `
+  <div class="panel" style="margin-bottom:10px">
+    <div class="panel-header" style="cursor:pointer;display:flex;align-items:center;gap:8px;flex-wrap:wrap" onclick="toggleShieldSpikeOpen(${idx})" title="Click to ${sw.collapsed ? 'open' : 'close'}">
+      <span style="font-size:10px;width:10px">${sw.collapsed ? '▶' : '▼'}</span>
+      <h2 style="font-size:13px">${escapeHtml(sw.name)}</h2><span class="type-badge">${sw.weaponClass}</span><span class="type-badge" style="color:var(--gold)">from shield</span>${sw.wielded ? '<span class="type-badge" style="color:var(--gold)">wielding</span>' : ''}
+      ${sw.collapsed ? weaponSummaryHtml(sw, w) : ''}
+      ${weaponMoveButtonsHtml(pos, total)}
+    </div>
+    <div class="panel-body" style="display:${sw.collapsed ? 'none' : 'block'}">
+      <div class="note" style="margin-bottom:8px;font-style:italic">This shield is also a weapon, one-handed only. Damage ${sw.damageDice} / ${sw.dividingDie}, speed ${sw.speedMelee}. Tick Wielding in the Shield Breakdown below to use it.</div>
+      <div class="note">Skill Ability: ${w.baseWeaponSkval} (${sw.weaponClass}) + ${w.singleWeapSpec} (Single Weap Spec) = ${w.skillAbility}</div>
+      <hr class="divider">
+      <table class="skill-table">
+        <thead><tr><th></th><th>To-Hit</th><th>Dmg Bonus</th><th>Speed</th><th>Parry</th><th>Parry Used</th><th>Multiple Attack</th><th>Crit %</th><th>Fumble %</th></tr></thead>
+        <tbody>
+          <tr>${w.oneHand ? `<td>One-Handed${sw.wielded ? ' <span class="type-badge" style="color:var(--gold)">in use</span>' : ''}</td><td class="skval-cell">${Math.round(w.oneHand.hit)}</td><td>${Math.round(w.oneHand.dmgBonus)}</td><td>${Math.round(w.oneHand.speed)}</td><td>${w.parrySkval}</td><td>${parryCell}</td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.oneHand.critChance)}</td><td>${fmtFumble(w.oneHand.fumbleThreshold)}</td>` : ''}</tr>
+        </tbody>
+      </table>
+      <div class="note">Parry Used is capped at your Parry skill for this weapon; every point subtracts from its To-Hit and adds to your Protection (PR), against melee attacks only.</div>
+    </div>
+  </div>`;
+}
+
 // The Combat page's weapon list in display order: every weapon item (with its
 // index in char.items) plus the automatic Hand/Foot, which sits at
 // char.handFootPos among them (first by default).
 function combatWeaponEntries(char) {
   const entries = [];
-  (char.items || []).forEach((it, idx) => { if (it.type === 'Weapon') entries.push({ kind: 'item', idx, it }); });
+  (char.items || []).forEach((it, idx) => {
+    if (it.type === 'Weapon') entries.push({ kind: 'item', idx, it });
+    else if (it.type === 'Shield') { const sw = shieldWeaponItem(char, idx); if (sw) entries.push({ kind: 'shield', idx, it: sw }); }
+  });
   if (handFootWeapon(char)) {
     const pos = Math.max(0, Math.min(entries.length, parseInt(char.handFootPos) || 0));
     entries.splice(pos, 0, { kind: 'hand' });
@@ -383,7 +447,7 @@ function toggleHandFootOpen() {
 function setAllWeaponsOpen(open) {
   const char = state.characters[state.activeChar];
   if (!char) return;
-  for (const it of char.items || []) if (it.type === 'Weapon') it.collapsed = !open;
+  for (const it of char.items || []) if (it.type === 'Weapon') it.collapsed = !open; else if (it.type === 'Shield') it.spikeCollapsed = !open;
   char.handFootCollapsed = !open;
   saveState();
   renderCombatModule();
@@ -398,7 +462,7 @@ function moveWeapon(pos, dir) {
   const entries = combatWeaponEntries(char);
   const a = entries[pos], b = entries[pos + dir];
   if (!a || !b) return;
-  if (a.kind === 'item' && b.kind === 'item') {
+  if (a.kind !== 'hand' && b.kind !== 'hand') {
     const items = char.items;
     [items[a.idx], items[b.idx]] = [items[b.idx], items[a.idx]];
   } else if (a.kind === 'hand') {
@@ -406,6 +470,25 @@ function moveWeapon(pos, dir) {
   } else {
     char.handFootPos = pos;
   }
+  saveState();
+  renderCombatModule();
+}
+
+function toggleShieldSpikeOpen(idx) {
+  const char = state.characters[state.activeChar];
+  const it = char && char.items && char.items[idx];
+  if (!it) return;
+  it.spikeCollapsed = !it.spikeCollapsed;
+  saveState();
+  renderCombatModule();
+}
+
+function updateShieldSpikeParry(idx, value) {
+  const char = state.characters[state.activeChar];
+  const sw = shieldWeaponItem(char, idx);
+  if (!char || !sw) return;
+  const cap = computeWeapon(char, { ...sw, parryPointsUsed: 0 }).parrySkval;
+  char.items[idx].spikeParryUsed = Math.max(0, Math.min(cap, parseFloat(value) || 0));
   saveState();
   renderCombatModule();
 }

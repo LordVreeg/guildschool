@@ -69,7 +69,16 @@
     "pr": 6,
     "weight": 55,
     "cost": 55,
-    "commonality": 50
+    "commonality": 50,
+    "weapon": {
+      "speed_melee": 7,
+      "stn_1h": 9,
+      "stmod": 1.1,
+      "cdn_1h": 13,
+      "cdmod": 1.3,
+      "damage_dice": "2d4+5",
+      "dividing_die": 8
+    }
   },
   {
     "name": "Maden (Viking Spiked)",
@@ -78,6 +87,15 @@
     "pr": 15,
     "weight": 250,
     "cost": 290,
-    "commonality": 60
+    "commonality": 60,
+    "weapon": {
+      "speed_melee": 9,
+      "stn_1h": 12,
+      "stmod": 1.6,
+      "cdn_1h": 13,
+      "cdmod": 1.3,
+      "damage_dice": "2d6+7",
+      "dividing_die": 6
+    }
   }
 ]

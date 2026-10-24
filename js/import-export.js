@@ -29,7 +29,7 @@ function buildCharacterSheetHtml(char) {
 
   const itemRows = items.map(it => `<tr style="${it.masterwork?'font-style:italic':''}"><td>${it.name||''}</td><td>${it.type||''}</td><td>${it.qty||1}</td><td>${it.weight||0}</td><td>${it.worth||0}</td><td>${it.location||'Carried'}</td></tr>`).join('');
 
-  const weaponPanels = items.filter(it => it.type === 'Weapon').concat(handFootWeapon(char) ? [handFootWeapon(char)] : []).map(it => {
+  const weaponPanels = allCombatWeapons(char).map(it => {
     const wv = computeWeapon(char, it);
     return `<h2>${it.name} ${it.weaponModel ? '— '+it.weaponModel : ''}</h2>
       <div class="pv-item"><b>Damage</b>${it.damageDice||'—'} / ${it.dividingDie||'—'}</div>

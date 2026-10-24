@@ -601,7 +601,8 @@ function computeArmor(character) {
   const weaponItems = items.filter(it => it.type === 'Weapon');
   const handFoot = handFootWeapon(character);
   const parryPointsTotal = weaponItems.reduce((sum, it) => sum + computeWeapon(character, it).parryPointsUsed, 0)
-    + (handFoot ? computeWeapon(character, handFoot).parryPointsUsed : 0);
+    + (handFoot ? computeWeapon(character, handFoot).parryPointsUsed : 0)
+    + shieldWeaponItems(character).reduce((sum, sw) => sum + computeWeapon(character, sw).parryPointsUsed, 0);
 
   function buildTotals(includeShield) {
     const sumAV = sumArmorAV + (includeShield ? sumShieldAV : 0);
