@@ -1248,6 +1248,31 @@
     "av_dam": 10.19
   },
   {
+    "category": "Martial",
+    "name": "Gwynnell Spiked net (martial)",
+    "cost": 126,
+    "weight": 30,
+    "size": "3'x4'",
+    "range": 11,
+    "speed_missile": 8,
+    "speed_melee": 2,
+    "speed_readied": 1,
+    "protection": 4,
+    "threat_range": -1,
+    "stn_1h": 9,
+    "stn_2h": 6,
+    "stmod": 0.9,
+    "cdn_1h": 15,
+    "cdn_2h": 11.25,
+    "cdmod": 1.15,
+    "damage_dice": "1d12+4",
+    "dividing_die": 8,
+    "real_min": 0.4,
+    "max_dam": 16,
+    "av_dam": 2,
+    "notes": "Often hidden as a shawl. A successful throw can require a Reflex roll at -5, or the target is slowed by 2-12 segments. Protection is 4 with Basic Martial artist."
+  },
+  {
     "category": "Daggers",
     "name": "Sax",
     "cost": 50,
@@ -2325,7 +2350,8 @@
     "dividing_die": 8,
     "real_min": 0.4,
     "max_dam": 16,
-    "av_dam": 2
+    "av_dam": 2,
+    "notes": "Often hidden as a shawl. A successful throw can require a Reflex roll at -5, or the target is slowed by 2-12 segments. Also a martial weapon (see the martial version)."
   },
   {
     "category": "Crossbow",

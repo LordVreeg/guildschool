@@ -279,6 +279,7 @@ function applyWeaponModel(item, weaponName) {
     item.damageDice = def.damage_dice; item.dividingDie = def.dividing_die;
     item.speedMissile = def.speed_missile; item.speedMelee = def.speed_melee; item.speedReadied = def.speed_readied;
     item.weaponProtection = def.protection; item.threatRange = def.threat_range; item.range = def.range;
+    if (def.notes && !String(item.notes || '').trim()) item.notes = def.notes;
   }
 }
 function applyCoinType(item, coinName) {
