@@ -65,7 +65,7 @@ const ITEM_PICK_CUSTOM = '__custom__';
 function itemPickSteps(d) {
   const steps = [{ key: 'type', label: 'Type', options: ITEM_TYPES, labelOf: itemTypeLabel }];
   if (d.type === 'Weapon') {
-    steps.push({ key: 'weaponClass', label: 'Weapon Class', options: WEAPON_CLASSES });
+    steps.push({ key: 'weaponClass', label: 'Weapon Class', options: WEAPON_CLASSES, custom: true });
     if (d.weaponClass) {
       const cat = Object.entries(WEAPON_CATEGORY_TO_SKILL).find(([c, sk]) => sk === d.weaponClass);
       const models = cat ? weaponModelsForClass(d.weaponClass, cat[0]) : [];
@@ -80,19 +80,19 @@ function itemPickSteps(d) {
   } else if (d.type === 'Ammunition') {
     steps.push({ key: 'ammoBase', label: 'Ammunition', options: AMMUNITION.map(a => a.name), custom: true, apply: applyAmmoType });
   } else if (d.type === 'Item') {
-    steps.push({ key: 'itemClass', label: 'Item Class', options: [...new Set(BASIC_ITEMS.map(b => b.class))].sort() });
+    steps.push({ key: 'itemClass', label: 'Item Class', options: [...new Set(BASIC_ITEMS.map(b => b.class))].sort(), custom: true });
     if (d.itemClass) {
       steps.push({ key: 'basicItemName', label: 'Item', options: BASIC_ITEMS.filter(b => b.class === d.itemClass).map(b => b.name), custom: true, apply: applyBasicItem });
     }
   } else if (d.type === 'Magic Item') {
-    steps.push({ key: 'magicItemClass', label: 'Magic Item Class', options: MAGIC_ITEM_CLASSES });
+    steps.push({ key: 'magicItemClass', label: 'Magic Item Class', options: MAGIC_ITEM_CLASSES, custom: true });
   }
   return steps;
 }
 
 // For editing: read back which dropdowns an existing item has chosen. A
-// catalog pick that isn't in the list (custom, or renamed since) reads as
-// "— custom —"; a class that isn't in the list reads as "— select —".
+// catalog pick or class that isn't in the list (custom, left blank, or renamed since) reads as
+// "— custom —", so an item typed by hand can still be edited.
 function itemPicksFromItem(item) {
   const picks = {};
   const d = { type: item.type };
@@ -104,7 +104,7 @@ function itemPicksFromItem(item) {
     if (!s.options.includes(v)) v = s.custom ? ITEM_PICK_CUSTOM : undefined;
     if (v === undefined) break;
     picks[s.key] = v;
-    if (!s.apply && s.key !== 'type') d[s.key] = v;
+    if (!s.apply && s.key !== 'type') { if (v !== ITEM_PICK_CUSTOM) d[s.key] = v; }
     if (s.key === 'type') d.type = v;
   }
   return picks;
@@ -137,7 +137,7 @@ function setItemPick(key, value) {
         s.apply(d, v);
         if (!String(d.name || '').trim()) d.name = v;
       }
-    } else d[s.key] = v;
+    } else if (v !== ITEM_PICK_CUSTOM) d[s.key] = v;
   }
   itemDraft = d;
   renderAddItemModal();

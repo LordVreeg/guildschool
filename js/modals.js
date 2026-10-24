@@ -36,6 +36,9 @@ function openEditItemModal(idx) {
   if (!char || !char.items || !char.items[idx]) return;
   itemDraft = JSON.parse(JSON.stringify(char.items[idx]));
   itemPicks = itemPicksFromItem(itemDraft);
+  // A class that is no longer in its list (renamed since) reads as "— custom —",
+  // so drop it from the copy too; otherwise the Item step below it stays unfilled.
+  for (const k of ['weaponClass', 'itemClass', 'magicItemClass']) if (itemPicks[k] === ITEM_PICK_CUSTOM) delete itemDraft[k];
   editingItemIdx = idx;
   addNextItem = false;
   renderAddItemModal();
