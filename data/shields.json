@@ -61,5 +61,23 @@
     "weight": 350,
     "cost": 220,
     "commonality": 60
+  },
+  {
+    "name": "Madress (Madu)",
+    "description": "Small handheld buckler with a spike; also a weapon",
+    "av": 4,
+    "pr": 6,
+    "weight": 55,
+    "cost": 55,
+    "commonality": 50
+  },
+  {
+    "name": "Maden (Viking Spiked)",
+    "description": "Rounded with large spike; also a weapon",
+    "av": 10,
+    "pr": 15,
+    "weight": 250,
+    "cost": 290,
+    "commonality": 60
   }
 ]

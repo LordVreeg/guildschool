@@ -384,6 +384,13 @@ function renderInventoryModule() {
   </div>`;
 }
 
+// Marks the One-/Two-Handed row that applies to a wielded weapon (see computeWielding).
+function wieldTag(it, which) {
+  const c = state.characters[state.activeChar];
+  if (!c || !it.wielded || computeWielding(c).mode !== which) return '';
+  return ' <span class="type-badge" style="color:var(--gold)">in use</span>';
+}
+
 function renderCombatModule() {
   const char = state.characters[state.activeChar];
   if (!char) return;
@@ -435,7 +442,12 @@ function renderCombatModule() {
         <div style="width:1px;background:var(--border);margin:0 4px"></div>
         <div class="computed-item"><span class="ci-label">Total AV (No Shield / 2H)</span><span class="ci-value" style="color:#7a7acf">${Math.round(armor.withoutShield.totalAV)}</span></div>
         <div class="computed-item"><span class="ci-label">Total PR (No Shield / 2H)</span><span class="ci-value" style="color:#7a7acf">${Math.round(armor.withoutShield.totalPR)}</span></div>
+        ${armor.wield.active ? `
+        <div style="width:1px;background:var(--border);margin:0 4px"></div>
+        <div class="computed-item" title="From the weapons and shield ticked Wielding below"><span class="ci-label">Total AV (Wielding)</span><span class="ci-value" style="color:var(--gold)">${Math.round(armor.current.totalAV)}</span></div>
+        <div class="computed-item" title="From the weapons and shield ticked Wielding below"><span class="ci-label">Total PR (Wielding)</span><span class="ci-value" style="color:var(--gold)">${Math.round(armor.current.totalPR)}</span></div>` : ''}
       </div>
+      <div class="note">${armor.wield.active ? `Wielding: ${armor.wield.weapons} weapon${armor.wield.weapons === 1 ? '' : 's'}${armor.wield.shields ? ' and a shield' : ''} — ${armor.wield.mode === 'two' ? 'one weapon alone, so two-handed values' : armor.wield.mode === 'one' ? 'one-handed values' : 'shield only'}. ` : 'Tick Wielding on the weapon(s) and shield in your hands to see your current totals and which hand values apply. '}</div>
       <div class="note">Lower AV is better for the defender — it's added directly to an attacker's hit chance. "No Shield" reflects two-handed weapon use or a dropped shield.</div>
       ${armor.parryPointsTotal > 0 ? `
       <div class="note" style="color:var(--gold-dim);margin-top:4px">⚠ ${armor.parryPointsTotal} of the Total PR above comes from Parry Points Committed. Parry only stops melee attacks — you can't parry a missile or a spell. Against a missile or magical attack, use PR ${Math.round(armor.withShield.totalPRvsRangedOrMagic)} (Shield) / ${Math.round(armor.withoutShield.totalPRvsRangedOrMagic)} (No Shield) instead.</div>
@@ -455,7 +467,7 @@ function renderCombatModule() {
         <div class="panel" style="margin-bottom:10px">
           <div class="panel-header" style="cursor:pointer;display:flex;align-items:center;gap:8px;flex-wrap:wrap" onclick="toggleWeaponOpen(${idx})" title="Click to ${it.collapsed ? 'open' : 'close'}">
             <span style="font-size:10px;width:10px">${it.collapsed ? '▶' : '▼'}</span>
-            <h2 style="font-size:13px">${it.name||'(unnamed weapon)'}${it.weaponModel?' — '+it.weaponModel:''}</h2><span class="type-badge">${it.weaponClass||'unbound'}</span>
+            <h2 style="font-size:13px">${it.name||'(unnamed weapon)'}${it.weaponModel?' — '+it.weaponModel:''}</h2><span class="type-badge">${it.weaponClass||'unbound'}</span>${it.wielded ? '<span class="type-badge" style="color:var(--gold)">wielding</span>' : ''}
             ${it.collapsed ? weaponSummaryHtml(it, w) : ''}
             ${weaponMoveButtonsHtml(pos, weaponEntries.length)}
           </div>
@@ -472,7 +484,7 @@ function renderCombatModule() {
               <div class="form-group"><label>Speed Missile</label><input type="number" class="w60" value="${it.speedMissile||0}" onchange="updateWeaponField(${idx},'speedMissile',this.value)"></div>
               <div class="form-group"><label>Speed Readied</label><input type="number" class="w60" value="${it.speedReadied||0}" onchange="updateWeaponField(${idx},'speedReadied',this.value)"></div>
               <div class="form-group"><label>Weapon PR</label><input type="number" class="w60" value="${it.weaponProtection||0}" onchange="updateWeaponField(${idx},'weaponProtection',this.value)"></div>
-              <div class="form-group" title="Tick when you are wielding this weapon: its Weapon PR is added to your Protection totals"><label>Adds to PR</label><input type="checkbox" ${it.wielded ? 'checked' : ''} onchange="updateWeaponField(${idx},'wielded',this.checked)"></div>
+              <div class="form-group" title="Tick the weapon(s) in your hands. One weapon alone is held two-handed; two weapons, or a weapon and a shield, are one-handed. Wielded weapons add their Weapon PR to your Protection."><label>Wielding</label><input type="checkbox" ${it.wielded ? 'checked' : ''} onchange="updateWeaponField(${idx},'wielded',this.checked)"></div>
               <div class="form-group"><label>Threat Range</label><input type="number" class="w60" value="${it.threatRange||0}" onchange="updateWeaponField(${idx},'threatRange',this.value)"></div>
             </div>
             <div class="form-row">
@@ -485,8 +497,8 @@ function renderCombatModule() {
             <table class="skill-table">
               <thead><tr><th></th><th>To-Hit</th><th>Dmg Bonus</th><th>Speed</th><th>Parry</th><th>Parry Used</th><th>Multiple Attack</th><th>Crit %</th><th>Fumble %</th></tr></thead>
               <tbody>
-                <tr>${w.oneHand ? `<td>One-Handed</td><td class="skval-cell">${Math.round(w.oneHand.hit)}</td><td>${Math.round(w.oneHand.dmgBonus)}</td><td>${Math.round(w.oneHand.speed)}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w60" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.oneHand.critChance)}</td><td>${fmtFumble(w.oneHand.fumbleThreshold)}</td>` : `<td style="color:var(--text-dim)">One-Handed</td><td colspan="8" class="note">Not usable one-handed — no 1H stats for this weapon</td>`}</tr>
-                <tr><td>Two-Handed</td><td class="skval-cell">${Math.round(w.twoHand.hit)}</td><td>${Math.round(w.twoHand.dmgBonus)}</td><td>${Math.round(w.twoHand.speed)}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w60" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.twoHand.critChance)}</td><td>${fmtFumble(w.twoHand.fumbleThreshold)}</td></tr>
+                <tr>${w.oneHand ? `<td>One-Handed${wieldTag(it, 'one')}</td><td class="skval-cell">${Math.round(w.oneHand.hit)}</td><td>${Math.round(w.oneHand.dmgBonus)}</td><td>${Math.round(w.oneHand.speed)}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w60" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.oneHand.critChance)}</td><td>${fmtFumble(w.oneHand.fumbleThreshold)}</td>` : `<td style="color:var(--text-dim)">One-Handed</td><td colspan="8" class="note">Not usable one-handed — no 1H stats for this weapon</td>`}</tr>
+                <tr><td>Two-Handed${wieldTag(it, 'two')}</td><td class="skval-cell">${Math.round(w.twoHand.hit)}</td><td>${Math.round(w.twoHand.dmgBonus)}</td><td>${Math.round(w.twoHand.speed)}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w60" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.twoHand.critChance)}</td><td>${fmtFumble(w.twoHand.fumbleThreshold)}</td></tr>
               </tbody>
             </table>
             <div class="note">Parry Used is capped at this weapon's Parry skill value; every point subtracts from this weapon's To-Hit and adds to your Protection (PR) below — but only against melee attacks. It does nothing against missile or magical attacks.</div>
@@ -541,7 +553,7 @@ function renderCombatModule() {
       <div class="form-row" style="margin-bottom:10px">
         <div class="form-group"><label>Weapon Protection (PR)</label>
           <input type="number" class="w100" value="${armor.weaponProtectionManual}" onchange="updateCombatExtra('weaponProtection',this.value)">
-          ${armor.weaponProtectionWielded ? `<div class="note" style="margin-top:2px">+ ${armor.weaponProtectionWielded} from weapons ticked "Adds to PR" above</div>` : `<div class="note" style="margin-top:2px">Tick "Adds to PR" on a weapon above to count its Weapon PR automatically.</div>`}
+          ${armor.weaponProtectionWielded ? `<div class="note" style="margin-top:2px">+ ${armor.weaponProtectionWielded} from weapons ticked "Wielding" above</div>` : `<div class="note" style="margin-top:2px">Tick "Wielding" on a weapon above to count its Weapon PR automatically.</div>`}
         </div>
       </div>
       <table class="item-table">
@@ -561,10 +573,10 @@ function renderCombatModule() {
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Shield Breakdown</div>
       <table class="skill-table">
-        <thead><tr><th>Shield</th><th>AV</th><th>Base PR</th><th>Shield Use Bonus</th><th>Effective PR</th><th>Notes</th></tr></thead>
+        <thead><tr><th>Wielding</th><th>Shield</th><th>AV</th><th>Base PR</th><th>Shield Use Bonus</th><th>Effective PR</th><th>Notes</th></tr></thead>
         <tbody>
-          ${armor.shieldsComputed.length === 0 ? '<tr><td colspan="6" class="note" style="padding:10px 0">No shield equipped.</td></tr>' : ''}
-          ${armor.shieldsComputed.map(s => `<tr><td>${s.name||'(unnamed)'}</td><td>${s.av}</td><td>${s.basePR}</td><td>+${s.bonus}</td><td><strong>${s.effectivePR}</strong></td><td class="note" style="${s.notes?'font-style:italic':''}">${s.notes||''}</td></tr>`).join('')}
+          ${armor.shieldsComputed.length === 0 ? '<tr><td colspan="7" class="note" style="padding:10px 0">No shield equipped.</td></tr>' : ''}
+          ${armor.shieldsComputed.map(s => `<tr><td><input type="checkbox" ${s.wielded ? 'checked' : ''} title="Tick the shield you are carrying: its AV and PR are added to your With Shield totals" onchange="updateWeaponField(${s.idx},'wielded',this.checked)"></td><td>${s.name||'(unnamed)'}</td><td>${s.av}</td><td>${s.basePR}</td><td>+${s.bonus}</td><td><strong>${s.effectivePR}</strong></td><td class="note" style="${s.notes?'font-style:italic':''}">${s.notes||''}</td></tr>`).join('')}
         </tbody>
       </table>
       <div class="note">Basic Shield Use skval: ${armor.shieldUseSkval} — bonus = min(skval, base PR) + floor(max(0, skval − base PR) / 10)</div>

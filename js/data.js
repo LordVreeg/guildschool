@@ -43,7 +43,7 @@ const WEAPON_CATEGORY_TO_SKILL = {
   'Axes': 'Basic Axe', 'Blunt': 'Basic Blunt Weapons', 'Bows': 'Basic Bows',
   'Crossbow': 'Basic Crossbow', 'Curved Swords': 'Basic Curved Swords', 'Daggers': 'Basic Dagger',
   'Dress Swords': 'Basic Dress swords', 'Martial': 'Basic Martial artist', 'Pole Arms': 'Basic Pole Weapons', 'Spears': 'Basic Spears',
-  'Straight Swords': 'Basic Straight Swords', 'Thrown': null
+  'Shields': 'Basic Shield Use', 'Straight Swords': 'Basic Straight Swords', 'Thrown': null
 };
 let GUILDS = {};
 let LEVELS = [];

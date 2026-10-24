@@ -546,30 +546,46 @@ function applyHPRecoveryRoll(character, rollResult) {
   }
 }
 
+// What the character has in hand, from the "Wielding" ticks on weapons and
+// shields. One weapon alone is held in two hands (2H values); two weapons are
+// each held in one hand (1H values); a weapon with a shield is 1H too. Wielded
+// weapons add their Weapon PR; a wielded shield adds its AV and PR. With
+// nothing ticked, nothing is assumed (mode null) and both 1H and 2H show.
+function computeWielding(character) {
+  const items = character.items || [];
+  const weapons = items.filter(it => it.type === 'Weapon' && it.wielded).length;
+  const shields = items.filter(it => it.type === 'Shield' && it.wielded).length;
+  const mode = weapons === 0 ? null : (weapons === 1 && shields === 0 ? 'two' : 'one');
+  return { weapons, shields, mode, active: weapons + shields > 0 };
+}
+
 function computeArmor(character) {
   const items = character.items || [];
   const armorItems = items.filter(it => it.type === 'Armor');
   const shieldItems = items.filter(it => it.type === 'Shield');
   const shieldUseSkval = getSkillSkval(character, 'Basic Shield Use');
 
-  const shieldsComputed = shieldItems.map(it => {
+  const shieldsComputed = items.map((it, idx) => ({ it, idx })).filter(x => x.it.type === 'Shield').map(({ it, idx }) => {
     const basePR = parseFloat(it.pr) || 0;
     const bonus = shieldUseSkval > 0 ? shieldUseBonus(shieldUseSkval, basePR) : 0;
-    return { name: it.name, av: parseFloat(it.av) || 0, basePR, bonus, effectivePR: basePR + bonus, notes: it.notes || '' };
+    return { idx, wielded: !!it.wielded, name: it.name, av: parseFloat(it.av) || 0, basePR, bonus, effectivePR: basePR + bonus, notes: it.notes || '' };
   });
+  // If any shield is ticked "Wielding", only those count toward the With
+  // Shield totals; with none ticked, every shield counts, as before.
+  const shieldsCounted = shieldsComputed.some(s => s.wielded) ? shieldsComputed.filter(s => s.wielded) : shieldsComputed;
 
   const sumArmorAV = armorItems.reduce((sum, it) => sum + (parseFloat(it.av) || 0), 0);
   const sumArmorPR = armorItems.reduce((sum, it) => sum + (parseFloat(it.pr) || 0), 0);
-  const sumShieldAV = shieldsComputed.reduce((sum, s) => sum + s.av, 0);
-  const sumShieldPR = shieldsComputed.reduce((sum, s) => sum + s.effectivePR, 0);
+  const sumShieldAV = shieldsCounted.reduce((sum, s) => sum + s.av, 0);
+  const sumShieldPR = shieldsCounted.reduce((sum, s) => sum + s.effectivePR, 0);
 
   const avoidanceSkval = getSkillSkval(character, 'Avoidance');
   const protectionSkval = getSkillSkval(character, 'Protection');
 
   const combatExtras = character.combatExtras || {};
   // Weapon Protection: the hand-entered box, plus the Weapon PR of every
-  // weapon ticked "Adds to PR" (the one(s) actually being wielded, e.g. a
-  // main gauche) -- not every weapon owned, or a bag of spare weapons would count.
+  // weapon ticked "Wielding" (the one(s) actually in hand, e.g. a main
+  // gauche) -- not every weapon owned, or a bag of spare weapons would count.
   const weaponProtectionManual = parseFloat(combatExtras.weaponProtection) || 0;
   const weaponProtectionWielded = items.filter(it => it.type === 'Weapon' && it.wielded)
     .reduce((sum, it) => sum + (parseFloat(it.weaponProtection) || 0), 0);
@@ -595,11 +611,15 @@ function computeArmor(character) {
 
   const withShield = buildTotals(true);
   const withoutShield = buildTotals(false);
+  // What is in hand right now (see computeWielding): the shield column applies
+  // when a shield is wielded, otherwise the no-shield column.
+  const wield = computeWielding(character);
+  const current = wield.shields ? withShield : withoutShield;
 
   return { armorItems, shieldsComputed, shieldUseSkval, avoidanceSkval, protectionSkval,
            weaponProtection, weaponProtectionManual, weaponProtectionWielded, otherBonuses, sumOtherAV, sumOtherPR, parryPointsTotal,
            sumArmorAV, sumArmorPR, sumShieldAV, sumShieldPR,
-           withShield, withoutShield };
+           withShield, withoutShield, current, wield, shieldsCounted };
 }
 
 
