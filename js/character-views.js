@@ -472,6 +472,7 @@ function renderCombatModule() {
               <div class="form-group"><label>Speed Missile</label><input type="number" class="w60" value="${it.speedMissile||0}" onchange="updateWeaponField(${idx},'speedMissile',this.value)"></div>
               <div class="form-group"><label>Speed Readied</label><input type="number" class="w60" value="${it.speedReadied||0}" onchange="updateWeaponField(${idx},'speedReadied',this.value)"></div>
               <div class="form-group"><label>Weapon PR</label><input type="number" class="w60" value="${it.weaponProtection||0}" onchange="updateWeaponField(${idx},'weaponProtection',this.value)"></div>
+              <div class="form-group" title="Tick when you are wielding this weapon: its Weapon PR is added to your Protection totals"><label>Adds to PR</label><input type="checkbox" ${it.wielded ? 'checked' : ''} onchange="updateWeaponField(${idx},'wielded',this.checked)"></div>
               <div class="form-group"><label>Threat Range</label><input type="number" class="w60" value="${it.threatRange||0}" onchange="updateWeaponField(${idx},'threatRange',this.value)"></div>
             </div>
             <div class="form-row">
@@ -539,7 +540,8 @@ function renderCombatModule() {
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weapon Protection & Other Bonuses</div>
       <div class="form-row" style="margin-bottom:10px">
         <div class="form-group"><label>Weapon Protection (PR)</label>
-          <input type="number" class="w100" value="${armor.weaponProtection}" onchange="updateCombatExtra('weaponProtection',this.value)">
+          <input type="number" class="w100" value="${armor.weaponProtectionManual}" onchange="updateCombatExtra('weaponProtection',this.value)">
+          ${armor.weaponProtectionWielded ? `<div class="note" style="margin-top:2px">+ ${armor.weaponProtectionWielded} from weapons ticked "Adds to PR" above</div>` : `<div class="note" style="margin-top:2px">Tick "Adds to PR" on a weapon above to count its Weapon PR automatically.</div>`}
         </div>
       </div>
       <table class="item-table">

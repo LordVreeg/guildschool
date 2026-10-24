@@ -567,7 +567,13 @@ function computeArmor(character) {
   const protectionSkval = getSkillSkval(character, 'Protection');
 
   const combatExtras = character.combatExtras || {};
-  const weaponProtection = parseFloat(combatExtras.weaponProtection) || 0;
+  // Weapon Protection: the hand-entered box, plus the Weapon PR of every
+  // weapon ticked "Adds to PR" (the one(s) actually being wielded, e.g. a
+  // main gauche) -- not every weapon owned, or a bag of spare weapons would count.
+  const weaponProtectionManual = parseFloat(combatExtras.weaponProtection) || 0;
+  const weaponProtectionWielded = items.filter(it => it.type === 'Weapon' && it.wielded)
+    .reduce((sum, it) => sum + (parseFloat(it.weaponProtection) || 0), 0);
+  const weaponProtection = weaponProtectionManual + weaponProtectionWielded;
   const otherBonuses = combatExtras.otherBonuses || [{},{},{}];
   const sumOtherAV = otherBonuses.reduce((sum, b) => sum + (parseFloat(b && b.av) || 0), 0);
   const sumOtherPR = otherBonuses.reduce((sum, b) => sum + (parseFloat(b && b.pr) || 0), 0);
@@ -591,7 +597,7 @@ function computeArmor(character) {
   const withoutShield = buildTotals(false);
 
   return { armorItems, shieldsComputed, shieldUseSkval, avoidanceSkval, protectionSkval,
-           weaponProtection, otherBonuses, sumOtherAV, sumOtherPR, parryPointsTotal,
+           weaponProtection, weaponProtectionManual, weaponProtectionWielded, otherBonuses, sumOtherAV, sumOtherPR, parryPointsTotal,
            sumArmorAV, sumArmorPR, sumShieldAV, sumShieldPR,
            withShield, withoutShield };
 }
