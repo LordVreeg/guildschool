@@ -287,16 +287,20 @@ function removeAutoHandFootItems(char) {
   return changed;
 }
 
-// Weapon choices for a weapon class. Martial arts and daggers overlap: every
-// weapon marked "(martial)" and the Katar is a choice under both Martial
-// artist and Dagger.
+// Weapon choices for a weapon class. Two overlaps: martial arts and daggers
+// (every weapon marked "(martial)" and the Katar is a choice under both Martial
+// artist and Dagger), and spears and pole arms (the Quarterstaff and War Staff
+// can be used as either).
 function weaponModelsForClass(weaponClass, catName) {
   const sharesMartialAndDagger = w => /martial|katar/i.test(w.name);
   const isMartialOrDagger = weaponClass === 'Basic Martial artist' || weaponClass === 'Basic Dagger';
+  const sharesSpearAndPole = w => /^quarterstaff$|^war staff/i.test(w.name);
+  const isSpearOrPole = weaponClass === 'Basic Spears' || weaponClass === 'Basic Pole Weapons';
   const seen = new Set();
   return WEAPONS.filter(w =>
     w.category === catName ||
-    (isMartialOrDagger && sharesMartialAndDagger(w) && (w.category === 'Martial' || w.category === 'Daggers'))
+    (isMartialOrDagger && sharesMartialAndDagger(w) && (w.category === 'Martial' || w.category === 'Daggers')) ||
+    (isSpearOrPole && sharesSpearAndPole(w) && (w.category === 'Spears' || w.category === 'Pole Arms'))
   ).filter(w => !seen.has(w.name) && seen.add(w.name));
 }
 // The automatic Hand/Foot weapon's panel on the Combat page: same numbers as
