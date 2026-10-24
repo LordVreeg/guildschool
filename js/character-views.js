@@ -509,7 +509,7 @@ function renderCombatModule() {
               <div class="computed-item"><span class="ci-label">Crit %</span><span class="ci-value">${fmtCrit(w.missile.critChance)}</span></div>
               <div class="computed-item"><span class="ci-label">Fumble %</span><span class="ci-value">${fmtFumble(w.missile.fumbleThreshold)}</span></div>
             </div>
-            ${(char.items||[]).filter(i=>i.type==='Ammunition').length===0 ? '<div class="note" style="margin-top:6px">No ammunition items in inventory yet — add one on General, Type: Ammunition.</div>' : ''}
+            ${(char.items||[]).filter(i=>i.type==='Ammunition').length===0 ? '<div class="note" style="margin-top:6px">No ammunition items in inventory yet — add one on the Inventory page, Type: Weapon, Ammunition.</div>' : ''}
             ${w.missile.ammoItem ? `
             <div class="form-row">
               <div class="form-group"><label>Damage Dice</label><input class="w100" value="${w.missile.ammoItem.damageDice||''}" onchange="updateItem(${it.ammunitionItemIdx},'damageDice',this.value);renderCombatModule()"></div>
