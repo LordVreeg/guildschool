@@ -123,14 +123,21 @@ body {
 .form-group input:focus, .form-group select:focus { border-color: var(--gold); outline: none; }
 .form-group input.computed { color: var(--gold); border-color: var(--gold-dim); background: rgba(110,27,34,.05); }
 .form-group input.computed-skval { color: var(--text-bright); font-size: 18px; font-weight: bold; border-color: var(--gold); background: rgba(110,27,34,.08); }
-.w40  { width: 40px; }
-.w60  { width: 60px; }
-.w80  { width: 80px; }
-.w100 { width: 100px; }
-.w140 { width: 140px; }
-.w200 { width: 200px; }
-.w250 { width: 250px; }
-.wfull{ flex: 1; min-width: 120px; }
+/* Field widths: four tiers, picked by what a field holds.
+   sm = numbers and very short values; md = short text and most dropdowns;
+   lg = names and long lists (guilds, weapons, skills); full = long text.
+   A tier class can also go on a .form-group, whose field is then w-full. */
+:root { --w-sm: 60px; --w-md: 160px; --w-lg: 260px; }
+.w-sm { width: var(--w-sm); }
+.w-md { width: var(--w-md); }
+.w-lg { width: var(--w-lg); }
+.w-full { width: 100%; }
+/* A form field given no tier: numbers are small, anything else medium.
+   (Fields inside tables and grids are sized by their columns instead.) */
+.form-group > input[type="number"]:not([class*="w-"]):not([style*="width"]) { width: var(--w-sm); }
+.form-group > select:not([class*="w-"]):not([style*="width"]),
+.form-group > input:not([type]):not([class*="w-"]):not([style*="width"]),
+.form-group > input[type="text"]:not([class*="w-"]):not([style*="width"]) { width: var(--w-md); }
 /* COMPUTED ROW */
 .computed-row { background: rgba(110,27,34,.06); padding: 10px 14px; margin-bottom: 12px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
 .computed-item { display: flex; flex-direction: column; gap: 2px; }
@@ -219,3 +226,10 @@ body {
   text-transform: none !important;
   letter-spacing: normal !important;
 }
+
+/* Overview: each section's header collapses it and has ▲/▼ to move it */
+.overview-section > .panel-header { cursor: pointer; user-select: none; }
+.overview-section .section-toggle { color: var(--header-text); font-size: 11px; width: 10px; }
+.overview-section .section-moves { margin-left: auto; display: inline-flex; gap: 4px; }
+.overview-section .section-move { padding: 0 6px; line-height: 16px; font-size: 11px; }
+.overview-section .section-move:disabled { opacity: .35; cursor: default; }

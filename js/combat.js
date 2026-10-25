@@ -47,7 +47,7 @@ function enterOrStartCombat(groupId) {
     <ul style="margin:0 0 12px 16px;padding:0;font-size:13px">${resumableHtml}</ul>
     <hr class="divider">
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:8px 0 6px">Start New</div>
-    <div class="form-group" style="margin-bottom:8px"><label>Name</label><input id="sc-name" style="width:100%" placeholder="e.g. Ambush on the Old Road"></div>
+    <div class="form-group" style="margin-bottom:8px"><label>Name</label><input class="w-full" id="sc-name"  placeholder="e.g. Ambush on the Old Road"></div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="createEncounter('${groupId}')">Start</button></div>`);
 }
 
@@ -241,7 +241,7 @@ function renderEncounterHtml(enc, isGM) {
         ${canEdit ? `
         <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
           <button class="btn btn-dim" style="font-size:14px;padding:1px 9px;font-weight:bold" onclick="nudgeActionTrack('${t.id}',-1)" title="-1 segment">−</button>
-          <input type="number" step="any" style="width:64px;font-size:16px;font-weight:bold;text-align:center;color:var(--gold)" value="${t.next_segment != null ? t.next_segment : ''}" placeholder="—" onchange="updateActionTrack('${t.id}','next_segment',this.value===''?null:parseFloat(this.value))">
+          <input type="number" step="any" class="w-sm" style="font-size:16px;font-weight:bold;text-align:center;color:var(--gold)" value="${t.next_segment != null ? t.next_segment : ''}" placeholder="—" onchange="updateActionTrack('${t.id}','next_segment',this.value===''?null:parseFloat(this.value))">
           <button class="btn btn-dim" style="font-size:14px;padding:1px 9px;font-weight:bold" onclick="nudgeActionTrack('${t.id}',1)" title="+1 segment">+</button>
           ${t.next_segment == null ? `<button class="btn btn-gold" style="font-size:10px;padding:2px 6px" onclick="updateActionTrack('${t.id}','next_segment',${dueSegment})">Join Now (seg ${dueSegment})</button>` : ''}
           ${due && t.next_segment != null ? `<button class="btn btn-gold" style="font-size:10px;padding:2px 6px" onclick="resolveActionTrack('${t.id}')">Resolve</button>` : ''}
@@ -251,7 +251,7 @@ function renderEncounterHtml(enc, isGM) {
           </select>
           <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="deleteActionTrack('${t.id}')">✕</button>
         </div>
-        <input value="${escapeHtml(t.label||'')}" placeholder="Intended action (e.g. biting Bastardo, casting Source charge)" style="width:100%;font-size:13px;margin-top:3px" onchange="updateActionTrack('${t.id}','label',this.value)">` :
+        <input class="w-full" value="${escapeHtml(t.label||'')}" placeholder="Intended action (e.g. biting Bastardo, casting Source charge)" style="font-size:13px;margin-top:3px" onchange="updateActionTrack('${t.id}','label',this.value)">` :
         `<div>
           <span style="font-size:15px;font-weight:bold;color:var(--gold)">${t.next_segment!=null?'@ '+t.next_segment:'(standing by)'}</span>
           ${t.action_category ? `<span style="font-size:11px;color:var(--text-dim)"> ${COMBAT_CATEGORY_LABELS[t.action_category]}</span>` : ''}
@@ -269,18 +269,18 @@ function renderEncounterHtml(enc, isGM) {
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <span style="${nameStyle}">${escapeHtml(c.display_name)}</span>
         ${foeTypeTag(c)}${combatFoeXp[c.id] != null ? `<span style="font-size:11px;color:var(--gold-dim)" title="Experience value of this foe (Beastiary formula)">XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
-        ${canEdit ? `<input value="${escapeHtml(c.team||'')}" placeholder="Team" style="width:80px;font-size:11px" onchange="updateCombatantField('${c.id}','team',this.value)">`
+        ${canEdit ? `<input value="${escapeHtml(c.team||'')}" placeholder="Team" class="w-sm" style="font-size:11px" onchange="updateCombatantField('${c.id}','team',this.value)">`
           : `<span style="font-size:10px;color:var(--text-dim)">${escapeHtml(c.team||'')}</span>`}
         ${combatantHpBadge(c, isGM)}
         ${canEdit ? (c.hp_system === 'collegium' ? `
         <span style="font-size:10px;color:var(--text-dim)">Phys</span>
-        <input type="number" class="w60" style="font-size:11px" value="${c.physical_current!=null?c.physical_current:''}" title="Physical Current" onchange="updateCollegiumHp('${c.id}','physical_current',this.value)">
-        / <input type="number" class="w60" style="font-size:11px" value="${c.physical_max!=null?c.physical_max:''}" title="Physical Max" onchange="updateCollegiumHp('${c.id}','physical_max',this.value)">
+        <input type="number" class="w-sm" style="font-size:11px" value="${c.physical_current!=null?c.physical_current:''}" title="Physical Current" onchange="updateCollegiumHp('${c.id}','physical_current',this.value)">
+        / <input type="number" class="w-sm" style="font-size:11px" value="${c.physical_max!=null?c.physical_max:''}" title="Physical Max" onchange="updateCollegiumHp('${c.id}','physical_max',this.value)">
         <span style="font-size:10px;color:var(--text-dim)">End</span>
-        <input type="number" class="w60" style="font-size:11px" value="${c.endurance_current!=null?c.endurance_current:''}" title="Endurance Current" onchange="updateCollegiumHp('${c.id}','endurance_current',this.value)">
-        / <input type="number" class="w60" style="font-size:11px" value="${c.endurance_max!=null?c.endurance_max:''}" title="Endurance Max" onchange="updateCollegiumHp('${c.id}','endurance_max',this.value)">` : `
-        <input type="number" class="w60" style="font-size:11px" value="${c.current_hp!=null?c.current_hp:''}" title="Current HP" onchange="updateCombatantField('${c.id}','current_hp',this.value===''?null:parseFloat(this.value))">
-        / <input type="number" class="w60" style="font-size:11px" value="${c.max_hp!=null?c.max_hp:''}" title="Max HP" onchange="updateCombatantField('${c.id}','max_hp',this.value===''?null:parseFloat(this.value))">`) : ''}
+        <input type="number" class="w-sm" style="font-size:11px" value="${c.endurance_current!=null?c.endurance_current:''}" title="Endurance Current" onchange="updateCollegiumHp('${c.id}','endurance_current',this.value)">
+        / <input type="number" class="w-sm" style="font-size:11px" value="${c.endurance_max!=null?c.endurance_max:''}" title="Endurance Max" onchange="updateCollegiumHp('${c.id}','endurance_max',this.value)">` : `
+        <input type="number" class="w-sm" style="font-size:11px" value="${c.current_hp!=null?c.current_hp:''}" title="Current HP" onchange="updateCombatantField('${c.id}','current_hp',this.value===''?null:parseFloat(this.value))">
+        / <input type="number" class="w-sm" style="font-size:11px" value="${c.max_hp!=null?c.max_hp:''}" title="Max HP" onchange="updateCombatantField('${c.id}','max_hp',this.value===''?null:parseFloat(this.value))">`) : ''}
         <select style="font-size:11px" onchange="updateCombatantField('${c.id}','target_combatant_id',this.value||null)">${targetOptionsHtml(c.id, c.target_combatant_id)}</select>
         <select style="font-size:11px" onchange="updateCombatantField('${c.id}','status',this.value)" title="Status -- drives Turn Order placement and name styling">
           ${['active','waiting','incapacitated','killed'].map(s => `<option value="${s}" ${status===s?'selected':''}>${s[0].toUpperCase()+s.slice(1)}</option>`).join('')}
@@ -460,7 +460,7 @@ function renderEncounterHtml(enc, isGM) {
     </div>
     <div class="form-row" style="margin:8px 0;align-items:center">
       <div class="form-group"><label>Current Segment</label>
-        ${isGM ? `<input type="number" step="any" class="w100" value="${enc.current_segment}" onchange="updateEncounterField('current_segment',parseFloat(this.value)||0)">` : `<div>${enc.current_segment}</div>`}
+        ${isGM ? `<input type="number" step="any" class="w-sm" value="${enc.current_segment}" onchange="updateEncounterField('current_segment',parseFloat(this.value)||0)">` : `<div>${enc.current_segment}</div>`}
       </div>
       ${isGM ? `<div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="advanceToNextSegment('${enc.id}')">Advance to Next Queued Action</button></div>` : ''}
       ${foeXpHeaderHtml}
@@ -483,11 +483,11 @@ function renderEncounterHtml(enc, isGM) {
           <div class="form-group"><label>Combatant</label><select id="log-combatant">${combatantsCache.map(c=>`<option value="${c.id}" ${c.id===currentTurnCombatantId?'selected':''}>${escapeHtml(c.display_name)}</option>`).join('')}</select></div>
           <div class="form-group"><label>Target</label><select id="log-target"><option value="">(none)</option>${combatantsCache.map(c=>`<option value="${c.id}">${escapeHtml(c.display_name)}</option>`).join('')}</select></div>
         </div>
-        <div class="form-group" style="margin:6px 0"><label>Action Summary</label><input id="log-summary" style="width:100%" placeholder="e.g. Swings longsword, hits for 8"></div>
+        <div class="form-group" style="margin:6px 0"><label>Action Summary</label><input class="w-full" id="log-summary"  placeholder="e.g. Swings longsword, hits for 8"></div>
         <div class="form-row">
-          <div class="form-group"><label>Damage Dealt</label><input id="log-dealt" type="number" class="w80"></div>
-          <div class="form-group"><label>Damage Taken</label><input id="log-taken" type="number" class="w80"></div>
-          <div class="form-group"><label>Damage Prevented</label><input id="log-prevented" type="number" class="w80"></div>
+          <div class="form-group"><label>Damage Dealt</label><input id="log-dealt" type="number" class="w-sm"></div>
+          <div class="form-group"><label>Damage Taken</label><input id="log-taken" type="number" class="w-sm"></div>
+          <div class="form-group"><label>Damage Prevented</label><input id="log-prevented" type="number" class="w-sm"></div>
           <div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="addLogEntry('${enc.id}')">Add to Log</button></div>
         </div>
         <hr class="divider">
@@ -707,10 +707,10 @@ function openAddEffectModal(combatantId) {
   const quickBtn = (label, key) => `<button type="button" class="btn btn-dim" style="font-size:10px;padding:1px 7px" data-team="${escapeHtml(key)}" onclick="setEffectTargets(this.dataset.team)">${escapeHtml(label)}</button>`;
   openModal(`
     <h3>Add Effect</h3>
-    <div class="form-group" style="margin-bottom:8px"><label>Label</label><input id="eff-label" style="width:100%" placeholder="e.g. Blessings, Shaken (-10 to hit)"></div>
+    <div class="form-group" style="margin-bottom:8px"><label>Label</label><input class="w-full" id="eff-label"  placeholder="e.g. Blessings, Shaken (-10 to hit)"></div>
     <div class="form-row" style="margin-bottom:8px">
-      <div class="form-group"><label>Lasts (segments from now)</label><input id="eff-duration" type="number" step="any" class="w100" placeholder="e.g. 30"></div>
-      <div class="form-group"><label>or Ends at Segment</label><input id="eff-expiry" type="number" step="any" class="w100"></div>
+      <div class="form-group"><label>Lasts (segments from now)</label><input id="eff-duration" type="number" step="any" class="w-sm" placeholder="e.g. 30"></div>
+      <div class="form-group"><label>or Ends at Segment</label><input id="eff-expiry" type="number" step="any" class="w-sm"></div>
     </div>
     <div class="note" style="margin-bottom:8px">Now is segment ${now}. Fill in one (Lasts wins if both); leave both blank for no time limit. Timed effects show in the Turn Order at the segment they end.</div>
     <div class="form-group" style="margin-bottom:8px"><label>Who is affected</label>
@@ -896,16 +896,16 @@ async function addCombatantFromSource(kind, sourceId, opts = {}) {
 function openCreateGroupModal() {
   openModal(`
     <h3>New Group</h3>
-    <div class="form-group" style="margin-bottom:8px"><label>Group Name</label><input id="ng-name" style="width:100%"></div>
+    <div class="form-group" style="margin-bottom:8px"><label>Group Name</label><input class="w-full" id="ng-name" ></div>
     <div class="note" style="margin-bottom:8px">Starting date (Reckoning of Nebler)</div>
     <div class="form-row">
-      <div class="form-group"><label>Year (RON)</label><input id="ng-year" type="number" class="w100" value="895"></div>
+      <div class="form-group"><label>Year (RON)</label><input id="ng-year" type="number" class="w-sm" value="895"></div>
       <div class="form-group"><label>Month</label>
         <select id="ng-month">${RON_MONTHS.map((m,i)=>`<option value="${i}">${m.key} (${m.season})</option>`).join('')}</select>
       </div>
-      <div class="form-group"><label>Day (1-60)</label><input id="ng-day" type="number" class="w80" value="1" min="1" max="60"></div>
+      <div class="form-group"><label>Day (1-60)</label><input id="ng-day" type="number" class="w-sm" value="1" min="1" max="60"></div>
       ${ronHourPhaseInputHtml('ng', 0)}
-      <div class="form-group"><label>Minute (0-59)</label><input id="ng-minute" type="number" class="w80" value="0" min="0" max="59"></div>
+      <div class="form-group"><label>Minute (0-59)</label><input id="ng-minute" type="number" class="w-sm" value="0" min="0" max="59"></div>
     </div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="createGroup()">Create</button></div>`);
 }
@@ -1099,7 +1099,7 @@ function renderHpRollModal(groupId, uptoSeconds) {
     return `<tr>
       <td>${escapeHtml(q.name)}</td>
       <td>${cc}</td>
-      <td><input type="number" class="w80" id="hproll-${q.idx}" min="1" max="100"></td>
+      <td><input type="number" class="w-sm" id="hproll-${q.idx}" min="1" max="100"></td>
       <td><button class="btn btn-dim" onclick="rollHpOnline(${q.idx})">Roll Online</button></td>
     </tr>`;
   }).join('');
@@ -1163,7 +1163,7 @@ function openEditTimeModal(groupId) {
   openModal(`
     <h3>Set Time</h3>
     <div class="form-row">
-      <div class="form-group"><label>Year (RON)</label><input id="et-year" type="number" class="w100" value="${c.year}"></div>
+      <div class="form-group"><label>Year (RON)</label><input id="et-year" type="number" class="w-sm" value="${c.year}"></div>
       <div class="form-group"><label>Month</label>
         <select id="et-month">${RON_MONTHS.map((m,i)=>`<option value="${i}" ${i===c.month?'selected':''}>${m.key} (${m.season})</option>`).join('')}</select>
       </div>
@@ -1175,11 +1175,11 @@ function openEditTimeModal(groupId) {
           Lithe Day
         </label>
       </div>
-      <div class="form-group" id="et-day-wrap" style="display:${c.isLithe?'none':'block'}"><label>Day (1-60)</label><input id="et-day" type="number" class="w80" value="${c.day}" min="1" max="60"></div>
+      <div class="form-group" id="et-day-wrap" style="display:${c.isLithe?'none':'block'}"><label>Day (1-60)</label><input id="et-day" type="number" class="w-sm" value="${c.day}" min="1" max="60"></div>
     </div>
     <div class="form-row">
       ${ronHourPhaseInputHtml('et', c.hour)}
-      <div class="form-group"><label>Minute (0-59)</label><input id="et-minute" type="number" class="w80" value="${c.minute}" min="0" max="59"></div>
+      <div class="form-group"><label>Minute (0-59)</label><input id="et-minute" type="number" class="w-sm" value="${c.minute}" min="0" max="59"></div>
     </div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="setGroupTime('${groupId}')">Save</button></div>`);
 }

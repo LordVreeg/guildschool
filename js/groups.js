@@ -72,7 +72,7 @@ function ronHourPhaseInputHtml(idPrefix, currentRawHour) {
   const isNaSou = currentRawHour >= 11;
   const hourInPhase = (isNaSou ? currentRawHour - 11 : currentRawHour) + 1;
   return `
-      <div class="form-group"><label>Hour (1-11)</label><input id="${idPrefix}-hournum" type="number" class="w60" value="${hourInPhase}" min="1" max="11"></div>
+      <div class="form-group"><label>Hour (1-11)</label><input id="${idPrefix}-hournum" type="number" class="w-sm" value="${hourInPhase}" min="1" max="11"></div>
       <div class="form-group"><label>Phase</label><select id="${idPrefix}-phase">
         <option value="sou" ${!isNaSou?'selected':''}>Sou (day)</option>
         <option value="nasou" ${isNaSou?'selected':''}>Na Sou (night)</option>
@@ -371,7 +371,7 @@ async function renderGroupDetail(group) {
       <ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${rosterHtml}</ul>
       <div style="margin-top:6px">
         ${isGM
-          ? `<textarea rows="2" style="width:100%;font-size:12px" placeholder="Note for ${ROSTER_ORDER_MODES[rosterOrderMode].label} (e.g. who's where, and why)" onchange="updateRosterOrderNote('${group.id}','${rosterOrderMode}',this.value)">${escapeHtml((group.roster_order_notes||{})[rosterOrderMode]||'')}</textarea>`
+          ? `<textarea class="w-full" rows="2" style="font-size:12px" placeholder="Note for ${ROSTER_ORDER_MODES[rosterOrderMode].label} (e.g. who's where, and why)" onchange="updateRosterOrderNote('${group.id}','${rosterOrderMode}',this.value)">${escapeHtml((group.roster_order_notes||{})[rosterOrderMode]||'')}</textarea>`
           : ((group.roster_order_notes||{})[rosterOrderMode] ? `<div class="note" style="white-space:pre-wrap">${escapeHtml(group.roster_order_notes[rosterOrderMode])}</div>` : '')}
       </div>
     </div>
@@ -401,7 +401,7 @@ async function renderGroupDetail(group) {
       <button class="btn btn-dim" onclick="quickAdvance('${group.id}', 1800)">+30 min</button>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Advance by</label><input id="clock-advance-amt" type="number" class="w80" value="1"></div>
+      <div class="form-group"><label>Advance by</label><input id="clock-advance-amt" type="number" class="w-sm" value="1"></div>
       <div class="form-group"><label>Unit</label>
         <select id="clock-advance-unit">
           <option value="60">Minutes</option>
@@ -421,7 +421,7 @@ async function renderGroupDetail(group) {
     <div class="form-row" style="margin-bottom:6px">
       <div class="form-group" style="flex:1">
         <label>Viewing</label>
-        <select onchange="selectViewingVolume(this.value)" style="width:100%">
+        <select class="w-full" onchange="selectViewingVolume(this.value)" >
           ${groupVolumesCache.map((v, i) => `<option value="${v.id}" ${v.id===viewingVolumeId?'selected':''}>${escapeHtml(volumeLabel(v, i))}</option>`).join('')}
         </select>
       </div>
@@ -429,7 +429,7 @@ async function renderGroupDetail(group) {
     </div>
     ${viewingVolumeId === (activeVolume && activeVolume.id) ? `
     <div class="form-row">
-      <div class="form-group" style="flex:1"><textarea id="new-group-note" rows="2" style="width:100%" placeholder="Add a note at the current time..."></textarea></div>
+      <div class="form-group" style="flex:1"><textarea class="w-full" id="new-group-note" rows="2"  placeholder="Add a note at the current time..."></textarea></div>
       <div class="form-group"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="new-group-note-visible"> Visible to everyone</label></div>
       <div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="addGroupNote('${group.id}')">Add Note</button></div>
     </div>

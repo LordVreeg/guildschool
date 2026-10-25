@@ -50,7 +50,8 @@ function renderAddItemModal(justAdded) {
   if (!char || !d) return;
   const val = x => escapeHtml(x === undefined || x === null ? '' : x);
   const opt = (value, label, selected) => `<option value="${val(value)}" ${selected ? 'selected' : ''}>${escapeHtml(label)}</option>`;
-  const field = (label, control, width) => `<div class="form-group"${width ? ` style="width:${width}"` : ''}><label>${label}</label>${control}</div>`;
+  // tier: 'sm' | 'md' | 'lg' | 'full' (the field-width tiers), or 'fill' to take the rest of the row
+  const field = (label, control, tier) => `<div class="form-group${tier === 'fill' ? '' : tier ? ' w-' + tier : ''}"${tier === 'fill' ? ' style="flex:1;min-width:var(--w-md)"' : ''}><label>${label}</label>${control}</div>`;
   const editing = editingItemIdx !== null;
   const ready = itemPicksComplete(d);
   const lock = ready ? '' : 'disabled';
@@ -62,7 +63,7 @@ function renderAddItemModal(justAdded) {
     const options = opt('', '— select —', picked === undefined) +
       s.options.map(o => opt(o, s.labelOf ? s.labelOf(o) : o, picked === o)).join('') +
       (s.custom ? opt(ITEM_PICK_CUSTOM, '— custom —', picked === ITEM_PICK_CUSTOM) : '');
-    return field(s.label, `<select style="width:100%" onchange="setItemPick('${s.key}',this.value)">${options}</select>`, s.key === 'type' ? '160px' : '230px');
+    return field(s.label, `<select class="w-full"  onchange="setItemPick('${s.key}',this.value)">${options}</select>`, s.key === 'type' ? 'md' : 'lg');
   }).join('');
 
   const hasArmorStats = d.type === 'Armor' || d.type === 'Shield';
@@ -70,20 +71,20 @@ function renderAddItemModal(justAdded) {
   const location = (d.location || '').trim();
   const locations = itemLocations(char);
   if (location && !locations.includes(location)) locations.push(location);
-  const num = (key, extra) => `<input type="number" style="width:100%" ${extra || ''} ${lock} value="${val(d[key])}" oninput="setAddItemField('${key}',this.value)">`;
+  const num = (key, extra) => `<input class="w-full" type="number"  ${extra || ''} ${lock} value="${val(d[key])}" oninput="setAddItemField('${key}',this.value)">`;
 
   openModal(`
     <h3>${editing ? 'Edit Item' : 'Add Item'}</h3>
     ${justAdded ? `<div class="note" style="margin-bottom:8px;color:var(--gold-dim)">Added “${escapeHtml(justAdded)}”. Next item:</div>` : ''}
     <div class="form-row">${dropdowns}</div>
     <div class="form-row">
-      ${field('Name', `<input id="ai-name" style="width:100%" ${lock} value="${val(d.name)}" oninput="setAddItemField('name',this.value)">`, '100%')}
+      ${field('Name', `<input class="w-full" id="ai-name"  ${lock} value="${val(d.name)}" oninput="setAddItemField('name',this.value)">`, 'full')}
     </div>
     <div class="form-row">
-      ${hasArmorStats ? field('AV', num('av'), '70px') + field('PR', num('pr'), '70px') : ''}
-      ${field('Qty', num('qty', 'min="1"'), '70px')}
-      ${field('Unit Weight', num('weight'), '100px')}
-      ${field('Unit Worth', num('worth'), '100px')}
+      ${hasArmorStats ? field('AV', num('av'), 'sm') + field('PR', num('pr'), 'sm') : ''}
+      ${field('Qty', num('qty', 'min="1"'), 'sm')}
+      ${field('Unit Weight', num('weight'), 'sm')}
+      ${field('Unit Worth', num('worth'), 'sm')}
       ${d.type === 'Magic Item' ? '' : `<div class="form-group" style="justify-content:flex-end">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
           <input type="checkbox" ${lock} ${d.masterwork ? 'checked' : ''} onchange="setAddItemField('masterwork',this.checked)"> ${d.type === 'Item' ? 'Masterwork' : 'Masterwork / Magic'}
@@ -91,8 +92,8 @@ function renderAddItemModal(justAdded) {
       </div>`}
     </div>
     <div class="form-row">
-      ${field('Location', `<select style="width:100%" ${lock} onchange="setAddItemField('location',this.value)">${opt('', 'Carried', !location)}${locations.map(l => opt(l, l, location === l)).join('')}</select>`, '200px')}
-      ${field('Notes', `<input style="width:100%" ${lock} value="${val(d.notes)}" oninput="setAddItemField('notes',this.value)">`, 'calc(100% - 220px)')}
+      ${field('Location', `<select class="w-full"  ${lock} onchange="setAddItemField('location',this.value)">${opt('', 'Carried', !location)}${locations.map(l => opt(l, l, location === l)).join('')}</select>`, 'md')}
+      ${field('Notes', `<input class="w-full"  ${lock} value="${val(d.notes)}" oninput="setAddItemField('notes',this.value)">`, 'fill')}
     </div>
     <div class="note" style="margin-top:2px">${ready ? 'Carried items count toward Weight Carried. To put an item in a new bag, stash or other location, add it under Storage Locations first.' : 'Choose from every list above to fill in the rest of the item.'}</div>
     <div id="ai-error" style="color:var(--red-b);font-size:12px;margin-top:8px;display:none"></div>
@@ -131,12 +132,12 @@ function renderContainerModal() {
     <h3>${editing ? 'Edit Container' : 'Add Container'}</h3>
     <div class="form-row">
       <div class="form-group" style="width:100%"><label>Name</label>
-        <input style="width:100%" value="${val(d.name)}" placeholder="e.g. Backpack, Bank of Igbar, Bag of Holding" oninput="containerDraft.name=this.value">
+        <input class="w-full"  value="${val(d.name)}" placeholder="e.g. Backpack, Bank of Igbar, Bag of Holding" oninput="containerDraft.name=this.value">
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group" style="width:140px"><label>Capacity</label>
-        <input type="number" min="0" style="width:100%" value="${val(d.capacity)}" placeholder="no limit" oninput="containerDraft.capacity=this.value">
+      <div class="form-group w-sm"><label>Capacity</label>
+        <input class="w-full" type="number" min="0"  value="${val(d.capacity)}" placeholder="no limit" oninput="containerDraft.capacity=this.value">
       </div>
       <div class="form-group" style="justify-content:flex-end">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
@@ -161,8 +162,8 @@ function openDeleteContainerModal(name) {
   const others = itemLocations(char).filter(l => l !== name);
   const count = inside.reduce((n, it) => n + (parseFloat(it.qty) || 1), 0);
   const dest = !inside.length ? '' : others.length
-    ? `<div class="form-group" style="margin-top:10px;width:260px"><label>Move its ${count.toLocaleString()} item${count === 1 ? '' : 's'} to</label>
-        <select id="ct-move-to" style="width:100%"><option value="">On Person</option>${others.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('')}</select>
+    ? `<div class="form-group w-lg" style="margin-top:10px"><label>Move its ${count.toLocaleString()} item${count === 1 ? '' : 's'} to</label>
+        <select class="w-full" id="ct-move-to" ><option value="">On Person</option>${others.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('')}</select>
       </div>`
     : `<p style="margin-top:8px">Its ${count.toLocaleString()} item${count === 1 ? '' : 's'} will move to On Person.</p>`;
   openModal(`
@@ -182,7 +183,7 @@ function openNewCharModal(preset) {
   const roll = preset.roll || false;
   openModal(`
     <h3>New Character</h3>
-    <div class="form-group" style="margin-bottom:10px"><label>Name (leave blank if rolling — race-dependent naming)</label><input id="nc-name" class="wfull" style="width:100%" placeholder="Character name, or leave blank to name after rolling" value="${escapeHtml(preset.name||'')}"></div>
+    <div class="form-group" style="margin-bottom:10px"><label>Name (leave blank if rolling — race-dependent naming)</label><input id="nc-name" class="w-full"  placeholder="Character name, or leave blank to name after rolling" value="${escapeHtml(preset.name||'')}"></div>
     <hr class="divider">
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:8px">
       <input type="checkbox" id="nc-initial-exp" ${initialExp?'checked':''} onchange="document.getElementById('nc-initial-exp-amount').disabled=!this.checked">
@@ -190,7 +191,7 @@ function openNewCharModal(preset) {
     </label>
     <div class="form-group" style="margin-bottom:10px">
       <label>Starting Raw XP pool to spend on skills</label>
-      <input type="number" id="nc-initial-exp-amount" class="w150" value="${initialExpAmount}" ${initialExp?'':'disabled'}>
+      <input type="number" id="nc-initial-exp-amount" class="w-sm" value="${initialExpAmount}" ${initialExp?'':'disabled'}>
     </div>
     <hr class="divider">
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:8px">
@@ -558,7 +559,7 @@ function openAddSkillModal() {
       <button class="btn btn-dim" id="skill-mode-other" onclick="setAddSkillMode('other')">Other (All Skills)</button>
     </div>
     <div class="form-group" style="margin-bottom:8px"><label>Filter</label>
-      <input id="skill-filter" style="width:100%" placeholder="Type to search..." oninput="filterSkillList(this.value)">
+      <input class="w-full" id="skill-filter"  placeholder="Type to search..." oninput="filterSkillList(this.value)">
     </div>
     <div id="skill-list" style="max-height:300px;overflow-y:auto;border:1px solid var(--border)"></div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button></div>`);

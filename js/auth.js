@@ -342,7 +342,7 @@ function renderHandFootPanel(char, pos, total) {
   const hf = handFootWeapon(char);
   if (!hf) return '';
   const w = computeWeapon(char, hf);
-  const parryCell = `<input type="number" min="0" max="${w.parrySkval}" class="w60" value="${w.parryPointsUsed}" onchange="updateHandFootParry(this.value)">`;
+  const parryCell = `<input type="number" min="0" max="${w.parrySkval}" class="w-sm" value="${w.parryPointsUsed}" onchange="updateHandFootParry(this.value)">`;
   const collapsed = !!char.handFootCollapsed;
   return `
   <div class="panel" style="margin-bottom:10px">
@@ -372,7 +372,7 @@ function renderHandFootPanel(char, pos, total) {
 function renderShieldWeaponPanel(char, entry, pos, total) {
   const sw = entry.it, idx = entry.idx;
   const w = computeWeapon(char, sw);
-  const parryCell = `<input type="number" min="0" max="${w.parrySkval}" class="w60" value="${w.parryPointsUsed}" onchange="updateShieldSpikeParry(${idx}, this.value)">`;
+  const parryCell = `<input type="number" min="0" max="${w.parrySkval}" class="w-sm" value="${w.parryPointsUsed}" onchange="updateShieldSpikeParry(${idx}, this.value)">`;
   return `
   <div class="panel" style="margin-bottom:10px">
     <div class="panel-header" style="cursor:pointer;display:flex;align-items:center;gap:8px;flex-wrap:wrap" onclick="toggleShieldSpikeOpen(${idx})" title="Click to ${sw.collapsed ? 'open' : 'close'}">
@@ -564,7 +564,7 @@ async function toggleApproval(userId, approved) {
 function openAdminTransferModal(charRowId, charName) {
   openModal(`
     <h3>Transfer "${escapeHtml(charName)}"</h3>
-    <div class="form-group" style="margin-bottom:8px"><label>New Owner's Email</label><input id="admin-transfer-email" style="width:100%" type="email"></div>
+    <div class="form-group" style="margin-bottom:8px"><label>New Owner's Email</label><input class="w-full" id="admin-transfer-email"  type="email"></div>
     <div id="admin-transfer-status" style="font-size:12px;color:var(--red-b);margin-bottom:8px;display:none"></div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-red" onclick="confirmAdminTransfer('${charRowId}')">Transfer</button></div>`);
 }

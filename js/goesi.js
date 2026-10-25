@@ -182,10 +182,10 @@ function renderGoesiDayDetail(groupId, isGM) {
     <hr class="divider">
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Notes</div>
     ${notesListHtml}
-    <div class="form-group" style="margin-bottom:6px"><textarea id="goesi-note-text" rows="2" style="width:100%" placeholder="Add a note for this day..."></textarea></div>
+    <div class="form-group" style="margin-bottom:6px"><textarea class="w-full" id="goesi-note-text" rows="2"  placeholder="Add a note for this day..."></textarea></div>
     <div class="form-row">
       ${ronHourPhaseInputHtml('goesi-note', 0)}
-      <div class="form-group"><label>Minute</label><input id="goesi-note-minute" type="number" class="w80" value="0" min="0" max="59"></div>
+      <div class="form-group"><label>Minute</label><input id="goesi-note-minute" type="number" class="w-sm" value="0" min="0" max="59"></div>
       <div class="form-group"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap">&nbsp;<input type="checkbox" id="goesi-note-visible"> Visible to everyone</label></div>
       <div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="addGoesiNote('${groupId}')">Add Note</button></div>
     </div>
@@ -247,10 +247,10 @@ function openEditNoteModal(noteId, groupId) {
   const c = ronFromSeconds(note.game_seconds);
   openModal(`
     <h3>Edit Note</h3>
-    <div class="form-group" style="margin-bottom:8px"><textarea id="edit-note-text" rows="4" style="width:100%">${escapeHtml(note.note)}</textarea></div>
+    <div class="form-group" style="margin-bottom:8px"><textarea class="w-full" id="edit-note-text" rows="4" >${escapeHtml(note.note)}</textarea></div>
     <div class="note" style="margin-bottom:6px">This only corrects the displayed in-game time -- the log's own order is by when each note was actually entered, not by this.</div>
     <div class="form-row">
-      <div class="form-group"><label>Year (RON)</label><input id="en-year" type="number" class="w100" value="${c.year}"></div>
+      <div class="form-group"><label>Year (RON)</label><input id="en-year" type="number" class="w-sm" value="${c.year}"></div>
       <div class="form-group"><label>Month</label>
         <select id="en-month">${RON_MONTHS.map((m,i)=>`<option value="${i}" ${i===c.month?'selected':''}>${m.key} (${m.season})</option>`).join('')}</select>
       </div>
@@ -262,11 +262,11 @@ function openEditNoteModal(noteId, groupId) {
           Lithe Day
         </label>
       </div>
-      <div class="form-group" id="en-day-wrap" style="display:${c.isLithe?'none':'block'}"><label>Day (1-60)</label><input id="en-day" type="number" class="w80" value="${c.day}" min="1" max="60"></div>
+      <div class="form-group" id="en-day-wrap" style="display:${c.isLithe?'none':'block'}"><label>Day (1-60)</label><input id="en-day" type="number" class="w-sm" value="${c.day}" min="1" max="60"></div>
     </div>
     <div class="form-row">
       ${ronHourPhaseInputHtml('en', c.hour)}
-      <div class="form-group"><label>Minute (0-59)</label><input id="en-minute" type="number" class="w80" value="${c.minute}" min="0" max="59"></div>
+      <div class="form-group"><label>Minute (0-59)</label><input id="en-minute" type="number" class="w-sm" value="${c.minute}" min="0" max="59"></div>
     </div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="saveEditedNote('${noteId}','${groupId}')">Save</button></div>`);
 }

@@ -191,8 +191,8 @@ function renderSidebar() {
     };
     for (const si of byType[type]) if (!children.parentOf.has(si.id)) renderNode(si, 0);
   }
-  html += `<hr style="border-color:var(--border);margin:4px 0">`;
   html += `<div class="sidebar-add"><button onclick="openAddSkillModal()">+ Add Skill</button></div>`;
+  html += `<hr style="border-color:var(--border);margin:4px 0">`;
   document.getElementById('sidebar').innerHTML = html;
 }
 

@@ -8,6 +8,32 @@ function selectChar(id) {
   renderApp();
 }
 
+// Overview layout, saved with the character: collapse a section, or move it
+// one place among the sections currently shown.
+function toggleOverviewSection(key) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const layout = char.overviewLayout || (char.overviewLayout = {});
+  const collapsed = layout.collapsed || (layout.collapsed = {});
+  if (collapsed[key]) delete collapsed[key]; else collapsed[key] = true;
+  saveState();
+  renderOverview();
+}
+function moveOverviewSection(key, dir) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const keys = [...document.querySelectorAll('#main [data-section]')].map(el => el.dataset.section);
+  const i = keys.indexOf(key), j = i + dir;
+  if (i < 0 || j < 0 || j >= keys.length) return;
+  [keys[i], keys[j]] = [keys[j], keys[i]];
+  const layout = char.overviewLayout || (char.overviewLayout = {});
+  // Keep the places of sections not shown right now (e.g. a skill type the
+  // character no longer has) after the ones that are.
+  layout.order = keys.concat((layout.order || []).filter(k => !keys.includes(k)));
+  saveState();
+  renderOverview();
+}
+
 function updateCCBonus(ccName, value) {
   const char = state.characters[state.activeChar];
   if (!char) return;
@@ -542,8 +568,8 @@ function renderHardcastModal() {
     <hr class="divider">
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Add Points to Increase Success (+1% each)</div>
     <div class="form-row">
-      <div class="form-group"><label>Extra Spirit</label><input type="number" class="w80" value="${hs.overcastSpirit}" onchange="updateHardcastOvercast('overcastSpirit',this.value)"></div>
-      ${hs.majorPool && hs.majorPool !== 'Spirit SP' ? `<div class="form-group"><label>Extra ${hs.school}</label><input type="number" class="w80" value="${hs.overcastMajor}" onchange="updateHardcastOvercast('overcastMajor',this.value)"></div>` : ''}
+      <div class="form-group"><label>Extra Spirit</label><input type="number" class="w-sm" value="${hs.overcastSpirit}" onchange="updateHardcastOvercast('overcastSpirit',this.value)"></div>
+      ${hs.majorPool && hs.majorPool !== 'Spirit SP' ? `<div class="form-group"><label>Extra ${hs.school}</label><input type="number" class="w-sm" value="${hs.overcastMajor}" onchange="updateHardcastOvercast('overcastMajor',this.value)"></div>` : ''}
     </div>
     ` : ''}
 
@@ -612,14 +638,14 @@ function openSpellResolveModal() {
 
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">1. GM roll (d50)</div>
     <div class="form-row" style="align-items:flex-end;margin-bottom:6px">
-      <div class="form-group"><label>d50</label><input type="number" id="spell-gm-roll" class="w80" min="1" max="50" oninput="updateSpellResolve()"></div>
+      <div class="form-group"><label>d50</label><input type="number" id="spell-gm-roll" class="w-sm" min="1" max="50" oninput="updateSpellResolve()"></div>
       <div class="form-group"><button class="btn btn-dim" onclick="rollSpellDie('spell-gm-roll',50)">Roll d50</button></div>
     </div>
     <div class="computed-item" style="margin-bottom:12px"><span class="ci-label">Target</span><span class="ci-value skval" id="spell-target" style="font-size:20px">—</span></div>
 
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">2. Caster roll (d100)</div>
     <div class="form-row" style="align-items:flex-end;margin-bottom:6px">
-      <div class="form-group"><label>d100</label><input type="number" id="spell-cast-roll" class="w80" min="1" max="100" oninput="updateSpellResolve()"></div>
+      <div class="form-group"><label>d100</label><input type="number" id="spell-cast-roll" class="w-sm" min="1" max="100" oninput="updateSpellResolve()"></div>
       <div class="form-group"><button class="btn btn-dim" onclick="rollSpellDie('spell-cast-roll',100)">Roll d100</button></div>
     </div>
     <div id="spell-resolve-result" style="min-height:22px;font-weight:bold;margin-bottom:8px"></div>
@@ -697,7 +723,7 @@ function openMarkDurationModal(roll) {
       Mark duration?
     </label>
     <div id="mark-duration-fields" class="form-row" style="display:none">
-      <div class="form-group"><label>Amount</label><input type="number" id="mark-duration-amt" class="w80" value="1" min="0"></div>
+      <div class="form-group"><label>Amount</label><input type="number" id="mark-duration-amt" class="w-sm" value="1" min="0"></div>
       <div class="form-group"><label>Unit</label>
         <select id="mark-duration-unit">
           <option value="60">Minutes</option>
@@ -947,7 +973,7 @@ function openTransferOwnershipModal() {
   openModal(`
     <h3>Transfer Ownership</h3>
     <div class="note" style="margin-bottom:8px;color:#c05050">You will lose access to "${escapeHtml(char.name || 'this character')}" once transferred — the new owner gets full control, and you won't be able to see or edit it anymore (unless you're an admin).</div>
-    <div class="form-group" style="margin-bottom:8px"><label>New Owner's Email</label><input id="transfer-email" style="width:100%" type="email"></div>
+    <div class="form-group" style="margin-bottom:8px"><label>New Owner's Email</label><input class="w-full" id="transfer-email"  type="email"></div>
     <div id="transfer-status" style="font-size:12px;color:var(--red-b);margin-bottom:8px;display:none"></div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-red" onclick="confirmTransferOwnership()">Transfer</button></div>`);
 }

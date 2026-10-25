@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600;1,700&family=Cinzel:wght@500;600;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=2026-10-24.10">
+<link rel="stylesheet" href="css/app.css?v=2026-10-25.3">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -17,9 +17,9 @@
     <h2 style="font-size:16px;margin-bottom:16px;color:var(--text-bright);text-transform:uppercase;letter-spacing:1px;">GuildSchool</h2>
     <div id="auth-error" style="color:var(--red-b);font-size:12px;margin-bottom:8px;display:none"></div>
     <label style="display:block;font-size:11px;color:var(--text-dim);margin-bottom:2px">Email</label>
-    <input id="auth-email" type="email" style="width:100%;padding:6px 8px;margin-bottom:10px;background:var(--input-bg);border:1px solid var(--border);font-family:inherit;color:var(--text)" autocomplete="username">
+    <input class="w-full" id="auth-email" type="email" style="padding:6px 8px;margin-bottom:10px;background:var(--input-bg);border:1px solid var(--border);font-family:inherit;color:var(--text)" autocomplete="username">
     <label style="display:block;font-size:11px;color:var(--text-dim);margin-bottom:2px">Password</label>
-    <input id="auth-password" type="password" style="width:100%;padding:6px 8px;margin-bottom:14px;background:var(--input-bg);border:1px solid var(--border);font-family:inherit;color:var(--text)" autocomplete="current-password">
+    <input class="w-full" id="auth-password" type="password" style="padding:6px 8px;margin-bottom:14px;background:var(--input-bg);border:1px solid var(--border);font-family:inherit;color:var(--text)" autocomplete="current-password">
     <div style="display:flex;gap:8px">
       <button onclick="handleSignIn()" style="flex:1;padding:6px;background:var(--panel);border:1px solid var(--border);cursor:pointer">Sign In</button>
       <button onclick="handleSignUp()" style="flex:1;padding:6px;background:var(--panel);border:1px solid var(--border);cursor:pointer">Sign Up</button>
@@ -34,9 +34,9 @@
     <h2 style="font-size:16px;margin-bottom:16px;color:var(--text-bright);text-transform:uppercase;letter-spacing:1px;">Set a New Password</h2>
     <div id="reset-error" style="color:var(--red-b);font-size:12px;margin-bottom:8px;display:none"></div>
     <label style="display:block;font-size:11px;color:var(--text-dim);margin-bottom:2px">New password</label>
-    <input id="reset-password" type="password" style="width:100%;padding:6px 8px;margin-bottom:10px;background:var(--input-bg);border:1px solid var(--border);font-family:inherit;color:var(--text)" autocomplete="new-password">
+    <input class="w-full" id="reset-password" type="password" style="padding:6px 8px;margin-bottom:10px;background:var(--input-bg);border:1px solid var(--border);font-family:inherit;color:var(--text)" autocomplete="new-password">
     <label style="display:block;font-size:11px;color:var(--text-dim);margin-bottom:2px">Confirm new password</label>
-    <input id="reset-password-confirm" type="password" style="width:100%;padding:6px 8px;margin-bottom:14px;background:var(--input-bg);border:1px solid var(--border);font-family:inherit;color:var(--text)" autocomplete="new-password" onkeydown="if(event.key==='Enter')handleSetNewPassword()">
+    <input class="w-full" id="reset-password-confirm" type="password" style="padding:6px 8px;margin-bottom:14px;background:var(--input-bg);border:1px solid var(--border);font-family:inherit;color:var(--text)" autocomplete="new-password" onkeydown="if(event.key==='Enter')handleSetNewPassword()">
     <div style="display:flex;gap:8px">
       <button onclick="handleSetNewPassword()" style="flex:1;padding:6px;background:var(--panel);border:1px solid var(--border);cursor:pointer">Set Password</button>
       <button onclick="handleSignOut()" style="flex:1;padding:6px;background:var(--panel);border:1px solid var(--border);cursor:pointer">Sign Out</button>
@@ -112,20 +112,20 @@
      Whenever anything in css/, js/ or data/ changes, bump ?v= on the
      stylesheet link and on every script tag below, all to the same new
      value, so browsers fetch the new files instead of cached copies. -->
-<script src="js/auth.js?v=2026-10-24.10"></script>
-<script src="js/data.js?v=2026-10-24.10"></script>
-<script src="js/state.js?v=2026-10-24.10"></script>
-<script src="js/formulas.js?v=2026-10-24.10"></script>
-<script src="js/render.js?v=2026-10-24.10"></script>
-<script src="js/bestiary.js?v=2026-10-24.10"></script>
-<script src="js/groups.js?v=2026-10-24.10"></script>
-<script src="js/combat.js?v=2026-10-24.10"></script>
-<script src="js/goesi.js?v=2026-10-24.10"></script>
-<script src="js/group-add-member.js?v=2026-10-24.10"></script>
-<script src="js/character-views.js?v=2026-10-24.10"></script>
-<script src="js/modals.js?v=2026-10-24.10"></script>
-<script src="js/mutations.js?v=2026-10-24.10"></script>
-<script src="js/import-export.js?v=2026-10-24.10"></script>
-<script src="js/init.js?v=2026-10-24.10"></script>
+<script src="js/auth.js?v=2026-10-25.3"></script>
+<script src="js/data.js?v=2026-10-25.3"></script>
+<script src="js/state.js?v=2026-10-25.3"></script>
+<script src="js/formulas.js?v=2026-10-25.3"></script>
+<script src="js/render.js?v=2026-10-25.3"></script>
+<script src="js/bestiary.js?v=2026-10-25.3"></script>
+<script src="js/groups.js?v=2026-10-25.3"></script>
+<script src="js/combat.js?v=2026-10-25.3"></script>
+<script src="js/goesi.js?v=2026-10-25.3"></script>
+<script src="js/group-add-member.js?v=2026-10-25.3"></script>
+<script src="js/character-views.js?v=2026-10-25.3"></script>
+<script src="js/modals.js?v=2026-10-25.3"></script>
+<script src="js/mutations.js?v=2026-10-25.3"></script>
+<script src="js/import-export.js?v=2026-10-25.3"></script>
+<script src="js/init.js?v=2026-10-25.3"></script>
 </body>
 </html>

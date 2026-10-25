@@ -110,7 +110,7 @@ function paintBestiary() {
   const allTicked = selectable.length > 0 && selCount === selectable.length;
   tabsEl.innerHTML = `
     ${tabBtn('active', 'Active', activeCount)}${tabBtn('archive', 'Archive', archiveCount)}
-    <input type="text" id="bestiary-filter" placeholder="Filter by name, type or location" value="${escapeHtml(bestiaryFilter)}" oninput="setBestiaryFilter(this.value)" style="flex:1;min-width:160px;max-width:280px">
+    <input type="text" id="bestiary-filter" placeholder="Filter by name, type or location" value="${escapeHtml(bestiaryFilter)}" oninput="setBestiaryFilter(this.value)" class="w-lg">
     <button class="btn btn-dim" ${selCount ? '' : 'disabled'} onclick="archiveSelectedBestiary(${isArchiveTab ? 'false' : 'true'})">${isArchiveTab ? 'Restore' : 'Archive'} selected (${selCount})</button>`;
   if (!rows.length) {
     listEl.innerHTML = bestiaryCache.length === 0
@@ -604,17 +604,17 @@ function renderBestiaryEditor() {
     <div class="panel-header" style="display:flex;justify-content:space-between;align-items:flex-start">
       <div style="flex:1">
         <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Beastiary entry</div>
-        <input value="${escapeHtml(d.name||'')}" placeholder="Foe name" style="font-family:'Cormorant Garamond','Georgia',serif;font-style:italic;font-weight:bold;font-size:22px;color:var(--header-text);border:1px solid transparent;width:100%;background:transparent" onchange="updateBestiaryField('name',this.value)">
+        <input class="w-full" value="${escapeHtml(d.name||'')}" placeholder="Foe name" style="font-family:'Cormorant Garamond','Georgia',serif;font-style:italic;font-weight:bold;font-size:22px;color:var(--header-text);border:1px solid transparent; background:transparent" onchange="updateBestiaryField('name',this.value)">
       </div>
       <span class="type-badge" style="color:var(--red-b);border-color:var(--red-b)">GM only</span>
     </div>
     <div class="panel-body">
       <div class="form-row">
         <div class="form-group" style="flex:1"><label>Race / type</label>
-          <input style="width:100%" value="${escapeHtml(d.race||'')}" placeholder="Goblin, Wight, Human bandit..." onchange="updateBestiaryField('race',this.value)">
+          <input class="w-full"  value="${escapeHtml(d.race||'')}" placeholder="Goblin, Wight, Human bandit..." onchange="updateBestiaryField('race',this.value)">
         </div>
         <div class="form-group" style="flex:1"><label>Location</label>
-          <input style="width:100%" value="${escapeHtml(d.location||'')}" placeholder="e.g. GA r3" onchange="updateBestiaryField('location',this.value)">
+          <input class="w-full"  value="${escapeHtml(d.location||'')}" placeholder="e.g. GA r3" onchange="updateBestiaryField('location',this.value)">
         </div>
         <div class="form-group" style="flex:1"><label>Prepped for group (optional)</label>
           <select onchange="updateBestiaryField('group_id', this.value || null)">
@@ -625,7 +625,7 @@ function renderBestiaryEditor() {
       </div>
       <div class="form-row" style="align-items:flex-end;margin-bottom:10px">
         <div class="form-group" style="flex:1"><label>Load base stats from a template</label>
-          <select id="bf-race-template">
+          <select id="bf-race-template" class="w-lg">
             <option value="">— pick a template —</option>
             <optgroup label="Wiki creatures">
               ${BESTIARY_RACE_TEMPLATES.map(t=>`<option value="wiki:${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('')}
@@ -645,14 +645,14 @@ function renderBestiaryEditor() {
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Core stats</div>
       <div class="form-row">
-        <div class="form-group"><label>HP formula</label><input class="w150" value="${escapeHtml(d.hp_formula||'')}" onchange="updateBestiaryField('hp_formula',this.value)" placeholder="d6 + d4/plev"></div>
-        <div class="form-group"><label>Avg HP</label><input type="number" class="w80" value="${d.avg_hp||0}" onchange="updateBestiaryNum('avg_hp',this.value)"></div>
-        <div class="form-group"><label>Avoidance</label><input type="number" class="w80" value="${d.avoidance||0}" onchange="updateBestiaryNum('avoidance',this.value)"></div>
-        <div class="form-group"><label>Protection</label><input type="number" class="w80" value="${d.protection||0}" onchange="updateBestiaryNum('protection',this.value)"></div>
-        <div class="form-group"><label>Bmod</label><input type="number" class="w80" value="${d.bmod||0}" onchange="updateBestiaryNum('bmod',this.value)"></div>
-        <div class="form-group"><label>Avg damage</label><input type="number" class="w80" value="${d.avg_damage||0}" onchange="updateBestiaryNum('avg_damage',this.value)"></div>
-        <div class="form-group"><label>Multi</label><input type="number" class="w80" value="${d.multi||0}" onchange="updateBestiaryNum('multi',this.value)"></div>
-        <div class="form-group"><label>Crit Bonus</label><input type="number" class="w80" value="${d.crit_bonus||0}" onchange="updateBestiaryNum('crit_bonus',this.value)"></div>
+        <div class="form-group"><label>HP formula</label><input class="w-md" value="${escapeHtml(d.hp_formula||'')}" onchange="updateBestiaryField('hp_formula',this.value)" placeholder="d6 + d4/plev"></div>
+        <div class="form-group"><label>Avg HP</label><input type="number" class="w-sm" value="${d.avg_hp||0}" onchange="updateBestiaryNum('avg_hp',this.value)"></div>
+        <div class="form-group"><label>Avoidance</label><input type="number" class="w-sm" value="${d.avoidance||0}" onchange="updateBestiaryNum('avoidance',this.value)"></div>
+        <div class="form-group"><label>Protection</label><input type="number" class="w-sm" value="${d.protection||0}" onchange="updateBestiaryNum('protection',this.value)"></div>
+        <div class="form-group"><label>Bmod</label><input type="number" class="w-sm" value="${d.bmod||0}" onchange="updateBestiaryNum('bmod',this.value)"></div>
+        <div class="form-group"><label>Avg damage</label><input type="number" class="w-sm" value="${d.avg_damage||0}" onchange="updateBestiaryNum('avg_damage',this.value)"></div>
+        <div class="form-group"><label>Multi</label><input type="number" class="w-sm" value="${d.multi||0}" onchange="updateBestiaryNum('multi',this.value)"></div>
+        <div class="form-group"><label>Crit Bonus</label><input type="number" class="w-sm" value="${d.crit_bonus||0}" onchange="updateBestiaryNum('crit_bonus',this.value)"></div>
       </div>
       <div class="note" style="margin-bottom:10px">Bmod × Avg HP = ${Math.round((parseFloat(d.bmod)||0) * (parseFloat(d.avg_hp)||0) * 100) / 100} -- basic chance to hit.</div>
       <div class="form-row" style="margin-bottom:10px">
@@ -662,20 +662,20 @@ function renderBestiaryEditor() {
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Hit points (this foe)</div>
       <div class="form-row" style="align-items:flex-end">
-        <div class="form-group"><label>Level</label><input type="number" class="w80" value="${d.level||1}" onchange="updateBestiaryNum('level',this.value)"></div>
+        <div class="form-group"><label>Level</label><input type="number" class="w-sm" value="${d.level||1}" onchange="updateBestiaryNum('level',this.value)"></div>
         <div class="form-group"><button class="btn btn-dim" onclick="rollBestiaryHpClick()">🎲 Roll HP</button></div>
-        <div class="form-group"><label>Max HP</label><input type="number" class="w80" value="${d.max_hp!=null?d.max_hp:''}" onchange="updateBestiaryNum('max_hp',this.value)"></div>
-        <div class="form-group"><label>Current HP</label><input type="number" class="w80" value="${d.current_hp!=null?d.current_hp:''}" onchange="updateBestiaryNum('current_hp',this.value)"></div>
+        <div class="form-group"><label>Max HP</label><input type="number" class="w-sm" value="${d.max_hp!=null?d.max_hp:''}" onchange="updateBestiaryNum('max_hp',this.value)"></div>
+        <div class="form-group"><label>Current HP</label><input type="number" class="w-sm" value="${d.current_hp!=null?d.current_hp:''}" onchange="updateBestiaryNum('current_hp',this.value)"></div>
       </div>
       <div class="note" style="margin-bottom:10px">Rolls from the HP formula above using Level (for level-capable foes, "d4 per former level" rolls an extra d4 for each level past 1st) -- separate from Avg HP, which is just the XP-calc baseline. Current HP is what actually drops as this foe takes damage; edit it directly during a fight.</div>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">CCs (Circumstance Checks)</div>
       <div class="form-row">
-        <div class="form-group"><label>Fortitude</label><input type="number" class="w80" value="${d.cc_fortitude||0}" onchange="updateBestiaryNum('cc_fortitude',this.value)"></div>
-        <div class="form-group"><label>Reflex</label><input type="number" class="w80" value="${d.cc_reflex||0}" onchange="updateBestiaryNum('cc_reflex',this.value)"></div>
-        <div class="form-group"><label>Will</label><input type="number" class="w80" value="${d.cc_will||0}" onchange="updateBestiaryNum('cc_will',this.value)"></div>
-        <div class="form-group"><label>Surprise</label><input type="number" class="w80" value="${d.cc_surprise||0}" onchange="updateBestiaryNum('cc_surprise',this.value)"></div>
-        <div class="form-group"><label>Social</label><input type="number" class="w80" value="${d.cc_social||0}" onchange="updateBestiaryNum('cc_social',this.value)"></div>
+        <div class="form-group"><label>Fortitude</label><input type="number" class="w-sm" value="${d.cc_fortitude||0}" onchange="updateBestiaryNum('cc_fortitude',this.value)"></div>
+        <div class="form-group"><label>Reflex</label><input type="number" class="w-sm" value="${d.cc_reflex||0}" onchange="updateBestiaryNum('cc_reflex',this.value)"></div>
+        <div class="form-group"><label>Will</label><input type="number" class="w-sm" value="${d.cc_will||0}" onchange="updateBestiaryNum('cc_will',this.value)"></div>
+        <div class="form-group"><label>Surprise</label><input type="number" class="w-sm" value="${d.cc_surprise||0}" onchange="updateBestiaryNum('cc_surprise',this.value)"></div>
+        <div class="form-group"><label>Social</label><input type="number" class="w-sm" value="${d.cc_social||0}" onchange="updateBestiaryNum('cc_social',this.value)"></div>
       </div>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Armor &amp; shield</div>
@@ -707,11 +707,11 @@ function renderBestiaryEditor() {
               <option value="">— natural —</option>
               ${WEAPONS.map(w=>`<option ${a.weaponName===w.name?'selected':''}>${escapeHtml(w.name)}</option>`).join('')}
             </select></td>
-            <td><input value="${escapeHtml(a.toHit||'')}" onchange="updateBestiaryAttack(${i},'toHit',this.value)" class="w60"></td>
+            <td><input value="${escapeHtml(a.toHit||'')}" onchange="updateBestiaryAttack(${i},'toHit',this.value)" class="w-sm"></td>
             <td class="note">${fmtCrit(cf.critChance)}</td>
             <td class="note">${fmtFumble(cf.fumbleThreshold)}</td>
             <td><input value="${escapeHtml(a.damageDice||'')}" onchange="updateBestiaryAttack(${i},'damageDice',this.value)"></td>
-            <td><input value="${escapeHtml(a.speed||'')}" onchange="updateBestiaryAttack(${i},'speed',this.value)" class="w60"></td>
+            <td><input value="${escapeHtml(a.speed||'')}" onchange="updateBestiaryAttack(${i},'speed',this.value)" class="w-sm"></td>
             <td style="text-align:center;color:var(--red-b);cursor:pointer" onclick="removeBestiaryAttack(${i})">✕</td>
           </tr>`;
           }).join('')}
@@ -739,7 +739,7 @@ function renderBestiaryEditor() {
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:4px"><input type="checkbox" ${d.level_capable?'checked':''} onchange="updateBestiaryField('level_capable',this.checked)">Individuals can vary in level</label>
         </div>
         <div class="form-group" style="flex:2"><label>Possible classes (comma separated)</label>
-          <input style="width:100%" value="${escapeHtml((d.possible_classes||[]).join(', '))}" onchange="updateBestiaryField('possible_classes', this.value.split(',').map(s=>s.trim()).filter(Boolean))">
+          <input class="w-full"  value="${escapeHtml((d.possible_classes||[]).join(', '))}" onchange="updateBestiaryField('possible_classes', this.value.split(',').map(s=>s.trim()).filter(Boolean))">
         </div>
       </div>
 
@@ -761,7 +761,7 @@ function renderBestiaryEditor() {
       ${(d.spells||[]).length ? `<div style="margin-bottom:6px">${d.spells.map(s=>`<span class="type-badge" style="cursor:pointer;margin:0 4px 4px 0" onclick="removeBestiarySpell('${s.replace(/'/g,"\\'")}')" title="Click to remove">${escapeHtml(s)} ✕</span>`).join('')}</div>` : '<div class="note" style="margin-bottom:6px">None yet.</div>'}
       <div class="form-row">
         <div class="form-group" style="flex:1">
-          <select id="bf-spell-add">
+          <select id="bf-spell-add" class="w-lg">
             <option value="">— add a spell —</option>
             ${SPELLS.map(s=>`<option>${escapeHtml(s.name)}</option>`).join('')}
           </select>
@@ -770,7 +770,7 @@ function renderBestiaryEditor() {
       </div>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Notes</div>
-      <textarea id="bf-notes-textarea" style="width:100%;min-height:70px" onchange="updateBestiaryField('notes',this.value)" placeholder="Racial traits, darksight, description...">${escapeHtml(d.notes||'')}</textarea>
+      <textarea class="w-full" id="bf-notes-textarea" style="min-height:70px" onchange="updateBestiaryField('notes',this.value)" placeholder="Racial traits, darksight, description...">${escapeHtml(d.notes||'')}</textarea>
 
       <div class="modal-actions" style="margin-top:14px">
         ${bestiaryEditingId !== 'new' ? `<button class="btn btn-red" onclick="deleteBestiaryEntry('${bestiaryEditingId}')">Delete</button><button class="btn btn-dim" onclick="duplicateBestiaryEntry('${bestiaryEditingId}')">Duplicate</button>` : ''}

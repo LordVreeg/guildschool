@@ -23,22 +23,20 @@ function renderOverview() {
   let totalXP = 0;
   for (const si of skills) totalXP += parseFloat(si.rawXP) || 0;
 
-  let html = `
-  <div class="panel">
-    <div class="panel-header"><h2 style="font-family:'Cormorant Garamond','Georgia',serif;font-style:italic;font-weight:bold">${char.name}</h2>${char.nickname ? `<span class="type-badge" style="font-style:italic">"${char.nickname}"</span>` : ''}${char.isNPC ? '<span class="type-badge" style="color:var(--gold)">NPC</span>' : ''}<span class="type-badge">${char.race || ''} ${char.subrace || ''}</span><span class="type-badge">${char.guild || ''}</span></div>
-    <div class="panel-body">
+  // Each section is { key, header, body }; they render in the character's
+  // saved order, each collapsible and movable (see overviewSectionsHtml).
+  const sections = [];
+  sections.push({ key: 'summary', header: `<h2 style="font-family:'Cormorant Garamond','Georgia',serif;font-style:italic;font-weight:bold">${char.name}</h2>${char.nickname ? `<span class="type-badge" style="font-style:italic">"${char.nickname}"</span>` : ''}${char.isNPC ? '<span class="type-badge" style="color:var(--gold)">NPC</span>' : ''}<span class="type-badge">${char.race || ''} ${char.subrace || ''}</span><span class="type-badge">${char.guild || ''}</span>`, body: `
       ${mainGuildBannerHtml(char, false)}
       <div class="form-row" style="margin-bottom:4px">
         ${['ST','IN','WI','CD','HE','CH','AP'].map(a=>`<div class="computed-item"><span class="ci-label">${a}</span><span class="ci-value">${(char.attrs||{})[a]||'—'}</span></div>`).join('')}
         <div class="computed-item" style="margin-left:auto"><span class="ci-label">Total Raw XP</span><span class="ci-value">${totalXP.toLocaleString()}</span></div>
         ${char.unspentInitialExp > 0 ? `<div class="computed-item"><span class="ci-label">Unspent Initial Raw XP</span><span class="ci-value" style="color:var(--gold)">${char.unspentInitialExp.toLocaleString()}</span></div>` : ''}
       </div>
-    </div>
-  </div>`;
+  `});
 
   for (const type of sortedTypes) {
-    html += `<div class="panel"><div class="panel-header"><h2>${type}</h2></div><div class="panel-body" style="padding:0">
-    <table class="skill-table"><thead><tr><th>Skill</th><th>Sub of</th><th>Guild</th><th>EXPMOD</th><th>Raw XP</th><th>Adj XP</th><th>Level</th><th>Attrib</th><th>Rolls</th><th>Dropdown</th><th>Skval</th></tr></thead><tbody>`;
+    let html = `<table class="skill-table"><thead><tr><th>Skill</th><th>Sub of</th><th>Guild</th><th>EXPMOD</th><th>Raw XP</th><th>Adj XP</th><th>Level</th><th>Attrib</th><th>Rolls</th><th>Dropdown</th><th>Skval</th></tr></thead><tbody>`;
     for (const si of byType[type]) {
       const vals = computeSkillValues(si, char, char.skills || []);
       const rowCls = si.dropdownOnly ? 'dropdown-row' : '';
@@ -58,10 +56,33 @@ function renderOverview() {
         <td class="skval-cell">${vals.skval}</td>
       </tr>`;
     }
-    html += `</tbody></table></div></div>`;
+    html += `</tbody></table>`;
+    sections.push({ key: 'type:' + type, header: `<h2>${type}</h2><span class="type-badge">${byType[type].length}</span>`, body: html, flush: true });
   }
 
-  document.getElementById('main').innerHTML = html;
+  document.getElementById('main').innerHTML = overviewSectionsHtml(char, sections);
+}
+
+// The Overview's sections in the character's saved order (char.overviewLayout:
+// { order: [keys], collapsed: { key: true } }); sections not placed yet keep
+// their default position. Each header collapses its section, and has ▲/▼.
+function overviewSectionsHtml(char, sections) {
+  const layout = char.overviewLayout || {};
+  const order = layout.order || [];
+  const collapsed = layout.collapsed || {};
+  const rank = (sec, i) => { const r = order.indexOf(sec.key); return r < 0 ? order.length + i : r; };
+  const ordered = sections.map((sec, i) => ({ sec, r: rank(sec, i) })).sort((a, b) => a.r - b.r).map(x => x.sec);
+  return ordered.map((sec, i) => {
+    const shut = !!collapsed[sec.key];
+    const move = (dir, glyph, disabled) => `<button type="button" class="btn btn-dim section-move" title="Move ${dir < 0 ? 'up' : 'down'}" ${disabled ? 'disabled' : ''} onclick="event.stopPropagation();moveOverviewSection(this.closest('[data-section]').dataset.section, ${dir})">${glyph}</button>`;
+    return `<div class="panel overview-section" data-section="${escapeHtml(sec.key)}">
+      <div class="panel-header" title="${shut ? 'Show' : 'Hide'} this section" onclick="toggleOverviewSection(this.closest('[data-section]').dataset.section)">
+        <span class="section-toggle">${shut ? '▸' : '▾'}</span>${sec.header}
+        <span class="section-moves">${move(-1, '▲', i === 0)}${move(1, '▼', i === ordered.length - 1)}</span>
+      </div>
+      ${shut ? '' : `<div class="panel-body"${sec.flush ? ' style="padding:0"' : ''}>${sec.body}</div>`}
+    </div>`;
+  }).join('');
 }
 
 // Weight Possible / Carried with its bar, shown on General Info and on the
@@ -108,42 +129,42 @@ function renderGeneralModule() {
     <div class="panel-body">
       ${mainGuildBannerHtml(char, true)}
       <div class="form-row">
-        <div class="form-group id-field"><label>Name</label><input class="w200" value="${char.name||''}" onchange="updateChar('name',this.value)"></div>
-        <div class="form-group id-field"><label>Nickname / Title</label><input class="w200" value="${char.nickname||''}" onchange="updateChar('nickname',this.value)"></div>
+        <div class="form-group id-field"><label>Name</label><input class="w-lg" value="${char.name||''}" onchange="updateChar('name',this.value)"></div>
+        <div class="form-group id-field"><label>Nickname / Title</label><input class="w-lg" value="${char.nickname||''}" onchange="updateChar('nickname',this.value)"></div>
         <div class="form-group id-field"><label>Race</label>
-          <input class="w140" list="race-datalist" value="${char.race||''}" placeholder="e.g. Kobold" onchange="updateChar('race',this.value);renderGeneralModule()">
+          <input class="w-md" list="race-datalist" value="${char.race||''}" placeholder="e.g. Kobold" onchange="updateChar('race',this.value);renderGeneralModule()">
           <datalist id="race-datalist">${races.map(r=>`<option value="${r}">`).join('')}</datalist>
         </div>
         <div class="form-group id-field"><label>Subrace</label>
-          <input class="w200" list="subrace-datalist" value="${char.subrace||''}" onchange="updateChar('subrace',this.value)">
+          <input class="w-lg" list="subrace-datalist" value="${char.subrace||''}" onchange="updateChar('subrace',this.value)">
           <datalist id="subrace-datalist">${(subraces[char.race] || []).map(sr=>`<option value="${sr}">`).join('')}</datalist>
         </div>
-        <div class="form-group id-field"><label>Age</label><input class="w60" value="${char.age||''}" onchange="updateChar('age',this.value)"></div>
-        <div class="form-group id-field"><label>Max Age</label><input class="w60" value="${char.maxAge||''}" onchange="updateChar('maxAge',this.value)"></div>
-        <div class="form-group id-field"><label>Height</label><input class="w80" value="${char.height||''}" onchange="updateChar('height',this.value)"></div>
+        <div class="form-group id-field"><label>Age</label><input class="w-sm" value="${char.age||''}" onchange="updateChar('age',this.value)"></div>
+        <div class="form-group id-field"><label>Max Age</label><input class="w-sm" value="${char.maxAge||''}" onchange="updateChar('maxAge',this.value)"></div>
+        <div class="form-group id-field"><label>Height</label><input class="w-sm" value="${char.height||''}" onchange="updateChar('height',this.value)"></div>
         <div class="form-group id-field"><label>Gender</label>
-          <select class="w100" onchange="updateChar('gender',this.value)">
+          <select class="w-md" onchange="updateChar('gender',this.value)">
             <option value="">— select —</option>
             ${['Male','Female','Other'].map(g=>`<option ${char.gender===g?'selected':''}>${g}</option>`).join('')}
           </select>
         </div>
-        <div class="form-group id-field"><label>Weight</label><input class="w80" value="${char.bodyWeight||''}" onchange="updateChar('bodyWeight',this.value)"></div>
-        <div class="form-group id-field"><label>Darksight</label><input class="w80" value="${char.darksight||''}" onchange="updateChar('darksight',this.value)"></div>
+        <div class="form-group id-field"><label>Weight</label><input class="w-sm" value="${char.bodyWeight||''}" onchange="updateChar('bodyWeight',this.value)"></div>
+        <div class="form-group id-field"><label>Darksight</label><input class="w-sm" value="${char.darksight||''}" onchange="updateChar('darksight',this.value)"></div>
         <div class="form-group id-field"><label>Locale</label>
-          <select class="w150" onchange="handleChoiceSelect(this,state.characters[state.activeChar],'locale','locales')">
+          <select class="w-md" onchange="handleChoiceSelect(this,state.characters[state.activeChar],'locale','locales')">
             <option value="">— select —</option>
             ${(customChoices.locales||[]).map(l=>`<option ${char.locale===l?'selected':''}>${l}</option>`).join('')}
             <option value="__addnew__">+ Add New...</option>
           </select>
         </div>
         <div class="form-group id-field"><label>Group</label>
-          <select class="w150" onchange="linkCharacterToGroup(this.value)">
+          <select class="w-md" onchange="linkCharacterToGroup(this.value)">
             <option value="">— none —</option>
             ${myGroups.map(g=>`<option value="${g.id}" ${char.playGroupId===g.id?'selected':''}>${escapeHtml(g.name)}</option>`).join('')}
           </select>
         </div>
-        <div class="form-group id-field"><label>Starting Social Tier</label><input type="number" class="w80" value="${char.socialNumber!==undefined?char.socialNumber:''}" onchange="updateChar('socialNumber',this.value)"></div>
-        <div class="form-group id-field"><label>Current Social Tier</label><input type="number" class="w80" value="${char.currentSocialNumber!==undefined&&char.currentSocialNumber!==null?char.currentSocialNumber:''}" onchange="updateChar('currentSocialNumber',this.value)"></div>
+        <div class="form-group id-field"><label>Starting Social Tier</label><input type="number" class="w-sm" value="${char.socialNumber!==undefined?char.socialNumber:''}" onchange="updateChar('socialNumber',this.value)"></div>
+        <div class="form-group id-field"><label>Current Social Tier</label><input type="number" class="w-sm" value="${char.currentSocialNumber!==undefined&&char.currentSocialNumber!==null?char.currentSocialNumber:''}" onchange="updateChar('currentSocialNumber',this.value)"></div>
         <div class="form-group" style="justify-content:flex-end">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
             <input type="checkbox" ${char.isNPC?'checked':''} onchange="updateChar('isNPC',this.checked)">
@@ -154,10 +175,10 @@ function renderGeneralModule() {
 
       <div class="form-row">
         <div class="form-group" style="flex:1;min-width:250px"><label>Appearance Notes</label>
-          <textarea rows="2" style="width:100%;resize:vertical" onchange="updateChar('appearanceNotes',this.value)">${char.appearanceNotes||''}</textarea>
+          <textarea class="w-full" rows="2" style="resize:vertical" onchange="updateChar('appearanceNotes',this.value)">${char.appearanceNotes||''}</textarea>
         </div>
         <div class="form-group" style="flex:1;min-width:250px"><label>Personal Notes</label>
-          <textarea rows="2" style="width:100%;resize:vertical" onchange="updateChar('personalNotes',this.value)">${char.personalNotes||''}</textarea>
+          <textarea class="w-full" rows="2" style="resize:vertical" onchange="updateChar('personalNotes',this.value)">${char.personalNotes||''}</textarea>
         </div>
       </div>
 
@@ -173,13 +194,13 @@ function renderGeneralModule() {
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Guilds</div>
       <div class="form-row">
-        <div class="form-group" style="width:250px"><label>Primary Guild</label>
+        <div class="form-group w-lg"><label>Primary Guild</label>
           ${guildPickerButton(char.guild, "v => { updateChar('guild', v); renderGeneralModule(); }")}
         </div>
-        <div class="form-group" style="width:250px"><label>Secondary Guild</label>
+        <div class="form-group w-lg"><label>Secondary Guild</label>
           ${guildPickerButton(char.guild2, "v => { updateChar('guild2', v); renderGeneralModule(); }")}
         </div>
-        <div class="form-group" style="width:250px"><label>Tertiary Guild</label>
+        <div class="form-group w-lg"><label>Tertiary Guild</label>
           ${guildPickerButton(char.guild3, "v => { updateChar('guild3', v); renderGeneralModule(); }")}
         </div>
       </div>
@@ -195,7 +216,7 @@ function renderGeneralModule() {
               <div class="cc-name">${k}</div>
               <div class="cc-value">${v.value}</div>
               <div class="cc-formula">${v.formula}</div>
-              <input type="number" class="w60" style="margin-top:4px" value="${v.bonus}" title="Magic Bonus" placeholder="Magic +" onchange="updateCCBonus('${k}',this.value)">
+              <input type="number" class="w-sm" style="margin-top:4px" value="${v.bonus}" title="Magic Bonus" placeholder="Magic +" onchange="updateCCBonus('${k}',this.value)">
             </div>`).join('');
         })()}
       </div>
@@ -241,11 +262,11 @@ function renderGeneralModule() {
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Notes</div>
       <div class="form-group" style="margin-bottom:10px"><label>History</label>
-        <textarea rows="4" style="width:100%;resize:vertical" onchange="updateChar('historyNotes',this.value)">${char.historyNotes||''}</textarea>
+        <textarea class="w-full" rows="4" style="resize:vertical" onchange="updateChar('historyNotes',this.value)">${char.historyNotes||''}</textarea>
       </div>
       <div class="form-group">
         <label>Relationships</label>
-        <textarea rows="4" style="width:100%;resize:vertical" onchange="updateChar('relationshipNotes',this.value)">${char.relationshipNotes||''}</textarea>
+        <textarea class="w-full" rows="4" style="resize:vertical" onchange="updateChar('relationshipNotes',this.value)">${char.relationshipNotes||''}</textarea>
       </div>
       <div style="margin-top:12px;display:flex;gap:8px">
         <button class="btn btn-gold" onclick="saveState();showOverview()">Save & Return</button>
@@ -378,7 +399,7 @@ function renderInventoryModule() {
 
       <hr class="divider">
       <div class="form-group"><label>Item Notes</label>
-        <textarea rows="3" style="width:100%;resize:vertical" onchange="updateChar('itemNotes',this.value)">${char.itemNotes||''}</textarea>
+        <textarea class="w-full" rows="3" style="resize:vertical" onchange="updateChar('itemNotes',this.value)">${char.itemNotes||''}</textarea>
       </div>
     </div>
   </div>`;
@@ -416,18 +437,18 @@ function renderCombatModule() {
         ${hp.system === 'standard' ? `
         <div class="form-row">
           <div class="computed-item"><span class="ci-label">Max HP</span><span class="ci-value">${hp.totalHP}</span></div>
-          <div class="form-group"><label>Current HP</label><input type="number" class="w80" value="${hp.currentHP}" onchange="updateHPState('currentHP', this.value)"></div>
+          <div class="form-group"><label>Current HP</label><input type="number" class="w-sm" value="${hp.currentHP}" onchange="updateHPState('currentHP', this.value)"></div>
           <button class="btn btn-dim" style="align-self:flex-end" onclick="updateHPState('currentHP', ${hp.totalHP})">Reset to Max</button>
         </div>
         ` : `
         <div class="form-row">
           <div class="computed-item"><span class="ci-label">Physical Max</span><span class="ci-value">${hp.physicalMax}</span></div>
-          <div class="form-group"><label>Physical Current</label><input type="number" class="w80" value="${hp.physicalCurrent}" onchange="updateHPState('physicalCurrent', this.value)"></div>
+          <div class="form-group"><label>Physical Current</label><input type="number" class="w-sm" value="${hp.physicalCurrent}" onchange="updateHPState('physicalCurrent', this.value)"></div>
           <button class="btn btn-dim" style="align-self:flex-end" onclick="updateHPState('physicalCurrent', ${hp.physicalMax})">Reset</button>
         </div>
         <div class="form-row">
           <div class="computed-item"><span class="ci-label">Endurance Max</span><span class="ci-value">${hp.enduranceMax}</span></div>
-          <div class="form-group"><label>Endurance Current</label><input type="number" class="w80" value="${hp.enduranceCurrent}" onchange="updateHPState('enduranceCurrent', this.value)"></div>
+          <div class="form-group"><label>Endurance Current</label><input type="number" class="w-sm" value="${hp.enduranceCurrent}" onchange="updateHPState('enduranceCurrent', this.value)"></div>
           <button class="btn btn-dim" style="align-self:flex-end" onclick="updateHPState('enduranceCurrent', ${hp.enduranceMax})">Reset</button>
         </div>
         <div class="note">Damage hits Endurance first; Physical is only touched once Endurance is depleted. Physical = ceil(total÷2), Endurance = floor(total÷2).</div>
@@ -472,24 +493,24 @@ function renderCombatModule() {
             ${weaponMoveButtonsHtml(pos, weaponEntries.length)}
           </div>
           <div class="panel-body" style="display:${it.collapsed ? 'none' : 'block'}">
-            <input value="${it.notes||''}" placeholder="Special history, charges, quirks..." style="width:100%;margin-bottom:8px;font-style:italic" onchange="updateItem(${idx},'notes',this.value);renderCombatModule()">
+            <input class="w-full" value="${it.notes||''}" placeholder="Special history, charges, quirks..." style="margin-bottom:8px;font-style:italic" onchange="updateItem(${idx},'notes',this.value);renderCombatModule()">
             <div class="form-row">
               ${[['stn1h','STN 1H'],['stn2h','STN 2H'],['stmod','STMOD'],['cdn1h','CDN 1H'],['cdn2h','CDN 2H'],['cdmod','CDMOD']].map(([f,l])=>`
-              <div class="form-group"><label>${l}</label><input type="number" step="0.01" class="w60" value="${it[f]||0}" onchange="updateWeaponField(${idx},'${f}',this.value)"></div>`).join('')}
+              <div class="form-group"><label>${l}</label><input type="number" step="0.01" class="w-sm" value="${it[f]||0}" onchange="updateWeaponField(${idx},'${f}',this.value)"></div>`).join('')}
             </div>
             <div class="form-row">
-              <div class="form-group"><label>Damage Dice</label><input class="w100" value="${it.damageDice||''}" onchange="updateWeaponField(${idx},'damageDice',this.value)"></div>
-              <div class="form-group"><label>Dividing Die</label><input type="number" class="w60" value="${it.dividingDie||0}" onchange="updateWeaponField(${idx},'dividingDie',this.value)"></div>
-              <div class="form-group"><label>Speed Melee</label><input type="number" class="w60" value="${it.speedMelee||0}" onchange="updateWeaponField(${idx},'speedMelee',this.value)"></div>
-              <div class="form-group"><label>Speed Missile</label><input type="number" class="w60" value="${it.speedMissile||0}" onchange="updateWeaponField(${idx},'speedMissile',this.value)"></div>
-              <div class="form-group"><label>Speed Readied</label><input type="number" class="w60" value="${it.speedReadied||0}" onchange="updateWeaponField(${idx},'speedReadied',this.value)"></div>
-              <div class="form-group"><label>Weapon PR</label><input type="number" class="w60" value="${it.weaponProtection||0}" onchange="updateWeaponField(${idx},'weaponProtection',this.value)"></div>
+              <div class="form-group"><label>Damage Dice</label><input class="w-md" value="${it.damageDice||''}" onchange="updateWeaponField(${idx},'damageDice',this.value)"></div>
+              <div class="form-group"><label>Dividing Die</label><input type="number" class="w-sm" value="${it.dividingDie||0}" onchange="updateWeaponField(${idx},'dividingDie',this.value)"></div>
+              <div class="form-group"><label>Speed Melee</label><input type="number" class="w-sm" value="${it.speedMelee||0}" onchange="updateWeaponField(${idx},'speedMelee',this.value)"></div>
+              <div class="form-group"><label>Speed Missile</label><input type="number" class="w-sm" value="${it.speedMissile||0}" onchange="updateWeaponField(${idx},'speedMissile',this.value)"></div>
+              <div class="form-group"><label>Speed Readied</label><input type="number" class="w-sm" value="${it.speedReadied||0}" onchange="updateWeaponField(${idx},'speedReadied',this.value)"></div>
+              <div class="form-group"><label>Weapon PR</label><input type="number" class="w-sm" value="${it.weaponProtection||0}" onchange="updateWeaponField(${idx},'weaponProtection',this.value)"></div>
               <div class="form-group" title="Tick the weapon(s) in your hands. One weapon alone is held two-handed; two weapons, or a weapon and a shield, are one-handed. Wielded weapons add their Weapon PR to your Protection."><label>Wielding</label><input type="checkbox" ${it.wielded ? 'checked' : ''} onchange="updateWeaponField(${idx},'wielded',this.checked)"></div>
-              <div class="form-group"><label>Threat Range</label><input type="number" class="w60" value="${it.threatRange||0}" onchange="updateWeaponField(${idx},'threatRange',this.value)"></div>
+              <div class="form-group"><label>Threat Range</label><input type="number" class="w-sm" value="${it.threatRange||0}" onchange="updateWeaponField(${idx},'threatRange',this.value)"></div>
             </div>
             <div class="form-row">
-              <div class="form-group"><label>Magic Bonus to Hit</label><input type="number" class="w80" value="${it.magicBonusToHit||0}" onchange="updateWeaponField(${idx},'magicBonusToHit',this.value)"></div>
-              <div class="form-group"><label>Magic Dmg After Divider</label><input type="number" class="w80" value="${it.magicDamageAfterDivider||0}" onchange="updateWeaponField(${idx},'magicDamageAfterDivider',this.value)"></div>
+              <div class="form-group"><label>Magic Bonus to Hit</label><input type="number" class="w-sm" value="${it.magicBonusToHit||0}" onchange="updateWeaponField(${idx},'magicBonusToHit',this.value)"></div>
+              <div class="form-group"><label>Magic Dmg After Divider</label><input type="number" class="w-sm" value="${it.magicDamageAfterDivider||0}" onchange="updateWeaponField(${idx},'magicDamageAfterDivider',this.value)"></div>
             </div>
             <div class="note">Skill Ability: ${w.baseWeaponSkval} (${it.weaponClass||'—'}) + ${w.singleWeapSpec} (Single Weap Spec) = ${w.skillAbility}</div>
             <div class="note">Crit % = 7 + floor(to-hit÷10) + (10% × Critical Hit Bonus skval [${w.critHitBonusSkval}]) + weapon threat range, capped at half of to-hit, floored at 3% minimum. Fumble range is 93-00, shifting up only if to-hit itself exceeds 93 (so it never overlaps your own hit range).</div>
@@ -497,8 +518,8 @@ function renderCombatModule() {
             <table class="skill-table">
               <thead><tr><th></th><th>To-Hit</th><th>Dmg Bonus</th><th>Speed</th><th>Parry</th><th>Parry Used</th><th>Multiple Attack</th><th>Crit %</th><th>Fumble %</th></tr></thead>
               <tbody>
-                <tr>${w.oneHand ? `<td>One-Handed${wieldTag(it, 'one')}</td><td class="skval-cell">${Math.round(w.oneHand.hit)}</td><td>${Math.round(w.oneHand.dmgBonus)}</td><td>${Math.round(w.oneHand.speed)}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w60" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.oneHand.critChance)}</td><td>${fmtFumble(w.oneHand.fumbleThreshold)}</td>` : `<td style="color:var(--text-dim)">One-Handed</td><td colspan="8" class="note">Not usable one-handed — no 1H stats for this weapon</td>`}</tr>
-                ${w.twoHand ? `<tr><td>Two-Handed${wieldTag(it, 'two')}</td><td class="skval-cell">${Math.round(w.twoHand.hit)}</td><td>${Math.round(w.twoHand.dmgBonus)}</td><td>${Math.round(w.twoHand.speed)}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w60" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.twoHand.critChance)}</td><td>${fmtFumble(w.twoHand.fumbleThreshold)}</td></tr>` : ''}
+                <tr>${w.oneHand ? `<td>One-Handed${wieldTag(it, 'one')}</td><td class="skval-cell">${Math.round(w.oneHand.hit)}</td><td>${Math.round(w.oneHand.dmgBonus)}</td><td>${Math.round(w.oneHand.speed)}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w-sm" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.oneHand.critChance)}</td><td>${fmtFumble(w.oneHand.fumbleThreshold)}</td>` : `<td style="color:var(--text-dim)">One-Handed</td><td colspan="8" class="note">Not usable one-handed — no 1H stats for this weapon</td>`}</tr>
+                ${w.twoHand ? `<tr><td>Two-Handed${wieldTag(it, 'two')}</td><td class="skval-cell">${Math.round(w.twoHand.hit)}</td><td>${Math.round(w.twoHand.dmgBonus)}</td><td>${Math.round(w.twoHand.speed)}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w-sm" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.twoHand.critChance)}</td><td>${fmtFumble(w.twoHand.fumbleThreshold)}</td></tr>` : ''}
               </tbody>
             </table>
             <div class="note">Parry Used is capped at this weapon's Parry skill value; every point subtracts from this weapon's To-Hit and adds to your Protection (PR) below — but only against melee attacks. It does nothing against missile or magical attacks.</div>
@@ -506,10 +527,10 @@ function renderCombatModule() {
             <hr class="divider">
             <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Missile Fire</div>
             <div class="form-row">
-              <div class="form-group"><label>Range</label><input type="number" class="w80" value="${it.range||0}" onchange="updateWeaponField(${idx},'range',this.value)"></div>
-              <div class="form-group"><label>Target Distance</label><input type="number" class="w80" value="${it.targetDistance||0}" onchange="updateWeaponField(${idx},'targetDistance',this.value)"></div>
+              <div class="form-group"><label>Range</label><input type="number" class="w-sm" value="${it.range||0}" onchange="updateWeaponField(${idx},'range',this.value)"></div>
+              <div class="form-group"><label>Target Distance</label><input type="number" class="w-sm" value="${it.targetDistance||0}" onchange="updateWeaponField(${idx},'targetDistance',this.value)"></div>
               <div class="form-group"><label>Ammunition (from Inventory)</label>
-                <select class="w250" onchange="updateWeaponField(${idx},'ammunitionItemIdx',this.value)">
+                <select class="w-lg" onchange="updateWeaponField(${idx},'ammunitionItemIdx',this.value)">
                   <option value="">— none / self-contained —</option>
                   ${(char.items||[]).map((amIt,amIdx)=> amIt.type==='Ammunition' ? `<option value="${amIdx}" ${String(it.ammunitionItemIdx)===String(amIdx)?'selected':''}>${amIt.name||'(unnamed)'}${amIt.masterwork?' ✦':''} (qty ${amIt.qty||1})</option>` : '').join('')}
                 </select>
@@ -525,10 +546,10 @@ function renderCombatModule() {
             ${(char.items||[]).filter(i=>i.type==='Ammunition').length===0 ? '<div class="note" style="margin-top:6px">No ammunition items in inventory yet — add one on the Inventory page, Type: Weapon, Ammunition.</div>' : ''}
             ${w.missile.ammoItem ? `
             <div class="form-row">
-              <div class="form-group"><label>Damage Dice</label><input class="w100" value="${w.missile.ammoItem.damageDice||''}" onchange="updateItem(${it.ammunitionItemIdx},'damageDice',this.value);renderCombatModule()"></div>
-              <div class="form-group"><label>Dividing Die</label><input type="number" class="w60" value="${w.missile.ammoItem.dividingDie||0}" onchange="updateItem(${it.ammunitionItemIdx},'dividingDie',this.value);renderCombatModule()"></div>
-              <div class="form-group"><label>Magic Bonus to Hit</label><input type="number" class="w80" value="${w.missile.ammoItem.magicBonusToHit||0}" onchange="updateItem(${it.ammunitionItemIdx},'magicBonusToHit',this.value);renderCombatModule()"></div>
-              <div class="form-group"><label>Magic Dmg After Divider</label><input type="number" class="w80" value="${w.missile.ammoItem.magicDamageAfterDivider||0}" onchange="updateItem(${it.ammunitionItemIdx},'magicDamageAfterDivider',this.value);renderCombatModule()"></div>
+              <div class="form-group"><label>Damage Dice</label><input class="w-md" value="${w.missile.ammoItem.damageDice||''}" onchange="updateItem(${it.ammunitionItemIdx},'damageDice',this.value);renderCombatModule()"></div>
+              <div class="form-group"><label>Dividing Die</label><input type="number" class="w-sm" value="${w.missile.ammoItem.dividingDie||0}" onchange="updateItem(${it.ammunitionItemIdx},'dividingDie',this.value);renderCombatModule()"></div>
+              <div class="form-group"><label>Magic Bonus to Hit</label><input type="number" class="w-sm" value="${w.missile.ammoItem.magicBonusToHit||0}" onchange="updateItem(${it.ammunitionItemIdx},'magicBonusToHit',this.value);renderCombatModule()"></div>
+              <div class="form-group"><label>Magic Dmg After Divider</label><input type="number" class="w-sm" value="${w.missile.ammoItem.magicDamageAfterDivider||0}" onchange="updateItem(${it.ammunitionItemIdx},'magicDamageAfterDivider',this.value);renderCombatModule()"></div>
             </div>
             ` : ''}
             <div class="note">Missile to-hit = (1 − distance/range) × base hit chance, using ${w.missile.usedGrip} stats${w.missile.usedGrip==='2H' ? ' (no 1H mode available for this weapon)' : ''}. Base hit chance includes both the weapon's own Magic Bonus to Hit and the loaded ammunition's Magic Bonus to Hit — they add together. Total damage = weapon's own dice + ammunition's dice (including its own Magic Damage After Divider), if any.</div>
@@ -552,7 +573,7 @@ function renderCombatModule() {
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weapon Protection & Other Bonuses</div>
       <div class="form-row" style="margin-bottom:10px">
         <div class="form-group"><label>Weapon Protection (PR)</label>
-          <input type="number" class="w100" value="${armor.weaponProtectionManual}" onchange="updateCombatExtra('weaponProtection',this.value)">
+          <input type="number" class="w-sm" value="${armor.weaponProtectionManual}" onchange="updateCombatExtra('weaponProtection',this.value)">
           ${armor.weaponProtectionWielded ? `<div class="note" style="margin-top:2px">+ ${armor.weaponProtectionWielded} from weapons ticked "Wielding" above</div>` : `<div class="note" style="margin-top:2px">Tick "Wielding" on a weapon above to count its Weapon PR automatically.</div>`}
         </div>
       </div>
@@ -641,7 +662,7 @@ function renderSpellModule() {
         <div class="panel-body">
           <div class="form-row">
             <div class="computed-item"><span class="ci-label">Max SP</span><span class="ci-value skval">${p.maxSP}</span></div>
-            <div class="form-group"><label>Current SP</label><input type="number" class="w80" value="${p.currentSP}" onchange="updateSpellState('${p.name.replace(/'/g,"\\'")}','current',this.value)"></div>
+            <div class="form-group"><label>Current SP</label><input type="number" class="w-sm" value="${p.currentSP}" onchange="updateSpellState('${p.name.replace(/'/g,"\\'")}','current',this.value)"></div>
             <div class="computed-item"><span class="ci-label">Used SP</span><span class="ci-value">${p.usedSP}</span></div>
             <button class="btn btn-dim" style="align-self:flex-end" onclick="updateSpellState('${p.name.replace(/'/g,"\\'")}','current',${p.maxSP})">Reset to Max</button>
           </div>
@@ -664,9 +685,9 @@ function renderSpellModule() {
           <hr class="divider">
           <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Magic Enhancers (manual — enter the net result of whichever item you're currently bonded to)</div>
           <div class="form-row">
-            <div class="form-group"><label>SP Cost Reduction</label><input type="number" class="w80" value="${p.spReduction}" onchange="updateSpellEnhancer('${p.name}','spReduction',this.value)"></div>
-            <div class="form-group"><label>Reclamation Rate Bonus</label><input type="number" class="w80" value="${p.reclamationBonus}" onchange="updateSpellEnhancer('${p.name}','reclamationBonus',this.value)"></div>
-            <div class="form-group"><label>Spell Success Bonus</label><input type="number" class="w80" value="${p.successBonus}" onchange="updateSpellEnhancer('${p.name}','successBonus',this.value)"></div>
+            <div class="form-group"><label>SP Cost Reduction</label><input type="number" class="w-sm" value="${p.spReduction}" onchange="updateSpellEnhancer('${p.name}','spReduction',this.value)"></div>
+            <div class="form-group"><label>Reclamation Rate Bonus</label><input type="number" class="w-sm" value="${p.reclamationBonus}" onchange="updateSpellEnhancer('${p.name}','reclamationBonus',this.value)"></div>
+            <div class="form-group"><label>Spell Success Bonus</label><input type="number" class="w-sm" value="${p.successBonus}" onchange="updateSpellEnhancer('${p.name}','successBonus',this.value)"></div>
           </div>
         </div>
         `}
@@ -731,35 +752,35 @@ function renderUtilitiesModule() {
         <div class="form-group"><label>Type</label>
           <select id="ns-type">${typeOrder.map(t=>`<option>${t}</option>`).join('')}</select>
         </div>
-        <div class="form-group"><label>Skill Name</label><input id="ns-name" class="w200"></div>
-        <div class="form-group"><label>Commonality</label><input id="ns-comm" type="number" class="w60" value="1"></div>
+        <div class="form-group"><label>Skill Name</label><input id="ns-name" class="w-lg"></div>
+        <div class="form-group"><label>Commonality</label><input id="ns-comm" type="number" class="w-sm" value="1"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Attribute Modifier Formula</label><input id="ns-attmod" class="w250" placeholder="e.g. ((ST-12)*.02)+((CD-10)*.01)"></div>
-        <div class="form-group"><label>Base</label><input id="ns-base" type="number" class="w80" value="0"></div>
-        <div class="form-group"><label>Per Level Die</label><input id="ns-perlevel" class="w80" placeholder="e.g. 1D6+1"></div>
+        <div class="form-group"><label>Attribute Modifier Formula</label><input id="ns-attmod" class="w-lg" placeholder="e.g. ((ST-12)*.02)+((CD-10)*.01)"></div>
+        <div class="form-group"><label>Base</label><input id="ns-base" type="number" class="w-sm" value="0"></div>
+        <div class="form-group"><label>Per Level Die</label><input id="ns-perlevel" class="w-sm" placeholder="e.g. 1D6+1"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Parent Skill (blank if root)</label><input id="ns-parent" class="w250"></div>
-        <div class="form-group"><label>Dropdown % (blank if root)</label><input id="ns-dropdown" type="number" step="0.01" class="w80"></div>
+        <div class="form-group"><label>Parent Skill (blank if root)</label><input id="ns-parent" class="w-lg"></div>
+        <div class="form-group"><label>Dropdown % (blank if root)</label><input id="ns-dropdown" type="number" step="0.01" class="w-sm"></div>
       </div>
       <button class="btn btn-gold" onclick="addCustomSkill()">+ Add Skill to Master List</button>
 
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Add Guild EXPMOD (bxp)</div>
       <div class="form-row">
-        <div class="form-group" style="width:250px"><label>Guild</label>
+        <div class="form-group w-lg"><label>Guild</label>
           <input type="hidden" id="ge-guild" value="">
           <button type="button" id="ge-guild-label" class="btn btn-dim" style="width:100%;text-align:left" onclick="pickGuildIntoField('ge-guild','ge-guild-label')">— existing —</button>
         </div>
-        <div class="form-group"><label>Or New Guild Name</label><input id="ge-newguild" class="w200" placeholder="e.g. Igbar: New Guild"></div>
+        <div class="form-group"><label>Or New Guild Name</label><input id="ge-newguild" class="w-lg" placeholder="e.g. Igbar: New Guild"></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Skill Name</label>
-          <input id="ge-skill" class="w250" list="skill-name-list" placeholder="Start typing a skill name...">
+          <input id="ge-skill" class="w-lg" list="skill-name-list" placeholder="Start typing a skill name...">
           <datalist id="skill-name-list">${SKILLS.map(s=>`<option value="${s.name}">`).join('')}</datalist>
         </div>
-        <div class="form-group"><label>Guild EXPMOD (bxp)</label><input id="ge-bxp" type="number" step="0.001" class="w100"></div>
+        <div class="form-group"><label>Guild EXPMOD (bxp)</label><input id="ge-bxp" type="number" step="0.001" class="w-sm"></div>
       </div>
       <button class="btn btn-gold" onclick="addCustomGuildBonus()">+ Set Guild EXPMOD</button>
 
@@ -789,7 +810,13 @@ function renderSkillModule(skillId) {
   if (!si) return;
   const def = SKILLS.find(s => s.name === si.skillName);
   const vals = computeSkillValues(si, char, char.skills || []);
-  const trainedSkills = getTrainedSkills(state.activeChar).filter(s => s.id !== skillId);
+  // A sub-skill shows its parent as plain text: the skill it's linked to, else
+  // its parent in the skill catalog. Top-level and templated skills (linked
+  // through Weapon Class instead) show no Parent Skill at all.
+  const parentInst = si.parentSkillId && (char.skills || []).find(s => s.id === si.parentSkillId);
+  const parentName = def && def.templated ? '' : parentInst ? parentInst.skillName + (parentInst.binding ? ` (${parentInst.binding})` : '') : (def && def.parent ? def.parent : '');
+  // A top-level (parent) skill can't be dropdown-only, so it gets no Dropdown Only checkbox.
+  const isParentSkill = !parentName && !(def && def.templated);
   const rolls = si.rolls || Array(20).fill('');
 
   // Build EXPMOD breakdown
@@ -827,45 +854,43 @@ function renderSkillModule(skillId) {
 
       <!-- CONFIGURATION -->
       <div class="form-row">
-        <div class="form-group" style="width:250px"><label>GuildSchool</label>
+        <div class="form-group w-lg"><label>GuildSchool</label>
           ${skillGuildSelect(char, si)}
         </div>
         ${def && def.templated ? (si.skillName === 'Single weap spec' ? `
         <div class="form-group"><label>Specific Weapon (not a class — this skill trains on one weapon only)</label>
-          <select class="w250" onchange="updateSkill('${skillId}','binding',this.value)">
+          <select class="w-lg" onchange="updateSkill('${skillId}','binding',this.value)">
             <option value="">— select —</option>
             ${allCombatWeapons(char).map(it=>`<option ${si.binding===it.name?'selected':''}>${it.name||'(unnamed weapon)'}</option>`).join('')}
           </select>
           <div class="note" style="margin-top:4px">Single Weapon Specialization trains on one exact weapon, not a whole weapon type — a character with two curved swords could be specialized in one and not the other.</div>
         </div>` : `
         <div class="form-group"><label>Weapon Class</label>
-          <select class="w200" onchange="updateSkill('${skillId}','binding',this.value)">
+          <select class="w-lg" onchange="updateSkill('${skillId}','binding',this.value)">
             <option value="">— select —</option>
             ${WEAPON_CLASSES.map(wc=>`<option ${si.binding===wc?'selected':''}>${wc}</option>`).join('')}
           </select>
         </div>`) : ''}
+        ${isParentSkill ? '' : `
         <div class="form-group" style="justify-content:flex-end;margin-top:4px">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
             <input type="checkbox" ${si.dropdownOnly?'checked':''} onchange="updateSkill('${skillId}','dropdownOnly',this.checked)">
             Dropdown Only
           </label>
-        </div>
+        </div>`}
       </div>
 
+      ${parentName ? `
       <div class="form-row">
-        ${def && def.templated ? `
         <div class="form-group"><label>Parent Skill</label>
-          <div class="note" style="padding-top:6px">Not used for this skill — set <strong>Weapon Class</strong> (or Specific Weapon) above instead. That's what actually links this to a weapon.</div>
-        </div>` : `
-        <div class="form-group"><label>Parent Skill (trained only)</label>
-          <select class="w250" onchange="updateSkill('${skillId}','parentSkillId',this.value)">
-            <option value="">— none —</option>
-            ${trainedSkills.map(ts=>`<option value="${ts.id}" ${si.parentSkillId===ts.id?'selected':''}>${ts.skillName}</option>`).join('')}
-          </select>
-        </div>`}
+          <div style="padding-top:6px">${escapeHtml(parentName)}</div>
+        </div>
+      </div>` : ''}
+
+      <div class="form-row">
         <div class="form-group"><label>Racial EXPMOD Bonus</label>
           <div style="display:flex;gap:4px">
-            <input type="number" step="0.001" class="w80" value="${si.racialExpmod||0}" onchange="updateSkill('${skillId}','racialExpmod',this.value)">
+            <input type="number" step="0.001" class="w-sm" value="${si.racialExpmod||0}" onchange="updateSkill('${skillId}','racialExpmod',this.value)">
             <button class="btn btn-dim" style="padding:5px 8px;font-size:11px" onclick="updateSkill('${skillId}','racialExpmod',lookupRacialBonus(state.characters[state.activeChar],'${si.skillName.replace(/'/g,"\\'")}'))" title="Look up from race/subrace table">↻</button>
           </div>
         </div>
@@ -879,7 +904,7 @@ function renderSkillModule(skillId) {
       <!-- RAW XP -->
       <div class="form-row" style="align-items:flex-end">
         <div class="form-group"><label>Raw XP</label>
-          <input type="number" class="w100" value="${si.rawXP||0}" onchange="updateSkill('${skillId}','rawXP',this.value)">
+          <input type="number" class="w-sm" value="${si.rawXP||0}" onchange="updateSkill('${skillId}','rawXP',this.value)">
         </div>
         <div class="computed-item" style="margin-bottom:2px"><span class="ci-label">→ Adj XP</span><span class="ci-value" style="font-size:14px">${Math.round(vals.adjXP).toLocaleString()}</span></div>
         <div class="computed-item" style="margin-bottom:2px"><span class="ci-label">→ Level</span><span class="ci-value" style="font-size:14px;color:#4a9460">${vals.level}</span></div>
@@ -913,13 +938,13 @@ function renderSkillModule(skillId) {
       <div class="form-row">
         ${['Item','Race','Magic','Other'].map(t=>`
         <div class="form-group"><label>${t}</label>
-          <input type="number" class="w60" value="${si['bonus'+t]||0}" onchange="updateSkill('${skillId}','bonus${t}',this.value)">
+          <input type="number" class="w-sm" value="${si['bonus'+t]||0}" onchange="updateSkill('${skillId}','bonus${t}',this.value)">
         </div>`).join('')}
       </div>
 
       <hr class="divider">
       <div class="form-group"><label>Notes</label>
-        <textarea rows="2" style="width:100%;resize:vertical" onchange="updateSkill('${skillId}','notes',this.value)">${si.notes||''}</textarea>
+        <textarea class="w-full" rows="2" style="resize:vertical" onchange="updateSkill('${skillId}','notes',this.value)">${si.notes||''}</textarea>
       </div>
 
       ${(!si.dropdownOnly && def && parseFloat(si.rawXP) > 0 && (!def.templated || WEAPON_CLASSES.includes(si.binding))) ? `
@@ -943,7 +968,7 @@ function skillGuildSelect(char, si) {
   if (current && !charGuilds.includes(current)) {
     options.push(`<option value="${escapeHtml(current)}" selected>${escapeHtml(current)} (not one of this character's guilds)</option>`);
   }
-  return `<select style="width:100%" ${current ? `title="${escapeHtml(guildBlurbOrPlaceholder(current))}"` : ''} onchange="updateSkill('${si.id}','guildName',this.value)">
+  return `<select class="w-full"  ${current ? `title="${escapeHtml(guildBlurbOrPlaceholder(current))}"` : ''} onchange="updateSkill('${si.id}','guildName',this.value)">
     <option value="" ${current ? '' : 'selected'}>— none —</option>
     ${options.join('')}
   </select>
