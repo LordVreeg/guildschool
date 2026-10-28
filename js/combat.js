@@ -24,6 +24,7 @@ let combatOwnerByCharId = {}; // character_id -> owner_id, for this encounter's 
 // call reading stale data can land last and stomp a newer, correct render.
 let encounterRenderSeq = 0;
 let encounterIsGM = false; // set on every render so modals outside renderEncounterHtml can apply the same edit-rights rule
+let combatFoeEntry = {};   // combatant id -> that foe's full Beastiary entry (GM only; for the Stats popup)
 let combatFoeType = {};    // combatant id -> creature type of that foe (GM only; its Beastiary entry's race)
 let combatFoeXp = {};      // combatant id -> XP value of that foe (GM only; computeFoeXP on its Beastiary entry)
 
@@ -122,6 +123,7 @@ async function renderEncounterModule() {
   // Temp PCs share the Beastiary table but aren't foes, so they're skipped.
   const foeXp = {};
   const foeType = {};
+  const foeEntry = {};
   if (isGM) {
     const entryIds = [...new Set(combatantRows.filter(c => c.bestiary_entry_id).map(c => c.bestiary_entry_id))];
     if (entryIds.length) {
@@ -133,6 +135,7 @@ async function renderEncounterModule() {
         if (e && !e.is_temp_pc) {
           foeXp[c.id] = Math.round(computeFoeXP({ ...e, max_hp: c.max_hp != null ? c.max_hp : e.max_hp }));
           if (e.race && e.race.trim()) foeType[c.id] = e.race.trim();
+          foeEntry[c.id] = e;
         }
       }
     }
@@ -150,6 +153,7 @@ async function renderEncounterModule() {
   encounterIsGM = isGM;
   combatFoeXp = foeXp;
   combatFoeType = foeType;
+  combatFoeEntry = foeEntry;
   document.getElementById('main').innerHTML = renderEncounterHtml(enc, isGM);
 }
 
@@ -160,6 +164,61 @@ function foeTypeTag(c) {
   const t = combatFoeType[c.id];
   if (!t || t.toLowerCase() === String(c.display_name || '').trim().toLowerCase()) return '';
   return `<span style="font-size:11px;color:var(--text-dim)" title="Creature type">(${escapeHtml(t)})</span>`;
+}
+
+// A foe's whole stat block without leaving the Combat page: hover the Stats
+// button for the headline numbers, click it for the full Beastiary entry.
+function foeStatsSummary(c, e) {
+  const num = v => (v === null || v === undefined || v === '') ? '?' : v;
+  const attacks = (e.attacks || []).map(a => `${a.name || 'attack'} ${a.toHit || '?'} ${a.damageDice || ''}${a.speed ? ' sp' + a.speed : ''}`.trim());
+  return [
+    `${c.display_name}${e.race ? ' (' + e.race + ')' : ''} · level ${e.level || 1}`,
+    `HP ${num(c.current_hp)}/${num(c.max_hp)} · Avoidance ${e.avoidance || 0} · Protection ${e.protection || 0} · Bmod ${e.bmod || 0}`,
+    attacks.length ? 'Attacks: ' + attacks.join('; ') : 'No attacks listed',
+    'Click for the full stat block'
+  ].join('\n');
+}
+
+function foeStatsBtn(c) {
+  const e = combatFoeEntry[c.id];
+  if (!e) return '';
+  return `<button class="btn btn-dim" style="font-size:10px;padding:0 6px" title="${escapeHtml(foeStatsSummary(c, e))}" onclick="event.stopPropagation();openFoeStatsModal('${c.id}')">Stats</button>`;
+}
+
+function openFoeStatsModal(combatantId) {
+  const c = combatantsCache.find(x => x.id === combatantId);
+  const e = combatFoeEntry[combatantId];
+  if (!c || !e) return;
+  const val = v => (v === null || v === undefined || v === '') ? '—' : escapeHtml(String(v));
+  const stat = (label, v) => `<div style="min-width:70px"><div class="note" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-style:normal">${label}</div><div style="font-size:15px;font-weight:bold">${val(v)}</div></div>`;
+  const heading = t => `<div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:12px 0 4px">${t}</div>`;
+  const attacks = e.attacks || [];
+  const attackRows = attacks.map(a => {
+    const cf = bestiaryCritFumble(a.toHit, e.crit_bonus);
+    return `<tr><td>${val(a.name)}</td><td class="note">${a.weaponName ? escapeHtml(a.weaponName) : 'natural'}</td><td class="skval-cell">${val(a.toHit)}</td><td>${fmtCrit(cf.critChance)}</td><td>${fmtFumble(cf.fumbleThreshold)}</td><td>${val(a.damageDice)}</td><td>${val(a.speed)}</td></tr>`;
+  }).join('');
+  const abilityGroups = [['Bonus', e.bonus_abilities], ['Special', e.special_abilities], ['Exceptional', e.exceptional_abilities]]
+    .filter(([, list]) => (list || []).length)
+    .map(([label, list]) => `<div style="font-size:12px;margin-bottom:2px"><b>${label}:</b> ${list.map(escapeHtml).join(', ')}</div>`).join('');
+  const items = (e.items || []).filter(it => it && (it.name || '').trim());
+  const hasCc = [e.cc_fortitude, e.cc_reflex, e.cc_will, e.cc_surprise, e.cc_social].some(v => v);
+  openModal(`
+    <h3>${escapeHtml(c.display_name)}${e.race && e.race.trim().toLowerCase() !== String(c.display_name).trim().toLowerCase() ? ` <span style="color:var(--text-dim);text-transform:none">(${escapeHtml(e.race)})</span>` : ''}</h3>
+    <div class="note" style="margin-bottom:6px">Level ${e.level || 1}${e.location ? ' · ' + escapeHtml(e.location) : ''}${combatFoeXp[c.id] != null ? ' · XP ' + combatFoeXp[c.id].toLocaleString() : ''} · from the Beastiary entry "${escapeHtml(e.name)}"</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap">
+      ${stat('HP now', c.current_hp != null ? c.current_hp + '/' + (c.max_hp != null ? c.max_hp : '?') : null)}
+      ${stat('Avoidance', e.avoidance || 0)}${stat('Protection', e.protection || 0)}${stat('Bmod', e.bmod || 0)}
+      ${stat('Multi', e.multi || 0)}${stat('Crit bonus', e.crit_bonus || 0)}${stat('Avg dmg', e.avg_damage || 0)}
+    </div>
+    ${e.armor_name || e.shield_name ? `<div style="font-size:12px;margin-top:6px"><b>Armor:</b> ${val(e.armor_name)} · <b>Shield:</b> ${val(e.shield_name)}</div>` : ''}
+    ${hasCc ? heading('CCs') + `<div style="display:flex;gap:14px;flex-wrap:wrap">${stat('Fortitude', e.cc_fortitude)}${stat('Reflex', e.cc_reflex)}${stat('Will', e.cc_will)}${stat('Surprise', e.cc_surprise)}${stat('Social', e.cc_social)}</div>` : ''}
+    ${heading('Attacks')}
+    ${attacks.length ? `<table class="skill-table"><thead><tr><th>Name</th><th>Weapon</th><th>To-hit</th><th>Crit %</th><th>Fumble %</th><th>Damage</th><th>Speed</th></tr></thead><tbody>${attackRows}</tbody></table>` : '<div class="note">No attacks listed.</div>'}
+    ${abilityGroups ? heading('Abilities') + abilityGroups : ''}
+    ${(e.spells || []).length ? heading('Spells known') + `<div style="font-size:12px">${e.spells.map(escapeHtml).join(', ')}</div>` : ''}
+    ${items.length ? heading('Items carried') + `<div style="font-size:12px">${items.map(it => escapeHtml(it.name) + ((parseFloat(it.qty) || 1) > 1 ? ' ×' + it.qty : '')).join(', ')}</div>` : ''}
+    ${e.notes ? heading('Notes') + `<div style="font-size:12px;white-space:pre-wrap">${escapeHtml(e.notes)}</div>` : ''}
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Close</button></div>`, { wide: true });
 }
 
 function combatantStatusColor(cur, max) {
@@ -268,7 +327,7 @@ function renderEncounterHtml(enc, isGM) {
     return `<div id="cc-card-${c.id}" style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin-bottom:6px;transition:box-shadow .3s">
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <span style="${nameStyle}">${escapeHtml(c.display_name)}</span>
-        ${foeTypeTag(c)}${combatFoeXp[c.id] != null ? `<span style="font-size:11px;color:var(--gold-dim)" title="Experience value of this foe (Beastiary formula)">XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
+        ${foeTypeTag(c)}${foeStatsBtn(c)}${combatFoeXp[c.id] != null ? `<span style="font-size:11px;color:var(--gold-dim)" title="Experience value of this foe (Beastiary formula)">XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
         ${canEdit ? `<input value="${escapeHtml(c.team||'')}" placeholder="Team" class="w-sm" style="font-size:11px" onchange="updateCombatantField('${c.id}','team',this.value)">`
           : `<span style="font-size:10px;color:var(--text-dim)">${escapeHtml(c.team||'')}</span>`}
         ${combatantHpBadge(c, isGM)}
@@ -374,7 +433,7 @@ function renderEncounterHtml(enc, isGM) {
       ${tieControlsHtml}
       <span style="flex:1;min-width:0">
         <span style="font-size:17px;font-weight:bold;cursor:pointer;${nameStyle}" title="Show on the right" onclick="focusCombatantCard('${c.id}')">${escapeHtml(c.display_name)}</span>
-        ${foeTypeTag(c)}${combatFoeXp[c.id] != null ? `<span style="font-size:11px;color:var(--gold-dim)"> XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
+        ${foeTypeTag(c)}${foeStatsBtn(c)}${combatFoeXp[c.id] != null ? `<span style="font-size:11px;color:var(--gold-dim)"> XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
         ${t.label ? `<span style="font-size:12px;color:var(--text-dim)"> ${escapeHtml(t.label)}</span>` : ''}
         ${t.action_category ? `<span style="display:block;font-size:11px;color:var(--text-dim)">${COMBAT_CATEGORY_LABELS[t.action_category]}</span>` : ''}
       </span>
@@ -425,7 +484,7 @@ function renderEncounterHtml(enc, isGM) {
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);opacity:.75">
       <span style="flex:1;min-width:0">
         <span style="font-size:17px;font-weight:bold;cursor:pointer;text-decoration:${killed?'line-through':'none'};color:${killed?'#a03030':'inherit'}" title="Show on the right" onclick="focusCombatantCard('${c.id}')">${escapeHtml(c.display_name)}</span>
-        ${foeTypeTag(c)}${combatFoeXp[c.id] != null ? `<span style="font-size:11px;color:var(--gold-dim)"> XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
+        ${foeTypeTag(c)}${foeStatsBtn(c)}${combatFoeXp[c.id] != null ? `<span style="font-size:11px;color:var(--gold-dim)"> XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
         <span style="display:block;font-size:11px;color:var(--text-dim)">${killed?'Killed':'Waiting'}</span>
       </span>
       <span style="font-size:24px;font-weight:bold;line-height:1;color:${killed?'#a03030':'var(--text-dim)'};flex-shrink:0">${killed?'KIA':'W'}</span>
