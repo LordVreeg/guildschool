@@ -53,6 +53,45 @@ function toggleTopMenu(name, event) {
   document.querySelectorAll('#topbar .top-menu').forEach(m => {
     m.classList.toggle('open', m.dataset.menu === name && !m.classList.contains('open'));
   });
+  if (name === 'file') refreshFileMenuCombats();
+}
+
+// The File menu lists every combat in progress (active or paused) across all
+// the user's groups, so getting back to one from a character is two clicks
+// instead of Groups > group > Combat > pick. Painted from the last fetch
+// straight away, then refreshed each time the menu opens.
+let fileMenuCombats = [];
+function paintFileMenuCombats() {
+  const box = document.getElementById('file-menu-combats');
+  if (!box) return;
+  if (!fileMenuCombats.length) { box.innerHTML = ''; return; }
+  const statusColor = { active: '#4a9460', paused: '#c9a227' };
+  box.innerHTML = '<hr><div style="font-size:10px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;padding:2px 8px">Active Combats</div>' +
+    fileMenuCombats.map(e => {
+      const g = myGroups.find(x => x.id === e.group_id);
+      return `<button onclick="closeTopMenus();openEncounterFromMenu('${e.id}')">⚔ ${escapeHtml(e.name)}` +
+        `<span style="font-size:10px;margin-left:6px;color:${statusColor[e.status] || 'inherit'}">${e.status}, seg ${e.current_segment}</span>` +
+        (g ? `<span style="font-size:10px;margin-left:6px;color:var(--text-dim)">${escapeHtml(g.name)}</span>` : '') + '</button>';
+    }).join('');
+}
+async function refreshFileMenuCombats() {
+  if (typeof sb === 'undefined' || !currentUser) return;
+  paintFileMenuCombats();
+  const [, { data, error }] = await Promise.all([
+    fetchMyGroups(),
+    sb.from('combat_encounters').select('id, name, status, current_segment, group_id, updated_at').in('status', ['active', 'paused']).order('updated_at', { ascending: false })
+  ]);
+  if (error) { console.error('Failed to load active combats', error); return; }
+  fileMenuCombats = data || [];
+  paintFileMenuCombats();
+}
+function openEncounterFromMenu(id) {
+  const enc = fileMenuCombats.find(e => e.id === id);
+  if (enc) activeGroupId = enc.group_id;
+  state.activeSkillId = null;
+  state.activeView = 'encounter';
+  renderSidebar();
+  openEncounter(id);
 }
 function closeTopMenus() {
   document.querySelectorAll('#topbar .top-menu.open').forEach(m => m.classList.remove('open'));
