@@ -76,13 +76,31 @@ function closeEncounter() {
   renderGroupModule();
 }
 
-async function renderEncounterModule() {
+// The encounter page has no live feed, so while it's showing, check every few
+// seconds whether any combatant row changed (a player editing HP on their
+// sheet, the GM changing someone's HP from another browser) and repaint
+// quietly if so. Skipped while a popup is open or a field is being typed in.
+async function pollEncounterChanges() {
+  if (state.activeView !== 'encounter' || !activeEncounterId || document.hidden) return;
+  if (document.getElementById('modal-overlay').classList.contains('open')) return;
+  const a = document.activeElement;
+  if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && a.closest('#main')) return;
+  const encId = activeEncounterId;
+  const { data, error } = await sb.from('combat_combatants').select('id, updated_at').eq('encounter_id', encId);
+  if (error || !data || encId !== activeEncounterId || state.activeView !== 'encounter') return;
+  const known = new Map(combatantsCache.map(c => [c.id, c.updated_at]));
+  if (data.length === known.size && data.every(r => known.get(r.id) === r.updated_at)) return;
+  renderEncounterModule({ silent: true });
+}
+setInterval(pollEncounterChanges, 8000);
+
+async function renderEncounterModule(opts) {
   const mySeq = ++encounterRenderSeq;
   const stillCurrent = () => mySeq === encounterRenderSeq;
   // Only the very first call in a burst shows the loading state -- if a
   // newer call has already started, its own paint (or this one's, whichever
   // finishes last while still current) is all that should reach the screen.
-  if (stillCurrent()) document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body">Loading combat…</div></div>`;
+  if (stillCurrent() && !(opts && opts.silent)) document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body">Loading combat…</div></div>`;
   await fetchMyGroups();
   const { data: enc, error: encErr } = await sb.from('combat_encounters').select('*').eq('id', activeEncounterId).single();
   if (!stillCurrent()) return;
@@ -646,7 +664,15 @@ async function syncCombatHpToCharacter(characterId, hpPatch) {
     p_hp_damaged: hpStatus.damaged,
     p_hp_critical: hpStatus.critical
   });
-  if (rpcErr) console.error('Combat HP sync failed for', characterId, rpcErr);
+  if (rpcErr) { console.error('Combat HP sync failed for', characterId, rpcErr); return; }
+  // Your own character: update the open sheet too, so its next save doesn't write the old HP back.
+  const appId = Object.keys(charRowIds).find(k => charRowIds[k] === characterId);
+  if (appId && state.characters[appId]) {
+    state.characters[appId].hpState = charData.hpState;
+    lastSheetHpState[characterId] = stableJson(charData.hpState);
+    // A pending save will write the whole character (new HP included) anyway; only mark it clean if nothing else is waiting.
+    if (!saveStateTimer && !flushBusy) savedCharJson[appId] = JSON.stringify(state.characters[appId]);
+  }
 }
 
 // The one ordering used by the Turn Order and by its ▲▼ arrows, so what the
