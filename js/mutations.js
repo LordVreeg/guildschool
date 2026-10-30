@@ -887,6 +887,11 @@ function updateSkill(skillId, field, value) {
     if (delta > 0) char.unspentInitialExp = Math.max(0, char.unspentInitialExp - delta);
   }
   si[field] = value;
+  // A skill's GuildSchool carries down to all of its sub-skills
+  if (field === 'guildName') {
+    const subs = skillDescendantIds(skillId, char.skills || []);
+    for (const s of char.skills || []) if (subs.has(s.id)) s.guildName = value;
+  }
   if (field === 'rawXP' && wasZero && parseFloat(value) > 0 && !si.dropdownOnly) {
     autoPopulateDropdownChildren(char, si);
   }
