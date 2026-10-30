@@ -230,7 +230,50 @@
     "cc_will": 45,
     "cc_surprise": null,
     "cc_social": null,
-    "attacks": [],
+    "attacks": [
+      {
+        "name": "Heavy Weapon (2H) - ordinary Bolgan (+12 to hit plus skill, crit 9%)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((d12+21)/d5)+2",
+        "speed": "Speed 10"
+      },
+      {
+        "name": "Great Axe (2H, 01-40) (+13 to hit plus skill, crit 10%)",
+        "weaponName": "Great Axe",
+        "toHit": "",
+        "damageDice": "((d12+22)/d5)+2",
+        "speed": "Speed 11"
+      },
+      {
+        "name": "Bardiche (2H, 41-70) (+10 to hit plus skill, crit 9%)",
+        "weaponName": "Bardiche",
+        "toHit": "",
+        "damageDice": "((2d6+20)/d5)+2",
+        "speed": "Speed 9"
+      },
+      {
+        "name": "Clawed Hammer (2H, 71-90) (+17 to hit plus skill, crit 8%)",
+        "weaponName": "Clawed Hammer",
+        "toHit": "",
+        "damageDice": "((2d6+18)/d6)+3",
+        "speed": "Speed 6"
+      },
+      {
+        "name": "Pole Axe (2H, 91-00) (+6 to hit plus skill, crit 7%)",
+        "weaponName": "Pole Axe",
+        "toHit": "",
+        "damageDice": "((3d6+25)/d4)+1",
+        "speed": "Speed 14"
+      },
+      {
+        "name": "Hand Axe (1H, 40% also carry) (+14 to hit plus skill, crit 8%)",
+        "weaponName": "Hand Axe",
+        "toHit": "",
+        "damageDice": "((2d6+12)/d8)+3",
+        "speed": "Speed 4"
+      }
+    ],
     "bonus_abilities": [
       "Darksight 25'+"
     ],
@@ -238,7 +281,7 @@
     "exceptional_abilities": [],
     "level_capable": true,
     "possible_classes": [],
-    "notes": "An Ograk-offshoot Ogrillite found almost exclusively underground, squatter than surface Ograks, averaging 8-10' tall, 500-750 lbs, ST around 18. Longtime servants of Gartier underground; understand smithing/ironworking, social with some other underground races despite a violent temper. Darksight 75'. Combat skill described as similar to Hill Giants, 'very hard'. Noisy: -10 to hide checks. Normally wears armor. Page gives flat Reflex 55/Fort 80/Will 45 baselines rather than a full CC block with a Social value."
+    "notes": "An Ograk-offshoot Ogrillite found almost exclusively underground, squatter than surface Ograks, averaging 8-10' tall, 500-750 lbs, ST around 18. Longtime servants of Gartier underground; understand smithing/ironworking, social with some other underground races despite a violent temper. Darksight 75'. Combat skill described as similar to Hill Giants, 'very hard'. Noisy: -10 to hide checks. Normally wears armor. Page gives flat Reflex 55/Fort 80/Will 45 baselines rather than a full CC block with a Social value. Arms: generally large axes or polearms, which they make themselves; Bolgan work is slightly oversized, a bit slower and heavier-hitting than a human forge's (+3 damage before the divider, +1 speed, +2 STN, 15% heavier, 20% dearer). At their strength nearly all of it is two-handed; one-handed use gives something away. Reach weapons are rarely seen (poor tools in a tunnel). Weapon quality: 60% plain steel, 25% good steel, 10% superior, 5% masterwork. Attack figures assume ST 18 and CD 13, two-handed, with skill added to the to-hit. Use the first attack line (the blend of what they carry) for ordinary Bolgan; roll d100 on the weapon lines (Great Axe 01-40, Bardiche 41-70, Clawed Hammer 71-90, Pole Axe 91-00) for loot, a named Bolgan, or a player who wants to know what it is swinging. Great Axe is the ordinary weapon; Bardiche is the polearm short enough for a passage; Clawed Hammer is the forge-hand's weapon (quicker and surer, lower ceiling); Pole Axe is the leader's or door-holder's (hardest hitting, slow). 40% also carry the one-handed Hand Axe. The strongest (ST 19-20) sometimes carry a Double Bladed Broadaxe or a WidowMaker instead; a Bolgan of ordinary strength gets almost nothing from either."
   },
   {
     "name": "Bugbear",
