@@ -241,3 +241,9 @@ body {
 .spell-pool-table tbody th { text-align: left; }
 .spell-pool-table input { font: inherit; background: var(--input-bg); color: var(--text); border: 1px solid transparent; padding: 2px 6px; }
 .spell-pool-table input:focus { border-color: var(--gold); outline: none; }
+/* Spellbook rows: same 13px as the other Spells-page tables (the Cost
+   breakdown keeps its smaller .note style, Notes its input size) */
+.spellbook-table td:not(.note) { font-size: 13px; }
+/* A link out to the Celtricia wiki (e.g. a spell's name) */
+.wiki-link { color: inherit; text-decoration: underline dotted; }
+.wiki-link:hover { color: var(--gold); }

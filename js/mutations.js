@@ -764,24 +764,40 @@ async function finishSpellCastWithDuration() {
   renderSpellModule();
 }
 
-function addSpell() {
-  const char = state.characters[state.activeChar];
-  if (!char) return;
-  if (!char.spellbook) char.spellbook = [];
-  char.spellbook.push({ name: '', school: '', cost: 0, notes: '' });
-  saveState();
-  renderSpellModule();
+// A spellbook entry with nothing in it (the old "+ Add Spell" added these blank).
+function isBlankSpell(sp) {
+  return !String(sp.school || '').trim() && !String(sp.name || '').trim() && !String(sp.notes || '').trim();
 }
 
-function selectSpellName(idx, spellName) {
+// The Add Spell popup (openAddSpellModal in modals.js) builds spellDraft:
+// pick a school, then a spell; the SP cost comes from the catalog. A school
+// with no catalog entries takes a typed name instead (cost 0).
+let spellDraft = null;
+let addNextSpell = false;
+function setSpellDraftSchool(school) {
+  if (!spellDraft) return;
+  spellDraft = { school, name: '', cost: 0, notes: '' };
+  renderAddSpellModal();
+}
+function setSpellDraftName(name, typed) {
+  if (!spellDraft) return;
+  spellDraft.name = name;
+  const def = SPELLS.find(sp => sp.name === name && sp.school === spellDraft.school);
+  spellDraft.cost = def ? def.cost : 0;
+  if (!typed) renderAddSpellModal();
+  else { const btn = document.getElementById('as-add'); if (btn) btn.disabled = !String(name).trim(); }
+}
+function confirmAddSpell() {
   const char = state.characters[state.activeChar];
-  if (!char || !char.spellbook || !char.spellbook[idx]) return;
-  const entry = char.spellbook[idx];
-  entry.name = spellName;
-  const def = SPELLS.find(s => s.name === spellName && s.school === entry.school);
-  if (def) entry.cost = def.cost;
+  const d = spellDraft;
+  if (!char || !d || !d.school || !String(d.name || '').trim()) return;
+  if (!char.spellbook) char.spellbook = [];
+  char.spellbook.push({ school: d.school, name: String(d.name).trim(), cost: d.cost || 0, notes: '' });
+  spellDraft = null;
   saveState();
   renderSpellModule();
+  if (addNextSpell) { openAddSpellModal({ keepAddNext: true, justAdded: d.name }); return; }
+  closeModal();
 }
 
 function updateSpell(idx, field, value) {
@@ -794,7 +810,8 @@ function updateSpell(idx, field, value) {
 
 function removeSpell(idx) {
   const char = state.characters[state.activeChar];
-  if (!char || !char.spellbook) return;
+  if (!char || !char.spellbook || !char.spellbook[idx]) return;
+  if (!confirm(`Remove "${char.spellbook[idx].name || 'this spell'}" from the spellbook?`)) return;
   char.spellbook.splice(idx, 1);
   saveState();
   renderSpellModule();

@@ -626,14 +626,27 @@ function renderCombatModule() {
   </div>`;
 }
 
+// A spell's per-school cost, biggest first: "Spirit 7, Mentalist 4, Life 1".
+function spellCostText(costs) {
+  return Object.entries(costs || {}).sort((a, b) => (parseFloat(b[1]) || 0) - (parseFloat(a[1]) || 0)).map(([sch, v]) => `${sch} ${v}`).join(', ');
+}
+
+// The Celtricia wiki page for a spell, by its name.
+function spellWikiUrl(name) {
+  return 'http://celtricia.pbworks.com/w/page/' + encodeURIComponent(String(name).trim());
+}
+
 function renderSpellModule() {
   const char = state.characters[state.activeChar];
   if (!char) return;
   const pools = spellPoolsInOrder(char);
+  // Spellbook entries with nothing in them (left by the old "+ Add Spell") are hidden
   const spellbook = char.spellbook || [];
+  const shownSpells = spellbook.map((sp, idx) => ({ sp, idx })).filter(({ sp }) => !isBlankSpell(sp))
+    .sort((a, b) => String(a.sp.name || '').localeCompare(String(b.sp.name || ''), undefined, { sensitivity: 'base' }));
 
   const schoolBreakdown = {};
-  for (const sp of spellbook) {
+  for (const { sp } of shownSpells) {
     const school = sp.school || '(no school)';
     if (!schoolBreakdown[school]) schoolBreakdown[school] = { count: 0, totalCost: 0 };
     schoolBreakdown[school].count += 1;
@@ -667,36 +680,29 @@ function renderSpellModule() {
         <thead><tr><th>School</th><th># Spells</th><th>Total SP Cost</th></tr></thead>
         <tbody>
           ${Object.entries(schoolBreakdown).sort().map(([school,d]) => `<tr><td>${school}</td><td>${d.count}</td><td class="skval-cell">${d.totalCost}</td></tr>`).join('')}
-          <tr style="border-top:1px solid var(--gold)"><td><strong>Total</strong></td><td><strong>${spellbook.length}</strong></td><td><strong>${Object.values(schoolBreakdown).reduce((s,d)=>s+d.totalCost,0)}</strong></td></tr>
+          <tr style="border-top:1px solid var(--gold)"><td><strong>Total</strong></td><td><strong>${shownSpells.length}</strong></td><td><strong>${Object.values(schoolBreakdown).reduce((s,d)=>s+d.totalCost,0)}</strong></td></tr>
         </tbody>
       </table>
       ` : ''}
-      <table class="item-table">
-        <thead><tr><th>School</th><th>Spell Name</th><th>SP Cost</th><th>Cost Breakdown</th><th>Notes</th><th></th><th></th></tr></thead>
+      <table class="item-table spellbook-table">
+        <thead><tr><th>Spell Name</th><th>Cost</th><th>Duration</th><th>Notes</th><th></th><th></th></tr></thead>
         <tbody>
-          ${spellbook.map((sp, idx) => {
+          ${shownSpells.map(({ sp, idx }) => {
             const catalogEntry = SPELLS.find(s => s.name === sp.name && s.school === sp.school);
-            const breakdown = catalogEntry && catalogEntry.costs ? Object.entries(catalogEntry.costs).map(([sch,v])=>`${sch} ${v}`).join(', ') : (catalogEntry ? '—' : 'not in detail catalog');
+            const breakdown = catalogEntry && catalogEntry.costs ? spellCostText(catalogEntry.costs) : (catalogEntry ? '—' : 'not in detail catalog');
             return `
           <tr>
-            <td><select onchange="updateSpell(${idx},'school',this.value);renderSpellModule()">
-              <option value="">— select —</option>
-              ${Object.keys(SPELL_SCHOOL_TO_POOL).sort().map(sc=>`<option ${sp.school===sc?'selected':''}>${sc}</option>`).join('')}
-            </select></td>
-            <td>${sp.school ? (SPELLS.filter(s=>s.school===sp.school).length > 0 ? `<select onchange="selectSpellName(${idx},this.value)">
-              <option value="">— select —</option>
-              ${SPELLS.filter(s=>s.school===sp.school).map(s=>`<option ${sp.name===s.name?'selected':''}>${s.name}</option>`).join('')}
-            </select>` : `<input value="${sp.name||''}" placeholder="no catalog for this school — type name" onchange="updateSpell(${idx},'name',this.value)">`) : '<input value="" placeholder="pick a school first" disabled>'}</td>
-            <td class="item-qty"><input type="number" value="${sp.cost||0}" onchange="updateSpell(${idx},'cost',this.value)"></td>
+            <td>${sp.name ? `<a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener" title="Open the wiki page for ${escapeHtml(sp.name)}">${escapeHtml(sp.name)}</a>` : '—'}</td>
             <td class="note" style="padding:3px 6px">${breakdown}</td>
+            <td>${escapeHtml((catalogEntry && catalogEntry.duration) || '—')}</td>
             <td><input value="${sp.notes||''}" onchange="updateSpell(${idx},'notes',this.value)"></td>
             <td>${catalogEntry && catalogEntry.costs ? `<button class="btn btn-gold" style="font-size:11px;padding:3px 8px" onclick="openHardcastModal(${idx})">Cast</button>` : ''}</td>
             <td class="item-del" onclick="removeSpell(${idx})">✕</td>
           </tr>`;
-          }).join('')}
+          }).join('') || '<tr><td colspan="6" class="note" style="padding:8px">No spells yet. Use <i>+ Add Spell</i> below.</td></tr>'}
         </tbody>
       </table>
-      <button class="btn btn-gold" onclick="addSpell()">+ Add Spell</button>
+      <button class="btn btn-gold" onclick="openAddSpellModal()">+ Add Spell</button>
       <div class="note" style="margin-top:8px">${SPELLS.length} spells cataloged (${SPELLS.filter(s=>s.costs).length} with full per-school cost breakdown). Spirit and Shade schools aren't in this catalog yet.</div>
 
     </div>

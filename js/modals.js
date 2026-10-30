@@ -176,6 +176,52 @@ function openDeleteContainerModal(name) {
     </div>`, { width: 'min(420px, 92vw)', className: 'plain-font' });
 }
 
+// "+ Add Spell" on the Spells page: pick a school, then a spell. SP cost and
+// its breakdown come from the catalog and are read-only. "Add another spell"
+// keeps the popup open for the next one.
+function openAddSpellModal(opts) {
+  opts = opts || {};
+  spellDraft = { school: '', name: '', cost: 0, notes: '' };
+  if (!opts.keepAddNext) addNextSpell = false;
+  renderAddSpellModal(opts.justAdded);
+}
+
+function renderAddSpellModal(justAdded) {
+  const d = spellDraft;
+  if (!d) return;
+  const opt = (value, label, selected) => `<option value="${escapeHtml(value)}" ${selected ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+  const schools = Object.keys(SPELL_SCHOOL_TO_POOL).sort();
+  const catalog = d.school ? SPELLS.filter(sp => sp.school === d.school).sort((x, y) => x.name.localeCompare(y.name)) : [];
+  const def = catalog.find(sp => sp.name === d.name);
+  const breakdown = def && def.costs ? spellCostText(def.costs) : '—';
+  const spellField = !d.school
+    ? `<select class="w-lg" disabled><option>— select —</option></select>`
+    : catalog.length
+      ? `<select class="w-lg" onchange="setSpellDraftName(this.value)">${opt('', '— select —', !d.name)}${catalog.map(sp => opt(sp.name, sp.name, d.name === sp.name)).join('')}</select>`
+      : `<input class="w-lg" value="${escapeHtml(d.name)}" placeholder="Not in the catalog: type its name" oninput="setSpellDraftName(this.value, true)">`;
+  openModal(`
+    <h3>Add Spell</h3>
+    ${justAdded ? `<div class="note" style="margin-bottom:8px;color:var(--gold-dim)">Added “${escapeHtml(justAdded)}”. Next spell:</div>` : ''}
+    <div class="form-row">
+      <div class="form-group"><label>School</label>
+        <select class="w-md" onchange="setSpellDraftSchool(this.value)">${opt('', '— select —', !d.school)}${schools.map(sc => opt(sc, sc, d.school === sc)).join('')}</select>
+      </div>
+      <div class="form-group"><label>Spell</label>${spellField}</div>
+    </div>
+    <div class="form-row">
+      <div class="computed-item"><span class="ci-label">Cost</span><span class="ci-value" style="font-size:13px">${escapeHtml(breakdown)}</span></div>
+      <div class="computed-item"><span class="ci-label">Duration</span><span class="ci-value" style="font-size:13px">${escapeHtml((def && def.duration) || '—')}</span></div>
+      <div class="computed-item"><span class="ci-label">Total Cost</span><span class="ci-value">${d.cost || 0}</span></div>
+    </div>
+    <div class="modal-actions" style="align-items:center">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-right:auto">
+        <input type="checkbox" ${addNextSpell ? 'checked' : ''} onchange="addNextSpell=this.checked"> Add another spell
+      </label>
+      <button class="btn btn-dim" onclick="spellDraft=null;addNextSpell=false;closeModal()">Cancel</button>
+      <button class="btn btn-gold" id="as-add" ${d.school && String(d.name).trim() ? '' : 'disabled'} onclick="confirmAddSpell()">Add Spell</button>
+    </div>`, { wide: true, width: 'min(560px, 92vw)' });
+}
+
 function openNewCharModal(preset) {
   preset = preset || {};
   const initialExp = preset.initialExp !== undefined ? preset.initialExp : true;
