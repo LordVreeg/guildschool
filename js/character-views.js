@@ -629,7 +629,7 @@ function renderCombatModule() {
 function renderSpellModule() {
   const char = state.characters[state.activeChar];
   if (!char) return;
-  const pools = computeSpellPools(char);
+  const pools = spellPoolsInOrder(char);
   const spellbook = char.spellbook || [];
 
   const schoolBreakdown = {};
@@ -648,52 +648,17 @@ function renderSpellModule() {
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Spell Points</div>
       <div class="note" style="margin-bottom:10px">Every spell costs Spirit SP plus whichever other schools it draws on. Short on a school's points? Spirit can cover the gap at the shown conversion ratio — better ratio the more trained (Familiar → Specialized → Devoted) you are in that school relative to your Spirit level. Effective Spell Level (used for duration/range formulas with "plev") gets a bonus once Specialized or Devoted.</div>
       ${pools.length === 0 ? '<div class="note" style="padding:6px 0">No spell point pools trained. Add a pool (e.g. Spirit SP, House of Fire SP) as a skill first.</div>' : ''}
-      ${pools.map(p => {
-        const key = 'spell:' + p.name;
-        const isCollapsed = collapsedSections[key] === undefined ? true : collapsedSections[key];
-        const arrow = isCollapsed ? '▶' : '▼';
-        return `
-      <div class="panel" style="margin-bottom:10px">
-        <div class="panel-header" style="cursor:pointer" onclick="toggleSection('${key.replace(/'/g,"\\'")}')">
-          <span style="font-size:9px;margin-right:4px">${arrow}</span>
-          <h2 style="font-size:13px">${p.name}</h2>
-          <span class="type-badge">Max ${p.maxSP} / Cur ${p.currentSP} / Used ${p.usedSP} — ${p.familiarity}</span>
-        </div>
-        ${isCollapsed ? '' : `
-        <div class="panel-body">
-          <div class="form-row">
-            <div class="computed-item"><span class="ci-label">Max SP</span><span class="ci-value skval">${p.maxSP}</span></div>
-            <div class="form-group"><label>Current SP</label><input type="number" class="w-sm" value="${p.currentSP}" onchange="updateSpellState('${p.name.replace(/'/g,"\\'")}','current',this.value)"></div>
-            <div class="computed-item"><span class="ci-label">Used SP</span><span class="ci-value">${p.usedSP}</span></div>
-            <button class="btn btn-dim" style="align-self:flex-end" onclick="updateSpellState('${p.name.replace(/'/g,"\\'")}','current',${p.maxSP})">Reset to Max</button>
-          </div>
-          ${p.children.length ? `
-          <div class="note" style="margin-top:6px">${p.children.map(c => `${c.name}: ${c.trained ? c.skval : 'not trained'}`).join(' | ')}</div>
-          ` : '<div class="note" style="margin-top:6px">No Reclamation/Success/Knowledge subskills trained for this pool.</div>'}
-          <hr class="divider">
-          <div class="form-row">
-            <div class="computed-item"><span class="ci-label">Level</span><span class="ci-value">${p.level}</span></div>
-            <div class="computed-item"><span class="ci-label">Familiarity</span><span class="ci-value skval">${p.familiarity}</span></div>
-            ${p.conversionRatio ? `<div class="computed-item"><span class="ci-label">Spirit Conversion</span><span class="ci-value">${p.conversionRatio}:1</span></div>` : ''}
-            <div class="computed-item"><span class="ci-label">Effective Spell Level</span><span class="ci-value skval">${p.effectiveLevel}</span></div>
-          </div>
-          <div class="form-row">
-            <div class="computed-item"><span class="ci-label">Recovery (Awake)</span><span class="ci-value">${p.recoverAwake} SP/hr</span></div>
-            <div class="computed-item"><span class="ci-label">Recovery (Sleeping)</span><span class="ci-value skval">${p.recoverSleep} SP/hr</span></div>
-          </div>
-          ${p.conversionRatio ? `<div class="note">If short on ${p.name.replace(' SP','')} points, Spirit SP can cover the gap at a ${p.conversionRatio}:1 ratio (${p.conversionRatio} Spirit per 1 point needed).</div>` : '<div class="note">Spirit is the base power source — no conversion needed for itself.</div>'}
-          <div class="note">Recovery = Reclamation skval [${p.reclamationSkval}] × 10% (awake) or × 20% (sleeping) per hour. Capped at 3 different types/hour awake, 5 while sleeping (per Rules for Magic — not yet enforced across pools here).</div>
-          <hr class="divider">
-          <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Magic Enhancers (manual — enter the net result of whichever item you're currently bonded to)</div>
-          <div class="form-row">
-            <div class="form-group"><label>SP Cost Reduction</label><input type="number" class="w-sm" value="${p.spReduction}" onchange="updateSpellEnhancer('${p.name}','spReduction',this.value)"></div>
-            <div class="form-group"><label>Reclamation Rate Bonus</label><input type="number" class="w-sm" value="${p.reclamationBonus}" onchange="updateSpellEnhancer('${p.name}','reclamationBonus',this.value)"></div>
-            <div class="form-group"><label>Spell Success Bonus</label><input type="number" class="w-sm" value="${p.successBonus}" onchange="updateSpellEnhancer('${p.name}','successBonus',this.value)"></div>
-          </div>
-        </div>
-        `}
-      </div>`;
-      }).join('')}
+      ${pools.length ? `
+      <table class="skill-table spell-pool-table">
+        <thead><tr><th></th>${pools.map(p => `<th class="spell-pool-head" title="Open ${escapeHtml(p.name)}" data-pool="${escapeHtml(p.name)}" onclick="openSpellPoolModal(this.dataset.pool)">${escapeHtml(p.name)}</th>`).join('')}</tr></thead>
+        <tbody>
+          <tr><th>Max</th>${pools.map(p => `<td>${p.maxSP}</td>`).join('')}</tr>
+          <tr><th>Current</th>${pools.map(p => `<td><input type="number" class="w-sm" value="${p.currentSP}" data-pool="${escapeHtml(p.name)}" onchange="updateSpellState(this.dataset.pool,'current',this.value)"></td>`).join('')}</tr>
+          <tr><th>Used</th>${pools.map(p => `<td>${p.usedSP}</td>`).join('')}</tr>
+          <tr><th>Familiarity</th>${pools.map(p => `<td>${escapeHtml(p.familiarity)}</td>`).join('')}</tr>
+        </tbody>
+      </table>
+      <div class="note" style="margin-top:4px">Click a pool's name for its details, recovery and Magic Enhancers.</div>` : ''}
 
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Spellbook</div>
@@ -736,6 +701,56 @@ function renderSpellModule() {
 
     </div>
   </div>`;
+}
+
+// Spell-point pools in display order: Spirit SP first, then A-Z.
+function spellPoolsInOrder(char) {
+  return computeSpellPools(char).sort((a, b) => (a.name === 'Spirit SP' ? -1 : b.name === 'Spirit SP' ? 1 : a.name.localeCompare(b.name)));
+}
+
+// One pool's details in a dialog (opened from its column header on the
+// Spells page). Edits save as they're made, like the rest of the page.
+let openSpellPool = null;
+function openSpellPoolModal(name) {
+  openSpellPool = name;
+  renderSpellPoolModal();
+}
+function renderSpellPoolModal() {
+  const char = state.characters[state.activeChar];
+  const p = char && openSpellPool && spellPoolsInOrder(char).find(x => x.name === openSpellPool);
+  if (!p) return;
+  openModal(`
+    <h3>${escapeHtml(p.name)}</h3>
+    <div class="form-row">
+      <div class="computed-item"><span class="ci-label">Max SP</span><span class="ci-value skval">${p.maxSP}</span></div>
+      <div class="form-group"><label>Current SP</label><input type="number" class="w-sm" value="${p.currentSP}" onchange="updateSpellState('${p.name.replace(/'/g,"\\'")}','current',this.value)"></div>
+      <div class="computed-item"><span class="ci-label">Used SP</span><span class="ci-value">${p.usedSP}</span></div>
+      <button class="btn btn-dim" style="align-self:flex-end" onclick="updateSpellState('${p.name.replace(/'/g,"\\'")}','current',${p.maxSP})">Reset to Max</button>
+    </div>
+    ${p.children.length ? `
+    <div class="note" style="margin-top:6px">${p.children.map(c => `${c.name}: ${c.trained ? c.skval : 'not trained'}`).join(' | ')}</div>
+    ` : '<div class="note" style="margin-top:6px">No Reclamation/Success/Knowledge subskills trained for this pool.</div>'}
+    <hr class="divider">
+    <div class="form-row">
+      <div class="computed-item"><span class="ci-label">Level</span><span class="ci-value">${p.level}</span></div>
+      <div class="computed-item"><span class="ci-label">Familiarity</span><span class="ci-value skval">${p.familiarity}</span></div>
+      ${p.conversionRatio ? `<div class="computed-item"><span class="ci-label">Spirit Conversion</span><span class="ci-value">${p.conversionRatio}:1</span></div>` : ''}
+      <div class="computed-item"><span class="ci-label">Effective Spell Level</span><span class="ci-value skval">${p.effectiveLevel}</span></div>
+    </div>
+    <div class="form-row">
+      <div class="computed-item"><span class="ci-label">Recovery (Awake)</span><span class="ci-value">${p.recoverAwake} SP/hr</span></div>
+      <div class="computed-item"><span class="ci-label">Recovery (Sleeping)</span><span class="ci-value skval">${p.recoverSleep} SP/hr</span></div>
+    </div>
+    ${p.conversionRatio ? `<div class="note">If short on ${p.name.replace(' SP','')} points, Spirit SP can cover the gap at a ${p.conversionRatio}:1 ratio (${p.conversionRatio} Spirit per 1 point needed).</div>` : '<div class="note">Spirit is the base power source — no conversion needed for itself.</div>'}
+    <div class="note">Recovery = Reclamation skval [${p.reclamationSkval}] × 10% (awake) or × 20% (sleeping) per hour. Capped at 3 different types/hour awake, 5 while sleeping (per Rules for Magic — not yet enforced across pools here).</div>
+    <hr class="divider">
+    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Magic Enhancers (manual — enter the net result of whichever item you're currently bonded to)</div>
+    <div class="form-row">
+      <div class="form-group"><label>SP Cost Reduction</label><input type="number" class="w-sm" value="${p.spReduction}" onchange="updateSpellEnhancer('${p.name}','spReduction',this.value)"></div>
+      <div class="form-group"><label>Reclamation Rate Bonus</label><input type="number" class="w-sm" value="${p.reclamationBonus}" onchange="updateSpellEnhancer('${p.name}','reclamationBonus',this.value)"></div>
+      <div class="form-group"><label>Spell Success Bonus</label><input type="number" class="w-sm" value="${p.successBonus}" onchange="updateSpellEnhancer('${p.name}','successBonus',this.value)"></div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-gold" onclick="openSpellPool=null;closeModal()">Close</button></div>`, { wide: true });
 }
 
 function renderUtilitiesModule() {

@@ -389,6 +389,7 @@ function updateSpellState(poolName, field, value) {
   char.spellState[poolName][field] = parseFloat(value) || 0;
   saveState();
   renderSpellModule();
+  if (openSpellPool && document.getElementById('modal-overlay').classList.contains('open')) renderSpellPoolModal();
 }
 
 function updateSpellEnhancer(poolName, field, value) {
@@ -399,6 +400,7 @@ function updateSpellEnhancer(poolName, field, value) {
   char.spellEnhancers[poolName][field] = parseFloat(value) || 0;
   saveState();
   renderSpellModule();
+  if (openSpellPool && document.getElementById('modal-overlay').classList.contains('open')) renderSpellPoolModal();
 }
 
 let hardcastState = null;

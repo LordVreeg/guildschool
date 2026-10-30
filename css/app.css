@@ -233,3 +233,11 @@ body {
 .overview-section .section-moves { margin-left: auto; display: inline-flex; gap: 4px; }
 .overview-section .section-move { padding: 0 6px; line-height: 16px; font-size: 11px; }
 .overview-section .section-move:disabled { opacity: .35; cursor: default; }
+
+/* Spells page: spell-point pools as columns; a pool's name opens its details */
+.spell-pool-table { width: auto; }
+.spell-pool-table .spell-pool-head { cursor: pointer; text-decoration: underline dotted; }
+.spell-pool-table .spell-pool-head:hover { color: #E9C64A; }
+.spell-pool-table tbody th { text-align: left; }
+.spell-pool-table input { font: inherit; background: var(--input-bg); color: var(--text); border: 1px solid transparent; padding: 2px 6px; }
+.spell-pool-table input:focus { border-color: var(--gold); outline: none; }
