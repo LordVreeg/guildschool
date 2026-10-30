@@ -936,10 +936,48 @@ function rollAllEmptyLevels(skillId) {
   renderSidebar();
 }
 
+// A skill's parent among the character's skills: the skill it is linked to
+// (parentSkillId), else its parent in the skill catalog, else -- for a
+// weapon-bound skill like "Attack versus (Basic Pole Weapons)" -- the skill
+// it is bound to. Same idea as the sidebar's nesting, across all types.
+function skillParentInstanceId(si, skills) {
+  if (si.parentSkillId && skills.some(s => s.id === si.parentSkillId)) return si.parentSkillId;
+  const def = SKILLS.find(s => s.name === si.skillName);
+  const name = def && def.templated ? si.binding : def && def.parent;
+  const want = String(name || '').trim().toLowerCase();
+  if (!want) return null;
+  const parent = skills.find(s => s.id !== si.id && String(s.skillName || '').trim().toLowerCase() === want);
+  return parent ? parent.id : null;
+}
+
+// Every skill under skillId, all the way down.
+function skillDescendantIds(skillId, skills) {
+  const found = new Set();
+  let added = true;
+  while (added) {
+    added = false;
+    for (const s of skills) {
+      if (found.has(s.id) || s.id === skillId) continue;
+      const p = skillParentInstanceId(s, skills);
+      if (p === skillId || found.has(p)) { found.add(s.id); added = true; }
+    }
+  }
+  return found;
+}
+
+// Removing a skill removes all of its sub-skills with it.
 function deleteSkill(skillId) {
-  if (!confirm('Remove this skill?')) return;
   const char = state.characters[state.activeChar];
-  char.skills = (char.skills || []).filter(s => s.id !== skillId);
+  const skills = (char && char.skills) || [];
+  const si = skills.find(s => s.id === skillId);
+  if (!si) return;
+  const subs = skillDescendantIds(skillId, skills);
+  const subNames = skills.filter(s => subs.has(s.id)).map(s => s.skillName + (s.binding ? ` (${s.binding})` : ''));
+  const msg = subNames.length
+    ? `Remove ${si.skillName} and its ${subNames.length} sub-skill${subNames.length === 1 ? '' : 's'}?\n\n${subNames.join('\n')}`
+    : `Remove ${si.skillName}?`;
+  if (!confirm(msg)) return;
+  char.skills = skills.filter(s => s.id !== skillId && !subs.has(s.id));
   state.activeSkillId = null;
   state.activeView = 'overview';
   saveState();

@@ -17,6 +17,7 @@ function renderOverview() {
     if (!byType[type]) byType[type] = [];
     byType[type].push(si);
   }
+  for (const type in byType) byType[type] = sortSkillsForDisplay(type, byType[type]);
   const typeOrder = ['Combat','Spell','Acting','Alchemic','Art','Artisan','Curative','Dance','Detect','Engineer','Language','Mind','Movement','Music','Priest','Scholar','Social','Thieves','Torturer','Outdoor','Other'];
   const sortedTypes = typeOrder.filter(t => byType[t]).concat(Object.keys(byType).filter(t => !typeOrder.includes(t)));
 

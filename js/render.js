@@ -106,7 +106,9 @@ new ResizeObserver(([entry]) => {
 let collapsedSections = {};
 
 function toggleSection(type) {
-  collapsedSections[type] = !collapsedSections[type];
+  // Sections start collapsed (no entry yet), so flip from that, not from undefined
+  const collapsed = collapsedSections[type] === undefined ? true : collapsedSections[type];
+  collapsedSections[type] = !collapsed;
   renderSidebar();
   if (state.activeView === 'spell') renderSpellModule();
 }
@@ -116,6 +118,13 @@ function toggleSection(type) {
 // skill collapses everything else, leaving just the path to it and its own
 // sub-skills open.
 let expandedSkillIds = new Set();
+
+// A skill name in the sidebar: opens that skill's page; clicking the skill
+// that's already open shows/hides its sub-skills instead.
+function sidebarSkillClick(skillId) {
+  if (state.activeView === 'skill' && state.activeSkillId === skillId) toggleSkillExpanded(skillId);
+  else showSkillModule(skillId);
+}
 
 function toggleSkillExpanded(skillId, event) {
   if (event) event.stopPropagation();
@@ -180,6 +189,20 @@ function hasSpiritLevel(char) {
     computeSkillValues(si, char, skills).level >= 1);
 }
 
+// The order skills are listed in within a type, in the sidebar and on the
+// Overview: these first (in this order), then everything else A-Z.
+const SKILL_TYPE_PINNED = { 'Combat': ['Hit Points', 'Basic Defense'], 'Spell': ['Spirit SP'] };
+function sortSkillsForDisplay(type, list) {
+  const pinned = (SKILL_TYPE_PINNED[type] || []).map(n => n.toLowerCase());
+  const rank = si => { const i = pinned.indexOf(String(si.skillName || '').toLowerCase()); return i < 0 ? pinned.length : i; };
+  const label = si => `${si.skillName || ''} ${si.binding || ''}`;
+  return [...list].sort((a, b) => rank(a) - rank(b) || label(a).localeCompare(label(b), undefined, { sensitivity: 'base' }));
+}
+
+// How a skill type is named in the sidebar, where it differs from the type
+// itself (skills keep their type; e.g. the Spells page looks for 'Spell').
+const SIDEBAR_TYPE_LABELS = { 'Spell': 'Void Capacity' };
+
 function renderSidebar() {
   const char = state.characters[state.activeChar];
   if (!char) return;
@@ -191,6 +214,7 @@ function renderSidebar() {
     if (!byType[type]) byType[type] = [];
     byType[type].push(si);
   }
+  for (const type in byType) byType[type] = sortSkillsForDisplay(type, byType[type]);
   const view = state.activeSkillId ? 'skill' : (state.activeView || 'overview');
   const navItem = (key, onclick, label) => `<div class="sidebar-item ${view === key ? 'active' : ''}" onclick="${onclick}">${label}</div>`;
   let html = navItem('overview', 'showOverview()', '📋 Overview');
@@ -208,7 +232,7 @@ function renderSidebar() {
     const isCollapsed = collapsedSections[type] === undefined ? true : collapsedSections[type];
     const arrow = isCollapsed ? '▶' : '▼';
     html += `<div class="sidebar-section" style="cursor:pointer;display:flex;align-items:center;gap:5px" onclick="toggleSection('${type}')">
-      <span style="font-size:9px">${arrow}</span>${type} <span style="color:var(--text-dim);font-weight:normal">(${byType[type].length})</span>
+      <span style="font-size:9px">${arrow}</span>${SIDEBAR_TYPE_LABELS[type] || type} <span style="color:var(--text-dim);font-weight:normal">(${byType[type].length})</span>
     </div>`;
     if (isCollapsed) continue;
     const children = skillChildrenMap(byType[type], skills);
@@ -221,7 +245,7 @@ function renderSidebar() {
       const toggle = kids.length
         ? `<span class="skill-toggle" title="${open ? 'Hide' : 'Show'} ${kids.length} sub-skill${kids.length === 1 ? '' : 's'}" onclick="toggleSkillExpanded('${si.id}', event)">${open ? '▾' : '▸'}</span>`
         : `<span class="skill-toggle"></span>`;
-      html += `<div class="sidebar-item skill-node ${active}" style="--depth:${depth}" onclick="showSkillModule('${si.id}')">
+      html += `<div class="sidebar-item skill-node ${active}" style="--depth:${depth}" onclick="sidebarSkillClick('${si.id}')">
         ${toggle}<span class="dot ${dot}"></span>
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${si.skillName}${si.binding ? ` <span style="color:var(--text-dim)">(${si.binding})</span>` : ''}</span>
         <span class="lv">L${vals.level} / ${vals.skval}</span>
