@@ -79,23 +79,41 @@ function computeSkillValues(skillInst, character, allSkillInsts) {
 // binding-specific key ("SkillName|BindingName") alongside the flat one; the
 // binding-specific key is checked first and only used for that exact
 // binding, so every other binding just falls through to the normal rate.
+// A guild's EXPMOD for a skill (GUILDS[guild][skill], or ["skill|binding"] for a
+// weapon-bound skill). Guild and skill names are matched ignoring case and
+// extra spaces, and the skill also by its catalog name (findSkillDef, which
+// follows SKILL_NAME_ALIASES), since guild sheets and characters don't always
+// spell things the way the catalog does. Unknown guild or skill: 0.
+let guildIndexCache = { source: null, guilds: null };
+function guildRateIndex(guildName) {
+  if (guildIndexCache.source !== GUILDS || guildIndexCache.guildCount !== Object.keys(GUILDS).length) {
+    const guilds = new Map();
+    for (const g in GUILDS) { const k = normalizeSkillName(g); if (!guilds.has(k)) guilds.set(k, g); }
+    guildIndexCache = { source: GUILDS, guildCount: Object.keys(GUILDS).length, guilds, rates: new Map() };
+  }
+  const real = GUILDS[guildName] ? guildName : guildIndexCache.guilds.get(normalizeSkillName(guildName));
+  if (!real) return null;
+  const table = GUILDS[real];
+  let entry = guildIndexCache.rates.get(real);
+  if (!entry || entry.table !== table || entry.size !== Object.keys(table).length) {
+    const map = new Map();
+    for (const key in table) { const k = normalizeSkillName(key); if (!map.has(k)) map.set(k, key); }
+    entry = { table, size: Object.keys(table).length, map };
+    guildIndexCache.rates.set(real, entry);
+  }
+  return entry;
+}
 function getGuildBase(guildName, skillName, binding) {
-  if (!guildName || !GUILDS[guildName]) return 0;
-  const guildData = GUILDS[guildName];
+  if (!guildName || !skillName) return 0;
+  const idx = guildRateIndex(guildName);
+  if (!idx) return 0;
+  const def = findSkillDef(skillName);
+  const names = [skillName].concat(def && def.name !== skillName ? [def.name] : []);
+  const tryKey = key => { const real = idx.map.get(normalizeSkillName(key)); return real === undefined ? undefined : idx.table[real]; }; // read live: values can be edited in place
   if (binding) {
-    const bindingKey = skillName + '|' + binding;
-    if (bindingKey in guildData) return guildData[bindingKey];
-    const targetBindingKey = bindingKey.toLowerCase();
-    for (const key in guildData) {
-      if (key.toLowerCase() === targetBindingKey) return guildData[key];
-    }
+    for (const n of names) { const v = tryKey(n + '|' + binding); if (v !== undefined) return v; }
   }
-  if (skillName in guildData) return guildData[skillName];
-  // Case-insensitive fallback in case a guild sheet used different casing than the Skill Master page
-  const target = skillName.toLowerCase();
-  for (const key in guildData) {
-    if (key.toLowerCase() === target) return guildData[key];
-  }
+  for (const n of names) { const v = tryKey(n); if (v !== undefined) return v; }
   return 0;
 }
 
