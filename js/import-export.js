@@ -295,29 +295,6 @@ function exportData() {
   a.href = URL.createObjectURL(blob);
   a.download = 'guildschool_characters.json';
   a.click();
-  dirtySinceExport = false;
-  localStorage.setItem('gs_last_export', new Date().toISOString());
-  updateExportIndicator();
-}
-
-function updateExportIndicator() {
-  const el = document.getElementById('export-indicator');
-  if (!el) return;
-  const last = localStorage.getItem('gs_last_export');
-  if (!last) {
-    el.textContent = dirtySinceExport ? 'Never exported' : '';
-    el.style.color = dirtySinceExport ? '#c05050' : 'var(--text-dim)';
-    return;
-  }
-  const d = new Date(last);
-  const label = d.toLocaleString();
-  if (dirtySinceExport) {
-    el.textContent = `Unsaved changes since ${label}`;
-    el.style.color = '#c05050';
-  } else {
-    el.textContent = `Exported ${label}`;
-    el.style.color = 'var(--text-dim)';
-  }
 }
 
 // Import JSON (characters). Checks every character before importing:

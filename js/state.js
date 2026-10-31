@@ -33,8 +33,6 @@ async function loadState() {
 let saveStateTimer = null;
 function saveState() {
   if (state.activeChar) localStorage.setItem('gs_active_char', state.activeChar);
-  dirtySinceExport = true;
-  updateExportIndicator();
   clearTimeout(saveStateTimer);
   saveStateTimer = setTimeout(async () => {
     saveStateTimer = null;
@@ -171,7 +169,6 @@ function refreshAfterPull() {
 }
 setInterval(pullCombatChangesToSheet, 8000);
 
-let dirtySinceExport = false;
 
 function loadCustomData() {
   const defaults = {
@@ -228,10 +225,12 @@ function applyCustomData() {
   }
 }
 
+// Edits save to Supabase a moment after the last change (saveStateTimer).
+// Only warn on leaving if one of those saves hasn't gone out yet.
 window.addEventListener('beforeunload', (e) => {
-  if (dirtySinceExport && Object.keys(state.characters || {}).length > 0) {
+  if (saveStateTimer) {
     e.preventDefault();
-    e.returnValue = 'You have unexported character changes. Export JSON before leaving to avoid losing them.';
+    e.returnValue = 'Your latest changes are still being saved. Leave anyway?';
     return e.returnValue;
   }
 });

@@ -236,7 +236,8 @@ async function handleSignedIn() {
   if (adminBtn) adminBtn.style.display = currentProfile.is_admin ? 'inline-block' : 'none';
   await loadState();
   await fetchMyGroups();
-  updateExportIndicator();
+  // The old "last exported" date lived in the browser; it's no longer used
+  try { localStorage.removeItem('gs_last_export'); } catch (e) {}
   loadData().then(() => {
     if (removeAutoHandFootForAll()) { saveState(); if (typeof renderApp === 'function') renderApp(); }
   }).catch(err => {
