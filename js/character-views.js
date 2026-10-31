@@ -12,13 +12,13 @@ function renderOverview() {
   const skills = char.skills || [];
   const byType = {};
   for (const si of skills) {
-    const def = SKILLS.find(s => s.name === si.skillName);
-    const type = def ? def.type : 'Other';
+    const def = findSkillDef(si.skillName);
+    const type = def ? def.type : UNKNOWN_SKILL_TYPE;
     if (!byType[type]) byType[type] = [];
     byType[type].push(si);
   }
   for (const type in byType) byType[type] = sortSkillsForDisplay(type, byType[type]);
-  const typeOrder = ['Combat','Spell','Acting','Alchemic','Art','Artisan','Curative','Dance','Detect','Engineer','Language','Mind','Movement','Music','Priest','Scholar','Social','Thieves','Torturer','Outdoor','Other'];
+  const typeOrder = SKILL_TYPE_ORDER;
   const sortedTypes = typeOrder.filter(t => byType[t]).concat(Object.keys(byType).filter(t => !typeOrder.includes(t)));
 
   let totalXP = 0;
@@ -41,7 +41,7 @@ function renderOverview() {
     for (const si of byType[type]) {
       const vals = computeSkillValues(si, char, char.skills || []);
       const rowCls = si.dropdownOnly ? 'dropdown-row' : '';
-      const def = SKILLS.find(s => s.name === si.skillName);
+      const def = findSkillDef(si.skillName);
       const subOf = def && def.templated ? (si.binding || '—') : (def && def.parent ? def.parent : 'None');
       html += `<tr class="${rowCls}" onclick="showSkillModule('${si.id}')">
         <td>${si.skillName}${si.binding ? ` <span style="color:var(--text-dim)">(${si.binding})</span>` : ''}${si.dropdownOnly ? ' <span style="font-size:10px;color:#7a7acf">[D]</span>' : ''}</td>
@@ -58,7 +58,8 @@ function renderOverview() {
       </tr>`;
     }
     html += `</tbody></table>`;
-    sections.push({ key: 'type:' + type, header: `<h2>${type}</h2><span class="type-badge">${byType[type].length}</span>`, body: html, flush: true });
+    if (type === UNKNOWN_SKILL_TYPE) html = `<div class="note skill-unknown" style="padding:6px 10px">These skills don't match any skill in the skill catalog (by name, ignoring case), so their values can't be calculated. Fix the name or add the skill under Utilities.</div>` + html;
+    sections.push({ key: 'type:' + type, header: `<h2>${type === UNKNOWN_SKILL_TYPE ? '⚠ Not in skill catalog' : type}</h2><span class="type-badge">${byType[type].length}</span>`, body: html, flush: true });
   }
 
   document.getElementById('main').innerHTML = overviewSectionsHtml(char, sections);
@@ -771,7 +772,7 @@ function renderSpellPoolModal() {
 
 function renderUtilitiesModule() {
   const custom = loadCustomData();
-  const typeOrder = ['Combat','Spell','Acting','Alchemic','Art','Artisan','Curative','Dance','Detect','Engineer','Language','Mind','Movement','Music','Priest','Scholar','Social','Thieves','Torturer','Outdoor'];
+  const typeOrder = SKILL_TYPE_ORDER;
 
   document.getElementById('main').innerHTML = `
   <div class="panel">
@@ -840,7 +841,7 @@ function renderSkillModule(skillId) {
   if (!char) return;
   const si = (char.skills || []).find(s => s.id === skillId);
   if (!si) return;
-  const def = SKILLS.find(s => s.name === si.skillName);
+  const def = findSkillDef(si.skillName);
   const vals = computeSkillValues(si, char, char.skills || []);
   // A sub-skill shows its parent as plain text: the skill it's linked to, else
   // its parent in the skill catalog. Top-level and templated skills (linked
@@ -852,13 +853,13 @@ function renderSkillModule(skillId) {
   const rolls = si.rolls || Array(20).fill('');
 
   // Build EXPMOD breakdown
-  const breakdown = `Guild: ${vals.guildBase.toFixed(3)} + Attrib: ${vals.attmodResult.toFixed(3)} + Racial: ${vals.racialExpmod.toFixed(3)} = ${vals.expmod.toFixed(3)}`;
+  const breakdown = !def ? "not calculated: this skill isn't in the skill catalog" : `Guild: ${vals.guildBase.toFixed(3)} + Attrib: ${vals.attmodResult.toFixed(3)} + Racial: ${vals.racialExpmod.toFixed(3)} = ${vals.expmod.toFixed(3)}`;
 
   document.getElementById('main').innerHTML = `
   <div class="panel">
     <div class="panel-header">
       <h2>${si.skillName}${si.binding ? ` — ${si.binding}` : ''}</h2>
-      <span class="type-badge">${def ? def.type : '?'}</span>
+      ${def ? `<span class="type-badge">${def.type}</span>` : `<span class="type-badge skill-unknown" title="No skill in the catalog matches this name, so its EXPMOD, level and skill value can't be calculated">⚠ Not in skill catalog</span>`}
       <span class="type-badge">Comm ${def ? def.commonality : '?'}</span>
       ${def && def.templated ? '<span class="type-badge" style="color:var(--gold)">TEMPLATED</span>' : ''}
       <span class="${si.dropdownOnly ? 'status-dropdown' : 'status-trained'}">${si.dropdownOnly ? '◈ Dropdown Only' : '◆ Trained'}</span>

@@ -28,8 +28,10 @@ function lookupLevel(adjXP) {
 }
 
 function computeSkillValues(skillInst, character, allSkillInsts) {
-  const skillDef = SKILLS.find(s => s.name === skillInst.skillName);
-  if (!skillDef) return { expmod: 0, adjXP: 0, level: 0, attribBonus: 0, dropdownBonus: 0, rollTotal: 0, skval: 0 };
+  const skillDef = findSkillDef(skillInst.skillName);
+  // Not in the skill catalog: nothing can be calculated (flagged where it's shown)
+  if (!skillDef) return { expmod: 0, adjXP: 0, level: 0, attribBonus: 0, dropdownBonus: 0, rollTotal: 0, skval: 0,
+                          guildBase: 0, attmodResult: 0, racialExpmod: 0, notInCatalog: true };
 
   const attrs = character.attrs || {};
   const attmodResult = evalAttmod(skillDef.attmod, attrs);

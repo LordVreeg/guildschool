@@ -22,7 +22,7 @@ function buildCharacterSheetHtml(char) {
   const totalXP = skills.reduce((sum, si) => sum + (parseFloat(si.rawXP) || 0), 0);
 
   const skillRows = skills.map(si => {
-    const def = SKILLS.find(s => s.name === si.skillName);
+    const def = findSkillDef(si.skillName);
     const vals = computeSkillValues(si, char, skills);
     return `<tr><td>${def ? def.type : ''}</td><td>${si.skillName}${si.binding ? ' ('+si.binding+')' : ''}</td><td>${si.dropdownOnly ? 'Dropdown' : 'Trained'}</td><td>${vals.level}</td><td>${vals.skval}</td></tr>`;
   }).join('');
@@ -106,7 +106,7 @@ function buildCharacterSheetHtml(char) {
 function addCustomSkill() {
   const name = document.getElementById('ns-name').value.trim();
   if (!name) { alert('Skill name is required.'); return; }
-  if (SKILLS.find(s => s.name === name)) { alert('A skill with this name already exists.'); return; }
+  if (findSkillDef(name)) { alert('A skill with this name already exists.'); return; }
   const skill = {
     type: document.getElementById('ns-type').value,
     name,
@@ -134,7 +134,7 @@ function removeCustomSkill(idx) {
   const skill = custom.customSkills[idx];
   custom.customSkills.splice(idx, 1);
   saveCustomData(custom);
-  const i = SKILLS.findIndex(s => s.name === skill.name);
+  const i = SKILLS.indexOf(findSkillDef(skill.name));
   if (i >= 0) SKILLS.splice(i, 1);
   renderUtilitiesModule();
 }
@@ -148,7 +148,7 @@ function addCustomGuildBonus() {
   if (!guildName) { alert('Pick or name a guild.'); return; }
   if (!skillName) { alert('Skill name is required.'); return; }
   if (isNaN(bxp)) { alert('EXPMOD value is required.'); return; }
-  if (!SKILLS.find(s => s.name === skillName)) {
+  if (!findSkillDef(skillName)) {
     if (!confirm(`"${skillName}" isn't in the master skill list yet. Set the EXPMOD anyway?`)) return;
   }
   if (!GUILDS[guildName]) GUILDS[guildName] = {};
@@ -182,7 +182,9 @@ function exportCustomData() {
   a.click();
 }
 
-function importCustomData() {
+// Both importers read the file, check it, and show what they found in a
+// report before anything changes; nothing is imported until "Import".
+function pickJsonFile(onParsed) {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = '.json,application/json';
@@ -190,31 +192,101 @@ function importCustomData() {
   document.body.appendChild(input);
   input.onchange = e => {
     const file = e.target.files[0];
-    if (!file) { document.body.removeChild(input); return; }
+    document.body.removeChild(input);
+    if (!file) return;
     const reader = new FileReader();
     reader.onload = ev => {
-      try {
-        const imported = JSON.parse(ev.target.result);
-        const custom = loadCustomData();
-        if (imported.customSkills) custom.customSkills.push(...imported.customSkills);
-        if (imported.customGuildBonuses) {
-          for (const g in imported.customGuildBonuses) {
-            if (!custom.customGuildBonuses[g]) custom.customGuildBonuses[g] = {};
-            Object.assign(custom.customGuildBonuses[g], imported.customGuildBonuses[g]);
-          }
-        }
-        saveCustomData(custom);
-        applyCustomData();
-        renderUtilitiesModule();
-        alert('Custom data imported.');
-      } catch(err) {
-        alert('Could not read this file: ' + err.message);
-      }
-      document.body.removeChild(input);
+      let parsed;
+      try { parsed = JSON.parse(ev.target.result); } catch (err) { alert('Could not read this file as valid JSON: ' + err.message); return; }
+      onParsed(parsed, file.name);
     };
     reader.readAsText(file);
   };
   input.click();
+}
+
+// One report section: a heading with a count, and the entries (collapsed when long).
+function importReportSection(title, entries, tone) {
+  if (!entries.length) return '';
+  const color = tone === 'bad' ? 'color:#c05050' : tone === 'warn' ? 'color:var(--gold-dim)' : '';
+  const list = `<ul style="margin:4px 0 0 18px">${entries.map(e => `<li>${escapeHtml(e)}</li>`).join('')}</ul>`;
+  return `<div style="margin-top:8px"><div style="${color}"><b>${escapeHtml(title)}</b> (${entries.length})</div>${entries.length > 8 ? `<details><summary style="cursor:pointer">Show all</summary>${list}</details>` : list}</div>`;
+}
+
+function showImportReport(title, summary, sectionsHtml, canImport, onImport) {
+  openModal(`
+    <h3>${escapeHtml(title)}</h3>
+    <div>${summary}</div>
+    ${sectionsHtml || '<div class="note" style="margin-top:8px">No problems found.</div>'}
+    <div class="modal-actions">
+      <button class="btn btn-dim" onclick="pendingImport=null;closeModal()">Cancel</button>
+      <button class="btn btn-gold" ${canImport ? '' : 'disabled'} onclick="${onImport}">Import</button>
+    </div>`, { wide: true });
+}
+let pendingImport = null;
+
+// Utilities > Import Custom Data. Checks the file first: custom skills that
+// already exist (catalog or custom, ignoring case) are skipped instead of
+// duplicated, malformed skills and non-numeric guild EXPMODs are left out,
+// and EXPMODs for skills that aren't in the catalog are flagged.
+function importCustomData() {
+  pickJsonFile(imported => {
+    const r = checkCustomImport(imported);
+    if (r.fatal) { alert(r.fatal); return; }
+    pendingImport = r;
+    const summary = `${r.skills.length} custom skill${r.skills.length === 1 ? '' : 's'} and ${r.rateCount} guild EXPMOD${r.rateCount === 1 ? '' : 's'} to import.`;
+    showImportReport('Import Custom Data', summary,
+      importReportSection('Left out (malformed)', r.malformed, 'bad') +
+      importReportSection('Skills skipped (already exist)', r.duplicates, 'warn') +
+      importReportSection('Guild EXPMODs for skills not in the catalog', r.unknownRateSkills, 'warn') +
+      importReportSection('New guilds', r.newGuilds, '') +
+      importReportSection('New custom skills', r.skills.map(sk => `${sk.name} (${sk.type})`), ''),
+      r.skills.length + r.rateCount > 0, 'confirmCustomImport()');
+  });
+}
+
+function checkCustomImport(imported) {
+  if (!imported || typeof imported !== 'object' || Array.isArray(imported)) return { fatal: 'This file isn\'t GuildSchool custom data.' };
+  const r = { skills: [], rates: {}, rateCount: 0, malformed: [], duplicates: [], unknownRateSkills: [], newGuilds: [] };
+  const seen = new Set();
+  if (imported.customSkills !== undefined && !Array.isArray(imported.customSkills)) r.malformed.push('customSkills isn\'t a list');
+  for (const [i, sk] of (Array.isArray(imported.customSkills) ? imported.customSkills : []).entries()) {
+    if (!sk || typeof sk !== 'object' || typeof sk.name !== 'string' || !sk.name.trim() || typeof sk.type !== 'string' || !sk.type.trim()) { r.malformed.push(`custom skill #${i + 1}: needs a name and a type`); continue; }
+    const key = normalizeSkillName(sk.name);
+    if (findSkillDef(sk.name) || seen.has(key)) { r.duplicates.push(sk.name); continue; }
+    seen.add(key);
+    r.skills.push(sk);
+  }
+  const bonuses = imported.customGuildBonuses;
+  if (bonuses !== undefined && (!bonuses || typeof bonuses !== 'object' || Array.isArray(bonuses))) r.malformed.push('customGuildBonuses isn\'t a guild → skill → EXPMOD table');
+  else for (const [guild, rates] of Object.entries(bonuses || {})) {
+    if (!rates || typeof rates !== 'object' || Array.isArray(rates)) { r.malformed.push(`${guild}: not a skill → EXPMOD table`); continue; }
+    for (const [skill, v] of Object.entries(rates)) {
+      const num = typeof v === 'number' ? v : parseFloat(v);
+      if (!isFinite(num)) { r.malformed.push(`${guild} / ${skill}: EXPMOD "${v}" isn't a number`); continue; }
+      if (!findSkillDef(skill) && !seen.has(normalizeSkillName(skill))) r.unknownRateSkills.push(`${guild} / ${skill}`);
+      (r.rates[guild] = r.rates[guild] || {})[skill] = num;
+      r.rateCount++;
+    }
+    if (r.rates[guild] && !GUILDS[guild]) r.newGuilds.push(guild);
+  }
+  return r;
+}
+
+function confirmCustomImport() {
+  const r = pendingImport;
+  if (!r || !r.rates) return;
+  pendingImport = null;
+  const custom = loadCustomData();
+  custom.customSkills.push(...r.skills);
+  for (const g in r.rates) {
+    if (!custom.customGuildBonuses[g]) custom.customGuildBonuses[g] = {};
+    Object.assign(custom.customGuildBonuses[g], r.rates[g]);
+  }
+  saveCustomData(custom);
+  applyCustomData();
+  closeModal();
+  renderUtilitiesModule();
 }
 
 function exportData() {
@@ -248,34 +320,61 @@ function updateExportIndicator() {
   }
 }
 
+// Import JSON (characters). Checks every character before importing:
+// characters that would overwrite one already here (same id), skill names
+// that only differ from the catalog by case (renamed to the catalog's
+// spelling), skills not in the catalog (kept, but flagged), and malformed
+// entries (left out).
 function importData() {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.json,application/json';
-  input.style.display = 'none';
-  document.body.appendChild(input);
-  input.onchange = e => {
-    const file = e.target.files[0];
-    if (!file) { document.body.removeChild(input); return; }
-    const reader = new FileReader();
-    reader.onload = ev => {
-      try {
-        const imported = JSON.parse(ev.target.result);
-        if (imported.characters && Object.keys(imported.characters).length > 0) {
-          const count = Object.keys(imported.characters).length;
-          Object.assign(state.characters, imported.characters);
-          saveState();
-          renderApp();
-          alert(`Import successful: ${count} character(s) loaded.`);
-        } else {
-          alert('This file doesn\'t contain any character data (no "characters" key found). Make sure you selected the right export file.');
-        }
-      } catch(err) {
-        alert('Could not read this file as valid JSON: ' + err.message);
-      }
-      document.body.removeChild(input);
-    };
-    reader.readAsText(file);
-  };
-  input.click();
+  pickJsonFile(imported => {
+    const r = checkCharacterImport(imported);
+    if (r.fatal) { alert(r.fatal); return; }
+    pendingImport = r;
+    const n = Object.keys(r.chars).length;
+    const summary = `${n} character${n === 1 ? '' : 's'} to import: ${r.added.length} new, ${r.overwrites.length} replacing one already here.`;
+    showImportReport('Import Characters', summary,
+      importReportSection('Will REPLACE the character already here', r.overwrites, 'bad') +
+      importReportSection('Not imported (malformed)', r.skipped, 'bad') +
+      importReportSection('Entries left out (malformed)', r.malformed, 'bad') +
+      importReportSection('Skills not in the skill catalog (kept, but their values can\'t be calculated)', r.unknownSkills, 'warn') +
+      importReportSection('Skill names fixed to the catalog\'s spelling', r.caseFixes, '') +
+      importReportSection('New characters', r.added, ''),
+      n > 0, 'confirmCharacterImport()');
+  });
+}
+
+function checkCharacterImport(imported) {
+  if (!imported || typeof imported !== 'object' || !imported.characters || typeof imported.characters !== 'object' || Array.isArray(imported.characters)) {
+    return { fatal: 'This file doesn\'t contain any character data (no "characters" object). Make sure you selected a GuildSchool character export.' };
+  }
+  const r = { chars: {}, added: [], overwrites: [], skipped: [], malformed: [], unknownSkills: [], caseFixes: [] };
+  for (const [id, c] of Object.entries(imported.characters)) {
+    if (!c || typeof c !== 'object' || Array.isArray(c)) { r.skipped.push(`${id}: not a character record`); continue; }
+    const ch = JSON.parse(JSON.stringify(c));
+    const who = ch.name || '(unnamed)';
+    if (ch.skills !== undefined && !Array.isArray(ch.skills)) { r.malformed.push(`${who}: skills isn't a list, imported with no skills`); ch.skills = []; }
+    ch.skills = (ch.skills || []).filter((si, i) => {
+      if (!si || typeof si !== 'object' || typeof si.skillName !== 'string' || !si.skillName.trim()) { r.malformed.push(`${who}: skill #${i + 1} has no skill name`); return false; }
+      const def = findSkillDef(si.skillName);
+      if (!def) r.unknownSkills.push(`${who}: ${si.skillName}`);
+      else if (def.name !== si.skillName) { r.caseFixes.push(`${who}: "${si.skillName}" → "${def.name}"`); si.skillName = def.name; }
+      return true;
+    });
+    if (ch.items !== undefined && !Array.isArray(ch.items)) { r.malformed.push(`${who}: items isn't a list, imported with no items`); ch.items = []; }
+    if (Array.isArray(ch.items)) ch.items = ch.items.filter((it, i) => { if (it && typeof it === 'object') return true; r.malformed.push(`${who}: item #${i + 1} isn't an item`); return false; });
+    if (state.characters[id]) r.overwrites.push(`${who}${state.characters[id].name && state.characters[id].name !== who ? ` (replaces "${state.characters[id].name}")` : ''}`);
+    else r.added.push(who);
+    r.chars[id] = ch;
+  }
+  return r;
+}
+
+function confirmCharacterImport() {
+  const r = pendingImport;
+  if (!r || !r.chars) return;
+  pendingImport = null;
+  Object.assign(state.characters, r.chars);
+  saveState();
+  closeModal();
+  renderApp();
 }

@@ -138,7 +138,7 @@ function toggleSkillExpanded(skillId, event) {
 // type section don't nest, so those skills stay top-level in their own section.
 function sidebarParentId(si, sectionIds, allSkills) {
   if (si.parentSkillId && sectionIds.has(si.parentSkillId)) return si.parentSkillId;
-  const def = SKILLS.find(s => s.name === si.skillName);
+  const def = findSkillDef(si.skillName);
   const parentName = def && !def.templated && def.parent ? def.parent.trim().toLowerCase() : '';
   if (!parentName) return null;
   const parent = allSkills.find(s => s.id !== si.id && sectionIds.has(s.id) && s.skillName.trim().toLowerCase() === parentName);
@@ -174,9 +174,9 @@ function focusSkillInSidebar(skillId) {
   const si = skills.find(s => s.id === skillId);
   expandedSkillIds = new Set([skillId]);
   if (!si) return;
-  const def = SKILLS.find(s => s.name === si.skillName);
-  const type = def ? def.type : 'Other';
-  const section = skills.filter(s => { const d = SKILLS.find(x => x.name === s.skillName); return (d ? d.type : 'Other') === type; });
+  const def = findSkillDef(si.skillName);
+  const type = def ? def.type : UNKNOWN_SKILL_TYPE;
+  const section = skills.filter(s => skillTypeOf(s.skillName) === type);
   const parentOf = skillChildrenMap(section, skills).parentOf;
   for (let up = parentOf.get(skillId), n = 0; up && n < 50; up = parentOf.get(up), n++) expandedSkillIds.add(up);
 }
@@ -201,7 +201,7 @@ function sortSkillsForDisplay(type, list) {
 
 // How a skill type is named in the sidebar, where it differs from the type
 // itself (skills keep their type; e.g. the Spells page looks for 'Spell').
-const SIDEBAR_TYPE_LABELS = { 'Spell': 'Void Capacity' };
+const SIDEBAR_TYPE_LABELS = { 'Spell': 'Void Capacity', [UNKNOWN_SKILL_TYPE]: '⚠ Not in skill catalog' };
 
 function renderSidebar() {
   const char = state.characters[state.activeChar];
@@ -209,8 +209,8 @@ function renderSidebar() {
   const skills = char.skills || [];
   const byType = {};
   for (const si of skills) {
-    const def = SKILLS.find(s => s.name === si.skillName);
-    const type = def ? def.type : 'Other';
+    const def = findSkillDef(si.skillName);
+    const type = def ? def.type : UNKNOWN_SKILL_TYPE;
     if (!byType[type]) byType[type] = [];
     byType[type].push(si);
   }
@@ -223,7 +223,7 @@ function renderSidebar() {
   if (hasSpiritLevel(char)) html += navItem('spell', 'showSpellModule()', '✦ Spells');
   html += navItem('inventory', 'showInventoryModule()', '🎒 Inventory');
   html += `<hr style="border-color:var(--border);margin:4px 0">`;
-  const typeOrder = ['Combat','Spell','Acting','Alchemic','Art','Artisan','Curative','Dance','Detect','Engineer','Language','Mind','Movement','Music','Priest','Scholar','Social','Thieves','Torturer','Outdoor','Other'];
+  const typeOrder = SKILL_TYPE_ORDER;
   const sortedTypes = typeOrder.filter(t => byType[t]).concat(Object.keys(byType).filter(t => !typeOrder.includes(t)));
   for (const type of sortedTypes) {
     // Auto-expand a section if it contains the currently active skill, unless the user has explicitly collapsed it
@@ -231,7 +231,7 @@ function renderSidebar() {
     if (containsActive && collapsedSections[type] === undefined) collapsedSections[type] = false;
     const isCollapsed = collapsedSections[type] === undefined ? true : collapsedSections[type];
     const arrow = isCollapsed ? '▶' : '▼';
-    html += `<div class="sidebar-section" style="cursor:pointer;display:flex;align-items:center;gap:5px" onclick="toggleSection('${type}')">
+    html += `<div class="sidebar-section${type === UNKNOWN_SKILL_TYPE ? ' skill-unknown' : ''}" style="cursor:pointer;display:flex;align-items:center;gap:5px" ${type === UNKNOWN_SKILL_TYPE ? 'title="These skills don\'t match any skill in the catalog, so their values can\'t be calculated"' : ''} onclick="toggleSection('${type}')">
       <span style="font-size:9px">${arrow}</span>${SIDEBAR_TYPE_LABELS[type] || type} <span style="color:var(--text-dim);font-weight:normal">(${byType[type].length})</span>
     </div>`;
     if (isCollapsed) continue;

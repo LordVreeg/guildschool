@@ -555,7 +555,7 @@ function createChar() {
       char.skills = char.skills || [];
       const allGrants = [...(rolled.startingSkills||[]), ...(rolled.acquisitionSkills||[])];
       for (const grant of allGrants) {
-        const def = SKILLS.find(s => s.name === grant.skillName);
+        const def = findSkillDef(grant.skillName);
         if (!def) continue; // unresolved skill names are already logged in history, not silently created
         const existing = char.skills.find(s => s.skillName === grant.skillName);
         if (existing) {
@@ -625,7 +625,7 @@ function setAddSkillMode(mode) {
 
 function renderAddSkillList() {
   const char = state.characters[state.activeChar];
-  const typeOrder = ['Combat','Spell','Acting','Alchemic','Art','Artisan','Curative','Dance','Detect','Engineer','Language','Mind','Movement','Music','Priest','Scholar','Social','Thieves','Torturer','Outdoor'];
+  const typeOrder = SKILL_TYPE_ORDER;
   const isGuildMode = addSkillModalMode === 'primary' || addSkillModalMode === 'secondary' || addSkillModalMode === 'tertiary';
   const listEl = document.getElementById('skill-list');
 
@@ -688,7 +688,7 @@ function lookupRacialBonus(character, skillName) {
 }
 
 function autoPopulateDropdownChildren(character, parentInst) {
-  const parentDef = SKILLS.find(s => s.name === parentInst.skillName);
+  const parentDef = findSkillDef(parentInst.skillName);
   if (!parentDef) return 0;
   const existingKeys = new Set((character.skills||[]).map(s => s.skillName + '|' + (s.binding||'')));
   let added = 0;
@@ -744,7 +744,7 @@ function autoPopulateDropdownChildren(character, parentInst) {
   if (weaponClass) {
     const sharedTemplated = ['Attack versus', 'Damage Bonus', 'Initiative bonus', 'Multiple attack', 'Parry'];
     for (const name of sharedTemplated) {
-      const def = SKILLS.find(s => s.name === name);
+      const def = findSkillDef(name);
       if (def) addChild(def, weaponClass);
     }
   }
@@ -768,7 +768,7 @@ function addSkill(skillName) {
   const char = state.characters[state.activeChar];
   if (!char) return;
   if (!char.skills) char.skills = [];
-  const def = SKILLS.find(s => s.name === skillName);
+  const def = findSkillDef(skillName);
   const id = 'sk_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
   const guildForSkill = (addSkillModalMode === 'secondary' && char.guild2) ? char.guild2
     : (addSkillModalMode === 'tertiary' && char.guild3) ? char.guild3

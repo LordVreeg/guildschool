@@ -937,7 +937,7 @@ function rollLevelSlot(skillId, idx) {
   if (!char) return;
   const si = (char.skills || []).find(s => s.id === skillId);
   if (!si) return;
-  const def = SKILLS.find(s => s.name === si.skillName);
+  const def = findSkillDef(si.skillName);
   if (!def || !def.per_level) return;
   updateRoll(skillId, idx, rollDiceExpr(def.per_level));
 }
@@ -947,7 +947,7 @@ function rollAllEmptyLevels(skillId) {
   if (!char) return;
   const si = (char.skills || []).find(s => s.id === skillId);
   if (!si) return;
-  const def = SKILLS.find(s => s.name === si.skillName);
+  const def = findSkillDef(si.skillName);
   if (!def || !def.per_level) return;
   if (!si.rolls) si.rolls = Array(20).fill('');
   // Only fill slots up to the skill's current level -- higher slots aren't earned yet.
@@ -966,7 +966,7 @@ function rollAllEmptyLevels(skillId) {
 // it is bound to. Same idea as the sidebar's nesting, across all types.
 function skillParentInstanceId(si, skills) {
   if (si.parentSkillId && skills.some(s => s.id === si.parentSkillId)) return si.parentSkillId;
-  const def = SKILLS.find(s => s.name === si.skillName);
+  const def = findSkillDef(si.skillName);
   const name = def && def.templated ? si.binding : def && def.parent;
   const want = String(name || '').trim().toLowerCase();
   if (!want) return null;

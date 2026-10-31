@@ -247,3 +247,5 @@ body {
 /* A link out to the Celtricia wiki (e.g. a spell's name) */
 .wiki-link { color: inherit; text-decoration: underline dotted; }
 .wiki-link:hover { color: var(--gold); }
+/* A skill (or group of skills) that doesn't match anything in the skill catalog */
+.skill-unknown, .sidebar-section.skill-unknown { color: #c05050 !important; }

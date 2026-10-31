@@ -220,7 +220,7 @@ function handleChoiceSelect(selectEl, char, field, listKey) {
 function applyCustomData() {
   const custom = loadCustomData();
   for (const skill of custom.customSkills) {
-    if (!SKILLS.find(s => s.name === skill.name)) SKILLS.push(skill);
+    if (!findSkillDef(skill.name)) SKILLS.push(skill);
   }
   for (const guildName in custom.customGuildBonuses) {
     if (!GUILDS[guildName]) GUILDS[guildName] = {};

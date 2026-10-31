@@ -79,6 +79,40 @@ const MAGIC_ITEM_CLASSES = ['Books', 'Clothing', 'Jewelry', 'Misc', 'Potions', '
 // fill in avg_damage by hand once loaded, if you want it to feed the XP box.
 let BESTIARY_RACE_TEMPLATES = [];
 
+// Skill catalog lookup by name. Ignores case and extra spaces, so "hit points"
+// or "Hit  Points " still find "Hit Points". Every lookup of a skill's catalog
+// entry goes through findSkillDef rather than comparing names directly.
+// SKILL_NAME_ALIASES maps an old name (lowercase) to its current catalog name;
+// add an entry when the wiki renames a skill.
+const SKILL_NAME_ALIASES = {};
+// The order skill types are listed in (sidebar, Overview, Add Skill, and the
+// Utilities custom-skill Type list). Names must match the types in
+// data/skills.json exactly; a type missing here is listed after these.
+const SKILL_TYPE_ORDER = ['Combat', 'Spell', 'Acting', 'Alchemic', 'Art', 'Artisan', 'Athletics', 'Curative', 'Dance', 'Detect', 'Engineer', 'Language', 'Mind', 'Movement', 'Music', 'Priest', 'Scholar', 'Social', 'Thieves Tree', 'Torturer', 'Outdoor'];
+// The sidebar/Overview group for a skill that isn't in the catalog at all.
+const UNKNOWN_SKILL_TYPE = '(not in skill catalog)';
+function normalizeSkillName(name) {
+  return String(name == null ? '' : name).trim().replace(/\s+/g, ' ').toLowerCase();
+}
+let skillIndexCache = { list: null, size: -1, map: null };
+function findSkillDef(name) {
+  if (skillIndexCache.list !== SKILLS || skillIndexCache.size !== SKILLS.length) {
+    const map = new Map();
+    for (const sk of SKILLS) { const k = normalizeSkillName(sk.name); if (!map.has(k)) map.set(k, sk); }
+    skillIndexCache = { list: SKILLS, size: SKILLS.length, map };
+  }
+  const key = normalizeSkillName(name);
+  if (!key) return undefined;
+  const alias = SKILL_NAME_ALIASES[key];
+  return skillIndexCache.map.get(key) || (alias ? skillIndexCache.map.get(normalizeSkillName(alias)) : undefined);
+}
+// A skill instance's type for grouping; skills missing from the catalog get
+// their own flagged group instead of quietly landing somewhere else.
+function skillTypeOf(skillName) {
+  const def = findSkillDef(skillName);
+  return def ? def.type : UNKNOWN_SKILL_TYPE;
+}
+
 // Same ?v= as this script's own tag in index.html, so bumping it there also
 // makes browsers fetch updated data files instead of cached ones.
 const ASSET_VERSION = (document.currentScript && new URL(document.currentScript.src).searchParams.get('v')) || '';
