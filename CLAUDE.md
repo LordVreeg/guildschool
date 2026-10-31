@@ -36,6 +36,19 @@ commit.
   must bump the version tag too.
 - **The reference data stays in `data/*.json` for now.** Moving it into
   Supabase is on hold.
+- **Look skills up with `findSkillDef(name)`.** To get a skill's catalog
+  entry, call `findSkillDef` in `js/data.js`. Don't compare names yourself
+  with `SKILLS.find(s => s.name === ...)`. `findSkillDef` ignores case and
+  extra spaces, and it follows `SKILL_NAME_ALIASES`; add an alias there when
+  the wiki renames a skill. A skill it can't find shows under the flagged
+  "⚠ Not in skill catalog" group, so don't let that fail silently.
+- **Skill types must match `SKILL_TYPE_ORDER`.** Every `type` in
+  `data/skills.json` must be spelled exactly like an entry in
+  `SKILL_TYPE_ORDER` in `js/data.js`. That list sets the order of type
+  groups in the sidebar, the Overview, Add Skill and the Utilities Type
+  dropdown. A wiki sync that brings in a new or misspelled type (e.g.
+  "Mind>", "Thieve's Tree") puts its skills in a stray group at the end.
+  Fix the typo in the data, or add a genuinely new type to the list.
 
 ## Running locally
 
