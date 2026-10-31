@@ -336,6 +336,10 @@ function computeWeapon(character, item) {
     const ammoItem = (item.ammunitionItemIdx !== undefined && item.ammunitionItemIdx !== '') ?
       (character.items || [])[item.ammunitionItemIdx] : null;
     const ammoMagicToHit = ammoItem ? (parseFloat(ammoItem.magicBonusToHit) || 0) : 0;
+    const ammoOffense = ammoItem && itemHasModKind(ammoItem, 'offense');
+    const ammoMagicCrit = ammoOffense ? (parseFloat(ammoItem.magicCritBonus) || 0) : 0;
+    const missileDmgBefore = magicDamageBeforeDivider + (ammoOffense ? (parseFloat(ammoItem.magicDamageBeforeDivider) || 0) : 0);
+    const missileDmgAfter = magicDamageAfterDivider + (ammoItem ? (parseFloat(ammoItem.magicDamageAfterDivider) || 0) : 0);
     const rawHit = ((a.ST||0)-missileStn)*stmod + ((a.CD||0)-missileCdn)*cdmod + skillAbility + magicBonusToHitAll + ammoMagicToHit;
     // Spears only: thrown range moves by the strength to-hit bonus/malus (a
     // second dip on top of the to-hit itself), but a malus can never cut the
@@ -351,7 +355,7 @@ function computeWeapon(character, item) {
     const rangeMod = effectiveRange > 0 ? Math.max(0, 1 - (targetDistance / effectiveRange)) : 1;
     const finalHit = rawHit * rangeMod;
     const cf = critFumble(finalHit);
-    missile = { rawHit, rangeMod, effectiveRange, spearThrownRange, finalHit, ammoItem, speedMissile, usedGrip: oneHandUsable ? '1H' : '2H', critChance: cf.critChance, fumbleThreshold: cf.fumbleThreshold, fumbleChance: cf.fumbleChance };
+    missile = { rawHit, rangeMod, effectiveRange, spearThrownRange, finalHit, ammoItem, speedMissile, usedGrip: oneHandUsable ? '1H' : '2H', magicDmgBefore: missileDmgBefore, magicDmgAfter: missileDmgAfter, critChance: cf.critChance + ammoMagicCrit, fumbleThreshold: cf.fumbleThreshold, fumbleChance: cf.fumbleChance };
   }
 
   return { skillAbility, baseWeaponSkval, singleWeapSpec, critHitBonusSkval, parrySkval, parryPointsUsed, multipleAttackSkval, oneHand, twoHand, missile, magicDamageBeforeDivider, magicCritBonus };
@@ -653,6 +657,10 @@ function itemOnPerson(character, it) {
 }
 function itemModsInUse(character, it, countedShields) {
   if (it.type === 'Armor') return true;
+  if (it.type === 'Ammunition') {
+    const idx = (character.items || []).indexOf(it);
+    return (character.items || []).some(w => w.type === 'Weapon' && w.ammunitionItemIdx !== undefined && w.ammunitionItemIdx !== '' && String(w.ammunitionItemIdx) === String(idx));
+  }
   if (it.type === 'Shield') return countedShields ? countedShields.includes(it) : true;
   if (it.type === 'Weapon') return !!it.wielded;
   return itemOnPerson(character, it);
@@ -677,7 +685,7 @@ function magicDefenseTotals(character) {
 function magicOffenseFromOthers(character) {
   const t = { toHit: 0, before: 0, after: 0, crit: 0 };
   for (const it of character.items || []) {
-    if (it.type === 'Weapon' || !itemHasModKind(it, 'offense') || !itemModsInUse(character, it)) continue;
+    if (it.type === 'Weapon' || it.type === 'Ammunition' || !itemHasModKind(it, 'offense') || !itemModsInUse(character, it)) continue;
     t.toHit += parseFloat(it.magicBonusToHit) || 0; t.before += parseFloat(it.magicDamageBeforeDivider) || 0;
     t.after += parseFloat(it.magicDamageAfterDivider) || 0; t.crit += parseFloat(it.magicCritBonus) || 0;
   }

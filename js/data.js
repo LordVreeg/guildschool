@@ -125,6 +125,8 @@ function itemModKinds(it) {
   if (!it.masterwork) return null;
   if (it.type === 'Weapon') return { base: ['offense'], optional: ['defense', 'void'] };
   if (it.type === 'Armor' || it.type === 'Shield') return { base: ['defense'], optional: ['void'] };
+  // Ammunition's offense adds to the missile weapon firing it (see computeWeapon)
+  if (it.type === 'Ammunition') return { base: ['offense'], optional: [] };
   return null;
 }
 // Has this kind: one of its base kinds, or an optional one that's been added

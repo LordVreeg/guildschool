@@ -333,7 +333,7 @@ function itemModsLineHtml(char, it) {
   }
   if (!bits.length) return '';
   const inUse = itemModsInUse(char, it, shieldsCountedItems(char));
-  const why = it.type === 'Weapon' ? 'tick Wielding on the Combat page' : it.type === 'Shield' ? 'tick Wielding on the Combat page' : 'carry it on your person';
+  const why = it.type === 'Ammunition' ? 'pick it as a missile weapon\'s ammunition on the Combat page' : it.type === 'Weapon' ? 'tick Wielding on the Combat page' : it.type === 'Shield' ? 'tick Wielding on the Combat page' : 'carry it on your person';
   return `<tr class="item-spell-row"><td colspan="7">◈ ${escapeHtml(bits.join(' · '))}${inUse ? '' : ` <span style="color:#c05050" title="Not counting right now: ${why}">(not in use)</span>`}</td></tr>`;
 }
 
@@ -575,6 +575,8 @@ function renderCombatModule() {
               <div class="computed-item"><span class="ci-label">Range Modifier</span><span class="ci-value">${Math.round(w.missile.rangeMod*100)}</span></div>
               <div class="computed-item"><span class="ci-label">Missile To-Hit</span><span class="ci-value skval">${Math.round(w.missile.finalHit)}</span></div>
               <div class="computed-item"><span class="ci-label">Crit %</span><span class="ci-value">${fmtCrit(w.missile.critChance)}</span></div>
+              ${w.missile.magicDmgBefore ? `<div class="computed-item"><span class="ci-label">Magic Dmg Before Divider</span><span class="ci-value">+${w.missile.magicDmgBefore}</span></div>` : ''}
+              ${w.missile.magicDmgAfter ? `<div class="computed-item"><span class="ci-label">Magic Dmg After Divider</span><span class="ci-value">+${w.missile.magicDmgAfter}</span></div>` : ''}
               <div class="computed-item"><span class="ci-label">Fumble %</span><span class="ci-value">${fmtFumble(w.missile.fumbleThreshold)}</span></div>
             </div>
             ${(char.items||[]).filter(i=>i.type==='Ammunition').length===0 ? '<div class="note" style="margin-top:6px">No ammunition items in inventory yet — add one on the Inventory page, Type: Weapon, Ammunition.</div>' : ''}
@@ -584,6 +586,8 @@ function renderCombatModule() {
               <div class="form-group"><label>Dividing Die</label><input type="number" class="w-sm" value="${w.missile.ammoItem.dividingDie||0}" onchange="updateItem(${it.ammunitionItemIdx},'dividingDie',this.value);renderCombatModule()"></div>
               <div class="form-group"><label>Magic Bonus to Hit</label><input type="number" class="w-sm" value="${w.missile.ammoItem.magicBonusToHit||0}" onchange="updateItem(${it.ammunitionItemIdx},'magicBonusToHit',this.value);renderCombatModule()"></div>
               <div class="form-group"><label>Magic Dmg After Divider</label><input type="number" class="w-sm" value="${w.missile.ammoItem.magicDamageAfterDivider||0}" onchange="updateItem(${it.ammunitionItemIdx},'magicDamageAfterDivider',this.value);renderCombatModule()"></div>
+              ${itemHasModKind(w.missile.ammoItem, 'offense') ? `<div class="form-group"><label>Magic Dmg Before Divider</label><input type="number" class="w-sm" value="${w.missile.ammoItem.magicDamageBeforeDivider||0}" onchange="updateItem(${it.ammunitionItemIdx},'magicDamageBeforeDivider',this.value);renderCombatModule()"></div>
+              <div class="form-group"><label>Magic Crit %</label><input type="number" class="w-sm" value="${w.missile.ammoItem.magicCritBonus||0}" onchange="updateItem(${it.ammunitionItemIdx},'magicCritBonus',this.value);renderCombatModule()"></div>` : ''}
             </div>
             ` : ''}
             <div class="note">Missile to-hit = (1 − distance/range) × base hit chance, using ${w.missile.usedGrip} stats${w.missile.usedGrip==='2H' ? ' (no 1H mode available for this weapon)' : ''}. Base hit chance includes both the weapon's own Magic Bonus to Hit and the loaded ammunition's Magic Bonus to Hit — they add together. Total damage = weapon's own dice + ammunition's dice (including its own Magic Damage After Divider), if any.</div>
