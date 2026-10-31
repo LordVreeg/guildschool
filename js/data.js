@@ -107,6 +107,39 @@ function itemSpellUsageText(sp, char, rule) {
   if (rule === 'potion') return `${left}/${max} use${max === 1 ? '' : 's'}`;
   return sp.period === 'charges' ? `${left}/${max} charges` : `${left}/${max} ${itemSpellPeriodLabel(sp.period)}`;
 }
+// Magic item modifiers, in three kinds (fields saved on the item):
+//   defense: magicAvoidance (bonus: lowers AV), magicProtection (adds to PR)
+//   offense: magicBonusToHit, magicDamageBeforeDivider, magicDamageAfterDivider, magicCritBonus (%)
+//   void:    magicVoid [{ pool, amount }] spell cost reduction per pool,
+//            magicVoidStacks (adds to other items' void instead of best-only)
+// Which kinds an item has (base) and can add (optional) depends on its type;
+// only magical items get any (MW/Magic ticked, or a Magic Item that isn't a
+// potion or scroll).
+const MAGIC_MOD_FIELDS = {
+  defense: ['magicAvoidance', 'magicProtection'],
+  offense: ['magicBonusToHit', 'magicDamageBeforeDivider', 'magicDamageAfterDivider', 'magicCritBonus'],
+};
+function itemModKinds(it) {
+  if (!it) return null;
+  if (it.type === 'Magic Item') return itemSpellRule(it) ? null : { base: ['void'], optional: ['defense'] };
+  if (!it.masterwork) return null;
+  if (it.type === 'Weapon') return { base: ['offense'], optional: ['defense', 'void'] };
+  if (it.type === 'Armor' || it.type === 'Shield') return { base: ['defense'], optional: ['void'] };
+  return null;
+}
+// Has this kind: one of its base kinds, or an optional one that's been added
+// (any value set, or opened in the popup).
+function itemHasModKind(it, kind) {
+  const k = itemModKinds(it);
+  if (!k) return false;
+  if (k.base.includes(kind)) return true;
+  if (!k.optional.includes(kind)) return false;
+  if (it['_mod_' + kind]) return true;
+  if (kind === 'void') return (it.magicVoid || []).some(v => v && v.pool && parseFloat(v.amount));
+  return (MAGIC_MOD_FIELDS[kind] || []).some(f => parseFloat(it[f]));
+}
+// The spell-point pools a void reduction can name (Spirit SP, House of Fire SP, ...).
+function spellPoolNames() { return SKILLS.filter(s => s.type === 'Spell' && !s.parent).map(s => s.name).sort(); }
 // The "Magic Item Class" choices for a Magic Item.
 const MAGIC_ITEM_CLASSES = ['Books', 'Clothing', 'Jewelry', 'Misc', 'Potions', 'Scrolls'];
 

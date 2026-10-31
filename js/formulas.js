@@ -283,7 +283,12 @@ function computeWeapon(character, item) {
   const cdmod = parseFloat(item.cdmod) || 0;
   const speedMelee = parseFloat(item.speedMelee) || 0;
   const magicBonusToHit = parseFloat(item.magicBonusToHit) || 0;
-  const magicDamageAfterDivider = parseFloat(item.magicDamageAfterDivider) || 0;
+  // Magic offense: this weapon's own, plus any non-weapon item in use with offense
+  const otherOffense = magicOffenseFromOthers(character);
+  const magicBonusToHitAll = magicBonusToHit + otherOffense.toHit;
+  const magicDamageAfterDivider = (parseFloat(item.magicDamageAfterDivider) || 0) + otherOffense.after;
+  const magicDamageBeforeDivider = (parseFloat(item.magicDamageBeforeDivider) || 0) + otherOffense.before;
+  const magicCritBonus = (parseFloat(item.magicCritBonus) || 0) + otherOffense.crit;
 
   const baseWeaponSkval = item.weaponClass ? getSkillSkval(character, item.weaponClass) : 0;
   const singleWeapSpec = (character.skills||[]).filter(s => s.skillName === 'Single weap spec' && s.binding === item.name)
@@ -302,18 +307,18 @@ function computeWeapon(character, item) {
     const threatRange = parseFloat(item.threatRange) || 0;
     const rawCrit = 7 + Math.floor(totalToHit/10) + (0.10 * critHitBonusSkval) + threatRange;
     const cappedCrit = Math.min(rawCrit, totalToHit/2);
-    const critChance = Math.max(cappedCrit, 3);
+    const critChance = Math.max(cappedCrit, 3) + magicCritBonus;
     const fumbleThreshold = Math.max(93, totalToHit);
     const fumbleChance = Math.max(0, 101 - fumbleThreshold);
     return { critChance, fumbleThreshold, fumbleChance };
   }
 
   function calc(stn, cdn) {
-    const hit = ((a.ST||0)-stn)*stmod + ((a.CD||0)-cdn)*cdmod + skillAbility + magicBonusToHit - parryPointsUsed;
+    const hit = ((a.ST||0)-stn)*stmod + ((a.CD||0)-cdn)*cdmod + skillAbility + magicBonusToHitAll - parryPointsUsed;
     const dmgBonus = (((a.ST||0)-stn)*stmod)/4 + magicDamageAfterDivider;
     const speed = Math.max(1, speedMelee - ((((a.CD||0)-cdn)*cdmod)/4));
     const cf = critFumble(hit);
-    return { hit, dmgBonus, speed, critChance: cf.critChance, fumbleThreshold: cf.fumbleThreshold, fumbleChance: cf.fumbleChance };
+    return { hit, dmgBonus, dmgBeforeDivider: magicDamageBeforeDivider, speed, critChance: cf.critChance, fumbleThreshold: cf.fumbleThreshold, fumbleChance: cf.fumbleChance };
   }
 
   const oneHandUsable = !(stn1h === 0 && cdn1h === 0);
@@ -331,7 +336,7 @@ function computeWeapon(character, item) {
     const ammoItem = (item.ammunitionItemIdx !== undefined && item.ammunitionItemIdx !== '') ?
       (character.items || [])[item.ammunitionItemIdx] : null;
     const ammoMagicToHit = ammoItem ? (parseFloat(ammoItem.magicBonusToHit) || 0) : 0;
-    const rawHit = ((a.ST||0)-missileStn)*stmod + ((a.CD||0)-missileCdn)*cdmod + skillAbility + magicBonusToHit + ammoMagicToHit;
+    const rawHit = ((a.ST||0)-missileStn)*stmod + ((a.CD||0)-missileCdn)*cdmod + skillAbility + magicBonusToHitAll + ammoMagicToHit;
     // Spears only: thrown range moves by the strength to-hit bonus/malus (a
     // second dip on top of the to-hit itself), but a malus can never cut the
     // listed range below half. Spear Thrown then adds 1 range per 4 points of
@@ -349,7 +354,7 @@ function computeWeapon(character, item) {
     missile = { rawHit, rangeMod, effectiveRange, spearThrownRange, finalHit, ammoItem, speedMissile, usedGrip: oneHandUsable ? '1H' : '2H', critChance: cf.critChance, fumbleThreshold: cf.fumbleThreshold, fumbleChance: cf.fumbleChance };
   }
 
-  return { skillAbility, baseWeaponSkval, singleWeapSpec, critHitBonusSkval, parrySkval, parryPointsUsed, multipleAttackSkval, oneHand, twoHand, missile };
+  return { skillAbility, baseWeaponSkval, singleWeapSpec, critHitBonusSkval, parrySkval, parryPointsUsed, multipleAttackSkval, oneHand, twoHand, missile, magicDamageBeforeDivider, magicCritBonus };
 }
 
 function computeSpellPools(character) {
@@ -393,7 +398,9 @@ function computeSpellPools(character) {
     const reclamationChild = childStatus.find(c => c.name.toLowerCase().includes('reclamation'));
     const reclamationSkval = reclamationChild ? reclamationChild.skval : 0;
     const enhancers = (character.spellEnhancers && character.spellEnhancers[poolDef.name]) || {};
-    const spReduction = parseFloat(enhancers.spReduction) || 0;
+    const spReductionManual = parseFloat(enhancers.spReduction) || 0;
+    const spReductionItems = magicVoidReduction(character, poolDef.name);
+    const spReduction = spReductionManual + spReductionItems;
     const reclamationBonus = parseFloat(enhancers.reclamationBonus) || 0;
     const successBonus = parseFloat(enhancers.successBonus) || 0;
     const recoverAwake = Math.round(((reclamationSkval * 0.10) + reclamationBonus) * 10) / 10;
@@ -401,7 +408,7 @@ function computeSpellPools(character) {
     pools.push({ name: poolDef.name, maxSP, currentSP, usedSP, level, children: childStatus,
                  familiarity, conversionRatio, effectiveLevel: Math.ceil(effectiveLevel - 1e-9), // spell levels are whole numbers, rounded up
                  reclamationSkval, recoverAwake, recoverSleep,
-                 spReduction, reclamationBonus, successBonus });
+                 spReduction, spReductionManual, spReductionItems, reclamationBonus, successBonus });
   }
   return pools;
 }
@@ -637,6 +644,59 @@ function computeWielding(character) {
   return { weapons, shields, mode, active: weapons + shields > 0 };
 }
 
+// Which items' magic modifiers count right now: all armor (as in the armor
+// totals), shields counted the same way as there, weapons ticked Wielding,
+// and Magic Items carried on the person (Carried, or an On Person container).
+function itemOnPerson(character, it) {
+  const loc = (it.location || '').trim();
+  return !loc || !!(character.storageOnPerson || {})[loc];
+}
+function itemModsInUse(character, it, countedShields) {
+  if (it.type === 'Armor') return true;
+  if (it.type === 'Shield') return countedShields ? countedShields.includes(it) : true;
+  if (it.type === 'Weapon') return !!it.wielded;
+  return itemOnPerson(character, it);
+}
+function shieldsCountedItems(character) {
+  const shields = (character.items || []).filter(it => it.type === 'Shield');
+  return shields.some(s => s.wielded) ? shields.filter(s => s.wielded) : shields;
+}
+// Defense modifiers stack across every item in use. Shields' are kept apart
+// because they only count in the With Shield totals.
+function magicDefenseTotals(character) {
+  const counted = shieldsCountedItems(character);
+  const t = { av: 0, pr: 0, shieldAv: 0, shieldPr: 0 };
+  for (const it of character.items || []) {
+    if (!itemHasModKind(it, 'defense') || !itemModsInUse(character, it, counted)) continue;
+    const av = parseFloat(it.magicAvoidance) || 0, pr = parseFloat(it.magicProtection) || 0;
+    if (it.type === 'Shield') { t.shieldAv += av; t.shieldPr += pr; } else { t.av += av; t.pr += pr; }
+  }
+  return t;
+}
+// Offense from non-weapon items in use; a weapon adds its own on top.
+function magicOffenseFromOthers(character) {
+  const t = { toHit: 0, before: 0, after: 0, crit: 0 };
+  for (const it of character.items || []) {
+    if (it.type === 'Weapon' || !itemHasModKind(it, 'offense') || !itemModsInUse(character, it)) continue;
+    t.toHit += parseFloat(it.magicBonusToHit) || 0; t.before += parseFloat(it.magicDamageBeforeDivider) || 0;
+    t.after += parseFloat(it.magicDamageAfterDivider) || 0; t.crit += parseFloat(it.magicCritBonus) || 0;
+  }
+  return t;
+}
+// Void for one pool: the best single item in use, plus every item marked as
+// stacking its void bonuses.
+function magicVoidReduction(character, poolName) {
+  const counted = shieldsCountedItems(character);
+  let best = 0, stacked = 0;
+  for (const it of character.items || []) {
+    if (!itemHasModKind(it, 'void') || !itemModsInUse(character, it, counted)) continue;
+    const amt = (it.magicVoid || []).filter(v => v && v.pool === poolName).reduce((s, v) => s + (parseFloat(v.amount) || 0), 0);
+    if (!amt) continue;
+    if (it.magicVoidStacks) stacked += amt; else best = Math.max(best, amt);
+  }
+  return best + stacked;
+}
+
 function computeArmor(character) {
   const items = character.items || [];
   const armorItems = items.filter(it => it.type === 'Armor');
@@ -678,14 +738,17 @@ function computeArmor(character) {
     + (handFoot ? computeWeapon(character, handFoot).parryPointsUsed : 0)
     + shieldWeaponItems(character).reduce((sum, sw) => sum + computeWeapon(character, sw).parryPointsUsed, 0);
 
+  const magicDefense = magicDefenseTotals(character);
   function buildTotals(includeShield) {
     const sumAV = sumArmorAV + (includeShield ? sumShieldAV : 0);
     const sumPR = sumArmorPR + (includeShield ? sumShieldPR : 0);
-    const totalAV = sumAV - avoidanceSkval + sumOtherAV;
-    const totalPR = sumPR + (protectionSkval / 5) + weaponProtection + sumOtherPR + parryPointsTotal;
+    const magicAV = magicDefense.av + (includeShield ? magicDefense.shieldAv : 0);
+    const magicPR = magicDefense.pr + (includeShield ? magicDefense.shieldPr : 0);
+    const totalAV = sumAV - avoidanceSkval + sumOtherAV - magicAV;
+    const totalPR = sumPR + (protectionSkval / 5) + weaponProtection + sumOtherPR + parryPointsTotal + magicPR;
     // Parry only defends against melee attacks -- it can't block a missile or a spell.
     const totalPRvsRangedOrMagic = totalPR - parryPointsTotal;
-    return { sumAV, sumPR, totalAV, totalPR, totalPRvsRangedOrMagic };
+    return { sumAV, sumPR, totalAV, totalPR, totalPRvsRangedOrMagic, magicAV, magicPR };
   }
 
   const withShield = buildTotals(true);

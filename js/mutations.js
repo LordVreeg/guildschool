@@ -215,6 +215,12 @@ function confirmAddItem() {
   }
   delete d.coin;
   if (!itemCanHoldSpells(d)) delete d.spells;
+  // Magic modifiers: keep only the kinds this item has; void rows need a pool and an amount
+  if (!itemHasModKind(d, 'defense')) for (const f of MAGIC_MOD_FIELDS.defense) delete d[f];
+  if (!itemHasModKind(d, 'offense')) { delete d.magicDamageBeforeDivider; delete d.magicCritBonus; } // a weapon's older to-hit/damage fields stay
+  if (itemHasModKind(d, 'void')) d.magicVoid = (d.magicVoid || []).filter(v => v && v.pool && parseFloat(v.amount));
+  if (!itemHasModKind(d, 'void') || !(d.magicVoid || []).length) { delete d.magicVoid; delete d.magicVoidStacks; }
+  delete d._mod_defense; delete d._mod_void;
   if (!char.items) char.items = [];
   const editing = editingItemIdx !== null && char.items[editingItemIdx];
   if (editing) char.items[editingItemIdx] = d;
@@ -226,6 +232,19 @@ function confirmAddItem() {
   if (!editing && addNextItem) { openAddItemModal({ keepAddNext: true, justAdded: d.name }); return; }
   closeModal();
 }
+
+// The item popup's Magic Modifiers section: optional kinds (e.g. defense on a
+// weapon) are added with their button and removed with ✕; void has a row per pool.
+function addItemModKind(kind) { if (!itemDraft) return; itemDraft['_mod_' + kind] = true; if (kind === 'void' && !(itemDraft.magicVoid || []).length) itemDraft.magicVoid = [{ pool: '', amount: '' }]; renderAddItemModal(); }
+function removeItemModKind(kind) {
+  if (!itemDraft) return;
+  delete itemDraft['_mod_' + kind];
+  if (kind === 'void') { delete itemDraft.magicVoid; delete itemDraft.magicVoidStacks; } else for (const f of MAGIC_MOD_FIELDS[kind] || []) delete itemDraft[f];
+  renderAddItemModal();
+}
+function addItemVoidRow() { if (!itemDraft) return; (itemDraft.magicVoid = itemDraft.magicVoid || []).push({ pool: '', amount: '' }); renderAddItemModal(); }
+function removeItemVoidRow(i) { if (!itemDraft || !itemDraft.magicVoid) return; itemDraft.magicVoid.splice(i, 1); renderAddItemModal(); }
+function setItemVoidRow(i, field, value) { if (itemDraft && itemDraft.magicVoid && itemDraft.magicVoid[i]) itemDraft.magicVoid[i][field] = value; }
 
 // The item popup's Spells section: each "Add spell" click opens a selection
 // row (a draft in itemSpellDrafts: school, spell, fixed level, usage limit);

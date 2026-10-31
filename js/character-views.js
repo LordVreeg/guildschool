@@ -313,6 +313,30 @@ function itemKindLabel(it) {
   return last === 'Custom' && labels.length > 1 ? `${labels[labels.length - 2]}, Custom` : last;
 }
 
+// The line under a magical item listing its modifiers, and whether they're in
+// effect right now (worn / wielded / carried, see itemModsInUse).
+function itemModsLineHtml(char, it) {
+  if (!itemModKinds(it)) return '';
+  const fmt = (v, suffix) => { const n = parseFloat(v) || 0; return n ? (n > 0 ? '+' : '') + n + (suffix || '') : ''; };
+  const bits = [];
+  if (itemHasModKind(it, 'offense')) {
+    const o = [['To hit', fmt(it.magicBonusToHit)], ['Dmg before divider', fmt(it.magicDamageBeforeDivider)], ['Dmg after divider', fmt(it.magicDamageAfterDivider)], ['Crit', fmt(it.magicCritBonus, '%')]].filter(x => x[1]);
+    if (o.length) bits.push(o.map(x => `${x[0]} ${x[1]}`).join(', '));
+  }
+  if (itemHasModKind(it, 'defense')) {
+    const dd = [['Avoidance', fmt(it.magicAvoidance)], ['Protection', fmt(it.magicProtection)]].filter(x => x[1]);
+    if (dd.length) bits.push(dd.map(x => `${x[0]} ${x[1]}`).join(', '));
+  }
+  if (itemHasModKind(it, 'void')) {
+    const v = (it.magicVoid || []).filter(x => x.pool && parseFloat(x.amount)).map(x => `${x.pool} −${parseFloat(x.amount)}`);
+    if (v.length) bits.push('Void: ' + v.join(', ') + (it.magicVoidStacks ? ' (stacks)' : ''));
+  }
+  if (!bits.length) return '';
+  const inUse = itemModsInUse(char, it, shieldsCountedItems(char));
+  const why = it.type === 'Weapon' ? 'tick Wielding on the Combat page' : it.type === 'Shield' ? 'tick Wielding on the Combat page' : 'carry it on your person';
+  return `<tr class="item-spell-row"><td colspan="7">◈ ${escapeHtml(bits.join(' · '))}${inUse ? '' : ` <span style="color:#c05050" title="Not counting right now: ${why}">(not in use)</span>`}</td></tr>`;
+}
+
 // Where an item can go: Carried (an empty location) plus every container
 // added under Storage Locations or already holding items.
 function itemLocations(char) {
@@ -350,7 +374,7 @@ function inventoryGroupsHtml(char) {
         <td class="item-kind">${escapeHtml(it.notes || '')}</td>
         <td class="item-edit" title="Edit" onclick="openEditItemModal(${idx})">✎</td>
         <td class="item-del" title="Delete" onclick="removeItem(${idx})">✕</td>
-      </tr>` + (itemCanHoldSpells(it) ? (it.spells || []).map((sp, j) => {
+      </tr>` + itemModsLineHtml(char, it) + (itemCanHoldSpells(it) ? (it.spells || []).map((sp, j) => {
         const left = itemSpellUsesLeft(sp, char);
         const rule = itemSpellRule(it);
         return `<tr class="item-spell-row"><td colspan="7">✦ <a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener">${escapeHtml(sp.name)}</a> · Level ${sp.level} · <span style="${left > 0 ? '' : 'color:#c05050'}" title="${rule ? 'Used up as it is cast; does not come back' : sp.period === 'charges' ? 'Charges only come back with ↺' : characterClockSeconds(char) != null ? 'Comes back as the group clock passes into the next ' + escapeHtml(itemSpellPeriodLabel(sp.period).replace(/^per /, '')) + ', or with ↺' : 'Comes back with ↺ (or as the group clock passes, once this character is in a group)'}">${escapeHtml(itemSpellUsageText(sp, char, rule))}</span>
@@ -519,6 +543,8 @@ function renderCombatModule() {
             <div class="form-row">
               <div class="form-group"><label>Magic Bonus to Hit</label><input type="number" class="w-sm" value="${it.magicBonusToHit||0}" onchange="updateWeaponField(${idx},'magicBonusToHit',this.value)"></div>
               <div class="form-group"><label>Magic Dmg After Divider</label><input type="number" class="w-sm" value="${it.magicDamageAfterDivider||0}" onchange="updateWeaponField(${idx},'magicDamageAfterDivider',this.value)"></div>
+              ${itemHasModKind(it, 'offense') ? `<div class="form-group"><label>Magic Dmg Before Divider</label><input type="number" class="w-sm" value="${it.magicDamageBeforeDivider||0}" onchange="updateWeaponField(${idx},'magicDamageBeforeDivider',this.value)"></div>
+              <div class="form-group"><label>Magic Crit %</label><input type="number" class="w-sm" value="${it.magicCritBonus||0}" onchange="updateWeaponField(${idx},'magicCritBonus',this.value)"></div>` : ''}
             </div>
             <div class="note">Skill Ability: ${w.baseWeaponSkval} (${it.weaponClass||'—'}) + ${w.singleWeapSpec} (Single Weap Spec) = ${w.skillAbility}</div>
             <div class="note">Crit % = 7 + floor(to-hit÷10) + (10% × Critical Hit Bonus skval [${w.critHitBonusSkval}]) + weapon threat range, capped at half of to-hit, floored at 3% minimum. Fumble range is 93-00, shifting up only if to-hit itself exceeds 93 (so it never overlaps your own hit range).</div>
@@ -622,6 +648,7 @@ function renderCombatModule() {
           <tr><td>Weapon Protection</td><td colspan="2">+${armor.weaponProtection}</td><td colspan="2">+${armor.weaponProtection}</td></tr>
           <tr><td>Parry Points Committed</td><td colspan="2">+${armor.parryPointsTotal}</td><td colspan="2">+${armor.parryPointsTotal}</td></tr>
           <tr><td>Other Bonuses</td><td colspan="2">+${armor.sumOtherAV} / +${armor.sumOtherPR}</td><td colspan="2">+${armor.sumOtherAV} / +${armor.sumOtherPR}</td></tr>
+          ${armor.withShield.magicAV || armor.withShield.magicPR || armor.withoutShield.magicAV || armor.withoutShield.magicPR ? `<tr><td>Magic items (Avoidance / Protection)</td><td colspan="2">−${armor.withShield.magicAV} / +${armor.withShield.magicPR}</td><td colspan="2">−${armor.withoutShield.magicAV} / +${armor.withoutShield.magicPR}</td></tr>` : ''}
           <tr style="border-top:1px solid var(--gold)"><td><strong>Total</strong></td><td><strong>${Math.round(armor.withShield.totalAV)}</strong></td><td><strong>${Math.round(armor.withShield.totalPR)}</strong></td><td><strong>${Math.round(armor.withoutShield.totalAV)}</strong></td><td><strong>${Math.round(armor.withoutShield.totalPR)}</strong></td></tr>
           ${armor.parryPointsTotal > 0 ? `
           <tr><td class="note">vs Missile / Magical attack<br>(Parry excluded)</td><td></td><td>${Math.round(armor.withShield.totalPRvsRangedOrMagic)}</td><td></td><td>${Math.round(armor.withoutShield.totalPRvsRangedOrMagic)}</td></tr>
@@ -769,7 +796,7 @@ function renderSpellPoolModal() {
     <hr class="divider">
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Magic Enhancers (manual — enter the net result of whichever item you're currently bonded to)</div>
     <div class="form-row">
-      <div class="form-group"><label>SP Cost Reduction</label><input type="number" class="w-sm" value="${p.spReduction}" onchange="updateSpellEnhancer('${p.name}','spReduction',this.value)"></div>
+      <div class="form-group"><label>SP Cost Reduction${p.spReductionItems ? ` (+${p.spReductionItems} from items)` : ''}</label><input type="number" class="w-sm" value="${p.spReductionManual}" onchange="updateSpellEnhancer('${p.name}','spReduction',this.value)"></div>
       <div class="form-group"><label>Reclamation Rate Bonus</label><input type="number" class="w-sm" value="${p.reclamationBonus}" onchange="updateSpellEnhancer('${p.name}','reclamationBonus',this.value)"></div>
       <div class="form-group"><label>Spell Success Bonus</label><input type="number" class="w-sm" value="${p.successBonus}" onchange="updateSpellEnhancer('${p.name}','successBonus',this.value)"></div>
     </div>

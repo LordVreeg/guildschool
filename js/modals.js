@@ -97,6 +97,7 @@ function renderAddItemModal(justAdded) {
       ${field('Location', `<select class="w-full"  ${lock} onchange="setAddItemField('location',this.value)">${opt('', 'Carried', !location)}${locations.map(l => opt(l, l, location === l)).join('')}</select>`, 'md')}
       ${field('Notes', `<input class="w-full"  ${lock} value="${val(d.notes)}" oninput="setAddItemField('notes',this.value)">`, 'fill')}
     </div>
+    ${ready && itemModKinds(d) ? itemModsSectionHtml(d) : ''}
     ${ready && itemCanHoldSpells(d) ? itemSpellsSectionHtml(d) : ''}
     <div class="note" style="margin-top:2px">${ready ? 'Carried items count toward Weight Carried. To put an item in a new bag, stash or other location, add it under Storage Locations first.' : 'Choose from every list above to fill in the rest of the item.'}</div>
     <div id="ai-error" style="color:var(--red-b);font-size:12px;margin-top:8px;display:none"></div>
@@ -107,6 +108,39 @@ function renderAddItemModal(justAdded) {
       <button class="btn btn-dim" onclick="itemDraft=null;editingItemIdx=null;addNextItem=false;closeModal()">Cancel</button>
       <button class="btn btn-gold" ${lock} onclick="confirmAddItem()">${editing ? 'Save' : 'Add Item'}</button>
     </div>`, { wide: true, width: 'min(760px, 94vw)', className: 'plain-font' });
+}
+
+// The item popup's Magic Modifiers section: the kinds this item type has,
+// plus buttons for the ones it can add (see itemModKinds).
+function itemModsSectionHtml(d) {
+  const k = itemModKinds(d);
+  const val = x => escapeHtml(x === undefined || x === null ? '' : x);
+  const num = (field, label) => `<div class="form-group"><label>${label}</label><input type="number" class="w-sm" value="${val(d[field])}" oninput="setAddItemField('${field}',this.value)"></div>`;
+  const head = (title, kind) => `<div style="font-size:12px;margin:8px 0 2px;color:var(--gold-dim)">${title}${k.optional.includes(kind) ? ` <span class="item-del" style="cursor:pointer;color:var(--red-b)" title="Remove ${title.toLowerCase()}" onclick="removeItemModKind('${kind}')">✕</span>` : ''}</div>`;
+  const parts = [];
+  if (itemHasModKind(d, 'offense')) parts.push(head('Offense', 'offense') + `<div class="form-row">${num('magicBonusToHit', 'To Hit')}${num('magicDamageBeforeDivider', 'Dmg Before Divider')}${num('magicDamageAfterDivider', 'Dmg After Divider')}${num('magicCritBonus', 'Crit %')}</div>`);
+  if (itemHasModKind(d, 'defense')) parts.push(head('Defense', 'defense') + `<div class="form-row">${num('magicAvoidance', 'Avoidance')}${num('magicProtection', 'Protection')}</div><div class="note">Bonuses: Avoidance lowers AV, Protection adds to PR.</div>`);
+  if (itemHasModKind(d, 'void')) {
+    if (!(d.magicVoid || []).length) d.magicVoid = [{ pool: '', amount: '' }]; // start with one row to fill in
+    const pools = spellPoolNames();
+    const opt = (v, l, sel) => `<option value="${escapeHtml(v)}" ${sel ? 'selected' : ''}>${escapeHtml(l)}</option>`;
+    const rows = (d.magicVoid || []).map((v, i) => `<div class="form-row item-spell-edit" style="align-items:flex-end;margin-bottom:4px">
+      <div class="form-group"><label>Spell Pool</label><select class="w-md" onchange="setItemVoidRow(${i},'pool',this.value)">${opt('', '— select —', !v.pool)}${pools.map(p => opt(p, p, v.pool === p)).join('')}</select></div>
+      <div class="form-group"><label>Cost Reduction</label><input type="number" min="0" class="w-sm" value="${val(v.amount)}" oninput="setItemVoidRow(${i},'amount',this.value)"></div>
+      <div class="form-group"><span class="item-del" style="cursor:pointer;color:var(--red-b);padding:6px 2px" title="Remove" onclick="removeItemVoidRow(${i})">✕</span></div>
+    </div>`).join('');
+    parts.push(head('Void', 'void') + rows + `<div style="display:flex;align-items:center;gap:12px;margin-top:2px">
+      <button type="button" class="btn btn-dim" onclick="addItemVoidRow()">Add pool</button>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${d.magicVoidStacks ? 'checked' : ''} onchange="setAddItemField('magicVoidStacks',this.checked)"> Stacks with other items' void bonuses</label>
+    </div><div class="note">Spell cost reduction per pool. Only the best single item counts, unless an item is marked as stacking.</div>`);
+  }
+  const adders = k.optional.filter(kind => !itemHasModKind(d, kind))
+    .map(kind => `<button type="button" class="btn btn-dim" onclick="addItemModKind('${kind}')">Add ${kind}</button>`).join(' ');
+  return `
+    <hr class="divider">
+    <div class="form-group"><label>Magic Modifiers</label></div>
+    ${parts.join('')}
+    ${adders ? `<div style="margin-top:6px;display:flex;gap:6px">${adders}</div>` : ''}`;
 }
 
 // The item popup's Spells section (magic items): the spells already on the
