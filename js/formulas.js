@@ -379,11 +379,65 @@ function computeSpellPools(character) {
     const recoverAwake = Math.round(((reclamationSkval * 0.10) + reclamationBonus) * 10) / 10;
     const recoverSleep = Math.round(((reclamationSkval * 0.20) + reclamationBonus) * 10) / 10;
     pools.push({ name: poolDef.name, maxSP, currentSP, usedSP, level, children: childStatus,
-                 familiarity, conversionRatio, effectiveLevel: Math.round(effectiveLevel * 10) / 10,
+                 familiarity, conversionRatio, effectiveLevel: Math.ceil(effectiveLevel - 1e-9), // spell levels are whole numbers, rounded up
                  reclamationSkval, recoverAwake, recoverSleep,
                  spReduction, reclamationBonus, successBonus });
   }
   return pools;
+}
+
+// A spell's level ("plev") is the Effective Spell Level of its school's
+// pool. A school the character hasn't trained counts as Familiar, i.e. the
+// plain Spirit level.
+function spellLevel(character, school, pools) {
+  pools = pools || computeSpellPools(character);
+  const pool = pools.find(p => p.name === SPELL_SCHOOL_TO_POOL[school]);
+  if (pool) return pool.effectiveLevel;
+  const spirit = pools.find(p => p.name === 'Spirit SP');
+  return spirit ? spirit.effectiveLevel : 0;
+}
+
+// Works out a catalog duration such as "30 sec+5 sec plev" or "5 min/plev"
+// at a given spell level, as text like "50 sec" or "1 hr 20 min". Returns
+// '' when the duration has no per-level part or a shape/unit it can't be sure
+// of (segments, Celtricia weeks/months, dice, "perm/..."...), so it is then
+// shown as written. Days are only added to days (a Celtricia day may not be
+// 24 hours).
+const DURATION_UNITS = [
+  [/^(s|sec|secs|second|seconds)$/, 'sec', 1],
+  [/^(m|min|mins|minute|minutes)$/, 'sec', 60],
+  [/^(h|hr|hrs|hour|hours)$/, 'sec', 3600],
+  [/^(d|day|days)$/, 'day', 1],
+];
+function evalSpellDuration(text, level) {
+  const raw = String(text || '').trim();
+  const t = raw.toLowerCase()
+    .replace(/([a-z])plev\b/g, '$1 plev') // "5 minplev"
+    .replace(/\s*(\/|-)?\s*\b(plev|p\.?\s*lev(el)?|per\s+lev(el)?(\s+of\s+the\s+caster)?|\/lev(el)?)\b\.?/g, '@')
+    .replace(/\s*\/\s*@/g, '@');
+  if (!t.includes('@')) return '';
+  const terms = t.split('+').map(x => x.trim());
+  const parsed = [];
+  for (const term of terms) {
+    const m = term.match(/^(\d+(?:\.\d+)?)\s*([a-z]*)\s*(@)?$/);
+    if (!m) return '';
+    parsed.push({ n: parseFloat(m[1]), unit: m[2], perLevel: !!m[3] });
+  }
+  // A bare number takes the unit of the next term ("10 +5 min plev")
+  for (let i = parsed.length - 2; i >= 0; i--) if (!parsed[i].unit) parsed[i].unit = parsed[i + 1].unit;
+  let kind = null, total = 0;
+  for (const p of parsed) {
+    const u = DURATION_UNITS.find(([re]) => re.test(p.unit));
+    if (!u) return '';
+    if (kind && kind !== u[1]) return '';
+    kind = u[1];
+    total += p.n * u[2] * (p.perLevel ? level : 1);
+  }
+  if (kind === 'day') { const d = Math.round(total * 10) / 10; return `${d} day${d === 1 ? '' : 's'}`; }
+  let secs = Math.round(total);
+  const h = Math.floor(secs / 3600); secs -= h * 3600;
+  const m = Math.floor(secs / 60); secs -= m * 60;
+  return [h && `${h} hr`, m && `${m} min`, secs && `${secs} sec`].filter(Boolean).join(' ') || '0 sec';
 }
 
 // Small colored lightning bolt summarizing a character's total spell point

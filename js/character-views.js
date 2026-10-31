@@ -626,6 +626,14 @@ function renderCombatModule() {
   </div>`;
 }
 
+// A spell's duration as listed, plus what it works out to at the spell's
+// level when the formula uses plev: "30 sec+5 sec plev = 50 sec".
+function spellDurationText(duration, level) {
+  if (!duration) return '—';
+  const actual = evalSpellDuration(duration, level);
+  return actual ? `${duration} = ${actual}` : duration;
+}
+
 // A spell's per-school cost, biggest first: "Spirit 7, Mentalist 4, Life 1".
 function spellCostText(costs) {
   return Object.entries(costs || {}).sort((a, b) => (parseFloat(b[1]) || 0) - (parseFloat(a[1]) || 0)).map(([sch, v]) => `${sch} ${v}`).join(', ');
@@ -685,21 +693,23 @@ function renderSpellModule() {
       </table>
       ` : ''}
       <table class="item-table spellbook-table">
-        <thead><tr><th>Spell Name</th><th>Cost</th><th>Duration</th><th>Notes</th><th></th><th></th></tr></thead>
+        <thead><tr><th>Spell Name</th><th>Level</th><th>Cost</th><th>Duration</th><th>Notes</th><th></th><th></th></tr></thead>
         <tbody>
           ${shownSpells.map(({ sp, idx }) => {
             const catalogEntry = SPELLS.find(s => s.name === sp.name && s.school === sp.school);
+            const level = spellLevel(char, sp.school, pools);
             const breakdown = catalogEntry && catalogEntry.costs ? spellCostText(catalogEntry.costs) : (catalogEntry ? '—' : 'not in detail catalog');
             return `
           <tr>
             <td>${sp.name ? `<a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener" title="Open the wiki page for ${escapeHtml(sp.name)}">${escapeHtml(sp.name)}</a>` : '—'}</td>
+            <td>${level}</td>
             <td class="note" style="padding:3px 6px">${breakdown}</td>
-            <td>${escapeHtml((catalogEntry && catalogEntry.duration) || '—')}</td>
+            <td>${escapeHtml(spellDurationText(catalogEntry && catalogEntry.duration, level))}</td>
             <td><input value="${sp.notes||''}" onchange="updateSpell(${idx},'notes',this.value)"></td>
             <td>${catalogEntry && catalogEntry.costs ? `<button class="btn btn-gold" style="font-size:11px;padding:3px 8px" onclick="openHardcastModal(${idx})">Cast</button>` : ''}</td>
             <td class="item-del" onclick="removeSpell(${idx})">✕</td>
           </tr>`;
-          }).join('') || '<tr><td colspan="6" class="note" style="padding:8px">No spells yet. Use <i>+ Add Spell</i> below.</td></tr>'}
+          }).join('') || '<tr><td colspan="7" class="note" style="padding:8px">No spells yet. Use <i>+ Add Spell</i> below.</td></tr>'}
         </tbody>
       </table>
       <button class="btn btn-gold" onclick="openAddSpellModal()">+ Add Spell</button>

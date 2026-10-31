@@ -194,6 +194,8 @@ function renderAddSpellModal(justAdded) {
   const catalog = d.school ? SPELLS.filter(sp => sp.school === d.school).sort((x, y) => x.name.localeCompare(y.name)) : [];
   const def = catalog.find(sp => sp.name === d.name);
   const breakdown = def && def.costs ? spellCostText(def.costs) : '—';
+  const char = state.characters[state.activeChar];
+  const level = char && d.school ? spellLevel(char, d.school) : 0;
   const spellField = !d.school
     ? `<select class="w-lg" disabled><option>— select —</option></select>`
     : catalog.length
@@ -209,8 +211,9 @@ function renderAddSpellModal(justAdded) {
       <div class="form-group"><label>Spell</label>${spellField}</div>
     </div>
     <div class="form-row">
+      <div class="computed-item"><span class="ci-label">Level</span><span class="ci-value">${d.school ? level : '—'}</span></div>
       <div class="computed-item"><span class="ci-label">Cost</span><span class="ci-value" style="font-size:13px">${escapeHtml(breakdown)}</span></div>
-      <div class="computed-item"><span class="ci-label">Duration</span><span class="ci-value" style="font-size:13px">${escapeHtml((def && def.duration) || '—')}</span></div>
+      <div class="computed-item"><span class="ci-label">Duration</span><span class="ci-value" style="font-size:13px">${escapeHtml(spellDurationText(def && def.duration, level))}</span></div>
       <div class="computed-item"><span class="ci-label">Total Cost</span><span class="ci-value">${d.cost || 0}</span></div>
     </div>
     <div class="modal-actions" style="align-items:center">
