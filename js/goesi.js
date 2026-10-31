@@ -164,7 +164,7 @@ function renderGoesiDayDetail(groupId, isGM) {
   const addHolidayForm = isGM ? `
     <div class="form-row" style="margin-top:4px">
       <div class="form-group" style="flex:1"><input id="goesi-holiday-name" placeholder="Holiday name"></div>
-      <div class="form-group" style="justify-content:flex-end"><button class="btn btn-dim" onclick="addHoliday('${groupId}')">+ Add Holiday Here</button></div>
+      <div class="form-group" style="justify-content:flex-end"><button class="btn btn-dim" onclick="addHoliday('${groupId}')">Add Holiday Here</button></div>
     </div>` : '';
 
   openModal(`

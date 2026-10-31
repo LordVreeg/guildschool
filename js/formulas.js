@@ -168,7 +168,7 @@ function computeWeight(character) {
 // capacity limit (character.storageCapacities[location]) -- a real bag of
 // holding or satchel only holds so much, even though its contents are
 // weightless on the character themselves.
-// An inventory entry with nothing filled in at all. The old "+ Add Item"
+// An inventory entry with nothing filled in at all. The old "Add Item"
 // button added one of these as a blank row; they're hidden, not deleted.
 function isBlankItem(it) {
   const blank = v => !String(v === undefined || v === null ? '' : v).trim();

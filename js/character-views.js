@@ -156,7 +156,7 @@ function renderGeneralModule() {
           <select class="w-md" onchange="handleChoiceSelect(this,state.characters[state.activeChar],'locale','locales')">
             <option value="">— select —</option>
             ${(customChoices.locales||[]).map(l=>`<option ${char.locale===l?'selected':''}>${l}</option>`).join('')}
-            <option value="__addnew__">+ Add New...</option>
+            <option value="__addnew__">Add New...</option>
           </select>
         </div>
         <div class="form-group id-field"><label>Group</label>
@@ -291,7 +291,7 @@ function renderGeneralModule() {
       <p>Great, this character now exists. Before you start: the whole game is skill based. Everything your character can do is a skill. On top of that, the world of Celtricia has hundreds of guilds and factions, and they determine which skills you are good at and how you deal with everyone else socially. Here is how to get going.</p>
       <ol style="margin:6px 0 6px 18px;padding:0">
         <li><b>Pick your main Guild/School first</b>, before anything else. On General Info, set your Primary Guild. Your guild decides what you are better and worse at: it adjusts how fast you learn every skill (the EXP modifier), so what your guild favors comes quickly and what it doesn't comes slowly. It is also where your history comes from and your link to the world of Celtricia.</li>
-        <li><b>Spend your starting experience.</b> You already have a few skills; add the rest with <i>+ Add Skill</i> in the sidebar. A broad skill gives you a little ability in the specialties under it (the dropdown rule).</li>
+        <li><b>Spend your starting experience.</b> You already have a few skills; add the rest with <i>Add Skill</i> in the sidebar. A broad skill gives you a little ability in the specialties under it (the dropdown rule).</li>
         <li><b>Put your gear in your inventory.</b> On the Inventory page, add weapons, armor and shields as items. They go live on the Combat page by themselves: weapons show to-hit, damage, speed and crit chances worked out from your skills and attributes, and armor and shields add to your Avoidance and Protection.</li>
         <li><b>Spells.</b> The Spells page keeps your spell points and your spellbook, and it can draw on the entire spell library.</li>
         <li><b>Playing with a group.</b> The Groups button in the top bar is where your GM keeps the shared clock, the party roster and notes, and where combat is run: a Combat tracker with turn order, hit points and effects. You can link your character to a group from General Info.</li>
@@ -346,13 +346,19 @@ function inventoryGroupsHtml(char) {
         <td>${escapeHtml(it.name || '')}</td>
         <td class="item-kind">${escapeHtml(itemKindLabel(it))}</td>
         <td class="item-qty">${escapeHtml(it.qty || 1)}</td>
-        <td style="text-align:center">${it.masterwork ? '✓' : ''}</td>
+        <td style="text-align:center">${it.masterwork || it.type === 'Magic Item' ? '✓' : ''}</td>
         <td class="item-kind">${escapeHtml(it.notes || '')}</td>
         <td class="item-edit" title="Edit" onclick="openEditItemModal(${idx})">✎</td>
         <td class="item-del" title="Delete" onclick="removeItem(${idx})">✕</td>
-      </tr>`).join(''));
+      </tr>` + (itemCanHoldSpells(it) ? (it.spells || []).map((sp, j) => {
+        const left = itemSpellUsesLeft(sp, char);
+        const rule = itemSpellRule(it);
+        return `<tr class="item-spell-row"><td colspan="7">✦ <a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener">${escapeHtml(sp.name)}</a> · Level ${sp.level} · <span style="${left > 0 ? '' : 'color:#c05050'}" title="${rule ? 'Used up as it is cast; does not come back' : sp.period === 'charges' ? 'Charges only come back with ↺' : characterClockSeconds(char) != null ? 'Comes back as the group clock passes into the next ' + escapeHtml(itemSpellPeriodLabel(sp.period).replace(/^per /, '')) + ', or with ↺' : 'Comes back with ↺ (or as the group clock passes, once this character is in a group)'}">${escapeHtml(itemSpellUsageText(sp, char, rule))}</span>
+          <button class="btn btn-gold item-spell-btn" ${left > 0 ? '' : 'disabled'} title="Cast ${escapeHtml(sp.name)} from this item" onclick="openItemCastModal(${idx},${j})">Cast</button>
+          ${rule ? '' : `<button class="btn btn-dim item-spell-btn" title="Reset its uses" onclick="rechargeItemSpell(${idx},${j})">↺</button>`}</td></tr>`;
+      }).join('') : '')).join(''));
   }).join('');
-  return html || `<tr><td colspan="7" class="note" style="padding:8px">No items yet. Use <i>+ Add Item</i> below.</td></tr>`;
+  return html || `<tr><td colspan="7" class="note" style="padding:8px">No items yet. Use <i>Add Item</i> below.</td></tr>`;
 }
 
 function renderInventoryModule() {
@@ -374,7 +380,7 @@ function renderInventoryModule() {
         <thead><tr><th>Item</th><th>Type</th><th>Qty</th><th>MW/Magic</th><th>Notes</th><th></th><th></th></tr></thead>
         <tbody>${inventoryGroupsHtml(char)}</tbody>
       </table>
-      <button class="btn btn-gold" onclick="openAddItemModal()">+ Add Item</button>
+      <button class="btn btn-gold" onclick="openAddItemModal()">Add Item</button>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px">Storage Locations</div>
       <div class="note" style="margin-bottom:6px">Capacity is how much weight a container can hold (blank = no limit); On Person's is your Weight Possible. Tick On Person on a container you wear or carry so its contents count toward Weight Carried.</div>
@@ -397,7 +403,7 @@ function renderInventoryModule() {
           </tr>`; }).join('')}
         </tbody>
       </table>
-      <button class="btn btn-dim" onclick="openAddContainerModal()">+ Add Container</button>
+      <button class="btn btn-dim" onclick="openAddContainerModal()">Add Container</button>
 
       <hr class="divider">
       <div class="form-group"><label>Item Notes</label>
@@ -649,7 +655,7 @@ function renderSpellModule() {
   const char = state.characters[state.activeChar];
   if (!char) return;
   const pools = spellPoolsInOrder(char);
-  // Spellbook entries with nothing in them (left by the old "+ Add Spell") are hidden
+  // Spellbook entries with nothing in them (left by the old "Add Spell") are hidden
   const spellbook = char.spellbook || [];
   const shownSpells = spellbook.map((sp, idx) => ({ sp, idx })).filter(({ sp }) => !isBlankSpell(sp))
     .sort((a, b) => String(a.sp.name || '').localeCompare(String(b.sp.name || ''), undefined, { sensitivity: 'base' }));
@@ -710,10 +716,10 @@ function renderSpellModule() {
             <td>${catalogEntry && catalogEntry.costs ? `<button class="btn btn-gold" style="font-size:11px;padding:3px 8px" onclick="openHardcastModal(${idx})">Cast</button>` : ''}</td>
             <td class="item-del" onclick="removeSpell(${idx})">✕</td>
           </tr>`;
-          }).join('') || '<tr><td colspan="7" class="note" style="padding:8px">No spells yet. Use <i>+ Add Spell</i> below.</td></tr>'}
+          }).join('') || '<tr><td colspan="7" class="note" style="padding:8px">No spells yet. Use <i>Add Spell</i> below.</td></tr>'}
         </tbody>
       </table>
-      <button class="btn btn-gold" onclick="openAddSpellModal()">+ Add Spell</button>
+      <button class="btn btn-gold" onclick="openAddSpellModal()">Add Spell</button>
       <div class="note" style="margin-top:8px">${SPELLS.length} spells cataloged (${SPELLS.filter(s=>s.costs).length} with full per-school cost breakdown). Spirit and Shade schools aren't in this catalog yet.</div>
 
     </div>
@@ -797,7 +803,7 @@ function renderUtilitiesModule() {
         <div class="form-group"><label>Parent Skill (blank if root)</label><input id="ns-parent" class="w-lg"></div>
         <div class="form-group"><label>Dropdown % (blank if root)</label><input id="ns-dropdown" type="number" step="0.01" class="w-sm"></div>
       </div>
-      <button class="btn btn-gold" onclick="addCustomSkill()">+ Add Skill to Master List</button>
+      <button class="btn btn-gold" onclick="addCustomSkill()">Add Skill to Master List</button>
 
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Add Guild EXPMOD (bxp)</div>
@@ -815,7 +821,7 @@ function renderUtilitiesModule() {
         </div>
         <div class="form-group"><label>Guild EXPMOD (bxp)</label><input id="ge-bxp" type="number" step="0.001" class="w-sm"></div>
       </div>
-      <button class="btn btn-gold" onclick="addCustomGuildBonus()">+ Set Guild EXPMOD</button>
+      <button class="btn btn-gold" onclick="addCustomGuildBonus()">Set Guild EXPMOD</button>
 
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Custom Additions So Far</div>

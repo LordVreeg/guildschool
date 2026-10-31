@@ -185,7 +185,36 @@ function confirmAddItem() {
     err.style.display = 'block';
     return;
   }
+  // Spell rows under Spells are saved with the item. A row that's been
+  // started but isn't complete stops the save rather than being dropped.
+  if (itemCanHoldSpells(d)) {
+    const started = itemSpellDrafts.filter(sp => sp.school || String(sp.name || '').trim());
+    if (started.some(sp => !itemSpellReady(sp))) {
+      const err = document.getElementById('ai-error');
+      err.textContent = 'Finish each spell under Spells (school, spell, level and uses), or remove it with ✕.';
+      err.style.display = 'block';
+      return;
+    }
+    const rule = itemSpellRule(d);
+    const total = (d.spells || []).length + started.length;
+    const ruleError = rule === 'potion' && total !== 1 ? 'A potion holds exactly one spell.'
+      : rule === 'scroll' && total < 1 ? 'A scroll needs at least one spell.' : '';
+    if (ruleError) {
+      const err = document.getElementById('ai-error');
+      err.textContent = ruleError;
+      err.style.display = 'block';
+      return;
+    }
+    for (const sp of started) {
+      const usesMax = rule === 'scroll' ? 1 : parseInt(sp.usesMax);
+      (d.spells = d.spells || []).push({ school: sp.school, name: String(sp.name).trim(), level: parseInt(sp.level), usesMax, period: sp.period, usesLeft: usesMax });
+    }
+    // Potion and scroll spells are counted down, never refilled
+    if (rule) for (const sp of d.spells || []) { sp.period = 'charges'; if (rule === 'scroll') sp.usesMax = sp.usesLeft = 1; }
+    resetItemSpellDraft();
+  }
   delete d.coin;
+  if (!itemCanHoldSpells(d)) delete d.spells;
   if (!char.items) char.items = [];
   const editing = editingItemIdx !== null && char.items[editingItemIdx];
   if (editing) char.items[editingItemIdx] = d;
@@ -196,6 +225,95 @@ function confirmAddItem() {
   renderInventoryModule();
   if (!editing && addNextItem) { openAddItemModal({ keepAddNext: true, justAdded: d.name }); return; }
   closeModal();
+}
+
+// The item popup's Spells section: each "Add spell" click opens a selection
+// row (a draft in itemSpellDrafts: school, spell, fixed level, usage limit);
+// ✕ drops a row. Saving the item adds every filled-in row to itemDraft.spells
+// as { school, name, level, usesMax, period, usesLeft } (see confirmAddItem).
+let itemSpellDrafts = [];
+function resetItemSpellDraft() { itemSpellDrafts = []; }
+function openItemSpellRow() { itemSpellDrafts.push({ school: '', name: '', level: 1, usesMax: 1, period: 'day' }); renderAddItemModal(); }
+function closeItemSpellRow(i) { itemSpellDrafts.splice(i, 1); renderAddItemModal(); }
+function itemSpellReady(s) {
+  return !!(s && s.school && String(s.name || '').trim() && parseInt(s.level) >= 1 && parseInt(s.usesMax) >= 1);
+}
+function setItemSpellDraft(i, field, value, rerender) {
+  const s = itemSpellDrafts[i];
+  if (!s) return;
+  s[field] = value;
+  if (field === 'school') s.name = '';
+  if (rerender) renderAddItemModal();
+}
+function removeItemSpellFromDraft(i) {
+  if (!itemDraft || !itemDraft.spells) return;
+  itemDraft.spells.splice(i, 1);
+  renderAddItemModal();
+}
+
+// Casting a spell from an item (the Cast button under it on the Inventory
+// page): no spell points, always succeeds, uses one of the item's uses; a
+// character in a group then gets the usual "Mark duration?" step.
+let itemCastState = null;
+function openItemCastModal(itemIdx, spellIdx) {
+  const char = state.characters[state.activeChar];
+  const it = char && (char.items || [])[itemIdx];
+  const sp = it && (it.spells || [])[spellIdx];
+  if (!sp) return;
+  itemCastState = { itemIdx, spellIdx };
+  const def = SPELLS.find(x => x.name === sp.name && x.school === sp.school);
+  const left = itemSpellUsesLeft(sp, char);
+  openModal(`
+    <h3>Cast: ${escapeHtml(sp.name)}</h3>
+    <div class="note" style="margin-bottom:10px">From ${escapeHtml(it.name || 'this item')}. Cast at level ${sp.level}, with no spell points, and it always succeeds.</div>
+    <div class="form-row">
+      <div class="computed-item"><span class="ci-label">Level</span><span class="ci-value">${sp.level}</span></div>
+      <div class="computed-item"><span class="ci-label">Duration</span><span class="ci-value" style="font-size:13px">${escapeHtml(spellDurationText(def && def.duration, sp.level))}</span></div>
+      <div class="computed-item"><span class="ci-label">Uses</span><span class="ci-value" style="font-size:13px">${escapeHtml(itemSpellUsageText(sp, char, itemSpellRule(it)))}${left > 0 && itemSpellRule(it) !== 'scroll' ? ` → ${left - 1} after this` : ''}</span></div>
+    </div>
+    ${left > 0 ? '' : '<div class="note" style="color:#c05050">No uses left. Reset its uses (↺) when they come back.</div>'}
+    ${itemSpellRule(it) === 'scroll' ? `<div class="note" style="color:var(--gold-dim)">Casting uses this spell up${(it.spells || []).length === 1 ? ', and with it the scroll' : ''}.</div>` : itemSpellRule(it) === 'potion' && left === 1 ? `<div class="note" style="color:var(--gold-dim)">This is its last use: the potion${(parseInt(it.qty) || 1) > 1 ? ' (one of ' + it.qty + ')' : ''} will be used up.</div>` : ''}
+    <div class="modal-actions">
+      <button class="btn btn-dim" onclick="itemCastState=null;closeModal()">Cancel</button>
+      <button class="btn btn-gold" ${left > 0 ? '' : 'disabled'} onclick="confirmItemCast()">Cast</button>
+    </div>`, { className: 'plain-font' });
+}
+function confirmItemCast() {
+  const char = state.characters[state.activeChar];
+  const c = itemCastState;
+  const it = char && c && (char.items || [])[c.itemIdx];
+  const sp = it && (it.spells || [])[c.spellIdx];
+  if (!sp || itemSpellUsesLeft(sp, char) <= 0) return;
+  sp.usesLeft = itemSpellUsesLeft(sp, char) - 1;
+  sp.periodIndex = itemSpellPeriodIndex(sp.period, characterClockSeconds(char)); // which period this use counts against
+  const rule = itemSpellRule(it);
+  if (rule === 'scroll') {
+    it.spells.splice(c.spellIdx, 1);
+    if (!it.spells.length) char.items.splice(c.itemIdx, 1); // the scroll is used up
+  } else if (rule === 'potion' && sp.usesLeft <= 0) {
+    // used up: the next potion on this line starts full, or the line goes
+    const qty = parseInt(it.qty) || 1;
+    if (qty > 1) { it.qty = qty - 1; sp.usesLeft = parseInt(sp.usesMax) || 0; }
+    else char.items.splice(c.itemIdx, 1);
+  }
+  itemCastState = null;
+  saveState();
+  renderInventoryModule();
+  if (char.playGroupId) {
+    const def = SPELLS.find(x => x.name === sp.name && x.school === sp.school);
+    hardcastState = { spellName: sp.name, duration: spellDurationText(def && def.duration, sp.level), fromItem: it.name || 'an item', level: sp.level };
+    openMarkDurationModal();
+  } else closeModal();
+}
+// ↺: the uses come back (a new day, a recharge...).
+function rechargeItemSpell(itemIdx, spellIdx) {
+  const char = state.characters[state.activeChar];
+  const sp = char && ((char.items || [])[itemIdx] || {}).spells && char.items[itemIdx].spells[spellIdx];
+  if (!sp || itemSpellRule(char.items[itemIdx])) return; // potions and scrolls don't come back
+  sp.usesLeft = parseInt(sp.usesMax) || 0;
+  sp.periodIndex = itemSpellPeriodIndex(sp.period, characterClockSeconds(char));
+  saveState();
+  renderInventoryModule();
 }
 
 // Storage Locations: containers are the keys of char.storageCapacities (a
@@ -719,12 +837,12 @@ function openMarkDurationModal(roll) {
   if (!hs) return;
   openModal(`
     <h3>${escapeHtml(hs.spellName)} — Success!</h3>
-    <div class="note" style="margin-bottom:8px">Rolled ${roll} against a target of ${hs.finalTarget} (${hs.totalSuccess}% + GM d50 ${hs.gmRoll}).${hs.duration ? ` Listed duration: ${escapeHtml(hs.duration)}` : ''}</div>
+    <div class="note" style="margin-bottom:8px">${hs.fromItem ? `Cast from ${escapeHtml(hs.fromItem)} at level ${hs.level}.` : `Rolled ${roll} against a target of ${hs.finalTarget} (${hs.totalSuccess}% + GM d50 ${hs.gmRoll}).`}${hs.duration ? ` Listed duration: ${escapeHtml(hs.duration)}` : ''}</div>
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:8px">
-      <input type="checkbox" id="mark-duration-check" onchange="document.getElementById('mark-duration-fields').style.display=this.checked?'flex':'none'">
+      <input type="checkbox" id="mark-duration-check" checked onchange="document.getElementById('mark-duration-fields').style.display=this.checked?'flex':'none'">
       Mark duration?
     </label>
-    <div id="mark-duration-fields" class="form-row" style="display:none">
+    <div id="mark-duration-fields" class="form-row" style="display:flex">
       <div class="form-group"><label>Amount</label><input type="number" id="mark-duration-amt" class="w-sm" value="1" min="0"></div>
       <div class="form-group"><label>Unit</label>
         <select id="mark-duration-unit">
@@ -761,10 +879,10 @@ async function finishSpellCastWithDuration() {
   }
   hardcastState = null;
   closeModal();
-  renderSpellModule();
+  renderMain();
 }
 
-// A spellbook entry with nothing in it (the old "+ Add Spell" added these blank).
+// A spellbook entry with nothing in it (the old "Add Spell" added these blank).
 function isBlankSpell(sp) {
   return !String(sp.school || '').trim() && !String(sp.name || '').trim() && !String(sp.notes || '').trim();
 }

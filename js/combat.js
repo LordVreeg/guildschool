@@ -365,8 +365,8 @@ function renderEncounterHtml(enc, isGM) {
         ${isGM ? `<button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="removeCombatant('${c.id}')">Remove</button>` : ''}
       </div>
       <div style="margin-top:4px">${tracksHtml}</div>
-      ${canEdit ? `<button class="btn btn-dim" style="font-size:10px;padding:1px 6px;margin-top:2px" onclick="addActionTrack('${c.id}')">+ Track</button>
-      <button class="btn btn-dim" style="font-size:10px;padding:1px 6px;margin-top:2px" onclick="openAddEffectModal('${c.id}')">+ Effect</button>` : ''}
+      ${canEdit ? `<button class="btn btn-dim" style="font-size:10px;padding:1px 6px;margin-top:2px" onclick="addActionTrack('${c.id}')">Track</button>
+      <button class="btn btn-dim" style="font-size:10px;padding:1px 6px;margin-top:2px" onclick="openAddEffectModal('${c.id}')">Effect</button>` : ''}
       <div style="margin-top:2px">${effectsHtml}</div>
     </div>`;
   }).join('') : '<div class="note">No combatants yet.</div>';
@@ -532,7 +532,7 @@ function renderEncounterHtml(enc, isGM) {
         <select onchange="updateEncounterField('status',this.value)">
           ${['active','paused','ended'].map(s => `<option value="${s}" ${enc.status===s?'selected':''}>${s}</option>`).join('')}
         </select>
-        <button class="btn btn-dim" onclick="openAddCombatantModal()">+ Add Combatant</button>
+        <button class="btn btn-dim" onclick="openAddCombatantModal()">Add Combatant</button>
       </div>` : ''}
     </div>
     <div class="form-row" style="margin:8px 0;align-items:center">

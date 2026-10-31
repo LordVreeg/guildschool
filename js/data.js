@@ -62,6 +62,51 @@ function itemTypeLabel(type) { return ITEM_TYPE_LABELS[type] || type; }
 // Listed alphabetically by label in the Add/Edit Item popup.
 const ITEM_TYPES = ['Ammunition', 'Armor', 'Coin', 'Item', 'Magic Item', 'Shield', 'Weapon']
   .sort((a, b) => itemTypeLabel(a).localeCompare(itemTypeLabel(b)));
+// Magic items (and magic weapons, armor, shields and ammunition) can carry
+// spells, each cast at a fixed level with a usage limit: N uses per period,
+// or N charges in total. Uses are tracked on the item (usesLeft).
+const ITEM_SPELL_PERIODS = [
+  ['charges', 'charges (total)'], ['hour', 'per hour'], ['day', 'per day'],
+  ['hawaak', 'per Hawaak (8 days)'], ['goesi', 'per Goesi (60 days)'],
+];
+function itemSpellPeriodLabel(period) { const p = ITEM_SPELL_PERIODS.find(x => x[0] === period); return p ? p[1] : period; }
+// Potions and Scrolls (Magic Item classes) work differently: a potion holds
+// exactly one spell with a number of uses and is used up when they run out;
+// a scroll holds one or more spells, each cast once (then gone), and is used
+// up with its last spell. Neither comes back with ↺ or the clock.
+function itemSpellRule(it) {
+  if (!it || it.type !== 'Magic Item') return null;
+  return it.magicItemClass === 'Potions' ? 'potion' : it.magicItemClass === 'Scrolls' ? 'scroll' : null;
+}
+function itemCanHoldSpells(it) {
+  return !!it && (it.type === 'Magic Item' || (!!it.masterwork && ['Weapon', 'Armor', 'Shield', 'Ammunition'].includes(it.type)));
+}
+// Uses come back as the character's group clock moves into the next period
+// (Reckoning of Nebler: 22-hour days, 8-day Hawaaks, Goesi of 60 days + the
+// Lithe day). Worked out when needed rather than written on every clock move:
+// a cast records which period it fell in (periodIndex), and a later period
+// means full uses again. Charges never come back on their own; ↺ always works.
+function itemSpellPeriodIndex(period, seconds) {
+  const len = { hour: 3600, day: RON_SEC_PER_DAY, hawaak: RON_SEC_PER_DAY * RON_WEEKDAYS.length, goesi: RON_SEC_PER_MONTH_BLOCK }[period];
+  return len && seconds != null ? Math.floor(seconds / len) : null;
+}
+function characterClockSeconds(char) {
+  const grp = char && char.playGroupId && myGroups.find(g => g.id === char.playGroupId);
+  return grp && grp.clock_seconds != null ? grp.clock_seconds : null;
+}
+function itemSpellUsesLeft(sp, char) {
+  const max = parseInt(sp.usesMax) || 0;
+  const stored = sp.usesLeft === undefined || sp.usesLeft === null ? max : sp.usesLeft;
+  if (sp.period === 'charges' || sp.periodIndex == null) return stored;
+  const now = itemSpellPeriodIndex(sp.period, characterClockSeconds(char));
+  return now != null && now > sp.periodIndex ? max : stored;
+}
+function itemSpellUsageText(sp, char, rule) {
+  const left = itemSpellUsesLeft(sp, char), max = parseInt(sp.usesMax) || 0;
+  if (rule === 'scroll') return 'one use';
+  if (rule === 'potion') return `${left}/${max} use${max === 1 ? '' : 's'}`;
+  return sp.period === 'charges' ? `${left}/${max} charges` : `${left}/${max} ${itemSpellPeriodLabel(sp.period)}`;
+}
 // The "Magic Item Class" choices for a Magic Item.
 const MAGIC_ITEM_CLASSES = ['Books', 'Clothing', 'Jewelry', 'Misc', 'Potions', 'Scrolls'];
 

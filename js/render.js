@@ -254,7 +254,7 @@ function renderSidebar() {
     };
     for (const si of byType[type]) if (!children.parentOf.has(si.id)) renderNode(si, 0);
   }
-  html += `<div class="sidebar-add"><button onclick="openAddSkillModal()">+ Add Skill</button></div>`;
+  html += `<div class="sidebar-add"><button onclick="openAddSkillModal()">Add Skill</button></div>`;
   html += `<hr style="border-color:var(--border);margin:4px 0">`;
   document.getElementById('sidebar').innerHTML = html;
 }
@@ -332,7 +332,7 @@ function showPageIntroOnce(key, title, bodyHtml) {
 const COMBAT_PAGE_INTRO_HTML = `
   <p>This page builds itself from your inventory.</p>
   <ul style="margin:6px 0 6px 18px;padding:0">
-    <li><b>Weapons:</b> any item of type Weapon on your Inventory page (<i>+ Add Item</i>) appears here with its to-hit, damage bonus, speed, crit and fumble chances, and parry, worked out from your attributes and your skill in that weapon's class. Set the weapon's class to the skill you trained (for example Basic Spears).</li>
+    <li><b>Weapons:</b> any item of type Weapon on your Inventory page (<i>Add Item</i>) appears here with its to-hit, damage bonus, speed, crit and fumble chances, and parry, worked out from your attributes and your skill in that weapon's class. Set the weapon's class to the skill you trained (for example Basic Spears).</li>
     <li><b>Armor and shields:</b> items of type Armor or Shield add to your Avoidance and Protection totals here. Your Avoidance and Protection skills are applied on top.</li>
     <li><b>Hit Points:</b> track your current HP here. It uses your Hit Points skill and works for both the Standard and Collegium systems.</li>
     <li><b>Nothing is entered twice:</b> add, change or remove an item in your inventory and this page updates to match.</li>

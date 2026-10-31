@@ -70,7 +70,7 @@ async function renderBestiaryModule() {
   <div class="panel">
     <div class="panel-header" style="display:flex;justify-content:space-between;align-items:center">
       <h2>Beastiary</h2>
-      <button class="btn btn-neon" onclick="openNewBestiaryEntry()">+ New Foe</button>
+      <button class="btn btn-neon" onclick="openNewBestiaryEntry()">New Foe</button>
     </div>
     <div class="panel-body">
       <div class="note" style="margin-bottom:10px">Your personal library of foe templates — private to you, not visible to players or other GMs. Keep the foes you use now in <b>Active</b>; tick the rest and Archive them. Archived foes stay safe here but drop out of the Add Combatants list.</div>
@@ -114,8 +114,8 @@ function paintBestiary() {
     <button class="btn btn-dim" ${selCount ? '' : 'disabled'} onclick="archiveSelectedBestiary(${isArchiveTab ? 'false' : 'true'})">${isArchiveTab ? 'Restore' : 'Archive'} selected (${selCount})</button>`;
   if (!rows.length) {
     listEl.innerHTML = bestiaryCache.length === 0
-      ? '<div class="note" style="padding:10px 0">No foes yet. Click "+ New Foe" to build one.</div>'
-      : `<div class="note" style="padding:10px 0">${bestiaryFilter.trim() ? 'No foes match that filter.' : (isArchiveTab ? 'Nothing archived yet. Tick foes on the Active tab and choose Archive selected.' : 'No active foes. Restore some from the Archive tab, or click "+ New Foe".')}</div>`;
+      ? '<div class="note" style="padding:10px 0">No foes yet. Click "New Foe" to build one.</div>'
+      : `<div class="note" style="padding:10px 0">${bestiaryFilter.trim() ? 'No foes match that filter.' : (isArchiveTab ? 'Nothing archived yet. Tick foes on the Active tab and choose Archive selected.' : 'No active foes. Restore some from the Archive tab, or click "New Foe".')}</div>`;
     return;
   }
   listEl.innerHTML = `<table class="skill-table">
@@ -718,7 +718,7 @@ function renderBestiaryEditor() {
           ${(d.attacks||[]).length===0 ? '<tr><td colspan="8" class="note" style="padding:8px 0">No attacks yet.</td></tr>' : ''}
         </tbody>
       </table>
-      <button class="btn btn-dim" onclick="addBestiaryAttack()">+ Add attack</button>
+      <button class="btn btn-dim" onclick="addBestiaryAttack()">Add attack</button>
       <div class="note" style="margin-top:6px">To-Hit defaults to Bmod × Max HP once both are set -- only fills a blank To-Hit, so per-attack overrides you type stick even after re-rolling HP or changing Bmod.</div>
       <div class="note" style="margin-top:2px">Crit %/Fumble % are computed the same way as a character weapon's: 7 + To-hit÷10 + .10×Crit Bonus (capped at half To-hit, floor 3); Fumble is 93-up unless To-hit itself is higher.</div>
 
@@ -755,7 +755,7 @@ function renderBestiaryEditor() {
           </tr>`).join('')}
         </tbody>
       </table>
-      <button class="btn btn-dim" onclick="addBestiaryItem()">+ Add item</button>
+      <button class="btn btn-dim" onclick="addBestiaryItem()">Add item</button>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Spells known</div>
       ${(d.spells||[]).length ? `<div style="margin-bottom:6px">${d.spells.map(s=>`<span class="type-badge" style="cursor:pointer;margin:0 4px 4px 0" onclick="removeBestiarySpell('${s.replace(/'/g,"\\'")}')" title="Click to remove">${escapeHtml(s)} ✕</span>`).join('')}</div>` : '<div class="note" style="margin-bottom:6px">None yet.</div>'}
@@ -766,7 +766,7 @@ function renderBestiaryEditor() {
             ${SPELLS.map(s=>`<option>${escapeHtml(s.name)}</option>`).join('')}
           </select>
         </div>
-        <div class="form-group"><button class="btn btn-dim" onclick="addBestiarySpell()">+ Add</button></div>
+        <div class="form-group"><button class="btn btn-dim" onclick="addBestiarySpell()">Add</button></div>
       </div>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Notes</div>

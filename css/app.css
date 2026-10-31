@@ -249,3 +249,9 @@ body {
 .wiki-link:hover { color: var(--gold); }
 /* A skill (or group of skills) that doesn't match anything in the skill catalog */
 .skill-unknown, .sidebar-section.skill-unknown { color: #c05050 !important; }
+/* Inventory: a magic item's spells, under the item's row */
+.inventory-table tr.item-spell-row td { padding: 2px 8px 4px 28px; color: var(--text-dim); border-bottom: 1px solid rgba(179,154,102,.25); }
+.inventory-table .item-spell-btn { padding: 1px 8px; margin-left: 6px; }
+.inventory-table .item-spell-btn:disabled { opacity: .4; cursor: default; }
+/* Item popup: a spell's selection row stays on one line */
+.item-spell-edit { flex-wrap: nowrap; gap: 8px; }

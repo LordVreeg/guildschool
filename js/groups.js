@@ -149,7 +149,7 @@ async function renderGroupModule() {
   const picker = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
       ${myGroups.map(g => `<button class="btn ${g.id===activeGroupId?'btn-gold':'btn-dim'}" onclick="selectGroup('${g.id}')">${escapeHtml(g.name)}${g.myRole==='gm'?' ★':''}</button>`).join('')}
-      <button class="btn btn-dim" onclick="openCreateGroupModal()">+ New Group</button>
+      <button class="btn btn-dim" onclick="openCreateGroupModal()">New Group</button>
     </div>`;
 
   if (!activeGroupId) {
@@ -364,7 +364,7 @@ async function renderGroupDetail(group) {
         ${celestialIconsHtml(groupClock.hour)}
         ${combatFlagHtml}
       </div>
-      ${isGM ? `<button class="btn btn-dim" onclick="openAddToGroupModal('${group.id}')">+ Add to Group</button>` : ''}
+      ${isGM ? `<button class="btn btn-dim" onclick="openAddToGroupModal('${group.id}')">Add to Group</button>` : ''}
     </div>
     <div class="form-group" style="margin-top:8px"><label>Roster (PCs &amp; NPCs)</label>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0">${orderToggleHtml}</div>
@@ -379,7 +379,7 @@ async function renderGroupDetail(group) {
     <div class="form-group" style="margin-top:8px">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <label style="margin:0">Temp Characters</label>
-        <button class="btn btn-dim" style="font-size:11px;padding:3px 8px" onclick="openNewTempCharacter('${group.id}')">+ Add Temp Character</button>
+        <button class="btn btn-dim" style="font-size:11px;padding:3px 8px" onclick="openNewTempCharacter('${group.id}')">Add Temp Character</button>
       </div>
       <div class="note" style="margin:2px 0">Quick stat blocks for players without a full character sheet yet -- used by the combat module.</div>
       <ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${tempCharsHtml}</ul>

@@ -16,7 +16,7 @@ function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
 }
 
-// "+ Add Item" on the Inventory page: every item field in one popup. The
+// "Add Item" on the Inventory page: every item field in one popup. The
 // item is built in itemDraft (mutations.js) and only added on confirm.
 // Every dropdown starts at "— select —", and the other fields and the Add
 // button stay locked until each dropdown has a choice.
@@ -25,6 +25,7 @@ function openAddItemModal(opts) {
   itemDraft = { type: '', name: '', qty: 1, weight: 0, worth: '', notes: '', location: '', masterwork: false };
   itemPicks = {};
   editingItemIdx = null;
+  resetItemSpellDraft();
   if (!opts.keepAddNext) addNextItem = false;
   renderAddItemModal(opts.justAdded);
 }
@@ -40,6 +41,7 @@ function openEditItemModal(idx) {
   // so drop it from the copy too; otherwise the Item step below it stays unfilled.
   for (const k of ['weaponClass', 'itemClass', 'magicItemClass']) if (itemPicks[k] === ITEM_PICK_CUSTOM) delete itemDraft[k];
   editingItemIdx = idx;
+  resetItemSpellDraft();
   addNextItem = false;
   renderAddItemModal();
 }
@@ -67,7 +69,7 @@ function renderAddItemModal(justAdded) {
   }).join('');
 
   const hasArmorStats = d.type === 'Armor' || d.type === 'Shield';
-  // Carried plus the containers/locations already set up; new ones come from "+ Add Container".
+  // Carried plus the containers/locations already set up; new ones come from "Add Container".
   const location = (d.location || '').trim();
   const locations = itemLocations(char);
   if (location && !locations.includes(location)) locations.push(location);
@@ -87,7 +89,7 @@ function renderAddItemModal(justAdded) {
       ${field('Unit Worth', num('worth'), 'sm')}
       ${d.type === 'Magic Item' ? '' : `<div class="form-group" style="justify-content:flex-end">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
-          <input type="checkbox" ${lock} ${d.masterwork ? 'checked' : ''} onchange="setAddItemField('masterwork',this.checked)"> ${d.type === 'Item' ? 'Masterwork' : 'Masterwork / Magic'}
+          <input type="checkbox" ${lock} ${d.masterwork ? 'checked' : ''} onchange="setAddItemField('masterwork',this.checked);renderAddItemModal()"> ${d.type === 'Item' ? 'Masterwork' : 'Masterwork / Magic'}
         </label>
       </div>`}
     </div>
@@ -95,6 +97,7 @@ function renderAddItemModal(justAdded) {
       ${field('Location', `<select class="w-full"  ${lock} onchange="setAddItemField('location',this.value)">${opt('', 'Carried', !location)}${locations.map(l => opt(l, l, location === l)).join('')}</select>`, 'md')}
       ${field('Notes', `<input class="w-full"  ${lock} value="${val(d.notes)}" oninput="setAddItemField('notes',this.value)">`, 'fill')}
     </div>
+    ${ready && itemCanHoldSpells(d) ? itemSpellsSectionHtml(d) : ''}
     <div class="note" style="margin-top:2px">${ready ? 'Carried items count toward Weight Carried. To put an item in a new bag, stash or other location, add it under Storage Locations first.' : 'Choose from every list above to fill in the rest of the item.'}</div>
     <div id="ai-error" style="color:var(--red-b);font-size:12px;margin-top:8px;display:none"></div>
     <div class="modal-actions" style="align-items:center">
@@ -103,10 +106,44 @@ function renderAddItemModal(justAdded) {
       </label>`}
       <button class="btn btn-dim" onclick="itemDraft=null;editingItemIdx=null;addNextItem=false;closeModal()">Cancel</button>
       <button class="btn btn-gold" ${lock} onclick="confirmAddItem()">${editing ? 'Save' : 'Add Item'}</button>
-    </div>`, { wide: true, width: 'min(720px, 92vw)', className: 'plain-font' });
+    </div>`, { wide: true, width: 'min(760px, 94vw)', className: 'plain-font' });
 }
 
-// "+ Add Container" and ✎ under Storage Locations: name, capacity (blank =
+// The item popup's Spells section (magic items): the spells already on the
+// item, then a row to add another at a fixed level with a usage limit.
+function itemSpellsSectionHtml(d) {
+  const opt = (value, label, selected) => `<option value="${escapeHtml(value)}" ${selected ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+  const schools = Object.keys(SPELL_SCHOOL_TO_POOL).sort();
+  const rule = itemSpellRule(d);
+  const list = (d.spells || []).map((sp, i) => `<div style="display:flex;align-items:center;gap:8px;padding:2px 0">✦ ${escapeHtml(sp.name)} (${escapeHtml(sp.school)}) · Level ${sp.level} · ${escapeHtml(rule === 'scroll' ? 'one use' : rule === 'potion' ? sp.usesMax + ' use' + (sp.usesMax == 1 ? '' : 's') : sp.usesMax + ' ' + itemSpellPeriodLabel(sp.period))}<span class="item-del" style="cursor:pointer;color:var(--red-b)" title="Remove" onclick="removeItemSpellFromDraft(${i})">✕</span></div>`).join('');
+  // One selection row per draft, on a single line, ending with ✕
+  const rows = itemSpellDrafts.map((s, i) => {
+    const catalog = s.school ? SPELLS.filter(sp => sp.school === s.school).sort((a, b) => a.name.localeCompare(b.name)) : [];
+    const spellField = !s.school
+      ? '<select class="w-md" disabled><option>— select —</option></select>'
+      : catalog.length
+        ? `<select class="w-md" onchange="setItemSpellDraft(${i},'name',this.value,true)">${opt('', '— select —', !s.name)}${catalog.map(sp => opt(sp.name, sp.name, s.name === sp.name)).join('')}</select>`
+        : `<input class="w-md" value="${escapeHtml(s.name || '')}" placeholder="Type its name" oninput="setItemSpellDraft(${i},'name',this.value)">`;
+    return `<div class="form-row item-spell-edit" style="align-items:flex-end;margin-top:6px">
+      <div class="form-group"><label>School</label><select class="w-md" onchange="setItemSpellDraft(${i},'school',this.value,true)">${opt('', '— select —', !s.school)}${schools.map(sc => opt(sc, sc, s.school === sc)).join('')}</select></div>
+      <div class="form-group"><label>Spell</label>${spellField}</div>
+      <div class="form-group"><label>Level</label><input type="number" min="1" class="w-sm" value="${escapeHtml(s.level)}" oninput="setItemSpellDraft(${i},'level',this.value)"></div>
+      ${rule === 'scroll' ? '' : `<div class="form-group"><label>Uses</label><input type="number" min="1" class="w-sm" value="${escapeHtml(s.usesMax)}" oninput="setItemSpellDraft(${i},'usesMax',this.value)"></div>`}
+      ${rule ? '' : `<div class="form-group"><label>Per</label><select class="w-md" onchange="setItemSpellDraft(${i},'period',this.value)">${ITEM_SPELL_PERIODS.map(([v, l]) => opt(v, l, s.period === v)).join('')}</select></div>`}
+      <div class="form-group"><span class="item-del" style="cursor:pointer;color:var(--red-b);padding:6px 2px" title="Remove this spell" onclick="closeItemSpellRow(${i})">✕</span></div>
+    </div>`;
+  }).join('');
+  return `
+    <hr class="divider">
+    <div class="form-group"><label>Spells</label></div>
+    ${list || (rows ? '' : '<div class="note">No spells on this item yet.</div>')}
+    ${rows}
+    ${rule === 'potion' && (d.spells || []).length + itemSpellDrafts.length >= 1 ? '' : '<div style="margin-top:6px"><button type="button" class="btn btn-dim" onclick="openItemSpellRow()">Add spell</button></div>'}
+    ${rule === 'potion' ? '<div class="note">A potion holds exactly one spell. Each cast uses one of its uses; when they run out the potion is gone.</div>' : rule === 'scroll' ? '<div class="note">A scroll holds one or more spells. Each can be cast once and is then gone; the scroll goes with its last spell.</div>' : ''}
+    <div class="note">Spells are saved with the item. Each is cast at its fixed level, with no spell points, and always succeeds; a cast uses one of its uses.</div>`;
+}
+
+// "Add Container" and ✎ under Storage Locations: name, capacity (blank =
 // no limit) and whether it's on the person. Edits a draft; see confirmContainer.
 function openAddContainerModal() {
   containerDraft = { name: '', capacity: '', onPerson: false };
@@ -176,7 +213,7 @@ function openDeleteContainerModal(name) {
     </div>`, { width: 'min(420px, 92vw)', className: 'plain-font' });
 }
 
-// "+ Add Spell" on the Spells page: pick a school, then a spell. SP cost and
+// "Add Spell" on the Spells page: pick a school, then a spell. SP cost and
 // its breakdown come from the catalog and are read-only. "Add another spell"
 // keeps the popup open for the next one.
 function openAddSpellModal(opts) {
