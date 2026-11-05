@@ -4257,6 +4257,20 @@
     "spellSuccess": "0"
   },
   {
+    "name": "Superior Enhance Mechanical Understanding",
+    "school": "Artificer",
+    "cost": 34,
+    "costs": {
+      "Spirit": 21,
+      "Artificer": 13
+    },
+    "majorSphere": "Artificer",
+    "initiative": "6",
+    "range": "1 foot+1 foot plev",
+    "duration": "30 min plev+1 hr plev",
+    "spellSuccess": "2"
+  },
+  {
     "name": "Crystal Edge, Superior",
     "school": "Artificer",
     "cost": 35,
@@ -10012,6 +10026,21 @@
     "spellSuccess": "7"
   },
   {
+    "name": "Superior Light of Friendship",
+    "school": "Life",
+    "cost": 39,
+    "costs": {
+      "Spirit": 25,
+      "Life": 13,
+      "Mentalist": 1
+    },
+    "majorSphere": "Life",
+    "initiative": "6",
+    "range": "1 mile per lev",
+    "duration": "10 minutes per lev",
+    "spellSuccess": "3"
+  },
+  {
     "name": "Preparation for Combat, Item",
     "school": "Life",
     "cost": 40,
@@ -10145,6 +10174,21 @@
     "range": "10'",
     "duration": "1 daylplev",
     "spellSuccess": "-20"
+  },
+  {
+    "name": "Sushta's Superior Light of Friendship",
+    "school": "Life",
+    "cost": 67,
+    "costs": {
+      "Spirit": 36,
+      "Life": 22,
+      "Mentalist": 9
+    },
+    "majorSphere": "Life",
+    "initiative": "6",
+    "range": "1 mile per lev",
+    "duration": "20 minutes per lev",
+    "spellSuccess": "-9"
   },
   {
     "name": "Water of Life",
@@ -11804,6 +11848,21 @@
     "spellSuccess": "0"
   },
   {
+    "name": "Guardian Skull",
+    "school": "Necromantic",
+    "cost": 11,
+    "costs": {
+      "Spirit": 6,
+      "Law": 1,
+      "Necromantic": 4
+    },
+    "majorSphere": "Necromantic",
+    "initiative": "29",
+    "range": "30'",
+    "duration": "2 hrs plev",
+    "spellSuccess": "18"
+  },
+  {
     "name": "The Distance to the Dark",
     "school": "Necromantic",
     "cost": 12,
@@ -12061,6 +12120,21 @@
     "spellSuccess": "4"
   },
   {
+    "name": "Improved Guardian Skull",
+    "school": "Necromantic",
+    "cost": 22,
+    "costs": {
+      "Spirit": 13,
+      "Law": 1,
+      "Necromantic": 8
+    },
+    "majorSphere": "Necromantic",
+    "initiative": "29",
+    "range": "30'+2' plev",
+    "duration": "5 hrs plev",
+    "spellSuccess": "6"
+  },
+  {
     "name": "Beyond the Call",
     "school": "Necromantic",
     "cost": 33,
@@ -12303,6 +12377,21 @@
     "range": "party/20' plev",
     "duration": "10 min plev",
     "spellSuccess": "-5"
+  },
+  {
+    "name": "Greater Guardian Skull",
+    "school": "Necromantic",
+    "cost": 33,
+    "costs": {
+      "Spirit": 20,
+      "Law": 1,
+      "Necromantic": 12
+    },
+    "majorSphere": "Necromantic",
+    "initiative": "29",
+    "range": "30'+2' plev",
+    "duration": "1 day plev",
+    "spellSuccess": "-2"
   },
   {
     "name": "Bone Sphere",
