@@ -523,7 +523,13 @@ function updateSpellState(poolName, field, value) {
   }
   if (!char.spellState) char.spellState = {};
   if (!char.spellState[poolName]) char.spellState[poolName] = {};
-  char.spellState[poolName][field] = parseFloat(value) || 0;
+  if (field === 'current') {
+    // Whole points only; typing a value also drops any partial point of recovery progress.
+    char.spellState[poolName].current = Math.round(parseFloat(value) || 0);
+    delete char.spellState[poolName].frac;
+  } else {
+    char.spellState[poolName][field] = parseFloat(value) || 0;
+  }
   saveState();
   renderSpellModule();
   if (openSpellPool && document.getElementById('modal-overlay').classList.contains('open')) renderSpellPoolModal();
@@ -752,9 +758,8 @@ function confirmHardcast() {
   if (!char.spellState) char.spellState = {};
   for (const [poolName, needed] of Object.entries(finalCosts)) {
     const info = poolByName[poolName];
-    const currentBefore = info ? info.currentSP : 0;
-    if (!char.spellState[poolName]) char.spellState[poolName] = {};
-    char.spellState[poolName].current = currentBefore - needed;
+    // Spend from the true value so a partial point of recovery progress is kept.
+    setPoolTrueSP(char, poolName, (info ? info.trueSP : 0) - needed, info ? info.maxSP : 0);
   }
   saveState();
   // SP is spent either way -- hardcastState stays alive through resolving
