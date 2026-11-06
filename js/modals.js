@@ -77,7 +77,7 @@ function renderAddItemModal(justAdded) {
 
   openModal(`
     <h3>${editing ? 'Edit Item' : 'Add Item'}</h3>
-    ${justAdded ? `<div class="note" style="margin-bottom:8px;color:var(--gold-dim)">Added “${escapeHtml(justAdded)}”. Next item:</div>` : ''}
+    ${justAdded ? `<div class="note">Added “${escapeHtml(justAdded)}”. Next item:</div>` : ''}
     <div class="form-row">${dropdowns}</div>
     <div class="form-row">
       ${field('Name', `<input class="w-full" id="ai-name"  ${lock} value="${val(d.name)}" oninput="setAddItemField('name',this.value)">`, 'full')}
@@ -94,12 +94,12 @@ function renderAddItemModal(justAdded) {
       </div>`}
     </div>
     <div class="form-row">
-      ${field('Location', `<select class="w-full"  ${lock} onchange="setAddItemField('location',this.value)">${opt('', 'Carried', !location)}${locations.map(l => opt(l, l, location === l)).join('')}</select>`, 'md')}
+      ${field('Location' + infoTip('Carried items count toward Weight Carried. To put an item in a new bag, stash or other location, add it under Storage Locations first.'), `<select class="w-full"  ${lock} onchange="setAddItemField('location',this.value)">${opt('', 'Carried', !location)}${locations.map(l => opt(l, l, location === l)).join('')}</select>`, 'md')}
       ${field('Notes', `<input class="w-full"  ${lock} value="${val(d.notes)}" oninput="setAddItemField('notes',this.value)">`, 'fill')}
     </div>
     ${ready && itemModKinds(d) ? itemModsSectionHtml(d) : ''}
     ${ready && itemCanHoldSpells(d) ? itemSpellsSectionHtml(d) : ''}
-    <div class="note" style="margin-top:2px">${ready ? 'Carried items count toward Weight Carried. To put an item in a new bag, stash or other location, add it under Storage Locations first.' : 'Choose from every list above to fill in the rest of the item.'}</div>
+    ${ready ? '' : '<div class="note">Choose from every list above to fill in the rest of the item.</div>'}
     <div id="ai-error" style="color:var(--red-b);font-size:12px;margin-top:8px;display:none"></div>
     <div class="modal-actions" style="align-items:center">
       ${editing ? '' : `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-right:auto">
@@ -116,10 +116,10 @@ function itemModsSectionHtml(d) {
   const k = itemModKinds(d);
   const val = x => escapeHtml(x === undefined || x === null ? '' : x);
   const num = (field, label) => `<div class="form-group"><label>${label}</label><input type="number" class="w-sm" value="${val(d[field])}" oninput="setAddItemField('${field}',this.value)"></div>`;
-  const head = (title, kind) => `<div style="font-size:12px;margin:8px 0 2px;color:var(--gold-dim)">${title}${k.optional.includes(kind) ? ` <span class="item-del" style="cursor:pointer;color:var(--red-b)" title="Remove ${title.toLowerCase()}" onclick="removeItemModKind('${kind}')">✕</span>` : ''}</div>`;
+  const head = (title, kind, help) => `<div style="font-size:12px;margin:8px 0 2px;color:var(--gold-dim)">${title}${help ? infoTip(help) : ''}${k.optional.includes(kind) ? ` <span class="item-del" style="cursor:pointer;color:var(--red-b)" title="Remove ${title.toLowerCase()}" onclick="removeItemModKind('${kind}')">✕</span>` : ''}</div>`;
   const parts = [];
   if (itemHasModKind(d, 'offense')) parts.push(head('Offense', 'offense') + `<div class="form-row">${num('magicBonusToHit', 'To Hit')}${num('magicDamageBeforeDivider', 'Dmg Before Divider')}${num('magicDamageAfterDivider', 'Dmg After Divider')}${num('magicCritBonus', 'Crit %')}</div>`);
-  if (itemHasModKind(d, 'defense')) parts.push(head('Defense', 'defense') + `<div class="form-row">${num('magicAvoidance', 'Avoidance')}${num('magicProtection', 'Protection')}</div><div class="note">Bonuses: Avoidance lowers AV, Protection adds to PR.</div>`);
+  if (itemHasModKind(d, 'defense')) parts.push(head('Defense', 'defense', 'Bonuses: Avoidance lowers AV, Protection adds to PR.') + `<div class="form-row">${num('magicAvoidance', 'Avoidance')}${num('magicProtection', 'Protection')}</div>`);
   if (itemHasModKind(d, 'void')) {
     if (!(d.magicVoid || []).length) d.magicVoid = [{ pool: '', amount: '' }]; // start with one row to fill in
     const pools = spellPoolNames();
@@ -129,10 +129,10 @@ function itemModsSectionHtml(d) {
       <div class="form-group"><label>Cost Reduction</label><input type="number" min="0" class="w-sm" value="${val(v.amount)}" oninput="setItemVoidRow(${i},'amount',this.value)"></div>
       <div class="form-group"><span class="item-del" style="cursor:pointer;color:var(--red-b);padding:6px 2px" title="Remove" onclick="removeItemVoidRow(${i})">✕</span></div>
     </div>`).join('');
-    parts.push(head('Void', 'void') + rows + `<div style="display:flex;align-items:center;gap:12px;margin-top:2px">
+    parts.push(head('Void', 'void', 'Spell cost reduction per pool. Only the best single item counts, unless an item is marked as stacking.') + rows + `<div style="display:flex;align-items:center;gap:12px;margin-top:2px">
       <button type="button" class="btn btn-dim" onclick="addItemVoidRow()">Add pool</button>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${d.magicVoidStacks ? 'checked' : ''} onchange="setAddItemField('magicVoidStacks',this.checked)"> Stacks with other items' void bonuses</label>
-    </div><div class="note">Spell cost reduction per pool. Only the best single item counts, unless an item is marked as stacking.</div>`);
+    </div>`);
   }
   const adders = k.optional.filter(kind => !itemHasModKind(d, kind))
     .map(kind => `<button type="button" class="btn btn-dim" onclick="addItemModKind('${kind}')">Add ${kind}</button>`).join(' ');
@@ -169,12 +169,11 @@ function itemSpellsSectionHtml(d) {
   }).join('');
   return `
     <hr class="divider">
-    <div class="form-group"><label>Spells</label></div>
+    <div class="form-group"><label>Spells${infoTip((rule === 'potion' ? 'A potion holds exactly one spell. Each cast uses one of its uses; when they run out the potion is gone. ' : rule === 'scroll' ? 'A scroll holds one or more spells. Each can be cast once and is then gone; the scroll goes with its last spell. ' : '') + 'Spells are saved with the item. Each is cast at its fixed level, with no spell points, and always succeeds; a cast uses one of its uses.')}</label></div>
     ${list || (rows ? '' : '<div class="note">No spells on this item yet.</div>')}
     ${rows}
     ${rule === 'potion' && (d.spells || []).length + itemSpellDrafts.length >= 1 ? '' : '<div style="margin-top:6px"><button type="button" class="btn btn-dim" onclick="openItemSpellRow()">Add spell</button></div>'}
-    ${rule === 'potion' ? '<div class="note">A potion holds exactly one spell. Each cast uses one of its uses; when they run out the potion is gone.</div>' : rule === 'scroll' ? '<div class="note">A scroll holds one or more spells. Each can be cast once and is then gone; the scroll goes with its last spell.</div>' : ''}
-    <div class="note">Spells are saved with the item. Each is cast at its fixed level, with no spell points, and always succeeds; a cast uses one of its uses.</div>`;
+    `;
 }
 
 // "Add Container" and ✎ under Storage Locations: name, capacity (blank =
@@ -207,7 +206,7 @@ function renderContainerModal() {
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group w-sm"><label>Capacity</label>
+      <div class="form-group w-sm"><label>Capacity${infoTip(`Capacity is the weight it can hold; leave it blank for no limit. Tick On Person for something you wear or carry (a backpack), so its contents count toward Weight Carried.${editing ? ' Renaming moves its items along with it.' : ''}`)}</label>
         <input class="w-full" type="number" min="0"  value="${val(d.capacity)}" placeholder="no limit" oninput="containerDraft.capacity=this.value">
       </div>
       <div class="form-group" style="justify-content:flex-end">
@@ -216,7 +215,6 @@ function renderContainerModal() {
         </label>
       </div>
     </div>
-    <div class="note">Capacity is the weight it can hold; leave it blank for no limit. Tick On Person for something you wear or carry (a backpack), so its contents count toward Weight Carried.${editing ? ' Renaming moves its items along with it.' : ''}</div>
     <div id="ct-error" style="color:var(--red-b);font-size:12px;margin-top:8px;display:none"></div>
     <div class="modal-actions">
       <button class="btn btn-dim" onclick="containerDraft=null;editingContainerName=null;closeModal()">Cancel</button>
@@ -274,7 +272,7 @@ function renderAddSpellModal(justAdded) {
       : `<input class="w-lg" value="${escapeHtml(d.name)}" placeholder="Not in the catalog: type its name" oninput="setSpellDraftName(this.value, true)">`;
   openModal(`
     <h3>Add Spell</h3>
-    ${justAdded ? `<div class="note" style="margin-bottom:8px;color:var(--gold-dim)">Added “${escapeHtml(justAdded)}”. Next spell:</div>` : ''}
+    ${justAdded ? `<div class="note">Added “${escapeHtml(justAdded)}”. Next spell:</div>` : ''}
     <div class="form-row">
       <div class="form-group"><label>School</label>
         <select class="w-md" onchange="setSpellDraftSchool(this.value)">${opt('', '— select —', !d.school)}${schools.map(sc => opt(sc, sc, d.school === sc)).join('')}</select>
@@ -316,7 +314,7 @@ function openNewCharModal(preset) {
     <hr class="divider">
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:8px">
       <input type="checkbox" id="nc-roll" ${roll?'checked':''} onchange="document.getElementById('nc-roll-options').style.display=this.checked?'block':'none'">
-      Roll new character (attributes, race, subrace, height/weight/age, social background)
+      Roll new character (attributes, race, subrace, height/weight/age, social background)${infoTip(`Race and subrace are single d100 rolls each (no re-roll/choice). Stops after Social Number — does not roll the Acquisitions item chart.`)}
     </label>
     <div id="nc-roll-options" style="display:${roll?'block':'none'};margin-bottom:10px">
       <div class="form-row">
@@ -331,7 +329,6 @@ function openNewCharModal(preset) {
           </select>
         </div>
       </div>
-      <div class="note">Race and subrace are single d100 rolls each (no re-roll/choice). Stops after Social Number — does not roll the Acquisitions item chart.</div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-dim" onclick="openCharTutorial(captureNewCharFormState())">Quick Tutorial</button>
@@ -717,7 +714,7 @@ function renderAddSkillList() {
           <span style="font-size:10px;color:var(--gold-dim)">${bonus.toFixed(3)}</span>
           <span class="lv" style="font-size:10px">${s.parent ? '↳ '+s.parent : 'Base'}</span>
         </span>
-      </div>`).join('') : '<div class="note" style="padding:10px">No skills found for this guild.</div>';
+      </div>`).join('') : '<div class="note">No skills found for this guild.</div>';
   } else {
     const byType = {};
     for (const s of SKILLS) {
@@ -733,7 +730,7 @@ function renderAddSkillList() {
         <span>${s.name}</span>
         <span class="lv" style="font-size:10px">${s.parent ? '↳ '+s.parent : 'Base'}</span>
       </div>`).join('')}
-    `).join('') : '<div class="note" style="padding:10px">No skills found.</div>';
+    `).join('') : '<div class="note">No skills found.</div>';
   }
 
   ['primary','secondary','tertiary','other'].forEach(m => {
@@ -758,15 +755,23 @@ function lookupRacialBonus(character, skillName) {
   return entry ? entry.bonus : 0;
 }
 
-function autoPopulateDropdownChildren(character, parentInst) {
+// visited: skills already filled in during this call, so the recursion below
+// (a skill's templated children, a weapon class's shared skills) never loops.
+function autoPopulateDropdownChildren(character, parentInst, visited = new Set()) {
+  if (visited.has(parentInst.id)) return 0;
+  const topLevel = visited.size === 0;
+  visited.add(parentInst.id);
   const parentDef = findSkillDef(parentInst.skillName);
   if (!parentDef) return 0;
-  const existingKeys = new Set((character.skills||[]).map(s => s.skillName + '|' + (s.binding||'')));
+  // Looked up live: a nested call below may have added skills since this one started.
+  const findByKey = key => (character.skills||[]).find(s => s.skillName + '|' + (s.binding||'') === key);
   let added = 0;
 
+  // Returns the child's instance (the existing one if it is already there).
   function addChild(childDef, binding) {
     const key = childDef.name + '|' + (binding||'');
-    if (existingKeys.has(key)) return;
+    const existing = findByKey(key);
+    if (existing) return existing;
     // Self-heal: an existing instance of this skill with no binding, whose Parent Skill
     // reference points at the weapon being trained now, is almost certainly the same
     // skill that was never properly bound — fix it instead of creating a duplicate.
@@ -776,12 +781,11 @@ function autoPopulateDropdownChildren(character, parentInst) {
       );
       if (orphan) {
         orphan.binding = binding;
-        existingKeys.add(key);
-        return;
+        return orphan;
       }
     }
     const id = 'sk_' + Date.now() + '_' + Math.random().toString(36).slice(2,6) + '_' + added;
-    character.skills.push({
+    const inst = {
       id, skillName: childDef.name,
       guildName: parentInst.guildName || character.guild || '',
       dropdownOnly: true,
@@ -791,17 +795,28 @@ function autoPopulateDropdownChildren(character, parentInst) {
       rolls: Array(20).fill(''),
       bonusItem: 0, bonusRace: 0, bonusMagic: 0, bonusOther: 0,
       binding: binding || '', notes: ''
-    });
-    existingKeys.add(key);
+    };
+    character.skills.push(inst);
     added++;
+    return inst;
   }
 
-  // Direct dropdown children matched by literal parent field (e.g. Sculpt under Basic Artist)
+  // Direct dropdown children matched by literal parent field (e.g. Sculpt under Basic Artist).
+  // A templated child takes the weapon class its parent is bound to (Critical Hit Bonus
+  // under Damage Bonus bound to Basic Spears is bound to Basic Spears too), and its own
+  // dropdowns are filled in as well; with no class to bind to, it is left for the player.
+  const parentClass = WEAPON_CLASSES.includes(parentInst.binding) ? parentInst.binding
+    : (WEAPON_CLASSES.includes(parentDef.name) ? parentDef.name : null);
   const directChildren = SKILLS.filter(s =>
     s.parent && s.parent.trim().toLowerCase() === parentDef.name.trim().toLowerCase() &&
-    !s.templated && s.dropdown !== null && s.dropdown !== undefined
+    s.dropdown !== null && s.dropdown !== undefined
   );
-  for (const c of directChildren) addChild(c, '');
+  for (const c of directChildren) {
+    if (!c.templated) { addChild(c, ''); continue; }
+    if (!parentClass) continue;
+    const inst = addChild(c, parentClass);
+    if (inst) added += autoPopulateDropdownChildren(character, inst, visited);
+  }
 
   // Special case: every Basic weapon skill shares the same 5 templated combat dropdowns,
   // bound to that specific weapon class. Single weap spec is excluded — it binds to one
@@ -812,27 +827,35 @@ function autoPopulateDropdownChildren(character, parentInst) {
   // covers old characters where the base weapon skill entry was never added directly.
   const weaponClass = WEAPON_CLASSES.includes(parentDef.name) ? parentDef.name
     : (WEAPON_CLASSES.includes(parentInst.binding) ? parentInst.binding : null);
-  if (weaponClass) {
+  if (weaponClass && topLevel) {
     const sharedTemplated = ['Attack versus', 'Damage Bonus', 'Initiative bonus', 'Multiple attack', 'Parry'];
+    // ...and each of those gets its own dropdowns (Critical Hit Bonus, Call Damage
+    // and Stunning Attack under Damage Bonus, Disarm under Parry, and so on).
     for (const name of sharedTemplated) {
       const def = findSkillDef(name);
-      if (def) addChild(def, weaponClass);
+      const inst = def && addChild(def, weaponClass);
+      if (inst) added += autoPopulateDropdownChildren(character, inst, visited);
     }
   }
 
   return added;
 }
 
-function manualPopulateChildren(skillId) {
+// Character menu → Populate Missing Dropdown Skills: fills in the dropdown-only
+// sub-skills of every trained skill on the character that is missing them
+// (useful for skills trained before a dropdown was added to the catalog).
+function populateAllMissingDropdowns() {
   const char = state.characters[state.activeChar];
-  if (!char) return;
-  const si = (char.skills || []).find(s => s.id === skillId);
-  if (!si) return;
-  const added = autoPopulateDropdownChildren(char, si);
+  if (!char) { alert('Select a character first.'); return; }
+  const trained = (char.skills || []).filter(si => {
+    const def = !si.dropdownOnly && parseFloat(si.rawXP) > 0 && findSkillDef(si.skillName);
+    return def && (!def.templated || WEAPON_CLASSES.includes(si.binding));
+  });
+  const added = trained.reduce((n, si) => n + autoPopulateDropdownChildren(char, si), 0);
   saveState();
-  renderSkillModule(skillId);
   renderSidebar();
-  alert(added > 0 ? `Added ${added} dropdown skill(s).` : 'Nothing to add — all dropdown children already present.');
+  renderMain();
+  alert(added > 0 ? `Added ${added} dropdown skill(s).` : 'Nothing to add — all dropdown skills are already present.');
 }
 
 function addSkill(skillName) {

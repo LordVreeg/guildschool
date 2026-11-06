@@ -284,14 +284,14 @@ function openItemCastModal(itemIdx, spellIdx) {
   const left = itemSpellUsesLeft(sp, char);
   openModal(`
     <h3>Cast: ${escapeHtml(sp.name)}</h3>
-    <div class="note" style="margin-bottom:10px">From ${escapeHtml(it.name || 'this item')}. Cast at level ${sp.level}, with no spell points, and it always succeeds.</div>
+    <div class="note">From ${escapeHtml(it.name || 'this item')}. Cast at level ${sp.level}, with no spell points, and it always succeeds.</div>
     <div class="form-row">
       <div class="computed-item"><span class="ci-label">Level</span><span class="ci-value">${sp.level}</span></div>
       <div class="computed-item"><span class="ci-label">Duration</span><span class="ci-value" style="font-size:13px">${escapeHtml(spellDurationText(def && def.duration, sp.level))}</span></div>
       <div class="computed-item"><span class="ci-label">Uses</span><span class="ci-value" style="font-size:13px">${escapeHtml(itemSpellUsageText(sp, char, itemSpellRule(it)))}${left > 0 && itemSpellRule(it) !== 'scroll' ? ` → ${left - 1} after this` : ''}</span></div>
     </div>
-    ${left > 0 ? '' : '<div class="note" style="color:#c05050">No uses left. Reset its uses (↺) when they come back.</div>'}
-    ${itemSpellRule(it) === 'scroll' ? `<div class="note" style="color:var(--gold-dim)">Casting uses this spell up${(it.spells || []).length === 1 ? ', and with it the scroll' : ''}.</div>` : itemSpellRule(it) === 'potion' && left === 1 ? `<div class="note" style="color:var(--gold-dim)">This is its last use: the potion${(parseInt(it.qty) || 1) > 1 ? ' (one of ' + it.qty + ')' : ''} will be used up.</div>` : ''}
+    ${left > 0 ? '' : '<div class="warn">No uses left. Reset its uses (↺) when they come back.</div>'}
+    ${itemSpellRule(it) === 'scroll' ? `<div class="warn">Casting uses this spell up${(it.spells || []).length === 1 ? ', and with it the scroll' : ''}.</div>` : itemSpellRule(it) === 'potion' && left === 1 ? `<div class="warn">This is its last use: the potion${(parseInt(it.qty) || 1) > 1 ? ' (one of ' + it.qty + ')' : ''} will be used up.</div>` : ''}
     <div class="modal-actions">
       <button class="btn btn-dim" onclick="itemCastState=null;closeModal()">Cancel</button>
       <button class="btn btn-gold" ${left > 0 ? '' : 'disabled'} onclick="confirmItemCast()">Cast</button>
@@ -677,19 +677,19 @@ function renderHardcastModal() {
   });
   const canCast = shortfalls.length === 0 && eligibilityIssues.length === 0;
 
-  const modeBtn = (m, label) => `<button class="btn ${mode===m?'btn-gold':'btn-dim'}" onclick="setCastMode('${m}')">${label}</button>`;
+  const modeHelp = {
+    hardcast: 'Full SP cost from your own pools. Spirit substitution and overcasting for extra success are both available.',
+    plaque: 'Half SP cost, but only for a spell you could already hardcast: no substitution, must have every power source type trained, and no overcasting.',
+    scroll: '1/10 SP cost, and can exceed your own ability (up to 2× your max in any pool), but requires every power source type trained, no substitution, no overcasting.'
+  };
+  const modeBtn = (m, label) => `<button class="btn ${mode===m?'btn-gold':'btn-dim'}" onclick="setCastMode('${m}')">${label}</button>${infoTip(modeHelp[m])}`;
 
   openModal(`
     <h3>Cast: ${hs.spellName}</h3>
-    <div class="note" style="margin-bottom:10px">${hs.school} — base cost ${Object.entries(hs.baseCosts).map(([s,v])=>`${s} ${v}`).join(', ')}${hs.duration ? ` — duration ${escapeHtml(hs.duration)}` : ''}</div>
+    <div class="note">${hs.school} — base cost ${Object.entries(hs.baseCosts).map(([s,v])=>`${s} ${v}`).join(', ')}${hs.duration ? ` — duration ${escapeHtml(hs.duration)}` : ''}</div>
 
     <div style="display:flex;gap:8px;margin-bottom:12px">
       ${modeBtn('hardcast','Hardcast')} ${modeBtn('plaque','Plaque')} ${modeBtn('scroll','Scrollcast')}
-    </div>
-    <div class="note" style="margin-bottom:10px">
-      ${mode==='hardcast' ? 'Full SP cost from your own pools. Spirit substitution and overcasting for extra success are both available.' : ''}
-      ${mode==='plaque' ? 'Half SP cost, but only for a spell you could already hardcast — no substitution, must have every power source type trained, and no overcasting.' : ''}
-      ${mode==='scroll' ? '1/10 SP cost, and can exceed your own ability (up to 2× your max in any pool) — but requires every power source type trained, no substitution, no overcasting.' : ''}
     </div>
 
     ${mode === 'hardcast' ? `
@@ -712,7 +712,7 @@ function renderHardcastModal() {
     </div>
     ` : ''}
 
-    ${eligibilityIssues.length ? `<hr class="divider"><div class="note" style="color:#c05050">${eligibilityIssues.join('<br>')}</div>` : ''}
+    ${eligibilityIssues.length ? `<hr class="divider"><div class="warn">${eligibilityIssues.join('<br>')}</div>` : ''}
 
     <hr class="divider">
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Final Cost & Success</div>
@@ -726,8 +726,7 @@ function renderHardcastModal() {
         }).join('')}
       </tbody>
     </table>
-    <div class="computed-item" style="margin-bottom:8px"><span class="ci-label">Success Chance (before the GM's d50)</span><span class="ci-value skval" style="font-size:20px">${totalSuccess}</span></div>
-    <div class="note">Base ${hs.spellSuccessBase} + Spirit Success [${spiritSuccessSkval}] + ${hs.school} Success [${majorSuccessSkval}] + Magic Bonus [${successBonus}]${mode==='hardcast' ? ` + Overcast [${overcastBonus}]` : ''}</div>
+    <div class="computed-item" style="margin-bottom:8px"><span class="ci-label">Success Chance (before the GM's d50)${infoTip(`Base ${hs.spellSuccessBase} + Spirit Success [${spiritSuccessSkval}] + ${hs.school} Success [${majorSuccessSkval}] + Magic Bonus [${successBonus}]${mode==='hardcast' ? ` + Overcast [${overcastBonus}]` : ''}`)}</span><span class="ci-value skval" style="font-size:20px">${totalSuccess}</span></div>
 
     <div class="modal-actions">
       <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
@@ -772,8 +771,7 @@ function openSpellResolveModal() {
   const hs = hardcastState;
   if (!hs) return;
   openModal(`
-    <h3>Resolve: ${escapeHtml(hs.spellName)}</h3>
-    <div class="note" style="margin-bottom:10px">Success chance ${hs.totalSuccess}% plus the GM's d50 roll sets the target. Then the caster rolls d100 and must roll at or under the target to succeed.</div>
+    <h3>Resolve: ${escapeHtml(hs.spellName)}${infoTip(`Success chance ${hs.totalSuccess}% plus the GM's d50 roll sets the target. Then the caster rolls d100 and must roll at or under the target to succeed.`)}</h3>
 
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">1. GM roll (d50)</div>
     <div class="form-row" style="align-items:flex-end;margin-bottom:6px">
@@ -856,7 +854,7 @@ function openMarkDurationModal(roll) {
   if (!hs) return;
   openModal(`
     <h3>${escapeHtml(hs.spellName)} — Success!</h3>
-    <div class="note" style="margin-bottom:8px">${hs.fromItem ? `Cast from ${escapeHtml(hs.fromItem)} at level ${hs.level}.` : `Rolled ${roll} against a target of ${hs.finalTarget} (${hs.totalSuccess}% + GM d50 ${hs.gmRoll}).`}${hs.duration ? ` Listed duration: ${escapeHtml(hs.duration)}` : ''}</div>
+    <div class="note">${hs.fromItem ? `Cast from ${escapeHtml(hs.fromItem)} at level ${hs.level}.` : `Rolled ${roll} against a target of ${hs.finalTarget} (${hs.totalSuccess}% + GM d50 ${hs.gmRoll}).`}${hs.duration ? ` Listed duration: ${escapeHtml(hs.duration)}` : ''}</div>
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:8px">
       <input type="checkbox" id="mark-duration-check" checked onchange="document.getElementById('mark-duration-fields').style.display=this.checked?'flex':'none'">
       Mark duration?
@@ -964,7 +962,8 @@ function updateHPState(field, value) {
   if (!char.hpState) char.hpState = {};
   char.hpState[field] = (field === 'system') ? value : (parseFloat(value) || 0);
   saveState();
-  renderCombatModule();
+  // The HP system is set on General Info; current HP on the Combat page
+  if (state.activeView === 'general') renderGeneralModule(); else renderCombatModule();
 }
 
 function updateWeaponField(idx, field, value) {
@@ -1181,8 +1180,8 @@ function deleteChar() {
     });
   }
   renderApp();
-  document.getElementById('main').innerHTML = '<div class="note" style="text-align:center;padding:40px">Character deleted.</div>';
-  document.getElementById('sidebar').innerHTML = '<div class="note" style="padding:12px;text-align:center">Select or create a character</div>';
+  document.getElementById('main').innerHTML = '<div class="note placeholder">Character deleted.</div>';
+  document.getElementById('sidebar').innerHTML = '<div class="note placeholder">Select or create a character</div>';
 }
 
 function openTransferOwnershipModal() {
@@ -1190,7 +1189,7 @@ function openTransferOwnershipModal() {
   if (!char) return;
   openModal(`
     <h3>Transfer Ownership</h3>
-    <div class="note" style="margin-bottom:8px;color:#c05050">You will lose access to "${escapeHtml(char.name || 'this character')}" once transferred — the new owner gets full control, and you won't be able to see or edit it anymore (unless you're an admin).</div>
+    <div class="warn">You will lose access to "${escapeHtml(char.name || 'this character')}" once transferred — the new owner gets full control, and you won't be able to see or edit it anymore (unless you're an admin).</div>
     <div class="form-group" style="margin-bottom:8px"><label>New Owner's Email</label><input class="w-full" id="transfer-email"  type="email"></div>
     <div id="transfer-status" style="font-size:12px;color:var(--red-b);margin-bottom:8px;display:none"></div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-red" onclick="confirmTransferOwnership()">Transfer</button></div>`);
@@ -1218,6 +1217,6 @@ async function confirmTransferOwnership() {
   state.activeSkillId = null;
   closeModal();
   renderApp();
-  document.getElementById('main').innerHTML = '<div class="note" style="text-align:center;padding:40px">Character transferred.</div>';
-  document.getElementById('sidebar').innerHTML = '<div class="note" style="padding:12px;text-align:center">Select or create a character</div>';
+  document.getElementById('main').innerHTML = '<div class="note placeholder">Character transferred.</div>';
+  document.getElementById('sidebar').innerHTML = '<div class="note placeholder">Select or create a character</div>';
 }

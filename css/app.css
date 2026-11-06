@@ -123,11 +123,13 @@ body {
 .form-group input:focus, .form-group select:focus { border-color: var(--gold); outline: none; }
 .form-group input.computed { color: var(--gold); border-color: var(--gold-dim); background: rgba(110,27,34,.05); }
 .form-group input.computed-skval { color: var(--text-bright); font-size: 18px; font-weight: bold; border-color: var(--gold); background: rgba(110,27,34,.08); }
-/* Field widths: four tiers, picked by what a field holds.
+/* Field widths: five tiers, picked by what a field holds.
+   xs = a one- or two-digit number in a tight table (Parry Used);
    sm = numbers and very short values; md = short text and most dropdowns;
    lg = names and long lists (guilds, weapons, skills); full = long text.
    A tier class can also go on a .form-group, whose field is then w-full. */
-:root { --w-sm: 60px; --w-md: 160px; --w-lg: 260px; }
+:root { --w-xs: 30px; --w-sm: 60px; --w-md: 160px; --w-lg: 260px; }
+.w-xs { width: var(--w-xs); }
 .w-sm { width: var(--w-sm); }
 .w-md { width: var(--w-md); }
 .w-lg { width: var(--w-lg); }
@@ -189,7 +191,18 @@ body {
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
 #modal-box input:disabled, #modal-box select:disabled, #modal-box button:disabled { opacity: .45; cursor: not-allowed; }
 /* MISC */
+/* Help text (see "Help text" in CLAUDE.md). .note: an empty state, a short
+   instruction or a line of data; .warn: something is wrong and needs fixing;
+   .info-tip: the ⓘ that holds a formula or rule explanation on hover
+   (infoTip in js/auth.js). Spacing lives here, not in inline styles. */
 .note { font-size: 11px; color: var(--text-dim); font-style: italic; }
+div.note, div.warn { margin: 4px 0 6px; }
+td div.note, td.note, li.note { margin: 0; }
+.warn { font-size: 11px; color: #c05050; }
+.info-tip { cursor: help; color: var(--gold-dim); font-style: normal; font-size: 0.9em; text-transform: none; letter-spacing: 0; }
+.info-tip:hover { color: var(--gold); }
+.note.placeholder { text-align: center; padding: 40px; }
+#sidebar > .note.placeholder { padding: 12px; }
 .expmod-breakdown { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
 @media print {
   #topbar, #sidebar, #modal-overlay, .btn, button, select, input, .weight-bar-track { display: none !important; }
@@ -248,6 +261,8 @@ body {
    with a line per grip; a weapon's name opens its stats popup */
 .combat-section-head { font-size: 11px; color: var(--gold-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; display: flex; gap: 10px; align-items: baseline; }
 .combat-section-head .wiki-link { text-transform: none; letter-spacing: 0; }
+/* Hit Points and Defense side by side; they stack on a narrow screen */
+.combat-top { display: flex; flex-wrap: wrap; gap: 12px 40px; align-items: flex-start; }
 .combat-table { width: auto; }
 .combat-table tbody th { text-align: left; }
 .combat-table input[type=number] { font: inherit; background: var(--input-bg); color: var(--text); border: 1px solid transparent; padding: 2px 6px; }
@@ -258,6 +273,7 @@ body {
 .combat-weapons td.combat-weapon-name { white-space: normal; min-width: 110px; }
 .combat-scroll { overflow-x: auto; }
 .combat-small-btn { font-size: 11px; padding: 0 8px; }
+.combat-notes-input { margin-bottom: 8px; }
 .combat-move span { margin-left: 0 !important; }
 /* A link out to the Celtricia wiki (e.g. a spell's name) */
 .wiki-link { color: inherit; text-decoration: underline dotted; }

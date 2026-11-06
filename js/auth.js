@@ -29,6 +29,12 @@ function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+// A hover-only ⓘ for a formula or rule explanation, so it doesn't take up
+// room on the page (see "Help text" in CLAUDE.md).
+function infoTip(text) {
+  return ` <span class="info-tip" title="${escapeHtml(text)}">ⓘ</span>`;
+}
+
 // GuildSchool names are all "Location: Name" (e.g. "Igbar: Bowyers of
 // Ceminiar") -- with 40+ guilds per location across several locations, a
 // flat list (even grouped) is a long scroll. <optgroup> can't collapse --
@@ -493,5 +499,5 @@ function viewCharacterReadOnly(rowId) {
       <button class="btn btn-dim" onclick="renderApp()">← Back to my characters</button>
     </div>
     <div class="panel admin-readonly-view"><div class="panel-body">${buildCharacterSheetHtml(char)}</div></div>`;
-  document.getElementById('sidebar').innerHTML = '<div class="note" style="padding:12px;text-align:center">Viewing another player\'s character (read-only)</div>';
+  document.getElementById('sidebar').innerHTML = '<div class="note placeholder">Viewing another player\'s character (read-only)</div>';
 }

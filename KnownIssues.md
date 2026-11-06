@@ -68,6 +68,34 @@ Two entries don't match up:
   weapon category maps to it. Choosing it as the Weapon Class always gives
   an empty Model list.
 
+## Skill catalog
+
+- **Call Damage and Disarm should be templated.** In `data/skills.json`,
+  Call Damage (under Damage Bonus) and Disarm (under Parry) have
+  `"templated": false`. They are weapon-class skills, like their parents,
+  so they should be templated and bound to a weapon class. As it is, they
+  aren't bound to one: `autoPopulateDropdownChildren` in `js/modals.js`
+  adds each of them only once per character, under whichever weapon class
+  was populated first, and a second weapon class never gets its own.
+  The other untemplated dropdowns under the shared weapon skills are in the
+  same position and may need the same fix: Stunning Attack (Damage Bonus),
+  Frenzy and Swarm (Multiple attack), Autohit (Attack Versus), Quickdraw
+  (Initiative Bonus) and Slay (perfect attack) (Critical Hit Bonus).
+  Fixing it should be a data change only: set `"templated": true` on them
+  (and make sure a wiki sync doesn't reset it). The populate code already
+  binds a templated dropdown to its parent's weapon class. Existing
+  characters keep their unbound copy until it is re-bound or removed.
+- **Slay (perfect attack) has no rule yet. Waiting on Norm.** The catalog
+  has it as a dropdown of Critical Hit Bonus (`"dropdown": 0.1`, attmod
+  `((WI-13)*.005)+((CD-16)*.01)`, per level 1D10+1, commonality 4), and
+  the populate code now adds it under Critical Hit Bonus. But the wiki's
+  Combat Skills page lists it by name only, with no description, so the app
+  doesn't know what it does and nothing uses its skill value. Once Norm
+  writes up the rule: add it to the Combat page's weapon numbers, and
+  decide whether it should be templated (see the item above). Its catalog
+  entry also spells its parent "Critical hit bonus"; that still matches,
+  since the lookup ignores case.
+
 ## UI
 
 - **Top bar overflows on narrow screens.** When signed in, the header needs about

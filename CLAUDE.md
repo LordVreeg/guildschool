@@ -49,6 +49,22 @@ commit.
   dropdown. A wiki sync that brings in a new or misspelled type (e.g.
   "Mind>", "Thieve's Tree") puts its skills in a stray group at the end.
   Fix the typo in the data, or add a genuinely new type to the list.
+- **Help text.** Text that explains a page follows one rule, so pages stay
+  compact and consistent:
+  - **Warnings** stay on the page: `<div class="warn">`. Use them only when
+    something is wrong or about to be lost (too much in hand, no uses left,
+    data stored only in this browser).
+  - **Empty states** stay on the page: `<div class="note">No items yet…</div>`.
+  - **Formulas and rule explanations** go on hover: `infoTip(text)` (in
+    `js/auth.js`) puts a small ⓘ next to the label, heading or column they
+    explain. Don't put them in a note under a table.
+  - **Instructions**: at most one short line per section, and only where the
+    action isn't obvious ("Use ✎ to change an item.").
+  - **No inline styles on notes.** Spacing and colour come from `.note`,
+    `.warn` and `.info-tip` in `css/app.css`. Page placeholders use
+    `<div class="note placeholder">`.
+  - When a feature moves, update or remove the text that points at its old
+    place.
 
 ## Running locally
 

@@ -217,7 +217,7 @@ function showImportReport(title, summary, sectionsHtml, canImport, onImport) {
   openModal(`
     <h3>${escapeHtml(title)}</h3>
     <div>${summary}</div>
-    ${sectionsHtml || '<div class="note" style="margin-top:8px">No problems found.</div>'}
+    ${sectionsHtml || '<div class="note">No problems found.</div>'}
     <div class="modal-actions">
       <button class="btn btn-dim" onclick="pendingImport=null;closeModal()">Cancel</button>
       <button class="btn btn-gold" ${canImport ? '' : 'disabled'} onclick="${onImport}">Import</button>

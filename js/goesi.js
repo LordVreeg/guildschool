@@ -127,7 +127,7 @@ function renderGoesiMonthView(groupId, isGM) {
         ${rows.map(row => `<tr>${row.map(cellHtml).join('')}</tr>`).join('')}
       </tbody>
     </table>
-    <div class="note" style="margin-top:8px">🎉 holiday · 📝 note · ⏳ spell effect ending. Click a day for details.</div>
+    <div class="note">🎉 holiday · 📝 note · ⏳ spell effect ending. Click a day for details.</div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Close</button></div>`, { wide: true });
 }
 
@@ -248,9 +248,8 @@ function openEditNoteModal(noteId, groupId) {
   openModal(`
     <h3>Edit Note</h3>
     <div class="form-group" style="margin-bottom:8px"><textarea class="w-full" id="edit-note-text" rows="4" >${escapeHtml(note.note)}</textarea></div>
-    <div class="note" style="margin-bottom:6px">This only corrects the displayed in-game time -- the log's own order is by when each note was actually entered, not by this.</div>
     <div class="form-row">
-      <div class="form-group"><label>Year (RON)</label><input id="en-year" type="number" class="w-sm" value="${c.year}"></div>
+      <div class="form-group"><label>Year (RON)${infoTip(`This only corrects the displayed in-game time -- the log's own order is by when each note was actually entered, not by this.`)}</label><input id="en-year" type="number" class="w-sm" value="${c.year}"></div>
       <div class="form-group"><label>Month</label>
         <select id="en-month">${RON_MONTHS.map((m,i)=>`<option value="${i}" ${i===c.month?'selected':''}>${m.key} (${m.season})</option>`).join('')}</select>
       </div>

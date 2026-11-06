@@ -248,14 +248,13 @@ function shieldUseBonus(skval, shieldBasePR) {
   return doublingPart + ratioPart;
 }
 
+// Crit and fumble show just the number: a roll at or under the crit number
+// crits; a roll at or over the fumble number fumbles.
 function fmtCrit(critChance) {
-  const n = Math.round(critChance);
-  return `01-${String(n).padStart(2,'0')}`;
+  return String(Math.round(critChance));
 }
 function fmtFumble(fumbleThreshold) {
-  const n = Math.round(fumbleThreshold);
-  const start = n >= 100 ? '00' : String(n).padStart(2,'0');
-  return `${start}-00`;
+  return String(Math.min(100, Math.round(fumbleThreshold))); // a d100 tops out at 100 (00)
 }
 
 // Same formula as a character weapon's critFumble() inside computeWeapon
@@ -302,6 +301,15 @@ function computeWeapon(character, item) {
   const multipleAttackSkval = (character.skills||[]).filter(s => s.skillName === 'Multiple attack' && s.binding === item.weaponClass)
     .reduce((sum,s) => sum + computeSkillValues(s, character, character.skills||[]).skval, 0);
   const parryPointsUsed = Math.min(Math.max(0, parseFloat(item.parryPointsUsed) || 0), parrySkval);
+  // Wiki "Combat Skills": Damage Bonus gives +1 damage after the dividing die
+  // per 10 skill points (no max); Initiative bonus takes 1 off the action speed
+  // per 10 skill points (never below 1). Both are bound to the weapon class.
+  const boundSkval = name => (character.skills||[]).filter(s => String(s.skillName || '').toLowerCase() === name.toLowerCase() && s.binding === item.weaponClass)
+    .reduce((sum,s) => sum + computeSkillValues(s, character, character.skills||[]).skval, 0);
+  const damageBonusSkval = boundSkval('Damage Bonus');
+  const initiativeBonusSkval = boundSkval('Initiative bonus');
+  const skillDamageBonus = Math.floor(damageBonusSkval / 10);
+  const skillSpeedBonus = Math.floor(initiativeBonusSkval / 10);
 
   function critFumble(totalToHit) {
     const threatRange = parseFloat(item.threatRange) || 0;
@@ -315,8 +323,8 @@ function computeWeapon(character, item) {
 
   function calc(stn, cdn) {
     const hit = ((a.ST||0)-stn)*stmod + ((a.CD||0)-cdn)*cdmod + skillAbility + magicBonusToHitAll - parryPointsUsed;
-    const dmgBonus = (((a.ST||0)-stn)*stmod)/4 + magicDamageAfterDivider;
-    const speed = Math.max(1, speedMelee - ((((a.CD||0)-cdn)*cdmod)/4));
+    const dmgBonus = (((a.ST||0)-stn)*stmod)/4 + magicDamageAfterDivider + skillDamageBonus;
+    const speed = Math.max(1, speedMelee - ((((a.CD||0)-cdn)*cdmod)/4) - skillSpeedBonus);
     const cf = critFumble(hit);
     return { hit, dmgBonus, dmgBeforeDivider: magicDamageBeforeDivider, speed, critChance: cf.critChance, fumbleThreshold: cf.fumbleThreshold, fumbleChance: cf.fumbleChance };
   }
@@ -327,6 +335,9 @@ function computeWeapon(character, item) {
   const twoHand = (stn2h === 0 && cdn2h === 0) ? null : calc(stn2h, cdn2h);
 
   const speedMissile = parseFloat(item.speedMissile) || 0;
+  // Readied speed (for a first attack) takes the Initiative bonus too; 0 = none set
+  const speedReadied = parseFloat(item.speedReadied) || 0;
+  const readiedSpeed = speedReadied > 0 ? Math.max(1, speedReadied - skillSpeedBonus) : 0;
   const range = parseFloat(item.range) || 0;
   const targetDistance = parseFloat(item.targetDistance) || 0;
   let missile = null;
@@ -355,10 +366,13 @@ function computeWeapon(character, item) {
     const rangeMod = effectiveRange > 0 ? Math.max(0, 1 - (targetDistance / effectiveRange)) : 1;
     const finalHit = rawHit * rangeMod;
     const cf = critFumble(finalHit);
-    missile = { rawHit, rangeMod, effectiveRange, spearThrownRange, finalHit, ammoItem, speedMissile, usedGrip: oneHandUsable ? '1H' : '2H', magicDmgBefore: missileDmgBefore, magicDmgAfter: missileDmgAfter, critChance: cf.critChance + ammoMagicCrit, fumbleThreshold: cf.fumbleThreshold, fumbleChance: cf.fumbleChance };
+    // the same skill bonuses apply to a shot: damage after the divider, and speed
+    const speed = Math.max(1, speedMissile - skillSpeedBonus);
+    const dmgAfter = missileDmgAfter + skillDamageBonus;
+    missile = { rawHit, rangeMod, effectiveRange, spearThrownRange, finalHit, ammoItem, speedMissile, speed, dmgAfter, usedGrip: oneHandUsable ? '1H' : '2H', magicDmgBefore: missileDmgBefore, magicDmgAfter: missileDmgAfter, critChance: cf.critChance + ammoMagicCrit, fumbleThreshold: cf.fumbleThreshold, fumbleChance: cf.fumbleChance };
   }
 
-  return { skillAbility, baseWeaponSkval, singleWeapSpec, critHitBonusSkval, parrySkval, parryPointsUsed, multipleAttackSkval, oneHand, twoHand, missile, magicDamageBeforeDivider, magicCritBonus };
+  return { skillAbility, baseWeaponSkval, singleWeapSpec, critHitBonusSkval, damageBonusSkval, initiativeBonusSkval, skillDamageBonus, skillSpeedBonus, readiedSpeed, parrySkval, parryPointsUsed, multipleAttackSkval, oneHand, twoHand, missile, magicDamageBeforeDivider, magicCritBonus };
 }
 
 function computeSpellPools(character) {

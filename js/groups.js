@@ -378,10 +378,9 @@ async function renderGroupDetail(group) {
     ${isGM ? `
     <div class="form-group" style="margin-top:8px">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <label style="margin:0">Temp Characters</label>
+        <label style="margin:0">Temp Characters${infoTip(`Quick stat blocks for players without a full character sheet yet -- used by the combat module.`)}</label>
         <button class="btn btn-dim" style="font-size:11px;padding:3px 8px" onclick="openNewTempCharacter('${group.id}')">Add Temp Character</button>
       </div>
-      <div class="note" style="margin:2px 0">Quick stat blocks for players without a full character sheet yet -- used by the combat module.</div>
       <ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${tempCharsHtml}</ul>
     </div>` : ''}
     <div class="form-group" style="margin-top:8px">
@@ -430,11 +429,10 @@ async function renderGroupDetail(group) {
     ${viewingVolumeId === (activeVolume && activeVolume.id) ? `
     <div class="form-row">
       <div class="form-group" style="flex:1"><textarea class="w-full" id="new-group-note" rows="2"  placeholder="Add a note at the current time..."></textarea></div>
-      <div class="form-group"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="new-group-note-visible"> Visible to everyone</label></div>
+      <div class="form-group"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="new-group-note-visible"> Visible to everyone${infoTip(`Notes default to private (you + the GM). Check the box, or use the toggle after posting, to share with the whole group.`)}</label></div>
       <div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="addGroupNote('${group.id}')">Add Note</button></div>
     </div>
-    <div class="note" style="margin-top:4px">Notes default to private (you + the GM). Check the box, or use the toggle after posting, to share with the whole group.</div>
-    ` : `<div class="note" style="margin-bottom:4px">Viewing an archived log -- new notes go to the current one. Editing/visibility still works here for corrections.</div>`}
+    ` : `<div class="note">Viewing an archived log -- new notes go to the current one. Editing/visibility still works here for corrections.</div>`}
     <table class="skill-table" style="margin-top:8px">
       <thead><tr><th>When (in-game)</th><th>Note</th></tr></thead>
       <tbody>${notesHtml}</tbody>

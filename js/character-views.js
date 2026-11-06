@@ -95,11 +95,10 @@ function weightSummaryHtml(char) {
   const over = w.carried > w.possible;
   return `
   <div class="form-row" style="margin-bottom:4px">
-    <div class="computed-item"><span class="ci-label">Weight Possible</span><span class="ci-value">${w.possible.toLocaleString()}</span></div>
+    <div class="computed-item"><span class="ci-label">Weight Possible${infoTip(`ST×90 + HE×10 + (Basic Move skval×10) + (Ignore Encumbrance skval×10)`)}</span><span class="ci-value">${w.possible.toLocaleString()}</span></div>
     <div class="computed-item"><span class="ci-label">Weight Carried</span><span class="ci-value" style="color:${over?'#c05050':'var(--gold)'}">${w.carried.toLocaleString()}</span></div>
   </div>
   <div class="weight-bar-track"><div class="weight-bar-fill ${over?'over':''}" style="width:${pct}%"></div></div>
-  <div class="note" style="margin-top:2px">ST×90 + HE×10 + (Basic Move skval×10) + (Ignore Encumbrance skval×10)</div>
   `;
 }
 
@@ -233,11 +232,11 @@ function renderGeneralModule() {
           <div class="computed-item"><span class="ci-label">Physical</span><span class="ci-value">${hp.physicalCurrent} / ${hp.physicalMax}</span></div>
           <div class="computed-item"><span class="ci-label">Endurance</span><span class="ci-value">${hp.enduranceCurrent} / ${hp.enduranceMax}</span></div>
         </div>
-        <div class="note">Collegium system — edit on the Combat page</div>`;
+`;
         }
         return `
         <div class="computed-item" style="margin-bottom:4px"><span class="ci-label">Current / Max HP</span><span class="ci-value skval">${hp.currentHP} / ${hp.totalHP}</span></div>
-        <div class="note">Standard system — edit on the Combat page</div>`;
+`;
       })()}
 
       <hr class="divider">
@@ -251,13 +250,11 @@ function renderGeneralModule() {
         return `
         <div class="form-row" style="margin-bottom:4px">
           <div class="computed-item"><span class="ci-label">Base Speed</span><span class="ci-value">${Math.round(sp.baseSpeed)} ft/sec</span></div>
-          <div class="computed-item"><span class="ci-label">Adjusted Speed</span><span class="ci-value">${Math.round(sp.adjustedSpeed)} ft/sec</span></div>
-          <div class="computed-item"><span class="ci-label">Dash/Rout Speed</span><span class="ci-value skval">${Math.round(sp.dashRoutSpeed)} ft/sec</span></div>
+          <div class="computed-item"><span class="ci-label">Adjusted Speed${infoTip(`CD/4 + 10 + (Speed Move skval÷10), scaled by (1 − Weight Carried/Weight Possible)`)}</span><span class="ci-value">${Math.round(sp.adjustedSpeed)} ft/sec</span></div>
+          <div class="computed-item"><span class="ci-label">Dash/Rout Speed${infoTip(`Dash/Rout Speed = Adjusted Speed × 2 (charging or fleeing full rout). Max Distance = ((WI÷4) + HE) × 4 yards.`)}</span><span class="ci-value skval">${Math.round(sp.dashRoutSpeed)} ft/sec</span></div>
           <div class="computed-item"><span class="ci-label">Dash/Rout Max Distance</span><span class="ci-value">${Math.round(sp.dashRoutMaxDistance)} yds</span></div>
         </div>
-        <div class="note">CD/4 + 10 + (Speed Move skval÷10), scaled by (1 − Weight Carried/Weight Possible)</div>
-        <div class="note">Dash/Rout Speed = Adjusted Speed × 2 (charging or fleeing full rout). Max Distance = ((WI÷4) + HE) × 4 yards.</div>
-        ${sp.armoredMoveTrained ? '<div class="note" style="color:var(--gold-dim)">Armored Move is trained, but its exact speed formula is not documented in the wiki — not factored in yet.</div>' : ''}
+        ${sp.armoredMoveTrained ? '<div class="warn">Armored Move is trained, but its exact speed formula is not documented in the wiki — not factored in yet.</div>' : ''}
         `;
       })()}
 
@@ -270,6 +267,13 @@ function renderGeneralModule() {
         <label>Relationships</label>
         <textarea class="w-full" rows="4" style="resize:vertical" onchange="updateChar('relationshipNotes',this.value)">${char.relationshipNotes||''}</textarea>
       </div>
+
+      <hr class="divider">
+      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Campaign Settings</div>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" ${computeHP(char).system==='collegium'?'checked':''} onchange="updateHPState('system', this.checked ? 'collegium' : 'standard')">
+        Collegium System (uncheck for Standard)${infoTip('How Hit Points work. Standard: one HP pool. Collegium: Physical and Endurance; damage hits Endurance first, and Physical is only touched once Endurance is depleted. Physical = ceil(total ÷ 2), Endurance = floor(total ÷ 2).')}
+      </label>
       <div style="margin-top:12px;display:flex;gap:8px">
         <button class="btn btn-gold" onclick="saveState();showOverview()">Save & Return</button>
         <button class="btn btn-red" onclick="openTransferOwnershipModal()">Transfer Ownership</button>
@@ -391,7 +395,7 @@ function inventoryGroupsHtml(char) {
           ${rule ? '' : `<button class="btn btn-dim item-spell-btn" title="Reset its uses" onclick="rechargeItemSpell(${idx},${j})">↺</button>`}</td></tr>`;
       }).join('') : '')).join(''));
   }).join('');
-  return html || `<tr><td colspan="8" class="note" style="padding:8px">No items yet. Use <i>Add Item</i> below.</td></tr>`;
+  return html || `<tr><td colspan="8" class="note">No items yet. Use <i>Add Item</i> below.</td></tr>`;
 }
 
 function renderInventoryModule() {
@@ -408,15 +412,14 @@ function renderInventoryModule() {
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weight</div>
       ${weightSummaryHtml(char)}
       <hr class="divider">
-      <div class="note" style="margin-bottom:6px">Items are grouped by where they are. Carried items count toward Weight Carried above; items in a container don't, unless you tick its On Person box in Storage Locations below (a backpack you're wearing). Use ✎ to change an item.</div>
+      <div class="note">Use ✎ to change an item.${infoTip(`Items are grouped by where they are. Carried items count toward Weight Carried above; items in a container don't, unless you tick its On Person box in Storage Locations below (a backpack you're wearing).`)}</div>
       <table class="item-table inventory-table">
         <thead><tr><th>Item</th><th>Type</th><th>Qty</th><th title="Weapons and shields in hand, armor worn: these are what the Combat page counts">In Use</th><th>MW/Magic</th><th>Notes</th><th></th><th></th></tr></thead>
         <tbody>${inventoryGroupsHtml(char)}</tbody>
       </table>
       <button class="btn btn-gold" onclick="openAddItemModal()">Add Item</button>
 
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px">Storage Locations</div>
-      <div class="note" style="margin-bottom:6px">Capacity is how much weight a container can hold (blank = no limit); On Person's is your Weight Possible. Tick On Person on a container you wear or carry so its contents count toward Weight Carried.</div>
+      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px">Storage Locations${infoTip(`Capacity is how much weight a container can hold (blank = no limit); On Person's is your Weight Possible. Tick On Person on a container you wear or carry so its contents count toward Weight Carried.`)}</div>
       <table class="item-table inventory-table">
         <thead><tr><th>Container</th><th>On Person</th><th>Items</th><th>Weight</th><th>Capacity</th><th>Capacity Remaining</th><th>Worth</th><th></th><th></th><th></th></tr></thead>
         <tbody>
@@ -453,6 +456,36 @@ function wieldTag(it, which) {
   return ' <span class="type-badge" style="color:var(--gold)">in use</span>';
 }
 
+// Crit and Fumble show one number each (see fmtCrit, fmtFumble).
+const CRIT_HELP = 'A roll at or under this crits.';
+const FUMBLE_HELP = 'A roll at or over this fumbles: 93, or the to hit itself when that is higher (wiki "Critical Hits").';
+// Init Roll (wiki "Initiative"): the die plus the action's speed.
+const INIT_ROLL_HELP = 'The initiative die plus the speed (the weapon speed, adjusted for coordination, less 1 per 10 points of Initiative bonus for this weapon class; never below 1). d10 when you are in the melee; d8 for missile fire into a combat. Out of the fight and unaffected by it, use a d6; the first round of a total surprise, a d4. Add any penalties (unsheathing +1, reading a scroll +5, ...) and the current segment.';
+
+// Dmg Roll: (the dice + any magic damage before the divider) ÷ the dividing
+// die, then the damage bonus (strength and magic after the divider), as in
+// the wiki's "(1d12+17/d6)+1". e.g. "((2d6+9)/d8)+4".
+const DMG_ROLL_HELP = 'Roll the dice (plus any magic damage before the divider), divide by the dividing die, then add the damage bonus: strength, +1 per 10 points of Damage Bonus for this weapon class, and any magic damage after the divider.';
+function damageRollText(dice, before, divider, after) {
+  dice = String(dice || '').trim();
+  if (!dice) return '—';
+  const signed = n => (n < 0 ? '−' : '+') + Math.abs(n);
+  const b = Math.round(parseFloat(before) || 0), d = parseFloat(divider) || 0, a = Math.round(parseFloat(after) || 0);
+  // fold the magic into a flat number already on the dice: 2d6+19 and +1 → 2d6+20
+  const flat = dice.match(/^(.*\d[dD]\d+)\s*([+-]\s*\d+)$/);
+  const top = !b ? dice : flat ? `${flat[1]}${signed(parseInt(flat[2].replace(/\s/g, ''), 10) + b)}` : `${dice}${signed(b)}`;
+  // the bonus comes after the division, so the divided part gets its own parens
+  const divided = d ? `(${top})/d${d}` : top;
+  return a ? `${d ? `(${divided})` : divided}${signed(a)}` : divided;
+}
+// A missile shot: the weapon's dice plus the loaded ammunition's, over the
+// weapon's dividing die (or the ammunition's, if the weapon has none).
+function missileDamageRollText(it, m) {
+  const ammo = m.ammoItem;
+  const dice = [it.damageDice, ammo && ammo.damageDice].map(x => String(x || '').trim()).filter(Boolean).join('+');
+  return damageRollText(dice, m.magicDmgBefore, parseFloat(it.dividingDie) || (ammo && parseFloat(ammo.dividingDie)) || 0, m.dmgAfter);
+}
+
 function renderCombatModule() {
   const char = state.characters[state.activeChar];
   if (!char) return;
@@ -482,10 +515,10 @@ function renderCombatModule() {
   const defTable = `<table class="skill-table combat-table">
       <thead><tr><th></th>${defCols.map(([l]) => `<th>${l}</th>`).join('')}</tr></thead>
       <tbody>
-        <tr><th>AV</th>${defCols.map(([, t]) => `<td>${Math.round(t.totalAV)}</td>`).join('')}</tr>
+        <tr><th>AV${infoTip("Lower is better for the defender: it's added directly to an attacker's hit chance.")}</th>${defCols.map(([, t]) => `<td>${Math.round(t.totalAV)}</td>`).join('')}</tr>
         <tr><th>PR</th>${defCols.map(([, t]) => `<td>${Math.round(t.totalPR)}</td>`).join('')}</tr>
-        <tr><th title="(PR − 1d10) ÷ (2d6 ÷ 2), rounded">Protection min-max</th>${defCols.map(([, t]) => `<td>${rollText(t.roll)}</td>`).join('')}</tr>
-        ${armor.parryPointsTotal > 0 ? `<tr><th>PR vs missile / magic</th>${defCols.map(([, t]) => `<td>${Math.round(t.totalPRvsRangedOrMagic)}</td>`).join('')}</tr>
+        <tr><th>Protection min-max${infoTip('A protection roll is (PR − 1d10) ÷ (2d6 ÷ 2), rounded. The range runs from a 10 and double sixes to a 1 and double ones.')}</th>${defCols.map(([, t]) => `<td>${rollText(t.roll)}</td>`).join('')}</tr>
+        ${armor.parryPointsTotal > 0 ? `<tr><th>PR vs missile / magic${infoTip(`${armor.parryPointsTotal} of the PR comes from Parry Used, which only stops melee attacks; these rows leave it out.`)}</th>${defCols.map(([, t]) => `<td>${Math.round(t.totalPRvsRangedOrMagic)}</td>`).join('')}</tr>
         <tr><th>Protection min-max vs missile / magic</th>${defCols.map(([, t]) => `<td>${rollText(t.rollVsRangedOrMagic)}</td>`).join('')}</tr>` : ''}
       </tbody>
     </table>`;
@@ -503,18 +536,24 @@ function renderCombatModule() {
     const n = lines.length;
     const open = entry.kind === 'hand' ? "openCombatDetail('hand')" : entry.kind === 'shield' ? `openCombatDetail('shield',${entry.idx})` : `openCombatDetail('weapon',${entry.idx})`;
     const parryCell = w.parrySkval > 0
-      ? `<input type="number" min="0" max="${w.parrySkval}" class="w-sm" value="${w.parryPointsUsed}" onchange="${entry.kind === 'hand' ? 'updateHandFootParry(this.value)' : entry.kind === 'shield' ? `updateShieldSpikeParry(${entry.idx}, this.value)` : `updateWeaponField(${entry.idx},'parryPointsUsed',this.value)`}"> <span class="note">of ${w.parrySkval}</span>`
+      ? `<input type="number" min="0" max="${w.parrySkval}" class="w-xs" value="${w.parryPointsUsed}" onchange="${entry.kind === 'hand' ? 'updateHandFootParry(this.value)' : entry.kind === 'shield' ? `updateShieldSpikeParry(${entry.idx}, this.value)` : `updateWeaponField(${entry.idx},'parryPointsUsed',this.value)`}"> <span class="note">of ${w.parrySkval}</span>`
       : '<span class="note">—</span>';
+    // Initiative: the die plus the action's speed (wiki "Initiative"): d10 in
+    // melee, d8 for missile fire into a combat. A readied speed, if the weapon
+    // has one, is for its first attack.
+    const readied = w.readiedSpeed;
+    const initCell = (die, speed, withReadied) => `<td>${die}+${Math.round(speed)}${withReadied && readied ? ` <span class="note">(readied ${die}+${Math.round(readied)})</span>` : ''}</td>`;
     const kindTag = entry.kind === 'hand' ? ' <span class="note">(automatic)</span>' : entry.kind === 'shield' ? ' <span class="note">(from shield)</span>' : '';
     return lines.map((ln, i) => {
       const lead = i === 0 ? `<td rowspan="${n}" class="combat-weapon-name"><a class="wiki-link" href="#" onclick="${open};return false" title="Open this weapon's stats">${escapeHtml(it.name || '(unnamed weapon)')}</a>${kindTag}<div class="note">${escapeHtml(it.weaponClass || 'unbound')}</div></td>` : '';
-      const tail = i === 0 ? `<td rowspan="${n}">${parryCell}</td><td rowspan="${n}">${w.multipleAttackSkval || '—'}</td><td rowspan="${n}" class="combat-move">${weaponMoveButtonsHtml(pos, weaponEntries.length)}</td>` : '';
+      const multi = `<td>${w.multipleAttackSkval || '—'}</td>`; // on every line: a rowspan here breaks the row lines
+      const tail = i === 0 ? `<td rowspan="${n}">${parryCell}</td><td rowspan="${n}" class="combat-move">${weaponMoveButtonsHtml(pos, weaponEntries.length)}</td>` : '';
       const inUse = ln.which && entry.kind === 'item' ? wieldTag(it, ln.which) : '';
       const stats = ln.missile
-        ? `<td>${Math.round(ln.missile.finalHit)}</td><td>${ln.missile.magicDmgAfter ? '+' + ln.missile.magicDmgAfter : '—'}</td><td>${Math.round(ln.missile.speedMissile)}</td><td>${fmtCrit(ln.missile.critChance)}</td><td>${fmtFumble(ln.missile.fumbleThreshold)}</td>`
-        : ln.v ? `<td>${Math.round(ln.v.hit)}</td><td>${Math.round(ln.v.dmgBonus)}</td><td>${Math.round(ln.v.speed)}</td><td>${fmtCrit(ln.v.critChance)}</td><td>${fmtFumble(ln.v.fumbleThreshold)}</td>`
+        ? `<td>${Math.round(ln.missile.finalHit)}</td><td>${fmtCrit(ln.missile.critChance)}</td><td>${fmtFumble(ln.missile.fumbleThreshold)}</td><td>${escapeHtml(missileDamageRollText(it, ln.missile))}</td>${initCell('d8', ln.missile.speed, false)}`
+        : ln.v ? `<td>${Math.round(ln.v.hit)}</td><td>${fmtCrit(ln.v.critChance)}</td><td>${fmtFumble(ln.v.fumbleThreshold)}</td><td>${escapeHtml(damageRollText(it.damageDice, ln.v.dmgBeforeDivider, it.dividingDie, ln.v.dmgBonus))}</td>${initCell('d10', ln.v.speed, true)}`
         : '<td colspan="5" class="note">No stats</td>';
-      return `<tr${i === 0 ? ' class="combat-weapon-first"' : ''}>${lead}<td>${ln.grip}${inUse}</td>${stats}${tail}</tr>`;
+      return `<tr${i === 0 ? ' class="combat-weapon-first"' : ''}>${lead}<td>${ln.grip}${inUse}</td>${multi}${stats}${tail}</tr>`;
     }).join('');
   }).join('');
 
@@ -523,29 +562,26 @@ function renderCombatModule() {
     <div class="panel-header"><h2>Combat — ${escapeHtml(char.name || '')}</h2></div>
     <div class="panel-body">
 
-      <div class="combat-section-head">Hit Points</div>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:6px">
-        <input type="checkbox" ${hp.system==='collegium'?'checked':''} onchange="updateHPState('system', this.checked ? 'collegium' : 'standard')">
-        Collegium System (uncheck for Standard)
-      </label>
+      <div class="combat-top">
+      <div class="combat-top-col">
+      <div class="combat-section-head"><span>Hit Points${hp.system === 'standard' ? '' : infoTip('Collegium System (set under Campaign Settings on General Info). Damage hits Endurance first; Physical is only touched once Endurance is depleted. Physical = ceil(total ÷ 2), Endurance = floor(total ÷ 2).')}</span></div>
       ${hpTable}
-      ${hp.system === 'standard' ? '' : '<div class="note">Damage hits Endurance first; Physical is only touched once Endurance is depleted. Physical = ceil(total÷2), Endurance = floor(total÷2).</div>'}
-
-      <hr class="divider">
-      <div class="combat-section-head">Defense <a class="wiki-link" href="#" onclick="openCombatDetail('defense');return false">Details</a></div>
+      </div>
+      <div class="combat-top-col">
+      <div class="combat-section-head"><span>Defense${infoTip('From the armor, shield and weapons ticked In Use on the Inventory page.')}</span><a class="wiki-link" href="#" onclick="openCombatDetail('defense');return false">Details</a></div>
       ${defTable}
-      <div class="note">From the armor, shield and weapons ticked In Use on the Inventory page. Lower AV is better for the defender: it's added directly to an attacker's hit chance. Protection min-max comes from (PR − 1d10) ÷ (2d6 ÷ 2), rounded; the range runs from a 10 and double sixes to a 1 and double ones.</div>
-      ${armor.parryPointsTotal > 0 ? `<div class="note">${armor.parryPointsTotal} of the PR comes from Parry Used, which only stops melee attacks; the "vs missile / magic" row leaves it out.</div>` : ''}
+      </div>
+      </div>
 
       <hr class="divider">
       <div class="combat-section-head">Weapons</div>
-      ${wieldWarning ? `<div class="note" style="color:#c05050;margin-bottom:6px">⚠ ${escapeHtml(wieldWarning)} Untick one on the Inventory page.</div>` : ''}
-      ${weaponEntries.length === 0 ? '<div class="note" style="padding:6px 0">No weapons in use. Tick In Use on a carried weapon on the Inventory page.</div>' : `
+      ${wieldWarning ? `<div class="warn">⚠ ${escapeHtml(wieldWarning)} Untick one on the Inventory page.</div>` : ''}
+      ${weaponEntries.length === 0 ? '<div class="note">No weapons in use. Tick In Use on a carried weapon on the Inventory page.</div>' : `
       <div class="combat-scroll"><table class="skill-table combat-table combat-weapons">
-        <thead><tr><th>Weapon</th><th>Grip</th><th>To-Hit</th><th>Dmg Bonus</th><th>Speed</th><th>Crit %</th><th>Fumble %</th><th>Parry Used</th><th>Multi</th><th></th></tr></thead>
+        <thead><tr><th>Weapon</th><th>Grip</th><th>Multi</th><th>To Hit</th><th>Crit${infoTip(CRIT_HELP)}</th><th>Fumble${infoTip(FUMBLE_HELP)}</th><th>Dmg Roll${infoTip(DMG_ROLL_HELP)}</th><th>Init Roll${infoTip(INIT_ROLL_HELP)}</th><th>Parry Used${infoTip("Capped at the weapon's Parry skill. Each point comes off that weapon's To Hit and adds to your PR, against melee attacks only.")}</th><th></th></tr></thead>
         <tbody>${weaponRows}</tbody>
       </table></div>
-      <div class="note">Click a weapon's name for its stats, magic and missile settings. Parry Used is capped at the weapon's Parry skill; each point comes off that weapon's To-Hit and adds to your PR against melee attacks only.</div>`}
+      <div class="note">Click a weapon's name for its stats, magic, missile, and other settings.</div>`}
     </div>
   </div>`;
 
@@ -573,7 +609,7 @@ function renderCombatDetail() {
     <table class="skill-table">
       <thead><tr><th>Item</th><th>AV</th><th>PR</th><th>Notes</th></tr></thead>
       <tbody>
-        ${armor.armorItems.length === 0 ? '<tr><td colspan="4" class="note" style="padding:10px 0">No armor in use. Tick In Use on carried armor on the Inventory page.</td></tr>' : ''}
+        ${armor.armorItems.length === 0 ? '<tr><td colspan="4" class="note">No armor in use. Tick In Use on carried armor on the Inventory page.</td></tr>' : ''}
         ${armor.armorItems.map(it => `<tr><td>${escapeHtml(it.name||'(unnamed)')}</td><td>${it.av||0}</td><td>${it.pr||0}</td><td class="note">${escapeHtml(it.notes||'')}</td></tr>`).join('')}
         <tr style="border-top:1px solid var(--gold-dim)"><td><strong>Armor Subtotal</strong></td><td><strong>${armor.armorItems.reduce((s,it)=>s+(parseFloat(it.av)||0),0)}</strong></td><td><strong>${armor.armorItems.reduce((s,it)=>s+(parseFloat(it.pr)||0),0)}</strong></td><td></td></tr>
       </tbody>
@@ -582,9 +618,9 @@ function renderCombatDetail() {
     <hr class="divider">
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weapon Protection & Other Bonuses</div>
     <div class="form-row" style="margin-bottom:10px">
-      <div class="form-group"><label>Weapon Protection (PR)</label>
+      <div class="form-group"><label>Weapon Protection (PR)${infoTip('Weapons in use add their Weapon PR on top of this automatically.')}</label>
         <input type="number" class="w-sm" value="${armor.weaponProtectionManual}" onchange="updateCombatExtra('weaponProtection',this.value)">
-        ${armor.weaponProtectionWielded ? `<div class="note" style="margin-top:2px">+ ${armor.weaponProtectionWielded} from the weapons in use</div>` : `<div class="note" style="margin-top:2px">Weapons in use add their Weapon PR here automatically.</div>`}
+        ${armor.weaponProtectionWielded ? `<div class="note">+ ${armor.weaponProtectionWielded} from the weapons in use</div>` : ''}
       </div>
     </div>
     <table class="item-table">
@@ -604,12 +640,12 @@ function renderCombatDetail() {
     ${hasShield ? `<hr class="divider">
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Shield</div>
     <table class="skill-table">
-      <thead><tr><th>Shield</th><th>AV</th><th>Base PR</th><th>Shield Use Bonus</th><th>Effective PR</th><th>Notes</th></tr></thead>
+      <thead><tr><th>Shield</th><th>AV</th><th>Base PR</th><th>Shield Use Bonus${infoTip(`Basic Shield Use skval ${armor.shieldUseSkval}. Bonus = min(skval, base PR) + floor(max(0, skval − base PR) ÷ 10).`)}</th><th>Effective PR</th><th>Notes</th></tr></thead>
       <tbody>
         ${armor.shieldsComputed.map(s => `<tr><td>${escapeHtml(s.name||'(unnamed)')}</td><td>${s.av}</td><td>${s.basePR}</td><td>+${s.bonus}</td><td><strong>${s.effectivePR}</strong></td><td class="note">${escapeHtml(s.notes||'')}</td></tr>`).join('')}
       </tbody>
     </table>
-    <div class="note">Basic Shield Use skval: ${armor.shieldUseSkval} — bonus = min(skval, base PR) + floor(max(0, skval − base PR) / 10)</div>` : ''}
+` : ''}
 
     <hr class="divider">
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Totals</div>
@@ -625,9 +661,9 @@ function renderCombatDetail() {
         <tr><td>Other Bonuses</td>${both(`+${armor.sumOtherAV} / +${armor.sumOtherPR}`)}</tr>
         ${cols.some(([, t]) => t.magicAV || t.magicPR) ? `<tr><td>Magic items (Avoidance / Protection)</td>${cols.map(([, t]) => `<td colspan="2">−${t.magicAV} / +${t.magicPR}</td>`).join('')}</tr>` : ''}
         <tr style="border-top:1px solid var(--gold)"><td><strong>Total</strong></td>${cols.map(([, t]) => `<td><strong>${Math.round(t.totalAV)}</strong></td><td><strong>${Math.round(t.totalPR)}</strong></td>`).join('')}</tr>
-        <tr><td>Protection min-max</td>${cols.map(([, t]) => `<td></td><td>${t.roll.min} – ${t.roll.max}</td>`).join('')}</tr>
+        <tr><td>Protection min-max${infoTip('(PR − 1d10) ÷ (2d6 ÷ 2), rounded.')}</td>${cols.map(([, t]) => `<td></td><td>${t.roll.min} – ${t.roll.max}</td>`).join('')}</tr>
         ${armor.parryPointsTotal > 0 ? `
-        <tr><td class="note">vs Missile / Magical attack<br>(Parry excluded)</td>${cols.map(([, t]) => `<td></td><td>${Math.round(t.totalPRvsRangedOrMagic)}<br>min-max ${t.rollVsRangedOrMagic.min} – ${t.rollVsRangedOrMagic.max}</td>`).join('')}</tr>
+        <tr><td>vs Missile / Magical attack${infoTip('Parry only stops melee attacks, so it is left out here.')}</td>${cols.map(([, t]) => `<td></td><td>${Math.round(t.totalPRvsRangedOrMagic)}<br>min-max ${t.rollVsRangedOrMagic.min} – ${t.rollVsRangedOrMagic.max}</td>`).join('')}</tr>
         ` : ''}
       </tbody>
     </table>
@@ -638,23 +674,24 @@ function renderCombatDetail() {
     const it = st.kind === 'hand' ? handFootWeapon(char) : shieldWeaponItem(char, st.idx);
     if (!it) return closeCombatDetail();
     const w = computeWeapon(char, it);
-    openModal(`<h3>${escapeHtml(it.name)}</h3>
-      <div class="note" style="margin-bottom:8px">${st.kind === 'hand' ? 'Comes with Basic Martial artist: always available, no inventory item needed.' : 'This shield is also a weapon, one-handed only.'} Its numbers come from the catalog.</div>
+    openModal(`<h3>${escapeHtml(it.name)}${infoTip((st.kind === 'hand' ? 'Comes with Basic Martial artist: always available, no inventory item needed.' : 'This shield is also a weapon, one-handed only.') + ' Its numbers come from the catalog.')}</h3>
       <div class="form-row">
         <div class="computed-item"><span class="ci-label">Damage</span><span class="ci-value">${escapeHtml(it.damageDice || '—')} / ${it.dividingDie || '—'}</span></div>
-        <div class="computed-item"><span class="ci-label">Speed</span><span class="ci-value">${it.speedMelee || '—'}</span></div>
+        <div class="computed-item"><span class="ci-label">Init Roll${infoTip(INIT_ROLL_HELP)}</span><span class="ci-value">d10+${Math.round(w.oneHand ? w.oneHand.speed : (parseFloat(it.speedMelee) || 0))}</span></div>
         <div class="computed-item"><span class="ci-label">Threat Range</span><span class="ci-value">${it.threatRange || 0}</span></div>
         <div class="computed-item"><span class="ci-label">Parry skill</span><span class="ci-value">${w.parrySkval}</span></div>
+        <div class="computed-item"><span class="ci-label">Skill Ability${infoTip(`${w.baseWeaponSkval} (${it.weaponClass}) + ${w.singleWeapSpec} (Single Weap Spec)`)}</span><span class="ci-value">${w.skillAbility}</span></div>
       </div>
-      <div class="note">Skill Ability: ${w.baseWeaponSkval} (${escapeHtml(it.weaponClass)}) + ${w.singleWeapSpec} (Single Weap Spec) = ${w.skillAbility}</div>
       ${close}`, { wide: true, className: 'plain-font' });
     return;
   }
   const idx = st.idx, it = (char.items || [])[idx];
   if (!it || it.type !== 'Weapon') return closeCombatDetail();
   const w = computeWeapon(char, it);
+  const readied = w.readiedSpeed;
+  const gripRow = (label, which, v) => `<tr><td>${label}${wieldTag(it, which)}</td><td>${w.multipleAttackSkval || '—'}</td><td class="skval-cell">${Math.round(v.hit)}</td><td>${fmtCrit(v.critChance)}</td><td>${fmtFumble(v.fumbleThreshold)}</td><td>${escapeHtml(damageRollText(it.damageDice, v.dmgBeforeDivider, it.dividingDie, v.dmgBonus))}</td><td>d10+${Math.round(v.speed)}${readied ? ` <span class="note">(readied d10+${Math.round(readied)})</span>` : ''}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w-xs" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td></tr>`;
   openModal(`<h3>${escapeHtml(it.name || '(unnamed weapon)')}${it.weaponModel ? ' — ' + escapeHtml(it.weaponModel) : ''}</h3>
-          <input class="w-full" value="${escapeHtml(it.notes||'')}" placeholder="Special history, charges, quirks..." style="margin-bottom:8px" onchange="updateItem(${idx},'notes',this.value);renderCombatModule()">
+          <input class="w-full" value="${escapeHtml(it.notes||'')}" placeholder="Special history, charges, quirks..." class="combat-notes-input" onchange="updateItem(${idx},'notes',this.value);renderCombatModule()">
           <div class="form-row">
             ${[['stn1h','STN 1H'],['stn2h','STN 2H'],['stmod','STMOD'],['cdn1h','CDN 1H'],['cdn2h','CDN 2H'],['cdmod','CDMOD']].map(([f,l])=>`
             <div class="form-group"><label>${l}</label><input type="number" step="0.01" class="w-sm" value="${it[f]||0}" onchange="updateWeaponField(${idx},'${f}',this.value)"></div>`).join('')}
@@ -674,17 +711,19 @@ function renderCombatDetail() {
             ${itemHasModKind(it, 'offense') ? `<div class="form-group"><label>Magic Dmg Before Divider</label><input type="number" class="w-sm" value="${it.magicDamageBeforeDivider||0}" onchange="updateWeaponField(${idx},'magicDamageBeforeDivider',this.value)"></div>
             <div class="form-group"><label>Magic Crit %</label><input type="number" class="w-sm" value="${it.magicCritBonus||0}" onchange="updateWeaponField(${idx},'magicCritBonus',this.value)"></div>` : ''}
           </div>
-          <div class="note">Skill Ability: ${w.baseWeaponSkval} (${it.weaponClass||'—'}) + ${w.singleWeapSpec} (Single Weap Spec) = ${w.skillAbility}</div>
-          <div class="note">Crit % = 7 + floor(to-hit÷10) + (10% × Critical Hit Bonus skval [${w.critHitBonusSkval}]) + weapon threat range, capped at half of to-hit, floored at 3% minimum. Fumble range is 93-00, shifting up only if to-hit itself exceeds 93 (so it never overlaps your own hit range).</div>
+          <div class="computed-row">
+            <div class="computed-item"><span class="ci-label">Skill Ability${infoTip(`${w.baseWeaponSkval} (${it.weaponClass || '—'}) + ${w.singleWeapSpec} (Single Weap Spec)`)}</span><span class="ci-value">${w.skillAbility}</span></div>
+            <div class="computed-item"><span class="ci-label">Damage Bonus skill${infoTip(`${Math.round(w.damageBonusSkval)} skill points for ${it.weaponClass || "this class"}: +1 damage after the divider per 10.`)}</span><span class="ci-value">+${w.skillDamageBonus}</span></div>
+            <div class="computed-item"><span class="ci-label">Initiative bonus skill${infoTip(`${Math.round(w.initiativeBonusSkval)} skill points for ${it.weaponClass || "this class"}: −1 speed per 10, never below 1.`)}</span><span class="ci-value">−${w.skillSpeedBonus}</span></div>
+          </div>
           <hr class="divider">
           <table class="skill-table">
-            <thead><tr><th></th><th>To-Hit</th><th>Dmg Bonus</th><th>Speed</th><th>Parry</th><th>Parry Used</th><th>Multiple Attack</th><th>Crit %</th><th>Fumble %</th></tr></thead>
+            <thead><tr><th></th><th>Multi</th><th>To Hit</th><th>Crit${infoTip(`A roll at or under this crits. 7 + floor(to hit ÷ 10) + (10% × Critical Hit Bonus skval [${w.critHitBonusSkval}]) + weapon threat range, capped at half of to hit, floored at 3%.`)}</th><th>Fumble${infoTip(FUMBLE_HELP)}</th><th>Dmg Roll${infoTip(DMG_ROLL_HELP)}</th><th>Init Roll${infoTip(INIT_ROLL_HELP)}</th><th>Parry</th><th>Parry Used${infoTip("Capped at this weapon's Parry skill. Each point comes off this weapon's To Hit and adds to your PR, against melee attacks only.")}</th></tr></thead>
             <tbody>
-              <tr>${w.oneHand ? `<td>One-Handed${wieldTag(it, 'one')}</td><td class="skval-cell">${Math.round(w.oneHand.hit)}</td><td>${Math.round(w.oneHand.dmgBonus)}</td><td>${Math.round(w.oneHand.speed)}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w-sm" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.oneHand.critChance)}</td><td>${fmtFumble(w.oneHand.fumbleThreshold)}</td>` : `<td style="color:var(--text-dim)">One-Handed</td><td colspan="8" class="note">Not usable one-handed — no 1H stats for this weapon</td>`}</tr>
-              ${w.twoHand ? `<tr><td>Two-Handed${wieldTag(it, 'two')}</td><td class="skval-cell">${Math.round(w.twoHand.hit)}</td><td>${Math.round(w.twoHand.dmgBonus)}</td><td>${Math.round(w.twoHand.speed)}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w-sm" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.twoHand.critChance)}</td><td>${fmtFumble(w.twoHand.fumbleThreshold)}</td></tr>` : ''}
+              ${w.oneHand ? gripRow('One-Handed', 'one', w.oneHand) : `<tr><td class="note">One-Handed</td><td colspan="8" class="note">Not usable one-handed — no 1H stats for this weapon</td></tr>`}
+              ${w.twoHand ? gripRow('Two-Handed', 'two', w.twoHand) : ''}
             </tbody>
           </table>
-          <div class="note">Parry Used is capped at this weapon's Parry skill value; every point subtracts from this weapon's To-Hit and adds to your Protection (PR) below — but only against melee attacks. It does nothing against missile or magical attacks.</div>
           ${w.missile ? `
           <hr class="divider">
           <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Missile Fire</div>
@@ -701,13 +740,14 @@ function renderCombatDetail() {
           <div class="computed-row">
             ${it.weaponClass === 'Basic Spears' ? `<div class="computed-item"><span class="ci-label">Effective Range (ST + Spear Thrown)</span><span class="ci-value">${Math.round(w.missile.effectiveRange*10)/10}${w.missile.spearThrownRange ? ` <span class="note">(+${w.missile.spearThrownRange} from skill)</span>` : ''}</span></div>` : ''}
             <div class="computed-item"><span class="ci-label">Range Modifier</span><span class="ci-value">${Math.round(w.missile.rangeMod*100)}</span></div>
-            <div class="computed-item"><span class="ci-label">Missile To-Hit</span><span class="ci-value skval">${Math.round(w.missile.finalHit)}</span></div>
-            <div class="computed-item"><span class="ci-label">Crit %</span><span class="ci-value">${fmtCrit(w.missile.critChance)}</span></div>
+            <div class="computed-item"><span class="ci-label">Missile To Hit${infoTip(`(1 − distance ÷ range) × base hit chance, using ${w.missile.usedGrip} stats${w.missile.usedGrip === '2H' ? ' (no 1H mode for this weapon)' : ''}. The weapon's and the ammunition's Magic Bonus to Hit add together. Total damage = the weapon's dice + the ammunition's dice (with its Magic Damage After Divider), if any.`)}</span><span class="ci-value skval">${Math.round(w.missile.finalHit)}</span></div>
+            <div class="computed-item"><span class="ci-label">Init Roll${infoTip(INIT_ROLL_HELP)}</span><span class="ci-value">d8+${Math.round(w.missile.speed)}</span></div>
+            <div class="computed-item"><span class="ci-label">Crit</span><span class="ci-value">${fmtCrit(w.missile.critChance)}</span></div>
             ${w.missile.magicDmgBefore ? `<div class="computed-item"><span class="ci-label">Magic Dmg Before Divider</span><span class="ci-value">+${w.missile.magicDmgBefore}</span></div>` : ''}
             ${w.missile.magicDmgAfter ? `<div class="computed-item"><span class="ci-label">Magic Dmg After Divider</span><span class="ci-value">+${w.missile.magicDmgAfter}</span></div>` : ''}
-            <div class="computed-item"><span class="ci-label">Fumble %</span><span class="ci-value">${fmtFumble(w.missile.fumbleThreshold)}</span></div>
+            <div class="computed-item"><span class="ci-label">Fumble</span><span class="ci-value">${fmtFumble(w.missile.fumbleThreshold)}</span></div>
           </div>
-          ${(char.items||[]).filter(i=>i.type==='Ammunition').length===0 ? '<div class="note" style="margin-top:6px">No ammunition items in inventory yet — add one on the Inventory page, Type: Weapon, Ammunition.</div>' : ''}
+          ${(char.items||[]).filter(i=>i.type==='Ammunition').length===0 ? '<div class="note">No ammunition items in inventory yet — add one on the Inventory page, Type: Weapon, Ammunition.</div>' : ''}
           ${w.missile.ammoItem ? `
           <div class="form-row">
             <div class="form-group"><label>Damage Dice</label><input class="w-md" value="${w.missile.ammoItem.damageDice||''}" onchange="updateItem(${it.ammunitionItemIdx},'damageDice',this.value);renderCombatModule()"></div>
@@ -718,7 +758,6 @@ function renderCombatDetail() {
             <div class="form-group"><label>Magic Crit %</label><input type="number" class="w-sm" value="${w.missile.ammoItem.magicCritBonus||0}" onchange="updateItem(${it.ammunitionItemIdx},'magicCritBonus',this.value);renderCombatModule()"></div>` : ''}
           </div>
           ` : ''}
-          <div class="note">Missile to-hit = (1 − distance/range) × base hit chance, using ${w.missile.usedGrip} stats${w.missile.usedGrip==='2H' ? ' (no 1H mode available for this weapon)' : ''}. Base hit chance includes both the weapon's own Magic Bonus to Hit and the loaded ammunition's Magic Bonus to Hit — they add together. Total damage = weapon's own dice + ammunition's dice (including its own Magic Damage After Divider), if any.</div>
           ` : ''}
     ${close}`, { wide: true, width: 'min(760px, 94vw)', className: 'plain-font' });
 }
@@ -763,9 +802,8 @@ function renderSpellModule() {
     <div class="panel-header"><h2>Spells — ${char.name}</h2></div>
     <div class="panel-body">
 
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Spell Points</div>
-      <div class="note" style="margin-bottom:10px">Every spell costs Spirit SP plus whichever other schools it draws on. Short on a school's points? Spirit can cover the gap at the shown conversion ratio — better ratio the more trained (Familiar → Specialized → Devoted) you are in that school relative to your Spirit level. Effective Spell Level (used for duration/range formulas with "plev") gets a bonus once Specialized or Devoted.</div>
-      ${pools.length === 0 ? '<div class="note" style="padding:6px 0">No spell point pools trained. Add a pool (e.g. Spirit SP, House of Fire SP) as a skill first.</div>' : ''}
+      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Spell Points${infoTip(`Every spell costs Spirit SP plus whichever other schools it draws on. Short on a school's points? Spirit can cover the gap at the shown conversion ratio — better ratio the more trained (Familiar → Specialized → Devoted) you are in that school relative to your Spirit level. Effective Spell Level (used for duration/range formulas with "plev") gets a bonus once Specialized or Devoted.`)}</div>
+      ${pools.length === 0 ? '<div class="note">No spell point pools trained. Add a pool (e.g. Spirit SP, House of Fire SP) as a skill first.</div>' : ''}
       ${pools.length ? `
       <table class="skill-table spell-pool-table">
         <thead><tr><th></th>${pools.map(p => `<th class="spell-pool-head" title="Open ${escapeHtml(p.name)}" data-pool="${escapeHtml(p.name)}" onclick="openSpellPoolModal(this.dataset.pool)">${escapeHtml(p.name)}</th>`).join('')}</tr></thead>
@@ -776,10 +814,10 @@ function renderSpellModule() {
           <tr><th>Familiarity</th>${pools.map(p => `<td>${escapeHtml(p.familiarity)}</td>`).join('')}</tr>
         </tbody>
       </table>
-      <div class="note" style="margin-top:4px">Click a pool's name for its details, recovery and Magic Enhancers.</div>` : ''}
+      <div class="note">Click a pool's name for its details, recovery and Magic Enhancers.</div>` : ''}
 
       <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Spellbook</div>
+      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Spellbook${infoTip(`${SPELLS.length} spells cataloged (${SPELLS.filter(s=>s.costs).length} with full per-school cost breakdown). Spirit and Shade schools aren't in this catalog yet.`)}</div>
       ${Object.keys(schoolBreakdown).length ? `
       <table class="skill-table" style="margin-bottom:12px">
         <thead><tr><th>School</th><th># Spells</th><th>Total SP Cost</th></tr></thead>
@@ -800,17 +838,16 @@ function renderSpellModule() {
           <tr>
             <td>${sp.name ? `<a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener" title="Open the wiki page for ${escapeHtml(sp.name)}">${escapeHtml(sp.name)}</a>` : '—'}</td>
             <td>${level}</td>
-            <td class="note" style="padding:3px 6px">${breakdown}</td>
+            <td class="note">${breakdown}</td>
             <td>${escapeHtml(spellDurationText(catalogEntry && catalogEntry.duration, level))}</td>
             <td><input value="${sp.notes||''}" onchange="updateSpell(${idx},'notes',this.value)"></td>
             <td>${catalogEntry && catalogEntry.costs ? `<button class="btn btn-gold" style="font-size:11px;padding:3px 8px" onclick="openHardcastModal(${idx})">Cast</button>` : ''}</td>
             <td class="item-del" onclick="removeSpell(${idx})">✕</td>
           </tr>`;
-          }).join('') || '<tr><td colspan="7" class="note" style="padding:8px">No spells yet. Use <i>Add Spell</i> below.</td></tr>'}
+          }).join('') || '<tr><td colspan="7" class="note">No spells yet. Use <i>Add Spell</i> below.</td></tr>'}
         </tbody>
       </table>
       <button class="btn btn-gold" onclick="openAddSpellModal()">Add Spell</button>
-      <div class="note" style="margin-top:8px">${SPELLS.length} spells cataloged (${SPELLS.filter(s=>s.costs).length} with full per-school cost breakdown). Spirit and Shade schools aren't in this catalog yet.</div>
 
     </div>
   </div>`;
@@ -841,21 +878,19 @@ function renderSpellPoolModal() {
       <button class="btn btn-dim" style="align-self:flex-end" onclick="updateSpellState('${p.name.replace(/'/g,"\\'")}','current',${p.maxSP})">Reset to Max</button>
     </div>
     ${p.children.length ? `
-    <div class="note" style="margin-top:6px">${p.children.map(c => `${c.name}: ${c.trained ? c.skval : 'not trained'}`).join(' | ')}</div>
-    ` : '<div class="note" style="margin-top:6px">No Reclamation/Success/Knowledge subskills trained for this pool.</div>'}
+    <div class="note">${p.children.map(c => `${c.name}: ${c.trained ? c.skval : 'not trained'}`).join(' | ')}</div>
+    ` : '<div class="note">No Reclamation/Success/Knowledge subskills trained for this pool.</div>'}
     <hr class="divider">
     <div class="form-row">
       <div class="computed-item"><span class="ci-label">Level</span><span class="ci-value">${p.level}</span></div>
       <div class="computed-item"><span class="ci-label">Familiarity</span><span class="ci-value skval">${p.familiarity}</span></div>
-      ${p.conversionRatio ? `<div class="computed-item"><span class="ci-label">Spirit Conversion</span><span class="ci-value">${p.conversionRatio}:1</span></div>` : ''}
+      ${p.conversionRatio ? `<div class="computed-item"><span class="ci-label">Spirit Conversion${infoTip(`If short on ${p.name.replace(' SP','')} points, Spirit SP can cover the gap at a ${p.conversionRatio}:1 ratio (${p.conversionRatio} Spirit per 1 point needed).`)}</span><span class="ci-value">${p.conversionRatio}:1</span></div>` : ''}
       <div class="computed-item"><span class="ci-label">Effective Spell Level</span><span class="ci-value skval">${p.effectiveLevel}</span></div>
     </div>
     <div class="form-row">
-      <div class="computed-item"><span class="ci-label">Recovery (Awake)</span><span class="ci-value">${p.recoverAwake} SP/hr</span></div>
+      <div class="computed-item"><span class="ci-label">Recovery (Awake)${infoTip(`Recovery = Reclamation skval [${p.reclamationSkval}] × 10% (awake) or × 20% (sleeping) per hour. Capped at 3 different types/hour awake, 5 while sleeping (per Rules for Magic — not yet enforced across pools here).`)}</span><span class="ci-value">${p.recoverAwake} SP/hr</span></div>
       <div class="computed-item"><span class="ci-label">Recovery (Sleeping)</span><span class="ci-value skval">${p.recoverSleep} SP/hr</span></div>
     </div>
-    ${p.conversionRatio ? `<div class="note">If short on ${p.name.replace(' SP','')} points, Spirit SP can cover the gap at a ${p.conversionRatio}:1 ratio (${p.conversionRatio} Spirit per 1 point needed).</div>` : '<div class="note">Spirit is the base power source — no conversion needed for itself.</div>'}
-    <div class="note">Recovery = Reclamation skval [${p.reclamationSkval}] × 10% (awake) or × 20% (sleeping) per hour. Capped at 3 different types/hour awake, 5 while sleeping (per Rules for Magic — not yet enforced across pools here).</div>
     <hr class="divider">
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Magic Enhancers (manual — enter the net result of whichever item you're currently bonded to)</div>
     <div class="form-row">
@@ -872,9 +907,8 @@ function renderUtilitiesModule() {
 
   document.getElementById('main').innerHTML = `
   <div class="panel">
-    <div class="panel-header"><h2>Utilities</h2></div>
+    <div class="panel-header"><h2>Utilities${infoTip(`Quick patches for the master skill/guild data — for when a character needs a skill or guild EXPMOD that doesn't exist yet, without waiting for a full data re-extraction. These are stored separately from character data — see "Export Custom Data" below to back them up.`)}</h2></div>
     <div class="panel-body">
-      <div class="note" style="margin-bottom:12px">Quick patches for the master skill/guild data — for when a character needs a skill or guild EXPMOD that doesn't exist yet, without waiting for a full data re-extraction. These are stored separately from character data — see "Export Custom Data" below to back them up.</div>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Add New Skill</div>
       <div class="form-row">
@@ -915,7 +949,7 @@ function renderUtilitiesModule() {
 
       <hr class="divider">
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Custom Additions So Far</div>
-      <div class="note" style="margin-bottom:8px">These are stored in this browser only, separately from character data. If you switch browsers or clear site data, they won't transfer with a character JSON export — use "Export Custom Data" below to back them up separately.</div>
+      <div class="warn">These are stored in this browser only, separately from character data. If you switch browsers or clear site data, they won't transfer with a character JSON export — use "Export Custom Data" below to back them up separately.</div>
       <table class="skill-table">
         <thead><tr><th>Type</th><th>Detail</th><th></th></tr></thead>
         <tbody>
@@ -923,7 +957,7 @@ function renderUtilitiesModule() {
           ${Object.entries(custom.customGuildBonuses).flatMap(([g,skills])=>Object.entries(skills).map(([sk,v])=>
             `<tr><td>Guild EXPMOD</td><td>${g} — ${sk}: ${v}</td><td class="item-del" onclick="removeCustomGuildBonus('${g.replace(/'/g,"\\'")}','${sk.replace(/'/g,"\\'")}')">✕</td></tr>`
           )).join('')}
-          ${(custom.customSkills.length===0 && Object.keys(custom.customGuildBonuses).length===0) ? '<tr><td colspan="3" class="note" style="padding:8px 0">Nothing added yet.</td></tr>' : ''}
+          ${(custom.customSkills.length===0 && Object.keys(custom.customGuildBonuses).length===0) ? '<tr><td colspan="3" class="note">Nothing added yet.</td></tr>' : ''}
         </tbody>
       </table>
       <button class="btn btn-dim" style="margin-top:8px" onclick="exportCustomData()">Export Custom Data</button>
@@ -987,12 +1021,11 @@ function renderSkillModule(skillId) {
           ${skillGuildSelect(char, si)}
         </div>
         ${def && def.templated ? (si.skillName === 'Single weap spec' ? `
-        <div class="form-group"><label>Specific Weapon (not a class — this skill trains on one weapon only)</label>
+        <div class="form-group"><label>Specific Weapon${infoTip(`Single Weapon Specialization trains on one exact weapon, not a whole weapon type — a character with two curved swords could be specialized in one and not the other.`)}</label>
           <select class="w-lg" onchange="updateSkill('${skillId}','binding',this.value)">
             <option value="">— select —</option>
             ${allCombatWeapons(char).map(it=>`<option ${si.binding===it.name?'selected':''}>${it.name||'(unnamed weapon)'}</option>`).join('')}
           </select>
-          <div class="note" style="margin-top:4px">Single Weapon Specialization trains on one exact weapon, not a whole weapon type — a character with two curved swords could be specialized in one and not the other.</div>
         </div>` : `
         <div class="form-group"><label>Weapon Class</label>
           <select class="w-lg" onchange="updateSkill('${skillId}','binding',this.value)">
@@ -1025,8 +1058,7 @@ function renderSkillModule(skillId) {
         </div>
       </div>
 
-      <div class="expmod-breakdown">EXPMOD breakdown: ${breakdown}</div>
-      <div class="note" style="margin-top:2px">Attmod formula: ${def ? def.attmod : '—'} | Base: ${def ? def.base : '—'} | Per Level: ${def ? def.per_level : '—'}</div>
+      <div class="expmod-breakdown">EXPMOD breakdown: ${breakdown}${infoTip(`Attmod formula: ${def ? def.attmod : '—'} | Base: ${def ? def.base : '—'} | Per Level: ${def ? def.per_level : '—'}`)}</div>
 
       <hr class="divider">
 
@@ -1057,7 +1089,7 @@ function renderSkillModule(skillId) {
           </div>`;
         }).join('')}
       </div>
-      <div class="note">Rolls entered: ${rolls.filter(v=>v!==''&&v!==undefined).length} / 20 | Sum: ${vals.rollTotal} — 🎲 rolls real dice (per-level formula above) instead of a physical die; use whichever you prefer per level.</div>
+      <div class="note">Rolls entered: ${rolls.filter(v=>v!==''&&v!==undefined).length} / 20 | Sum: ${vals.rollTotal}${infoTip('🎲 rolls real dice (per-level formula above) instead of a physical die; use whichever you prefer per level.')}</div>
       ` : '<div class="note">Dropdown Only — no XP or rolls tracked</div>'}
 
       <hr class="divider">
@@ -1076,12 +1108,6 @@ function renderSkillModule(skillId) {
         <textarea class="w-full" rows="2" style="resize:vertical" onchange="updateSkill('${skillId}','notes',this.value)">${si.notes||''}</textarea>
       </div>
 
-      ${(!si.dropdownOnly && def && parseFloat(si.rawXP) > 0 && (!def.templated || WEAPON_CLASSES.includes(si.binding))) ? `
-      <div style="margin-top:10px">
-        <button class="btn btn-dim" onclick="manualPopulateChildren('${skillId}')">Populate Missing Dropdown Skills</button>
-        <div class="note" style="margin-top:4px">Adds any dropdown-only sub-skills of ${si.skillName} that aren't already on this character — useful for skills trained before this feature existed.</div>
-      </div>
-      ` : ''}
 
     </div>
   </div>`;
@@ -1101,7 +1127,7 @@ function skillGuildSelect(char, si) {
     <option value="" ${current ? '' : 'selected'}>— none —</option>
     ${options.join('')}
   </select>
-  ${charGuilds.length ? '' : '<div class="note" style="margin-top:2px">Set this character\'s GuildSchools on General Info first.</div>'}`;
+  ${charGuilds.length ? '' : '<div class="note">Set this character\'s GuildSchools on General Info first.</div>'}`;
 }
 
 function nextLevelThreshold(level) {
