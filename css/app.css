@@ -200,7 +200,12 @@ div.note, div.warn { margin: 4px 0 6px; }
 td div.note, td.note, li.note { margin: 0; }
 .warn { font-size: 11px; color: #c05050; }
 .info-tip { cursor: help; color: var(--gold-dim); font-style: normal; font-size: 0.9em; text-transform: none; letter-spacing: 0; }
-.info-tip:hover { color: var(--gold); }
+.info-tip:hover, .info-tip:focus { color: var(--gold); outline: none; }
+/* the tooltip an ⓘ opens (js/auth.js) */
+#info-tip-box { display: none; position: fixed; z-index: 10001; max-width: 300px; padding: 6px 9px;
+  background: var(--panel); color: var(--text); border: 1px solid var(--gold-dim); box-shadow: 0 2px 8px rgba(0,0,0,.35);
+  font-family: 'IM Fell English', 'Georgia', serif; font-size: 12px; font-style: normal; line-height: 1.35;
+  text-transform: none; letter-spacing: normal; white-space: normal; pointer-events: none; }
 .note.placeholder { text-align: center; padding: 40px; }
 #sidebar > .note.placeholder { padding: 12px; }
 .expmod-breakdown { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
@@ -273,7 +278,13 @@ td div.note, td.note, li.note { margin: 0; }
 .combat-weapons td.combat-weapon-name { white-space: normal; min-width: 110px; }
 .combat-scroll { overflow-x: auto; }
 .combat-small-btn { font-size: 11px; padding: 0 8px; }
-.combat-notes-input { margin-bottom: 8px; }
+/* The weapon popup's Missile Fire section folds; its summary is the section header */
+.combat-missile > summary { cursor: pointer; list-style: none; }
+.combat-missile > summary::before { content: "▸ "; }
+.combat-missile[open] > summary::before { content: "▾ "; }
+.combat-missile > summary::-webkit-details-marker { display: none; }
+/* section headers in the weapon popup: 2px over the plain-font 12px (the id outranks .plain-font *) */
+#modal-box .combat-section-head { margin-top: 10px; font-size: 14px !important; }
 .combat-move span { margin-left: 0 !important; }
 /* A link out to the Celtricia wiki (e.g. a spell's name) */
 .wiki-link { color: inherit; text-decoration: underline dotted; }

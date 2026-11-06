@@ -29,11 +29,41 @@ function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-// A hover-only ⓘ for a formula or rule explanation, so it doesn't take up
-// room on the page (see "Help text" in CLAUDE.md).
+// A ⓘ for a formula or rule explanation, so it doesn't take up room on the
+// page (see "Help text" in CLAUDE.md). Its text shows in a tooltip the app
+// draws itself, on hover, click/tap or keyboard focus: a native title
+// tooltip doesn't show in every browser (or at all on touch screens).
 function infoTip(text) {
-  return ` <span class="info-tip" title="${escapeHtml(text)}">ⓘ</span>`;
+  return ` <span class="info-tip" tabindex="0" role="note" aria-label="${escapeHtml(text)}" data-tip="${escapeHtml(text)}">ⓘ</span>`;
 }
+// One floating tooltip for every ⓘ, placed beside the one being shown.
+(function () {
+  let box = null;
+  const show = el => {
+    if (!box) { box = document.createElement('div'); box.id = 'info-tip-box'; document.body.appendChild(box); }
+    box.textContent = el.dataset.tip;
+    box.style.display = 'block';
+    const r = el.getBoundingClientRect(), w = box.offsetWidth, h = box.offsetHeight;
+    const left = Math.max(8, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - 8));
+    const top = r.bottom + 6 + h > window.innerHeight ? r.top - h - 6 : r.bottom + 6;
+    box.style.left = left + 'px';
+    box.style.top = Math.max(8, top) + 'px';
+  };
+  const hide = () => { if (box) box.style.display = 'none'; };
+  const tipOf = e => e.target.closest && e.target.closest('.info-tip');
+  document.addEventListener('mouseover', e => { const t = tipOf(e); if (t) show(t); });
+  document.addEventListener('mouseout', e => { if (tipOf(e) && !tipOf(e).contains(e.relatedTarget)) hide(); });
+  document.addEventListener('focusin', e => { const t = tipOf(e); if (t) show(t); });
+  document.addEventListener('focusout', e => { if (tipOf(e)) hide(); });
+  // click/tap shows it (without also clicking a label or header it sits in);
+  // a click anywhere else hides it
+  document.addEventListener('click', e => {
+    const t = tipOf(e);
+    if (t) { e.preventDefault(); e.stopPropagation(); show(t); }
+    else hide();
+  }, true);
+  document.addEventListener('scroll', hide, true);
+})();
 
 // GuildSchool names are all "Location: Name" (e.g. "Igbar: Bowyers of
 // Ceminiar") -- with 40+ guilds per location across several locations, a

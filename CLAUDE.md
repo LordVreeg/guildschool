@@ -55,9 +55,12 @@ commit.
     something is wrong or about to be lost (too much in hand, no uses left,
     data stored only in this browser).
   - **Empty states** stay on the page: `<div class="note">No items yet…</div>`.
-  - **Formulas and rule explanations** go on hover: `infoTip(text)` (in
+  - **Formulas and rule explanations** go in a ⓘ: `infoTip(text)` (in
     `js/auth.js`) puts a small ⓘ next to the label, heading or column they
-    explain. Don't put them in a note under a table.
+    explain, and its text shows in the app's own tooltip on hover, click/tap
+    or focus. Don't put them in a note under a table, and don't use a
+    `title` attribute for them (it doesn't show in every browser, or on
+    touch screens).
   - **Instructions**: at most one short line per section, and only where the
     action isn't obvious ("Use ✎ to change an item.").
   - **No inline styles on notes.** Spacing and colour come from `.note`,

@@ -458,6 +458,7 @@ function wieldTag(it, which) {
 
 // Crit and Fumble show one number each (see fmtCrit, fmtFumble).
 const CRIT_HELP = 'A roll at or under this crits.';
+const THREAT_RANGE_HELP = "Directly affects the weapon's critical chance: it is added to (or, if negative, taken off) the Crit number.";
 const FUMBLE_HELP = 'A roll at or over this fumbles: 93, or the to hit itself when that is higher (wiki "Critical Hits").';
 // Init Roll (wiki "Initiative"): the die plus the action's speed.
 const INIT_ROLL_HELP = 'The initiative die plus the speed (the weapon speed, adjusted for coordination, less 1 per 10 points of Initiative bonus for this weapon class; never below 1). d10 when you are in the melee; d8 for missile fire into a combat. Out of the fight and unaffected by it, use a d6; the first round of a total surprise, a d4. Add any penalties (unsheathing +1, reading a scroll +5, ...) and the current segment.';
@@ -592,6 +593,52 @@ function renderCombatModule() {
 // Defense breakdown. They save as you edit, like the spell-pool popup; the
 // page and the popup are redrawn together.
 let openCombatDetailState = null;
+// Whether a weapon popup's Missile Fire section is open: what the player last
+// chose for that weapon this session, otherwise open only for bows and crossbows.
+const combatMissileOpen = {};
+function missileSectionOpen(it, idx) {
+  return idx in combatMissileOpen ? combatMissileOpen[idx] : /bow/i.test(it.weaponClass || '');
+}
+// The skills that bear on a weapon, each with what it applies to the weapon's
+// numbers (not its skill value): the weapon class skill, Single weap spec on
+// this weapon, Spear Thrown for spears, the skills bound to the class and
+// their dropdowns. Listed if trained (XP in it) or if it changes a number.
+function appliedSkillMods(char, it) {
+  const skills = char.skills || [];
+  const skval = s => computeSkillValues(s, char, skills).skval;
+  const lc = x => String(x || '').trim().toLowerCase();
+  const cls = it.weaponClass || '';
+  const bound = skills.filter(s => cls && s.binding === cls);
+  // dropdowns under the bound skills (untemplated ones carry no binding)
+  const under = [];
+  const walk = parent => skills.filter(s => s.parentSkillId === parent.id && !bound.includes(s) && !under.includes(s)).forEach(s => { under.push(s); walk(s); });
+  bound.forEach(walk);
+  const candidates = [
+    ...skills.filter(s => cls && lc(s.skillName) === lc(cls)),
+    ...skills.filter(s => lc(s.skillName) === 'single weap spec' && s.binding === it.name),
+    ...(cls === 'Basic Spears' ? skills.filter(s => lc(s.skillName) === 'spear thrown') : []),
+    ...bound, ...under
+  ];
+  const rules = {
+    [lc(cls)]: v => [`+${Math.round(v)} to hit`, 'Its skill value is added to the to hit.'],
+    'single weap spec': v => [`+${Math.round(v)} to hit`, 'Its skill value is added to this weapon\'s to hit.'],
+    'spear thrown': v => [`+${Math.floor(v / 4)} range`, '+1 thrown range per 4 skill points.'],
+    'damage bonus': v => [`+${Math.floor(v / 10)} damage`, '+1 damage after the divider per 10 skill points.'],
+    'initiative bonus': v => [`−${Math.floor(v / 10)} speed`, '−1 speed per 10 skill points, never below 1. Readied speed too.'],
+    'critical hit bonus': v => [`+${Math.round(v) / 10} crit`, '+1 crit per 10 skill points.'],
+    'parry': v => [`up to ${Math.round(v)} parry`, 'You can move up to this many points from to hit to PR (Parry Used).'],
+    'multiple attack': v => [`Multi ${Math.round(v)}`, 'Every 25 points you roll under this gives 1 extra attack.']
+  };
+  const seen = new Set();
+  return candidates.filter(s => !seen.has(s.id) && seen.add(s.id)).map(s => {
+    const v = skval(s), trained = !s.dropdownOnly && parseFloat(s.rawXP) > 0;
+    const rule = rules[lc(s.skillName)];
+    const [value, why] = rule ? rule(v) : ['—', 'Not applied: the app has no rule for this skill yet.'];
+    const changes = rule && !/^[+−]0 |^up to 0 |^Multi 0$/.test(value + ' ');
+    if (!trained && !changes) return null;
+    return { name: s.skillName, value, tip: `${why} Skill value ${Math.round(v)}${s.dropdownOnly ? ' (a dropdown, from its parent skill)' : ''}.` };
+  }).filter(Boolean);
+}
 function openCombatDetail(kind, idx) { openCombatDetailState = { kind, idx }; renderCombatDetail(); }
 function closeCombatDetail() { openCombatDetailState = null; closeModal(); }
 function renderCombatDetail() {
@@ -678,7 +725,7 @@ function renderCombatDetail() {
       <div class="form-row">
         <div class="computed-item"><span class="ci-label">Damage</span><span class="ci-value">${escapeHtml(it.damageDice || '—')} / ${it.dividingDie || '—'}</span></div>
         <div class="computed-item"><span class="ci-label">Init Roll${infoTip(INIT_ROLL_HELP)}</span><span class="ci-value">d10+${Math.round(w.oneHand ? w.oneHand.speed : (parseFloat(it.speedMelee) || 0))}</span></div>
-        <div class="computed-item"><span class="ci-label">Threat Range</span><span class="ci-value">${it.threatRange || 0}</span></div>
+        <div class="computed-item"><span class="ci-label">Threat Range${infoTip(THREAT_RANGE_HELP)}</span><span class="ci-value">${it.threatRange || 0}</span></div>
         <div class="computed-item"><span class="ci-label">Parry skill</span><span class="ci-value">${w.parrySkval}</span></div>
         <div class="computed-item"><span class="ci-label">Skill Ability${infoTip(`${w.baseWeaponSkval} (${it.weaponClass}) + ${w.singleWeapSpec} (Single Weap Spec)`)}</span><span class="ci-value">${w.skillAbility}</span></div>
       </div>
@@ -691,11 +738,12 @@ function renderCombatDetail() {
   const readied = w.readiedSpeed;
   const gripRow = (label, which, v) => `<tr><td>${label}${wieldTag(it, which)}</td><td>${w.multipleAttackSkval || '—'}</td><td class="skval-cell">${Math.round(v.hit)}</td><td>${fmtCrit(v.critChance)}</td><td>${fmtFumble(v.fumbleThreshold)}</td><td>${escapeHtml(damageRollText(it.damageDice, v.dmgBeforeDivider, it.dividingDie, v.dmgBonus))}</td><td>d10+${Math.round(v.speed)}${readied ? ` <span class="note">(readied d10+${Math.round(readied)})</span>` : ''}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w-xs" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td></tr>`;
   openModal(`<h3>${escapeHtml(it.name || '(unnamed weapon)')}${it.weaponModel ? ' — ' + escapeHtml(it.weaponModel) : ''}</h3>
-          <input class="w-full" value="${escapeHtml(it.notes||'')}" placeholder="Special history, charges, quirks..." class="combat-notes-input" onchange="updateItem(${idx},'notes',this.value);renderCombatModule()">
+          <div class="combat-section-head">Weapon Requirements</div>
           <div class="form-row">
             ${[['stn1h','STN 1H'],['stn2h','STN 2H'],['stmod','STMOD'],['cdn1h','CDN 1H'],['cdn2h','CDN 2H'],['cdmod','CDMOD']].map(([f,l])=>`
             <div class="form-group"><label>${l}</label><input type="number" step="0.01" class="w-sm" value="${it[f]||0}" onchange="updateWeaponField(${idx},'${f}',this.value)"></div>`).join('')}
           </div>
+          <div class="combat-section-head">Weapon Attributes</div>
           <div class="form-row">
             <div class="form-group"><label>Damage Dice</label><input class="w-md" value="${it.damageDice||''}" onchange="updateWeaponField(${idx},'damageDice',this.value)"></div>
             <div class="form-group"><label>Dividing Die</label><input type="number" class="w-sm" value="${it.dividingDie||0}" onchange="updateWeaponField(${idx},'dividingDie',this.value)"></div>
@@ -703,19 +751,21 @@ function renderCombatDetail() {
             <div class="form-group"><label>Speed Missile</label><input type="number" class="w-sm" value="${it.speedMissile||0}" onchange="updateWeaponField(${idx},'speedMissile',this.value)"></div>
             <div class="form-group"><label>Speed Readied</label><input type="number" class="w-sm" value="${it.speedReadied||0}" onchange="updateWeaponField(${idx},'speedReadied',this.value)"></div>
             <div class="form-group"><label>Weapon PR</label><input type="number" class="w-sm" value="${it.weaponProtection||0}" onchange="updateWeaponField(${idx},'weaponProtection',this.value)"></div>
-            <div class="form-group"><label>Threat Range</label><input type="number" class="w-sm" value="${it.threatRange||0}" onchange="updateWeaponField(${idx},'threatRange',this.value)"></div>
+            <div class="form-group"><label>Threat Range${infoTip(THREAT_RANGE_HELP)}</label><input type="number" class="w-sm" value="${it.threatRange||0}" onchange="updateWeaponField(${idx},'threatRange',this.value)"></div>
           </div>
+          <div class="combat-section-head">Other Modifiers</div>
           <div class="form-row">
-            <div class="form-group"><label>Magic Bonus to Hit</label><input type="number" class="w-sm" value="${it.magicBonusToHit||0}" onchange="updateWeaponField(${idx},'magicBonusToHit',this.value)"></div>
-            <div class="form-group"><label>Magic Dmg After Divider</label><input type="number" class="w-sm" value="${it.magicDamageAfterDivider||0}" onchange="updateWeaponField(${idx},'magicDamageAfterDivider',this.value)"></div>
-            ${itemHasModKind(it, 'offense') ? `<div class="form-group"><label>Magic Dmg Before Divider</label><input type="number" class="w-sm" value="${it.magicDamageBeforeDivider||0}" onchange="updateWeaponField(${idx},'magicDamageBeforeDivider',this.value)"></div>
-            <div class="form-group"><label>Magic Crit %</label><input type="number" class="w-sm" value="${it.magicCritBonus||0}" onchange="updateWeaponField(${idx},'magicCritBonus',this.value)"></div>` : ''}
+            <div class="form-group"><label>Bonus to Hit</label><input type="number" class="w-sm" value="${it.magicBonusToHit||0}" onchange="updateWeaponField(${idx},'magicBonusToHit',this.value)"></div>
+            <div class="form-group"><label>Dmg After Divider</label><input type="number" class="w-sm" value="${it.magicDamageAfterDivider||0}" onchange="updateWeaponField(${idx},'magicDamageAfterDivider',this.value)"></div>
+            ${itemHasModKind(it, 'offense') ? `<div class="form-group"><label>Dmg Before Divider</label><input type="number" class="w-sm" value="${it.magicDamageBeforeDivider||0}" onchange="updateWeaponField(${idx},'magicDamageBeforeDivider',this.value)"></div>
+            <div class="form-group"><label>Crit %</label><input type="number" class="w-sm" value="${it.magicCritBonus||0}" onchange="updateWeaponField(${idx},'magicCritBonus',this.value)"></div>` : ''}
           </div>
-          <div class="computed-row">
-            <div class="computed-item"><span class="ci-label">Skill Ability${infoTip(`${w.baseWeaponSkval} (${it.weaponClass || '—'}) + ${w.singleWeapSpec} (Single Weap Spec)`)}</span><span class="ci-value">${w.skillAbility}</span></div>
-            <div class="computed-item"><span class="ci-label">Damage Bonus skill${infoTip(`${Math.round(w.damageBonusSkval)} skill points for ${it.weaponClass || "this class"}: +1 damage after the divider per 10.`)}</span><span class="ci-value">+${w.skillDamageBonus}</span></div>
-            <div class="computed-item"><span class="ci-label">Initiative bonus skill${infoTip(`${Math.round(w.initiativeBonusSkval)} skill points for ${it.weaponClass || "this class"}: −1 speed per 10, never below 1.`)}</span><span class="ci-value">−${w.skillSpeedBonus}</span></div>
-          </div>
+          <div class="combat-section-head">Applied Skill Modifiers</div>
+          ${(() => {
+            const mods = appliedSkillMods(char, it);
+            return mods.length ? `<div class="computed-row">${mods.map(m => `<div class="computed-item"><span class="ci-label">${escapeHtml(m.name)}${infoTip(m.tip)}</span><span class="ci-value">${escapeHtml(m.value)}</span></div>`).join('')}</div>`
+              : '<div class="note">No skills for this weapon class have XP yet.</div>';
+          })()}
           <hr class="divider">
           <table class="skill-table">
             <thead><tr><th></th><th>Multi</th><th>To Hit</th><th>Crit${infoTip(`A roll at or under this crits. 7 + floor(to hit ÷ 10) + (10% × Critical Hit Bonus skval [${w.critHitBonusSkval}]) + weapon threat range, capped at half of to hit, floored at 3%.`)}</th><th>Fumble${infoTip(FUMBLE_HELP)}</th><th>Dmg Roll${infoTip(DMG_ROLL_HELP)}</th><th>Init Roll${infoTip(INIT_ROLL_HELP)}</th><th>Parry</th><th>Parry Used${infoTip("Capped at this weapon's Parry skill. Each point comes off this weapon's To Hit and adds to your PR, against melee attacks only.")}</th></tr></thead>
@@ -726,7 +776,8 @@ function renderCombatDetail() {
           </table>
           ${w.missile ? `
           <hr class="divider">
-          <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Missile Fire</div>
+          <details class="combat-missile" ${missileSectionOpen(it, idx) ? 'open' : ''} ontoggle="combatMissileOpen[${idx}] = this.open">
+          <summary class="combat-section-head">Missile Fire</summary>
           <div class="form-row">
             <div class="form-group"><label>Range</label><input type="number" class="w-sm" value="${it.range||0}" onchange="updateWeaponField(${idx},'range',this.value)"></div>
             <div class="form-group"><label>Target Distance</label><input type="number" class="w-sm" value="${it.targetDistance||0}" onchange="updateWeaponField(${idx},'targetDistance',this.value)"></div>
@@ -758,7 +809,10 @@ function renderCombatDetail() {
             <div class="form-group"><label>Magic Crit %</label><input type="number" class="w-sm" value="${w.missile.ammoItem.magicCritBonus||0}" onchange="updateItem(${it.ammunitionItemIdx},'magicCritBonus',this.value);renderCombatModule()"></div>` : ''}
           </div>
           ` : ''}
+          </details>
           ` : ''}
+          <hr class="divider">
+          <div class="form-group"><label>Notes</label><input class="w-full" value="${escapeHtml(it.notes||'')}" placeholder="Special history, charges, quirks..." onchange="updateItem(${idx},'notes',this.value);renderCombatModule()"></div>
     ${close}`, { wide: true, width: 'min(760px, 94vw)', className: 'plain-font' });
 }
 
