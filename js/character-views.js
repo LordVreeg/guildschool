@@ -360,6 +360,22 @@ function containerMoveButtons(char, name) {
 
 // The Inventory's In Use tick, for weapons, shields and armor carried on the
 // person (an item in a container that isn't on the person can't be in use).
+// Inventory warnings that pair ammunition with weapons (see ammoFitsWeapon):
+// ammunition no weapon owned can fire, and a weapon that takes ammunition
+// with none of it owned. Wherever the items are kept.
+function inventoryAmmoWarning(char, it) {
+  const items = char.items || [];
+  if (it.type === 'Ammunition') {
+    const fired = items.some(w => w.type === 'Weapon' && weaponTakesAmmo(w) && ammoFitsWeapon(it, w));
+    return fired ? '' : '<div class="warn">⚠ No compatible weapon</div>';
+  }
+  if (it.type === 'Weapon' && weaponTakesAmmo(it)) {
+    const owned = items.some(a => a.type === 'Ammunition' && ammoFitsWeapon(a, it));
+    return owned ? '' : '<div class="warn">⚠ No ammunition owned for this weapon</div>';
+  }
+  return '';
+}
+
 function inUseCellHtml(char, it, idx) {
   if (it.type !== 'Weapon' && it.type !== 'Shield' && it.type !== 'Armor') return '';
   if (!itemOnPerson(char, it)) return '<span class="note" title="Not on the person: in a container">—</span>';
@@ -379,7 +395,7 @@ function inventoryGroupsHtml(char) {
     const label = !isContainer ? 'Carried' : escapeHtml(g.location) + (g.onPerson ? ' <span class="item-group-stats">(on person)</span>' : '');
     return `<tr class="item-group" data-group="${escapeHtml(g.location)}" data-container="${escapeHtml(g.location)}" title="${hidden ? 'Show' : 'Hide'} these items" onclick="toggleItemGroup(this.dataset.group)"><td colspan="8"><span class="item-group-toggle">${hidden ? '▸' : '▾'}</span>${label}${isContainer ? `<span class="group-move">${containerMoveButtons(char, g.location)}</span>` : ''}</td></tr>` +
       (hidden ? '' : rows.map(({ it, idx }) => `<tr style="${it.masterwork ? 'font-style:italic' : ''}">
-        <td>${escapeHtml(it.name || '')}</td>
+        <td>${escapeHtml(it.name || '')}${inventoryAmmoWarning(char, it)}</td>
         <td class="item-kind">${escapeHtml(itemKindLabel(it))}</td>
         <td class="item-qty">${escapeHtml(it.qty || 1)}</td>
         <td style="text-align:center">${inUseCellHtml(char, it, idx)}</td>
@@ -493,6 +509,12 @@ function renderCombatModule() {
   const armor = computeArmor(char);
   const weaponEntries = combatWeaponEntries(char);
   const hp = computeHP(char);
+  // weapons in use that fire ammunition but have none loaded, or the wrong kind
+  const ammoWarnings = weaponEntries.filter(e => e.kind === 'item' && weaponTakesAmmo(e.it)).map(e => {
+    const am = e.it.ammunitionItemIdx !== undefined && e.it.ammunitionItemIdx !== '' ? (char.items || [])[e.it.ammunitionItemIdx] : null;
+    if (!am || am.type !== 'Ammunition') return `${e.it.name || 'A weapon'}: no ammunition loaded.`;
+    return ammoFitsWeapon(am, e.it) ? '' : `${e.it.name || 'A weapon'}: ${am.name || 'its ammunition'} isn't made for it.`;
+  }).filter(Boolean);
   const wieldWarning = wieldingProblem((char.items || []).filter(it => (it.type === 'Weapon' || it.type === 'Shield') && itemInUse(char, it)));
 
   // Hit Points: a column per pool, rows Max / Current / Reset (like the spell-point table)
@@ -577,6 +599,7 @@ function renderCombatModule() {
       <hr class="divider">
       <div class="combat-section-head">Weapons</div>
       ${wieldWarning ? `<div class="warn">⚠ ${escapeHtml(wieldWarning)} Untick one on the Inventory page.</div>` : ''}
+      ${ammoWarnings.map(m => `<div class="warn">⚠ ${escapeHtml(m)} Set it in the weapon's Missile Fire.</div>`).join('')}
       ${weaponEntries.length === 0 ? '<div class="note">No weapons in use. Tick In Use on a carried weapon on the Inventory page.</div>' : `
       <div class="combat-scroll"><table class="skill-table combat-table combat-weapons">
         <thead><tr><th>Weapon</th><th>Grip</th><th>Multi</th><th>To Hit</th><th>Crit${infoTip(CRIT_HELP)}</th><th>Fumble${infoTip(FUMBLE_HELP)}</th><th>Dmg Roll${infoTip(DMG_ROLL_HELP)}</th><th>Init Roll${infoTip(INIT_ROLL_HELP)}</th><th>Parry Used${infoTip("Capped at the weapon's Parry skill. Each point comes off that weapon's To Hit and adds to your PR, against melee attacks only.")}</th><th></th></tr></thead>
@@ -744,6 +767,16 @@ function renderCombatDetail() {
   if (!it || it.type !== 'Weapon') return closeCombatDetail();
   const w = computeWeapon(char, it);
   const readied = w.readiedSpeed;
+  // Ammunition (data/ammunition.json's compatible_with): only what this weapon
+  // takes is offered (custom ammunition fits any weapon that takes some); one
+  // loaded before this check still shows, with a warning. A weapon that takes
+  // none (a javelin) gets no picker.
+  const carriedAmmo = (char.items || []).map((a, i) => ({ a, i })).filter(x => x.a.type === 'Ammunition');
+  const fittingAmmo = carriedAmmo.filter(x => ammoFitsWeapon(x.a, it));
+  const loadedAmmo = it.ammunitionItemIdx !== undefined && it.ammunitionItemIdx !== '' ? carriedAmmo.find(x => String(x.i) === String(it.ammunitionItemIdx)) : null;
+  const takesAmmo = weaponTakesAmmo(it);
+  const ammoTakes = ammoNamesForWeapon(it);
+  const ammoChoices = fittingAmmo.concat(loadedAmmo && !fittingAmmo.includes(loadedAmmo) ? [loadedAmmo] : []);
   const gripRow = (label, which, v) => `<tr><td>${label}${wieldTag(it, which)}</td><td>${w.multipleAttackSkval || '—'}</td><td class="skval-cell">${Math.round(v.hit)}</td><td>${fmtCrit(v.critChance)}</td><td>${fmtFumble(v.fumbleThreshold)}</td><td>${escapeHtml(damageRollText(it.damageDice, v.dmgBeforeDivider, it.dividingDie, v.dmgBonus))}</td><td>d10+${Math.round(v.speed)}${readied ? ` <span class="note">(readied d10+${Math.round(readied)})</span>` : ''}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w-xs" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td></tr>`;
   openModal(`<h3>${escapeHtml(it.name || '(unnamed weapon)')}${it.weaponModel ? ' — ' + escapeHtml(it.weaponModel) : ''}</h3>
           <div class="combat-section-head">Weapon Requirements</div>
@@ -789,12 +822,12 @@ function renderCombatDetail() {
           <div class="form-row">
             <div class="form-group"><label>Range</label><input type="number" class="w-sm" value="${it.range||0}" onchange="updateWeaponField(${idx},'range',this.value)"></div>
             <div class="form-group"><label>Target Distance</label><input type="number" class="w-sm" value="${it.targetDistance||0}" onchange="updateWeaponField(${idx},'targetDistance',this.value)"></div>
-            <div class="form-group"><label>Ammunition (from Inventory)</label>
+            ${takesAmmo || loadedAmmo ? `<div class="form-group"><label>Ammunition (from Inventory)${takesAmmo ? infoTip(`This weapon takes: ${ammoTakes.join(', ')}, or custom ammunition. Only ammunition it takes is listed.`) : ''}</label>
               <select class="w-lg" onchange="updateWeaponField(${idx},'ammunitionItemIdx',this.value)">
-                <option value="">— none / self-contained —</option>
-                ${(char.items||[]).map((amIt,amIdx)=> amIt.type==='Ammunition' ? `<option value="${amIdx}" ${String(it.ammunitionItemIdx)===String(amIdx)?'selected':''}>${amIt.name||'(unnamed)'}${amIt.masterwork?' ✦':''} (qty ${amIt.qty||1})</option>` : '').join('')}
+                <option value="">${takesAmmo ? '— none loaded —' : '— none / self-contained —'}</option>
+                ${ammoChoices.map(({ a, i }) => `<option value="${i}" ${loadedAmmo && loadedAmmo.i === i ? 'selected' : ''}>${escapeHtml(a.name || '(unnamed)')}${a.masterwork ? ' ✦' : ''} (qty ${escapeHtml(a.qty || 1)})${ammoFitsWeapon(a, it) ? '' : ' ⚠'}</option>`).join('')}
               </select>
-            </div>
+            </div>` : ''}
           </div>
           <div class="computed-row">
             ${it.weaponClass === 'Basic Spears' ? `<div class="computed-item"><span class="ci-label">Effective Range (ST + Spear Thrown)</span><span class="ci-value">${Math.round(w.missile.effectiveRange*10)/10}${w.missile.spearThrownRange ? ` <span class="note">(+${w.missile.spearThrownRange} from skill)</span>` : ''}</span></div>` : ''}
@@ -806,7 +839,9 @@ function renderCombatDetail() {
             ${w.missile.magicDmgAfter ? `<div class="computed-item"><span class="ci-label">Magic Dmg After Divider</span><span class="ci-value">+${w.missile.magicDmgAfter}</span></div>` : ''}
             <div class="computed-item"><span class="ci-label">Fumble</span><span class="ci-value">${fmtFumble(w.missile.fumbleThreshold)}</span></div>
           </div>
-          ${(char.items||[]).filter(i=>i.type==='Ammunition').length===0 ? '<div class="note">No ammunition items in inventory yet — add one on the Inventory page, Type: Weapon, Ammunition.</div>' : ''}
+          ${loadedAmmo && !ammoFitsWeapon(loadedAmmo.a, it) ? `<div class="warn">⚠ ${escapeHtml(loadedAmmo.a.name || 'The loaded ammunition')} isn't made for this weapon. It takes: ${escapeHtml(ammoTakes.join(', ') || 'no catalog ammunition')}.</div>` : ''}
+          ${takesAmmo && !loadedAmmo ? (fittingAmmo.length ? '<div class="warn">⚠ No ammunition loaded.</div>'
+            : `<div class="warn">⚠ No ammunition for this weapon in the inventory. It takes: ${escapeHtml(ammoTakes.join(', '))}. Add it on the Inventory page, Type: Weapon, Ammunition.</div>`) : ''}
           ${w.missile.ammoItem ? `
           <div class="form-row">
             <div class="form-group"><label>Damage Dice</label><input class="w-md" value="${w.missile.ammoItem.damageDice||''}" onchange="updateItem(${it.ammunitionItemIdx},'damageDice',this.value);renderCombatModule()"></div>

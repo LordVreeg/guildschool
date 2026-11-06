@@ -39,12 +39,19 @@ const COST_KEY_TO_POOL = {
   'Restorative': 'Restorative SP', 'Necromantic': 'Necromantic SP', 'Mentalist': 'Mentalist SP',
   'Artificer': 'Artificer SP', 'Animist': 'Animist SP',
 };
+// The weapon class (skill) for each data/weapons.json category. More than one
+// category can share a class: thrown weapons, like Hand/Foot, are covered by
+// Basic Martial artist.
 const WEAPON_CATEGORY_TO_SKILL = {
   'Axes': 'Basic Axe', 'Blunt': 'Basic Blunt Weapons', 'Bows': 'Basic Bows',
   'Crossbow': 'Basic Crossbow', 'Curved Swords': 'Basic Curved Swords', 'Daggers': 'Basic Dagger',
   'Dress Swords': 'Basic Dress swords', 'Martial': 'Basic Martial artist', 'Pole Arms': 'Basic Pole Weapons', 'Spears': 'Basic Spears',
-  'Straight Swords': 'Basic Straight Swords', 'Thrown': null
+  'Straight Swords': 'Basic Straight Swords', 'Thrown': 'Basic Martial artist'
 };
+// Every category whose weapons a weapon class covers.
+function weaponCategoriesForClass(weaponClass) {
+  return Object.keys(WEAPON_CATEGORY_TO_SKILL).filter(c => WEAPON_CATEGORY_TO_SKILL[c] === weaponClass);
+}
 let GUILDS = {};
 let LEVELS = [];
 const WEAPON_CLASSES = [
@@ -115,6 +122,45 @@ function itemSpellUsageText(sp, char, rule) {
 // Which kinds an item has (base) and can add (optional) depends on its type;
 // only magical items get any (MW/Magic ticked, or a Magic Item that isn't a
 // potion or scroll).
+// Which ammunition a weapon takes, from data/ammunition.json's compatible_with:
+// a weapon category ("Bows", "Crossbow") or one weapon's name ("Sling"), or a
+// list of them. An ammunition item is matched to its catalog entry by the
+// entry it was picked from (ammoBase), else by name. Custom ammunition says
+// what fires it itself (compatibleWith, picked in the item popup); older custom
+// ammunition with neither fits any weapon that takes ammunition (null).
+function ammoCompatibleWith(ammoItem) {
+  const def = AMMUNITION.find(a => a.name === (ammoItem.ammoBase || ammoItem.name));
+  if (def && def.compatible_with) return [].concat(def.compatible_with);
+  return ammoItem.compatibleWith ? [].concat(ammoItem.compatibleWith) : null;
+}
+// Everything the catalog's ammunition can be fired from, for custom ammunition.
+function ammoLaunchers() {
+  return [...new Set(AMMUNITION.flatMap(a => [].concat(a.compatible_with || [])))].sort();
+}
+// What compatible_with can name for this weapon item: its catalog model and
+// that model's category, the category its weapon class comes from, and its own
+// name (a custom "Sling" still takes sling shot).
+function weaponAmmoKeys(weaponItem) {
+  const def = WEAPONS.find(w => w.name === weaponItem.weaponModel);
+  const cats = weaponItem.weaponClass ? weaponCategoriesForClass(weaponItem.weaponClass) : [];
+  return [def && def.name, def && def.category, ...cats, weaponItem.name].filter(Boolean).map(k => String(k).trim().toLowerCase());
+}
+function ammoFitsWeapon(ammoItem, weaponItem) {
+  const comp = ammoCompatibleWith(ammoItem);
+  if (!comp) return true;
+  const keys = weaponAmmoKeys(weaponItem);
+  return comp.some(c => keys.includes(String(c).trim().toLowerCase()));
+}
+// Whether a weapon fires ammunition at all: some catalog ammunition names it.
+function weaponTakesAmmo(weaponItem) {
+  const keys = weaponAmmoKeys(weaponItem);
+  return AMMUNITION.some(a => [].concat(a.compatible_with || []).some(c => keys.includes(String(c).trim().toLowerCase())));
+}
+// The catalog ammunition a weapon takes, by name, for the "takes: ..." hint.
+function ammoNamesForWeapon(weaponItem) {
+  return AMMUNITION.filter(a => ammoFitsWeapon({ ammoBase: a.name }, weaponItem)).map(a => a.name);
+}
+
 const MAGIC_MOD_FIELDS = {
   defense: ['magicAvoidance', 'magicProtection'],
   offense: ['magicBonusToHit', 'magicDamageBeforeDivider', 'magicDamageAfterDivider', 'magicCritBonus'],

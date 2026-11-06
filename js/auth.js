@@ -359,15 +359,17 @@ function removeAutoHandFootItems(char) {
 // Weapon choices for a weapon class. Two overlaps: martial arts and daggers
 // (every weapon marked "(martial)" and the Katar is a choice under both Martial
 // artist and Dagger), and the Quarterstaff and War Staff, which can be used as
-// a Spear, a Pole Arm or a Martial weapon.
-function weaponModelsForClass(weaponClass, catName) {
+// a Spear, a Pole Arm or a Martial weapon. cats: the class's categories
+// (weaponCategoriesForClass), e.g. Martial and Thrown for Basic Martial artist.
+function weaponModelsForClass(weaponClass, cats) {
+  cats = [].concat(cats);
   const sharesMartialAndDagger = w => /martial|katar/i.test(w.name);
   const isMartialOrDagger = weaponClass === 'Basic Martial artist' || weaponClass === 'Basic Dagger';
   const sharesStaff = w => /^quarterstaff$|^war staff/i.test(w.name);
   const isStaffClass = weaponClass === 'Basic Spears' || weaponClass === 'Basic Pole Weapons' || weaponClass === 'Basic Martial artist';
   const seen = new Set();
   return WEAPONS.filter(w =>
-    w.category === catName ||
+    cats.includes(w.category) ||
     (isMartialOrDagger && sharesMartialAndDagger(w) && (w.category === 'Martial' || w.category === 'Daggers')) ||
     (isStaffClass && sharesStaff(w) && (w.category === 'Spears' || w.category === 'Pole Arms'))
   ).filter(w => !seen.has(w.name) && seen.add(w.name));

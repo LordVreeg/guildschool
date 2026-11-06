@@ -88,13 +88,14 @@ const ITEM_PICK_CUSTOM = '__custom__';
 // The popup's dropdowns for a draft, in order: Type, then the type's class
 // and/or catalog pickers. key is the draft field a class step sets; apply
 // fills the draft from a catalog pick; custom adds "— custom —" at the bottom.
-function itemPickSteps(d) {
+// picks: the choices made so far (itemPicks, unless another set is being built).
+function itemPickSteps(d, picks = itemPicks) {
   const steps = [{ key: 'type', label: 'Type', options: ITEM_TYPES, labelOf: itemTypeLabel }];
   if (d.type === 'Weapon') {
     steps.push({ key: 'weaponClass', label: 'Weapon Class', options: WEAPON_CLASSES, custom: true });
     if (d.weaponClass) {
-      const cat = Object.entries(WEAPON_CATEGORY_TO_SKILL).find(([c, sk]) => sk === d.weaponClass);
-      const models = cat ? weaponModelsForClass(d.weaponClass, cat[0]) : [];
+      const cats = weaponCategoriesForClass(d.weaponClass);
+      const models = cats.length ? weaponModelsForClass(d.weaponClass, cats) : [];
       steps.push({ key: 'weaponModel', label: 'Model', options: models.map(m => m.name), custom: true, apply: applyWeaponModel });
     }
   } else if (d.type === 'Armor') {
@@ -105,6 +106,11 @@ function itemPickSteps(d) {
     steps.push({ key: 'coin', label: 'Coin', options: COINAGE.map(c => `${c.name} (${c.metal})`), apply: applyCoinType });
   } else if (d.type === 'Ammunition') {
     steps.push({ key: 'ammoBase', label: 'Ammunition', options: AMMUNITION.map(a => a.name), custom: true, apply: applyAmmoType });
+    // custom ammunition must say what fires it (see ammoFitsWeapon): one of
+    // the weapon categories or weapons the catalog's ammunition names
+    if ((picks || {}).ammoBase === ITEM_PICK_CUSTOM) {
+      steps.push({ key: 'compatibleWith', label: 'Fires From', options: ammoLaunchers() });
+    }
   } else if (d.type === 'Item') {
     steps.push({ key: 'itemClass', label: 'Item Class', options: [...new Set(BASIC_ITEMS.map(b => b.class))].sort(), custom: true });
     if (d.itemClass) {
@@ -123,7 +129,7 @@ function itemPicksFromItem(item) {
   const picks = {};
   const d = { type: item.type };
   for (let i = 0; ; i++) {
-    const steps = itemPickSteps(d);
+    const steps = itemPickSteps(d, picks);
     if (i >= steps.length) break;
     const s = steps[i];
     let v = s.key === 'coin' ? (COINAGE.find(c => c.name === item.name) ? s.options[COINAGE.findIndex(c => c.name === item.name)] : undefined) : item[s.key];

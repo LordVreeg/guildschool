@@ -57,16 +57,51 @@ expires, or until they press Ctrl+F5.
 
 In the Add/Edit Item popup, the Weapon Class list is the fixed
 `WEAPON_CLASSES` in `js/data.js`. The Model list after it comes from
-`data/weapons.json`, matched to a class through `WEAPON_CATEGORY_TO_SKILL`.
-Two entries don't match up:
+`data/weapons.json`, matched to a class through `WEAPON_CATEGORY_TO_SKILL`
+(a class can cover more than one category). One entry doesn't match up:
 
-- **Thrown weapons can't be picked.** `data/weapons.json` has a "Thrown"
-  category, but `WEAPON_CATEGORY_TO_SKILL` maps it to no weapon class
-  (`'Thrown': null`). No Weapon Class leads to those models, so they never
-  appear in the Model list.
+- **Thrown weapons** were here until 2026-11-06: the "Thrown" category
+  mapped to no class. Thrown weapons, like Hand/Foot, are covered by Basic
+  Martial artist, so "Thrown" now maps to it and its models (Sling,
+  Shuriken, Chakram, Lead Ball, the spiked net) are in that class's Model
+  list.
 - **"Basic Shield Use" has no models.** It is in `WEAPON_CLASSES`, but no
   weapon category maps to it. Choosing it as the Weapon Class always gives
   an empty Model list.
+
+## Ammunition
+
+`data/ammunition.json` isn't a list on the wiki; it is worked out from the
+weapon tables (see the ammunition rule in `CLAUDE.md`).
+
+- **Arrows and bolts:** the wiki's Bows page is one table: the seven bows,
+  the three crossbows, then "Bolt, Crossbow" and five arrows. Nothing labels
+  the last six as ammunition; they just have no weapon stats (STN, CDN,
+  mods, speeds and range are all 0). The app's first data extraction (in
+  LordVreeg's first commit, 2026-07-30, with no script or notes kept) moved
+  them into an ammunition list, set `compatible_with` from their names
+  ("Bolt, Crossbow" → Crossbow, "… Arrow" → Bows), and gave the crossbows
+  their own "Crossbow" category, which the wiki page doesn't have.
+- **Small lead shot** (2026-11-06): it was a Thrown weapon in
+  `data/weapons.json` with no stat requirements. The wiki's Thrown page
+  footnotes the Sling "to use with small lead shot", and the Sling's "+2"
+  damage "adds to lead shot". It is now ammunition, `compatible_with`
+  "Sling". Its "-1" was extracted as a threat range, so it keeps
+  `threat_range: -1`; it may really be the table's range adjustment
+  (`range_mod`), which would need checking against the wiki. Characters who
+  already have it as a weapon item keep that item until they replace it.
+- **`compatible_with` is used** (2026-11-06): the weapon popup only offers
+  ammunition the weapon takes, and the Combat page warns when a weapon in use
+  that takes ammunition has none loaded, or the wrong kind. See
+  `ammoFitsWeapon` in `js/data.js`. Custom ammunition (not picked from the
+  catalog) has to say what fires it: the item popup's required "Fires From"
+  dropdown (Bows, Crossbow, Sling: whatever the catalog's ammunition names),
+  saved as the item's `compatibleWith`. Custom ammunition added before that
+  has none, so it still fits any weapon that takes ammunition until it is
+  edited, and editing it asks for Fires From. A fully custom launcher (not a catalog model, a weapon class
+  with catalog ammunition, or named "Sling") isn't recognised as taking any.
+- **`range_mod` isn't used yet:** range adjustments like the Hunting
+  Arrow's +20 or the Heavy Head's −15 aren't applied to the weapon's range.
 
 ## Skill catalog
 

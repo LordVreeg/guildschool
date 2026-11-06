@@ -34,6 +34,16 @@ commit.
 - **Wiki syncs edit `data/*.json`.** The wiki mirror is an HTTrack copy of
   celtricia.pbworks.com. A sync must not inline data into the JS, and it
   must bump the version tag too.
+- **A weapon-table row with no stat requirements is ammunition.** On the
+  wiki, arrows, bolts and sling shot sit in the weapon tables (Bows, Thrown)
+  with nothing marking them as ammunition. A row with no STN, CDN, STMOD or
+  CDMOD (all blank or 0) goes in `data/ammunition.json`, not
+  `data/weapons.json`: keep its cost, weight, size, damage dice, dividing
+  die, real min, max and average damage, put the table's range value in
+  `range_mod`, and set `compatible_with` to what fires it: a weapon
+  category ("Bows", "Crossbow") or a weapon's name ("Sling"), or a list of
+  them; `ammoFitsWeapon` in `js/data.js` reads it. A wiki sync
+  must keep this split. See "Ammunition" in `KnownIssues.md`.
 - **The reference data stays in `data/*.json` for now.** Moving it into
   Supabase is on hold.
 - **Look skills up with `findSkillDef(name)`.** To get a skill's catalog
