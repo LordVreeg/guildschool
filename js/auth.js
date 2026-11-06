@@ -174,6 +174,7 @@ async function handleSignUp() {
 }
 
 async function handleSignOut() {
+  stopChatWatcher();
   await sb.auth.signOut();
 }
 
@@ -236,6 +237,7 @@ async function handleSignedIn() {
   if (adminBtn) adminBtn.style.display = currentProfile.is_admin ? 'inline-block' : 'none';
   await loadState();
   await fetchMyGroups();
+  startChatWatcher();
   // The old "last exported" date lived in the browser; it's no longer used
   try { localStorage.removeItem('gs_last_export'); } catch (e) {}
   loadData().then(() => {

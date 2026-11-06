@@ -255,3 +255,28 @@ body {
 .inventory-table .item-spell-btn:disabled { opacity: .4; cursor: default; }
 /* Item popup: a spell's selection row stays on one line */
 .item-spell-edit { flex-wrap: nowrap; gap: 8px; }
+/* CHAT */
+.chat-badge { display: inline-block; min-width: 16px; padding: 0 5px; border-radius: 8px; background: var(--red-b); color: #fff; font-size: 10px; line-height: 16px; text-align: center; font-weight: bold; }
+.chat-group-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.chat-messages { height: calc(100vh - var(--topbar-h, 80px) - 260px); min-height: 240px; overflow-y: auto; background: var(--input-bg); border: 1px solid var(--border); padding: 8px 10px; }
+.chat-day { text-align: center; margin: 10px 0 6px; border-bottom: 1px solid var(--border); line-height: 0; }
+.chat-day span { background: var(--input-bg); padding: 0 8px; font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+.chat-msg { position: relative; padding: 4px 8px; margin-top: 6px; border-left: 3px solid transparent; }
+.chat-msg.continued { margin-top: 0; padding-top: 1px; }
+.chat-msg.mine { border-left-color: var(--gold-dim); background: rgba(110,27,34,.05); }
+.chat-msg:hover { background: rgba(110,27,34,.08); }
+.chat-msg-head { display: flex; align-items: baseline; gap: 8px; }
+.chat-sender { font-weight: bold; color: var(--gold); }
+.chat-time { font-size: 11px; color: var(--text-dim); }
+.chat-body { white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere; }
+.chat-body.deleted { color: var(--text-dim); font-style: italic; }
+.chat-body a { color: var(--gold); }
+.chat-edited { font-size: 10px; color: var(--text-dim); }
+.chat-actions { position: absolute; top: 2px; right: 4px; display: none; gap: 4px; }
+.chat-msg:hover .chat-actions { display: flex; }
+.chat-actions button { font-size: 10px; padding: 1px 6px; background: var(--panel); color: var(--text-dim); border: 1px solid var(--border); cursor: pointer; font-family: inherit; }
+.chat-actions button:hover { color: var(--text); border-color: var(--gold); }
+.chat-composer { display: flex; gap: 8px; align-items: flex-end; margin-top: 8px; }
+.chat-composer textarea { flex: 1; resize: vertical; min-height: 44px; font-family: inherit; font-size: 14px; padding: 6px 8px; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); }
+.chat-composer textarea:focus { border-color: var(--gold); outline: none; }
+@media (max-width: 640px) { .chat-composer { flex-wrap: wrap; } .chat-composer textarea { flex-basis: 100%; } }
