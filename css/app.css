@@ -280,3 +280,47 @@ body {
 .chat-composer textarea { flex: 1; resize: vertical; min-height: 44px; font-family: inherit; font-size: 14px; padding: 6px 8px; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); }
 .chat-composer textarea:focus { border-color: var(--gold); outline: none; }
 @media (max-width: 640px) { .chat-composer { flex-wrap: wrap; } .chat-composer textarea { flex-basis: 100%; } }
+/* CHAT: commands, rolls, cards */
+.chat-search { font-family: inherit; font-size: 12px; padding: 3px 8px; width: 180px; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); }
+.chat-search-bar { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+.chat-msg.whisper { background: rgba(92,60,140,.09); border-left-color: #7a5aa8; }
+.chat-whisper-tag { font-size: 11px; color: #6a4a98; font-style: italic; }
+.chat-ooc-tag { font-size: 11px; color: var(--text-dim); }
+.chat-msg.kind-ooc .chat-body { color: var(--text-dim); }
+.chat-msg.kind-emote .chat-body, .chat-msg.kind-emas .chat-body { font-style: italic; color: var(--gold-dim); text-align: center; }
+.chat-msg.kind-desc .chat-body { font-style: italic; text-align: center; padding: 4px 12px; background: rgba(110,27,34,.06); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.chat-msg.kind-system .chat-body { font-size: 12px; color: var(--text-dim); font-style: italic; }
+.chat-msg.local { opacity: .85; border-left-style: dashed; }
+.chat-deleted { color: var(--text-dim); font-style: italic; }
+.dice-inline { display: inline-block; min-width: 1.6em; padding: 0 5px; text-align: center; font-weight: bold; background: rgba(201,162,39,.18); border: 1px solid var(--gold-dim); border-radius: 3px; cursor: help; }
+.dice-inline.crit, .dice-total.crit { border-color: #3c8a4a; color: #2f7a3c; }
+.dice-inline.fumble, .dice-total.fumble { border-color: #b03030; color: #b03030; }
+.dice-inline.both, .dice-total.both { border-color: #3c6ab0; color: #2f5a9a; }
+.dice-inline.dice-error { background: rgba(176,48,48,.12); border-color: #b03030; }
+.dice-roll, .chat-template { white-space: normal; }
+.dice-roll { display: inline-block; margin: 2px 0; padding: 4px 8px; background: rgba(255,255,255,.35); border: 1px solid var(--border); }
+.dice-formula { font-size: 11px; color: var(--text-dim); }
+.dice-result { font-family: Georgia, serif; }
+.dice-eq { color: var(--text-dim); }
+.dice-total { display: inline-block; min-width: 2em; padding: 0 6px; text-align: center; font-size: 16px; font-weight: bold; background: rgba(201,162,39,.18); border: 1px solid var(--gold-dim); border-radius: 3px; }
+.dr-crit { color: #2f7a3c; font-weight: bold; }
+.dr-fumble { color: #b03030; font-weight: bold; }
+.dr-success { color: #2f7a3c; font-weight: bold; text-decoration: underline; }
+.dr-failure { color: #b03030; text-decoration: underline; }
+.dr-dropped, .dr-rerolled { color: var(--text-dim); text-decoration: line-through; }
+.dr-rerolled { opacity: .6; }
+.dr-label { color: var(--text-dim); font-size: 11px; font-style: italic; }
+.dr-match1 { background: rgba(201,162,39,.35); } .dr-match2 { background: rgba(60,138,74,.3); } .dr-match3 { background: rgba(60,106,176,.3); }
+.dr-match4 { background: rgba(176,48,48,.25); } .dr-match5 { background: rgba(122,90,168,.3); } .dr-match6 { background: rgba(0,128,128,.3); }
+.chat-template { display: inline-block; min-width: 220px; max-width: 100%; margin: 3px 0; border: 1px solid var(--gold-dim); background: rgba(255,255,255,.4); }
+.chat-template-title { background: var(--header-bg); color: var(--header-text); font-family: 'Cinzel', serif; font-size: 13px; padding: 4px 8px; }
+.chat-template-row { display: flex; gap: 10px; padding: 3px 8px; border-top: 1px solid rgba(179,154,102,.4); }
+.chat-template-row:nth-child(odd) { background: rgba(110,27,34,.04); }
+.chat-template-key { font-weight: bold; min-width: 80px; }
+.chat-macro-bar { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.chat-macro-bar .btn { font-size: 11px; padding: 2px 8px; }
+.chat-macro-manage { margin-left: auto; }
+.chat-help table { width: 100%; border-collapse: collapse; margin: 4px 0 12px; font-size: 12px; }
+.chat-help td { padding: 3px 6px; border-bottom: 1px solid rgba(179,154,102,.4); vertical-align: top; }
+.chat-help td:first-child { font-family: monospace; white-space: nowrap; color: var(--gold); }
+.chat-body code, .chat-help code { font-family: monospace; font-size: 12px; background: rgba(0,0,0,.05); padding: 0 3px; }

@@ -25,7 +25,7 @@ commit.
 ## Rules
 
 - **Bump the version tag.** In any commit that changes `css/`, `js/` or
-  `data/`, change `?v=` in `index.html` on the stylesheet and all 16 script
+  `data/`, change `?v=` in `index.html` on the stylesheet and all 17 script
   tags, all to the same new value. Use the date plus a counter, e.g.
   `2026-10-23.1`. One way to do it:
   `sed -i -E 's/\?v=[0-9.-]+"/?v=2026-10-23.1"/' index.html`

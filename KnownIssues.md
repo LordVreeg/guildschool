@@ -43,7 +43,7 @@ new files instead of reusing cached copies.
 also bump `?v=` in `index.html`. That includes wiki syncs that only touch
 `data/`.
 
-- Change all 17 tags (1 stylesheet + 16 scripts) to the same new value.
+- Change all 18 tags (1 stylesheet + 17 scripts) to the same new value.
 - Use the date plus a counter for that day, e.g. `2026-10-23.1`, then
   `2026-10-23.2`.
 - One way to do it from the repo root:
