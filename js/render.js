@@ -270,6 +270,7 @@ function renderMain() {
   }
   if (state.activeView === 'utilities') { renderUtilitiesModule(); return; }
   if (state.activeView === 'group') { renderGroupModule(); return; }
+  if (state.activeView === 'schedule') { renderScheduleModule(); return; }
   if (state.activeView === 'bestiary') { renderBestiaryModule(); return; }
   if (state.activeView === 'encounter') { renderEncounterModule(); return; }
   if (state.activeSkillId) { renderSkillModule(state.activeSkillId); return; }

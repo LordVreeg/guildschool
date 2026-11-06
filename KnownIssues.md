@@ -43,7 +43,7 @@ new files instead of reusing cached copies.
 also bump `?v=` in `index.html`. That includes wiki syncs that only touch
 `data/`.
 
-- Change all 16 tags (1 stylesheet + 15 scripts) to the same new value.
+- Change all 17 tags (1 stylesheet + 16 scripts) to the same new value.
 - Use the date plus a counter for that day, e.g. `2026-10-23.1`, then
   `2026-10-23.2`.
 - One way to do it from the repo root:
@@ -80,3 +80,22 @@ Two entries don't match up:
   its reference data from `data/*.json`, and browsers block that for
   `file://` pages. Serve the folder instead, for example with
   `python -m http.server 8765`, then open `http://localhost:8765/`.
+
+## Game Schedule needs a one-time Supabase setup
+
+The Game Schedule page (Other menu, or the button on a group page) stores
+sessions in `game_sessions` and emails the group through an Edge Function.
+None of that exists until it is set up in the Supabase dashboard:
+
+1. Run `schema_v28_game_schedule.sql` in the SQL Editor.
+2. Deploy `edge_functions/session-mail/index.ts` as a function named
+   `session-mail` with "Enforce JWT verification" off, and add its secrets
+   (the comments at the top of the file list them: `CRON_SECRET`, `APP_URL`,
+   `MAIL_FROM`, and either `RESEND_API_KEY` or the `SMTP_*` settings).
+3. Enable `pg_cron` and `pg_net`, then run the `cron.schedule(...)` statement
+   from the end of the SQL file. It sends the 9 AM day-before reminders.
+
+Until step 2 is done a GM can still schedule games; the page says the email
+did not go out. Until step 1 is done the page says the table is missing.
+These SQL and function files live in the private `GS Tool` folder, not in
+this repo.

@@ -255,3 +255,16 @@ body {
 .inventory-table .item-spell-btn:disabled { opacity: .4; cursor: default; }
 /* Item popup: a spell's selection row stays on one line */
 .item-spell-edit { flex-wrap: nowrap; gap: 8px; }
+
+/* Game Schedule calendar (js/schedule.js) */
+.sched-dow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; font-size: 11px; color: var(--gold-dim); text-transform: uppercase; letter-spacing: .5px; text-align: center; padding-bottom: 2px; }
+.sched-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
+.sched-cell { background: var(--panel); min-height: 84px; padding: 3px 4px; font-size: 11px; min-width: 0; }
+.sched-cell.other { opacity: .55; }
+.sched-cell.today { outline: 2px solid var(--gold-dim); outline-offset: -2px; }
+.sched-cell.can-add { cursor: pointer; }
+.sched-cell.can-add:hover { background: var(--bg); }
+.sched-daynum { color: var(--text-dim); margin-bottom: 2px; }
+.sched-chip { display: block; background: var(--gold); color: var(--panel); padding: 1px 4px; margin-bottom: 2px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sched-chip.cancelled { background: var(--text-dim); text-decoration: line-through; }
+@media (max-width: 700px) { .sched-cell { min-height: 56px; padding: 2px; } }

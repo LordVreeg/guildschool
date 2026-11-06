@@ -364,7 +364,8 @@ async function renderGroupDetail(group) {
         ${celestialIconsHtml(groupClock.hour)}
         ${combatFlagHtml}
       </div>
-      ${isGM ? `<button class="btn btn-dim" onclick="openAddToGroupModal('${group.id}')">Add to Group</button>` : ''}
+      <div style="display:flex;gap:6px"><button class="btn btn-dim" onclick="showScheduleModule('${group.id}')">📅 Game Schedule</button>
+      ${isGM ? `<button class="btn btn-dim" onclick="openAddToGroupModal('${group.id}')">Add to Group</button>` : ''}</div>
     </div>
     <div class="form-group" style="margin-top:8px"><label>Roster (PCs &amp; NPCs)</label>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0">${orderToggleHtml}</div>
