@@ -596,6 +596,9 @@ let openCombatDetailState = null;
 // Whether a weapon popup's Missile Fire section is open: what the player last
 // chose for that weapon this session, otherwise open only for bows and crossbows.
 const combatMissileOpen = {};
+// Whether Defense Details' Weapon Protection & Other Bonuses section is open:
+// null = the default (open only when something in it isn't zero).
+let combatDefenseOtherOpen = null;
 function missileSectionOpen(it, idx) {
   return idx in combatMissileOpen ? combatMissileOpen[idx] : /bow/i.test(it.weaponClass || '');
 }
@@ -639,7 +642,7 @@ function appliedSkillMods(char, it) {
     return { name: s.skillName, value, tip: `${why} Skill value ${Math.round(v)}${s.dropdownOnly ? ' (a dropdown, from its parent skill)' : ''}.` };
   }).filter(Boolean);
 }
-function openCombatDetail(kind, idx) { openCombatDetailState = { kind, idx }; renderCombatDetail(); }
+function openCombatDetail(kind, idx) { openCombatDetailState = { kind, idx }; if (kind === 'defense') combatDefenseOtherOpen = null; renderCombatDetail(); }
 function closeCombatDetail() { openCombatDetailState = null; closeModal(); }
 function renderCombatDetail() {
   const char = state.characters[state.activeChar];
@@ -650,9 +653,19 @@ function renderCombatDetail() {
     const armor = computeArmor(char);
     const hasShield = armor.shieldsComputed.length > 0;
     const cols = hasShield ? [['With Shield', armor.withShield], ['Shield Dropped', armor.withoutShield]] : [['Total', armor.withoutShield]];
-    const both = v => cols.map(() => `<td colspan="2">${v}</td>`).join('');
+    // one AV and one PR cell per column; '' leaves a cell empty
+    const avpr = (av, pr) => cols.map(() => `<td>${av}</td><td>${pr}</td>`).join('');
+    const signed = n => (n < 0 ? '−' : '+') + Math.abs(Math.round(n * 10) / 10);
+    // Other bonuses: the items in use whose defense modifiers aren't zero, plus
+    // any bonus typed in by hand on an older version of this popup
+    const counted = shieldsCountedItems(char);
+    const bonusItems = (char.items || []).filter(it => itemHasModKind(it, 'defense') && itemModsInUse(char, it, counted)
+      && ((parseFloat(it.magicAvoidance) || 0) || (parseFloat(it.magicProtection) || 0)));
+    const handBonuses = (armor.otherBonuses || []).map((b, i) => ({ b: b || {}, i })).filter(({ b }) => (parseFloat(b.av) || 0) || (parseFloat(b.pr) || 0));
+    const otherOpen = combatDefenseOtherOpen !== null ? combatDefenseOtherOpen
+      : !!(armor.weaponProtectionManual || armor.weaponProtectionWielded || bonusItems.length || handBonuses.length);
     openModal(`<h3>Defense Details</h3>
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Armor Breakdown</div>
+    <div class="combat-section-head">Armor Breakdown</div>
     <table class="skill-table">
       <thead><tr><th>Item</th><th>AV</th><th>PR</th><th>Notes</th></tr></thead>
       <tbody>
@@ -663,29 +676,25 @@ function renderCombatDetail() {
     </table>
     
     <hr class="divider">
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weapon Protection & Other Bonuses</div>
+    <details class="combat-fold" ${otherOpen ? 'open' : ''}>
+    <summary class="combat-section-head" onclick="combatDefenseOtherOpen = !this.parentElement.open">Weapon Protection & Other Bonuses</summary>
     <div class="form-row" style="margin-bottom:10px">
       <div class="form-group"><label>Weapon Protection (PR)${infoTip('Weapons in use add their Weapon PR on top of this automatically.')}</label>
         <input type="number" class="w-sm" value="${armor.weaponProtectionManual}" onchange="updateCombatExtra('weaponProtection',this.value)">
         ${armor.weaponProtectionWielded ? `<div class="note">+ ${armor.weaponProtectionWielded} from the weapons in use</div>` : ''}
       </div>
     </div>
-    <table class="item-table">
-      <thead><tr><th>Other Bonus (rings, spells, etc.)</th><th>AV</th><th>PR</th></tr></thead>
+    ${bonusItems.length || handBonuses.length ? `<table class="skill-table">
+      <thead><tr><th>Other Bonus${infoTip('Items in use (worn, wielded or carried) with Avoidance or Protection modifiers. Add them on the Inventory page: an item\'s Defense modifiers.')}</th><th>AV</th><th>PR</th><th></th></tr></thead>
       <tbody>
-        ${[0,1,2].map(i => {
-          const b = armor.otherBonuses[i] || {};
-          return `<tr>
-            <td><input value="${b.label||''}" placeholder="e.g. Ring of Protection" onchange="updateOtherBonus(${i},'label',this.value)"></td>
-            <td class="item-qty"><input type="number" value="${b.av||0}" onchange="updateOtherBonus(${i},'av',this.value)"></td>
-            <td class="item-qty"><input type="number" value="${b.pr||0}" onchange="updateOtherBonus(${i},'pr',this.value)"></td>
-          </tr>`;
-        }).join('')}
+        ${bonusItems.map(it => `<tr><td>${escapeHtml(it.name || '(unnamed)')}</td><td>${signed(-(parseFloat(it.magicAvoidance) || 0))}</td><td>${signed(parseFloat(it.magicProtection) || 0)}</td><td></td></tr>`).join('')}
+        ${handBonuses.map(({ b, i }) => `<tr><td>${escapeHtml(b.label || 'Bonus')} <span class="note">(entered by hand)</span>${infoTip('Typed in on an older version of this popup. It still counts; to change it, add the item to the Inventory with Defense modifiers and remove this.')}</td><td>${signed(parseFloat(b.av) || 0)}</td><td>${signed(parseFloat(b.pr) || 0)}</td><td class="item-del" title="Remove" onclick="updateOtherBonus(${i},'av',0);updateOtherBonus(${i},'pr',0)">✕</td></tr>`).join('')}
       </tbody>
-    </table>
+    </table>` : '<div class="note">No items in use with Avoidance or Protection modifiers.</div>'}
+    </details>
     
     ${hasShield ? `<hr class="divider">
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Shield</div>
+    <div class="combat-section-head">Shield</div>
     <table class="skill-table">
       <thead><tr><th>Shield</th><th>AV</th><th>Base PR</th><th>Shield Use Bonus${infoTip(`Basic Shield Use skval ${armor.shieldUseSkval}. Bonus = min(skval, base PR) + floor(max(0, skval − base PR) ÷ 10).`)}</th><th>Effective PR</th><th>Notes</th></tr></thead>
       <tbody>
@@ -695,18 +704,17 @@ function renderCombatDetail() {
 ` : ''}
 
     <hr class="divider">
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Totals</div>
+    <div class="combat-section-head">Totals</div>
     <table class="skill-table">
-      <thead><tr><th></th>${cols.map(([l]) => `<th colspan="2">${l}</th>`).join('')}</tr>
+      <thead>${hasShield ? `<tr><th></th>${cols.map(([l]) => `<th colspan="2">${l}</th>`).join('')}</tr>` : ''}
       <tr><th></th>${cols.map(() => '<th>AV</th><th>PR</th>').join('')}</tr></thead>
       <tbody>
         <tr><td>Armor${hasShield ? ' + Shield' : ''}</td>${cols.map(([, t]) => `<td>${t.sumAV}</td><td>${t.sumPR.toFixed(1)}</td>`).join('')}</tr>
-        <tr><td>Avoidance skill (subtracted)</td>${both(`−${armor.avoidanceSkval}`)}</tr>
-        <tr><td>Protection skill ÷ 5 (added)</td>${both(`+${(armor.protectionSkval/5).toFixed(1)}`)}</tr>
-        <tr><td>Weapon Protection</td>${both(`+${armor.weaponProtection}`)}</tr>
-        <tr><td>Parry Points Committed</td>${both(`+${armor.parryPointsTotal}`)}</tr>
-        <tr><td>Other Bonuses</td>${both(`+${armor.sumOtherAV} / +${armor.sumOtherPR}`)}</tr>
-        ${cols.some(([, t]) => t.magicAV || t.magicPR) ? `<tr><td>Magic items (Avoidance / Protection)</td>${cols.map(([, t]) => `<td colspan="2">−${t.magicAV} / +${t.magicPR}</td>`).join('')}</tr>` : ''}
+        <tr><td>Avoidance skill (subtracted)</td>${avpr(`−${armor.avoidanceSkval}`, '')}</tr>
+        <tr><td>Protection skill ÷ 5 (added)</td>${avpr('', `+${(armor.protectionSkval/5).toFixed(1)}`)}</tr>
+        <tr><td>Weapon Protection</td>${avpr('', `+${armor.weaponProtection}`)}</tr>
+        <tr><td>Parry Points Committed</td>${avpr('', `+${armor.parryPointsTotal}`)}</tr>
+        <tr><td>Other Bonuses</td>${cols.map(([, t]) => `<td>${signed(armor.sumOtherAV - t.magicAV)}</td><td>${signed(armor.sumOtherPR + t.magicPR)}</td>`).join('')}</tr>
         <tr style="border-top:1px solid var(--gold)"><td><strong>Total</strong></td>${cols.map(([, t]) => `<td><strong>${Math.round(t.totalAV)}</strong></td><td><strong>${Math.round(t.totalPR)}</strong></td>`).join('')}</tr>
         <tr><td>Protection min-max${infoTip('(PR − 1d10) ÷ (2d6 ÷ 2), rounded.')}</td>${cols.map(([, t]) => `<td></td><td>${t.roll.min} – ${t.roll.max}</td>`).join('')}</tr>
         ${armor.parryPointsTotal > 0 ? `
@@ -776,8 +784,8 @@ function renderCombatDetail() {
           </table>
           ${w.missile ? `
           <hr class="divider">
-          <details class="combat-missile" ${missileSectionOpen(it, idx) ? 'open' : ''} ontoggle="combatMissileOpen[${idx}] = this.open">
-          <summary class="combat-section-head">Missile Fire</summary>
+          <details class="combat-fold" ${missileSectionOpen(it, idx) ? 'open' : ''}>
+          <summary class="combat-section-head" onclick="combatMissileOpen[${idx}] = !this.parentElement.open">Missile Fire</summary>
           <div class="form-row">
             <div class="form-group"><label>Range</label><input type="number" class="w-sm" value="${it.range||0}" onchange="updateWeaponField(${idx},'range',this.value)"></div>
             <div class="form-group"><label>Target Distance</label><input type="number" class="w-sm" value="${it.targetDistance||0}" onchange="updateWeaponField(${idx},'targetDistance',this.value)"></div>

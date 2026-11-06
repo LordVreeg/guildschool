@@ -278,11 +278,11 @@ td div.note, td.note, li.note { margin: 0; }
 .combat-weapons td.combat-weapon-name { white-space: normal; min-width: 110px; }
 .combat-scroll { overflow-x: auto; }
 .combat-small-btn { font-size: 11px; padding: 0 8px; }
-/* The weapon popup's Missile Fire section folds; its summary is the section header */
-.combat-missile > summary { cursor: pointer; list-style: none; }
-.combat-missile > summary::before { content: "▸ "; }
-.combat-missile[open] > summary::before { content: "▾ "; }
-.combat-missile > summary::-webkit-details-marker { display: none; }
+/* A popup section that folds (Missile Fire, Weapon Protection & Other Bonuses); its summary is the section header */
+.combat-fold > summary { cursor: pointer; list-style: none; }
+.combat-fold > summary::before { content: "▸ "; }
+.combat-fold[open] > summary::before { content: "▾ "; }
+.combat-fold > summary::-webkit-details-marker { display: none; }
 /* section headers in the weapon popup: 2px over the plain-font 12px (the id outranks .plain-font *) */
 #modal-box .combat-section-head { margin-top: 10px; font-size: 14px !important; }
 .combat-move span { margin-left: 0 !important; }
