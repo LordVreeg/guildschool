@@ -18,10 +18,7 @@ commit.
 - `data/*.json` is the game's reference data: skills, guilds, spells,
   weapons, armor, items, Bestiary templates and lookup tables.
   `loadData()` in `js/data.js` fetches it after sign-in.
-- `assets/img/` holds the images.
-- `sql/` holds Supabase SQL to run by hand in the SQL editor (it isn't
-  applied automatically). So far: the group chat schema.
-- `KnownIssues.md` lists open problems and needed Supabase dashboard
+- `assets/img/` holds the images.- `KnownIssues.md` lists open problems and needed Supabase dashboard
   settings.
 
 ## Rules

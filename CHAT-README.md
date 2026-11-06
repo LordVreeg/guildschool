@@ -208,15 +208,12 @@ Any HTML you type shows as plain text.
 
 ## Setup (admins)
 
-The chat needs two SQL files run once, in order, in the Supabase SQL
-editor. Both are in the `sql/` folder.
+The chat's database setup (the `group_chat_messages` table, its access
+rules, triggers and live updates) has already been run in Supabase. The SQL
+isn't kept in this repo.
 
-1. `sql/schema_group_chat.sql`: the messages table, the rules for who can read
-   and post, and live updates.
-2. `sql/schema_chat_v2.sql`: message types, rolls and whispers.
-
-If sending fails with "permission denied for table group_chat_messages",
-run:
+If sending ever fails with "permission denied for table
+group_chat_messages", run this in the Supabase SQL editor:
 
 ```sql
 grant select, insert, update on public.group_chat_messages to authenticated;
