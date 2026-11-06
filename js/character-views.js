@@ -333,8 +333,8 @@ function itemModsLineHtml(char, it) {
   }
   if (!bits.length) return '';
   const inUse = itemModsInUse(char, it, shieldsCountedItems(char));
-  const why = it.type === 'Ammunition' ? 'pick it as a missile weapon\'s ammunition on the Combat page' : it.type === 'Weapon' ? 'tick Wielding on the Combat page' : it.type === 'Shield' ? 'tick Wielding on the Combat page' : 'carry it on your person';
-  return `<tr class="item-spell-row"><td colspan="7">◈ ${escapeHtml(bits.join(' · '))}${inUse ? '' : ` <span style="color:#c05050" title="Not counting right now: ${why}">(not in use)</span>`}</td></tr>`;
+  const why = it.type === 'Ammunition' ? "pick it as a missile weapon's ammunition on the Combat page" : (it.type === 'Weapon' || it.type === 'Shield' || it.type === 'Armor') ? 'carry it and tick In Use' : 'carry it on your person';
+  return `<tr class="item-spell-row"><td colspan="8">◈ ${escapeHtml(bits.join(' · '))}${inUse ? '' : ` <span style="color:#c05050" title="Not counting right now: ${why}">(not in use)</span>`}</td></tr>`;
 }
 
 // Where an item can go: Carried (an empty location) plus every container
@@ -354,6 +354,14 @@ function containerMoveButtons(char, name) {
   return b(-1, '▲', i <= 0) + b(1, '▼', i < 0 || i >= list.length - 1);
 }
 
+// The Inventory's In Use tick, for weapons, shields and armor carried on the
+// person (an item in a container that isn't on the person can't be in use).
+function inUseCellHtml(char, it, idx) {
+  if (it.type !== 'Weapon' && it.type !== 'Shield' && it.type !== 'Armor') return '';
+  if (!itemOnPerson(char, it)) return '<span class="note" title="Not on the person: in a container">—</span>';
+  return `<input type="checkbox" ${itemInUse(char, it) ? 'checked' : ''} title="${it.type === 'Armor' ? 'Worn' : 'In hand. One two-handed weapon, two one-handed weapons, or a one-handed weapon and a shield.'}" onchange="setItemInUse(${idx}, this.checked)">`;
+}
+
 // Read-only inventory rows, grouped under a header per location (Carried
 // first), with that location's totals from computeStorageSummary.
 function inventoryGroupsHtml(char) {
@@ -365,11 +373,12 @@ function inventoryGroupsHtml(char) {
     const hidden = collapsedItemGroups.has(g.location);
     const isContainer = g.location !== CARRIED;
     const label = !isContainer ? 'Carried' : escapeHtml(g.location) + (g.onPerson ? ' <span class="item-group-stats">(on person)</span>' : '');
-    return `<tr class="item-group" data-group="${escapeHtml(g.location)}" data-container="${escapeHtml(g.location)}" title="${hidden ? 'Show' : 'Hide'} these items" onclick="toggleItemGroup(this.dataset.group)"><td colspan="7"><span class="item-group-toggle">${hidden ? '▸' : '▾'}</span>${label}${isContainer ? `<span class="group-move">${containerMoveButtons(char, g.location)}</span>` : ''}</td></tr>` +
+    return `<tr class="item-group" data-group="${escapeHtml(g.location)}" data-container="${escapeHtml(g.location)}" title="${hidden ? 'Show' : 'Hide'} these items" onclick="toggleItemGroup(this.dataset.group)"><td colspan="8"><span class="item-group-toggle">${hidden ? '▸' : '▾'}</span>${label}${isContainer ? `<span class="group-move">${containerMoveButtons(char, g.location)}</span>` : ''}</td></tr>` +
       (hidden ? '' : rows.map(({ it, idx }) => `<tr style="${it.masterwork ? 'font-style:italic' : ''}">
         <td>${escapeHtml(it.name || '')}</td>
         <td class="item-kind">${escapeHtml(itemKindLabel(it))}</td>
         <td class="item-qty">${escapeHtml(it.qty || 1)}</td>
+        <td style="text-align:center">${inUseCellHtml(char, it, idx)}</td>
         <td style="text-align:center">${it.masterwork || it.type === 'Magic Item' ? '✓' : ''}</td>
         <td class="item-kind">${escapeHtml(it.notes || '')}</td>
         <td class="item-edit" title="Edit" onclick="openEditItemModal(${idx})">✎</td>
@@ -377,12 +386,12 @@ function inventoryGroupsHtml(char) {
       </tr>` + itemModsLineHtml(char, it) + (itemCanHoldSpells(it) ? (it.spells || []).map((sp, j) => {
         const left = itemSpellUsesLeft(sp, char);
         const rule = itemSpellRule(it);
-        return `<tr class="item-spell-row"><td colspan="7">✦ <a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener">${escapeHtml(sp.name)}</a> · Level ${sp.level} · <span style="${left > 0 ? '' : 'color:#c05050'}" title="${rule ? 'Used up as it is cast; does not come back' : sp.period === 'charges' ? 'Charges only come back with ↺' : characterClockSeconds(char) != null ? 'Comes back as the group clock passes into the next ' + escapeHtml(itemSpellPeriodLabel(sp.period).replace(/^per /, '')) + ', or with ↺' : 'Comes back with ↺ (or as the group clock passes, once this character is in a group)'}">${escapeHtml(itemSpellUsageText(sp, char, rule))}</span>
+        return `<tr class="item-spell-row"><td colspan="8">✦ <a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener">${escapeHtml(sp.name)}</a> · Level ${sp.level} · <span style="${left > 0 ? '' : 'color:#c05050'}" title="${rule ? 'Used up as it is cast; does not come back' : sp.period === 'charges' ? 'Charges only come back with ↺' : characterClockSeconds(char) != null ? 'Comes back as the group clock passes into the next ' + escapeHtml(itemSpellPeriodLabel(sp.period).replace(/^per /, '')) + ', or with ↺' : 'Comes back with ↺ (or as the group clock passes, once this character is in a group)'}">${escapeHtml(itemSpellUsageText(sp, char, rule))}</span>
           <button class="btn btn-gold item-spell-btn" ${left > 0 ? '' : 'disabled'} title="Cast ${escapeHtml(sp.name)} from this item" onclick="openItemCastModal(${idx},${j})">Cast</button>
           ${rule ? '' : `<button class="btn btn-dim item-spell-btn" title="Reset its uses" onclick="rechargeItemSpell(${idx},${j})">↺</button>`}</td></tr>`;
       }).join('') : '')).join(''));
   }).join('');
-  return html || `<tr><td colspan="7" class="note" style="padding:8px">No items yet. Use <i>Add Item</i> below.</td></tr>`;
+  return html || `<tr><td colspan="8" class="note" style="padding:8px">No items yet. Use <i>Add Item</i> below.</td></tr>`;
 }
 
 function renderInventoryModule() {
@@ -401,7 +410,7 @@ function renderInventoryModule() {
       <hr class="divider">
       <div class="note" style="margin-bottom:6px">Items are grouped by where they are. Carried items count toward Weight Carried above; items in a container don't, unless you tick its On Person box in Storage Locations below (a backpack you're wearing). Use ✎ to change an item.</div>
       <table class="item-table inventory-table">
-        <thead><tr><th>Item</th><th>Type</th><th>Qty</th><th>MW/Magic</th><th>Notes</th><th></th><th></th></tr></thead>
+        <thead><tr><th>Item</th><th>Type</th><th>Qty</th><th title="Weapons and shields in hand, armor worn: these are what the Combat page counts">In Use</th><th>MW/Magic</th><th>Notes</th><th></th><th></th></tr></thead>
         <tbody>${inventoryGroupsHtml(char)}</tbody>
       </table>
       <button class="btn btn-gold" onclick="openAddItemModal()">Add Item</button>
@@ -440,7 +449,7 @@ function renderInventoryModule() {
 // Marks the One-/Two-Handed row that applies to a wielded weapon (see computeWielding).
 function wieldTag(it, which) {
   const c = state.characters[state.activeChar];
-  if (!c || !it.wielded || computeWielding(c).mode !== which) return '';
+  if (!c || !itemInUse(c, it) || computeWielding(c).mode !== which) return '';
   return ' <span class="type-badge" style="color:var(--gold)">in use</span>';
 }
 
@@ -449,219 +458,269 @@ function renderCombatModule() {
   if (!char) return;
   const armor = computeArmor(char);
   const weaponEntries = combatWeaponEntries(char);
+  const hp = computeHP(char);
+  const wieldWarning = wieldingProblem((char.items || []).filter(it => (it.type === 'Weapon' || it.type === 'Shield') && itemInUse(char, it)));
+
+  // Hit Points: a column per pool, rows Max / Current / Reset (like the spell-point table)
+  const hpCols = hp.system === 'standard'
+    ? [{ label: 'HP', max: hp.totalHP, cur: hp.currentHP, field: 'currentHP' }]
+    : [{ label: 'Physical', max: hp.physicalMax, cur: hp.physicalCurrent, field: 'physicalCurrent' }, { label: 'Endurance', max: hp.enduranceMax, cur: hp.enduranceCurrent, field: 'enduranceCurrent' }];
+  const hpTable = `<table class="skill-table combat-table">
+      <thead><tr><th></th>${hpCols.map(c => `<th>${c.label}</th>`).join('')}</tr></thead>
+      <tbody>
+        <tr><th>Max</th>${hpCols.map(c => `<td>${c.max}</td>`).join('')}</tr>
+        <tr><th>Current</th>${hpCols.map(c => `<td><input type="number" class="w-sm" value="${c.cur}" onchange="updateHPState('${c.field}', this.value)"></td>`).join('')}</tr>
+        <tr><th></th>${hpCols.map(c => `<td><button class="btn btn-dim combat-small-btn" title="Back to max" onclick="updateHPState('${c.field}', ${c.max})">↺</button></td>`).join('')}</tr>
+      </tbody>
+    </table>`;
+
+  // Defense: the totals, with and without the shield when one is in use; the
+  // full breakdown is in the Details popup
+  const hasShield = armor.shieldsComputed.length > 0;
+  const defCols = hasShield ? [['With Shield', armor.withShield], ['Shield Dropped', armor.withoutShield]] : [['Total', armor.withoutShield]];
+  const rollText = r => `${r.min} – ${r.max}`;
+  const defTable = `<table class="skill-table combat-table">
+      <thead><tr><th></th>${defCols.map(([l]) => `<th>${l}</th>`).join('')}</tr></thead>
+      <tbody>
+        <tr><th>AV</th>${defCols.map(([, t]) => `<td>${Math.round(t.totalAV)}</td>`).join('')}</tr>
+        <tr><th>PR</th>${defCols.map(([, t]) => `<td>${Math.round(t.totalPR)}</td>`).join('')}</tr>
+        <tr><th title="(PR − 1d10) ÷ (2d6 ÷ 2), rounded">Protection min-max</th>${defCols.map(([, t]) => `<td>${rollText(t.roll)}</td>`).join('')}</tr>
+        ${armor.parryPointsTotal > 0 ? `<tr><th>PR vs missile / magic</th>${defCols.map(([, t]) => `<td>${Math.round(t.totalPRvsRangedOrMagic)}</td>`).join('')}</tr>
+        <tr><th>Protection min-max vs missile / magic</th>${defCols.map(([, t]) => `<td>${rollText(t.rollVsRangedOrMagic)}</td>`).join('')}</tr>` : ''}
+      </tbody>
+    </table>`;
+
+  // Weapons: a line per grip (and Missile), the weapon's name opens its popup
+  const weaponRows = weaponEntries.map((entry, pos) => {
+    const it = entry.kind === 'hand' ? handFootWeapon(char) : entry.it;
+    if (!it) return '';
+    const w = computeWeapon(char, it);
+    const lines = [];
+    if (w.oneHand) lines.push({ grip: 'One-Handed', which: 'one', v: w.oneHand });
+    if (w.twoHand) lines.push({ grip: 'Two-Handed', which: 'two', v: w.twoHand });
+    if (w.missile) lines.push({ grip: 'Missile', missile: w.missile });
+    if (!lines.length) lines.push({ grip: '—' });
+    const n = lines.length;
+    const open = entry.kind === 'hand' ? "openCombatDetail('hand')" : entry.kind === 'shield' ? `openCombatDetail('shield',${entry.idx})` : `openCombatDetail('weapon',${entry.idx})`;
+    const parryCell = w.parrySkval > 0
+      ? `<input type="number" min="0" max="${w.parrySkval}" class="w-sm" value="${w.parryPointsUsed}" onchange="${entry.kind === 'hand' ? 'updateHandFootParry(this.value)' : entry.kind === 'shield' ? `updateShieldSpikeParry(${entry.idx}, this.value)` : `updateWeaponField(${entry.idx},'parryPointsUsed',this.value)`}"> <span class="note">of ${w.parrySkval}</span>`
+      : '<span class="note">—</span>';
+    const kindTag = entry.kind === 'hand' ? ' <span class="note">(automatic)</span>' : entry.kind === 'shield' ? ' <span class="note">(from shield)</span>' : '';
+    return lines.map((ln, i) => {
+      const lead = i === 0 ? `<td rowspan="${n}" class="combat-weapon-name"><a class="wiki-link" href="#" onclick="${open};return false" title="Open this weapon's stats">${escapeHtml(it.name || '(unnamed weapon)')}</a>${kindTag}<div class="note">${escapeHtml(it.weaponClass || 'unbound')}</div></td>` : '';
+      const tail = i === 0 ? `<td rowspan="${n}">${parryCell}</td><td rowspan="${n}">${w.multipleAttackSkval || '—'}</td><td rowspan="${n}" class="combat-move">${weaponMoveButtonsHtml(pos, weaponEntries.length)}</td>` : '';
+      const inUse = ln.which && entry.kind === 'item' ? wieldTag(it, ln.which) : '';
+      const stats = ln.missile
+        ? `<td>${Math.round(ln.missile.finalHit)}</td><td>${ln.missile.magicDmgAfter ? '+' + ln.missile.magicDmgAfter : '—'}</td><td>${Math.round(ln.missile.speedMissile)}</td><td>${fmtCrit(ln.missile.critChance)}</td><td>${fmtFumble(ln.missile.fumbleThreshold)}</td>`
+        : ln.v ? `<td>${Math.round(ln.v.hit)}</td><td>${Math.round(ln.v.dmgBonus)}</td><td>${Math.round(ln.v.speed)}</td><td>${fmtCrit(ln.v.critChance)}</td><td>${fmtFumble(ln.v.fumbleThreshold)}</td>`
+        : '<td colspan="5" class="note">No stats</td>';
+      return `<tr${i === 0 ? ' class="combat-weapon-first"' : ''}>${lead}<td>${ln.grip}${inUse}</td>${stats}${tail}</tr>`;
+    }).join('');
+  }).join('');
 
   document.getElementById('main').innerHTML = `
-  <div class="panel">
-    <div class="panel-header"><h2>Combat — ${char.name}</h2></div>
+  <div class="panel plain-font">
+    <div class="panel-header"><h2>Combat — ${escapeHtml(char.name || '')}</h2></div>
     <div class="panel-body">
 
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Hit Points</div>
-      ${(() => {
-        const hp = computeHP(char);
-        return `
-        <div class="form-row" style="margin-bottom:8px">
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-            <input type="checkbox" ${hp.system==='collegium'?'checked':''} onchange="updateHPState('system', this.checked ? 'collegium' : 'standard')">
-            Collegium System (uncheck for Standard)
-          </label>
-        </div>
-        <div class="computed-item" style="margin-bottom:10px"><span class="ci-label">Total HP (from Hit Points skill)</span><span class="ci-value skval">${hp.totalHP}</span></div>
-        ${hp.system === 'standard' ? `
-        <div class="form-row">
-          <div class="computed-item"><span class="ci-label">Max HP</span><span class="ci-value">${hp.totalHP}</span></div>
-          <div class="form-group"><label>Current HP</label><input type="number" class="w-sm" value="${hp.currentHP}" onchange="updateHPState('currentHP', this.value)"></div>
-          <button class="btn btn-dim" style="align-self:flex-end" onclick="updateHPState('currentHP', ${hp.totalHP})">Reset to Max</button>
-        </div>
-        ` : `
-        <div class="form-row">
-          <div class="computed-item"><span class="ci-label">Physical Max</span><span class="ci-value">${hp.physicalMax}</span></div>
-          <div class="form-group"><label>Physical Current</label><input type="number" class="w-sm" value="${hp.physicalCurrent}" onchange="updateHPState('physicalCurrent', this.value)"></div>
-          <button class="btn btn-dim" style="align-self:flex-end" onclick="updateHPState('physicalCurrent', ${hp.physicalMax})">Reset</button>
-        </div>
-        <div class="form-row">
-          <div class="computed-item"><span class="ci-label">Endurance Max</span><span class="ci-value">${hp.enduranceMax}</span></div>
-          <div class="form-group"><label>Endurance Current</label><input type="number" class="w-sm" value="${hp.enduranceCurrent}" onchange="updateHPState('enduranceCurrent', this.value)"></div>
-          <button class="btn btn-dim" style="align-self:flex-end" onclick="updateHPState('enduranceCurrent', ${hp.enduranceMax})">Reset</button>
-        </div>
-        <div class="note">Damage hits Endurance first; Physical is only touched once Endurance is depleted. Physical = ceil(total÷2), Endurance = floor(total÷2).</div>
-        `}
-        `;
-      })()}
+      <div class="combat-section-head">Hit Points</div>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:6px">
+        <input type="checkbox" ${hp.system==='collegium'?'checked':''} onchange="updateHPState('system', this.checked ? 'collegium' : 'standard')">
+        Collegium System (uncheck for Standard)
+      </label>
+      ${hpTable}
+      ${hp.system === 'standard' ? '' : '<div class="note">Damage hits Endurance first; Physical is only touched once Endurance is depleted. Physical = ceil(total÷2), Endurance = floor(total÷2).</div>'}
 
       <hr class="divider">
-      <div class="computed-row">
-        <div class="computed-item"><span class="ci-label">Total AV (Shield)</span><span class="ci-value skval">${Math.round(armor.withShield.totalAV)}</span></div>
-        <div class="computed-item"><span class="ci-label">Total PR (Shield)</span><span class="ci-value skval">${Math.round(armor.withShield.totalPR)}</span></div>
-        <div style="width:1px;background:var(--border);margin:0 4px"></div>
-        <div class="computed-item"><span class="ci-label">Total AV (No Shield / 2H)</span><span class="ci-value" style="color:#7a7acf">${Math.round(armor.withoutShield.totalAV)}</span></div>
-        <div class="computed-item"><span class="ci-label">Total PR (No Shield / 2H)</span><span class="ci-value" style="color:#7a7acf">${Math.round(armor.withoutShield.totalPR)}</span></div>
-        ${armor.wield.active ? `
-        <div style="width:1px;background:var(--border);margin:0 4px"></div>
-        <div class="computed-item" title="From the weapons and shield ticked Wielding below"><span class="ci-label">Total AV (Wielding)</span><span class="ci-value" style="color:var(--gold)">${Math.round(armor.current.totalAV)}</span></div>
-        <div class="computed-item" title="From the weapons and shield ticked Wielding below"><span class="ci-label">Total PR (Wielding)</span><span class="ci-value" style="color:var(--gold)">${Math.round(armor.current.totalPR)}</span></div>` : ''}
-      </div>
-      <div class="note">${armor.wield.active ? `Wielding: ${armor.wield.weapons} weapon${armor.wield.weapons === 1 ? '' : 's'}${armor.wield.shields ? ' and a shield' : ''} — ${armor.wield.mode === 'two' ? 'one weapon alone, so two-handed values' : armor.wield.mode === 'one' ? 'one-handed values' : 'shield only'}. ` : 'Tick Wielding on the weapon(s) and shield in your hands to see your current totals and which hand values apply. '}</div>
-      <div class="note">Lower AV is better for the defender — it's added directly to an attacker's hit chance. "No Shield" reflects two-handed weapon use or a dropped shield.</div>
-      ${armor.parryPointsTotal > 0 ? `
-      <div class="note" style="color:var(--gold-dim);margin-top:4px">⚠ ${armor.parryPointsTotal} of the Total PR above comes from Parry Points Committed. Parry only stops melee attacks — you can't parry a missile or a spell. Against a missile or magical attack, use PR ${Math.round(armor.withShield.totalPRvsRangedOrMagic)} (Shield) / ${Math.round(armor.withoutShield.totalPRvsRangedOrMagic)} (No Shield) instead.</div>
-      ` : ''}
+      <div class="combat-section-head">Defense <a class="wiki-link" href="#" onclick="openCombatDetail('defense');return false">Details</a></div>
+      ${defTable}
+      <div class="note">From the armor, shield and weapons ticked In Use on the Inventory page. Lower AV is better for the defender: it's added directly to an attacker's hit chance. Protection min-max comes from (PR − 1d10) ÷ (2d6 ÷ 2), rounded; the range runs from a 10 and double sixes to a 1 and double ones.</div>
+      ${armor.parryPointsTotal > 0 ? `<div class="note">${armor.parryPointsTotal} of the PR comes from Parry Used, which only stops melee attacks; the "vs missile / magic" row leaves it out.</div>` : ''}
 
       <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weapons</div>
-      ${weaponEntries.length === 0 ? '<div class="note" style="padding:6px 0">No weapon items yet. Add them on the Inventory page (a spiked shield adds its own).</div>' : `
-      <div style="display:flex;gap:6px;margin-bottom:8px">
-        <button class="btn btn-dim" style="font-size:11px;padding:2px 8px" onclick="setAllWeaponsOpen(true)">Open all</button>
-        <button class="btn btn-dim" style="font-size:11px;padding:2px 8px" onclick="setAllWeaponsOpen(false)">Close all</button>
-      </div>`}
-      ${weaponEntries.map((entry, pos) => entry.kind === 'hand' ? renderHandFootPanel(char, pos, weaponEntries.length) : entry.kind === 'shield' ? renderShieldWeaponPanel(char, entry, pos, weaponEntries.length) : (() => {
-        const it = entry.it, idx = entry.idx;
-        const w = computeWeapon(char, it);
-        return `
-        <div class="panel" style="margin-bottom:10px">
-          <div class="panel-header" style="cursor:pointer;display:flex;align-items:center;gap:8px;flex-wrap:wrap" onclick="toggleWeaponOpen(${idx})" title="Click to ${it.collapsed ? 'open' : 'close'}">
-            <span style="font-size:10px;width:10px">${it.collapsed ? '▶' : '▼'}</span>
-            <h2 style="font-size:13px">${it.name||'(unnamed weapon)'}${it.weaponModel?' — '+it.weaponModel:''}</h2><span class="type-badge">${it.weaponClass||'unbound'}</span>${it.wielded ? '<span class="type-badge" style="color:var(--gold)">wielding</span>' : ''}
-            ${it.collapsed ? weaponSummaryHtml(it, w) : ''}
-            ${weaponMoveButtonsHtml(pos, weaponEntries.length)}
-          </div>
-          <div class="panel-body" style="display:${it.collapsed ? 'none' : 'block'}">
-            <input class="w-full" value="${it.notes||''}" placeholder="Special history, charges, quirks..." style="margin-bottom:8px;font-style:italic" onchange="updateItem(${idx},'notes',this.value);renderCombatModule()">
-            <div class="form-row">
-              ${[['stn1h','STN 1H'],['stn2h','STN 2H'],['stmod','STMOD'],['cdn1h','CDN 1H'],['cdn2h','CDN 2H'],['cdmod','CDMOD']].map(([f,l])=>`
-              <div class="form-group"><label>${l}</label><input type="number" step="0.01" class="w-sm" value="${it[f]||0}" onchange="updateWeaponField(${idx},'${f}',this.value)"></div>`).join('')}
-            </div>
-            <div class="form-row">
-              <div class="form-group"><label>Damage Dice</label><input class="w-md" value="${it.damageDice||''}" onchange="updateWeaponField(${idx},'damageDice',this.value)"></div>
-              <div class="form-group"><label>Dividing Die</label><input type="number" class="w-sm" value="${it.dividingDie||0}" onchange="updateWeaponField(${idx},'dividingDie',this.value)"></div>
-              <div class="form-group"><label>Speed Melee</label><input type="number" class="w-sm" value="${it.speedMelee||0}" onchange="updateWeaponField(${idx},'speedMelee',this.value)"></div>
-              <div class="form-group"><label>Speed Missile</label><input type="number" class="w-sm" value="${it.speedMissile||0}" onchange="updateWeaponField(${idx},'speedMissile',this.value)"></div>
-              <div class="form-group"><label>Speed Readied</label><input type="number" class="w-sm" value="${it.speedReadied||0}" onchange="updateWeaponField(${idx},'speedReadied',this.value)"></div>
-              <div class="form-group"><label>Weapon PR</label><input type="number" class="w-sm" value="${it.weaponProtection||0}" onchange="updateWeaponField(${idx},'weaponProtection',this.value)"></div>
-              <div class="form-group" title="Tick the weapon(s) in your hands. One weapon alone is held two-handed; two weapons, or a weapon and a shield, are one-handed. Wielded weapons add their Weapon PR to your Protection."><label>Wielding</label><input type="checkbox" ${it.wielded ? 'checked' : ''} onchange="updateWeaponField(${idx},'wielded',this.checked)"></div>
-              <div class="form-group"><label>Threat Range</label><input type="number" class="w-sm" value="${it.threatRange||0}" onchange="updateWeaponField(${idx},'threatRange',this.value)"></div>
-            </div>
-            <div class="form-row">
-              <div class="form-group"><label>Magic Bonus to Hit</label><input type="number" class="w-sm" value="${it.magicBonusToHit||0}" onchange="updateWeaponField(${idx},'magicBonusToHit',this.value)"></div>
-              <div class="form-group"><label>Magic Dmg After Divider</label><input type="number" class="w-sm" value="${it.magicDamageAfterDivider||0}" onchange="updateWeaponField(${idx},'magicDamageAfterDivider',this.value)"></div>
-              ${itemHasModKind(it, 'offense') ? `<div class="form-group"><label>Magic Dmg Before Divider</label><input type="number" class="w-sm" value="${it.magicDamageBeforeDivider||0}" onchange="updateWeaponField(${idx},'magicDamageBeforeDivider',this.value)"></div>
-              <div class="form-group"><label>Magic Crit %</label><input type="number" class="w-sm" value="${it.magicCritBonus||0}" onchange="updateWeaponField(${idx},'magicCritBonus',this.value)"></div>` : ''}
-            </div>
-            <div class="note">Skill Ability: ${w.baseWeaponSkval} (${it.weaponClass||'—'}) + ${w.singleWeapSpec} (Single Weap Spec) = ${w.skillAbility}</div>
-            <div class="note">Crit % = 7 + floor(to-hit÷10) + (10% × Critical Hit Bonus skval [${w.critHitBonusSkval}]) + weapon threat range, capped at half of to-hit, floored at 3% minimum. Fumble range is 93-00, shifting up only if to-hit itself exceeds 93 (so it never overlaps your own hit range).</div>
-            <hr class="divider">
-            <table class="skill-table">
-              <thead><tr><th></th><th>To-Hit</th><th>Dmg Bonus</th><th>Speed</th><th>Parry</th><th>Parry Used</th><th>Multiple Attack</th><th>Crit %</th><th>Fumble %</th></tr></thead>
-              <tbody>
-                <tr>${w.oneHand ? `<td>One-Handed${wieldTag(it, 'one')}</td><td class="skval-cell">${Math.round(w.oneHand.hit)}</td><td>${Math.round(w.oneHand.dmgBonus)}</td><td>${Math.round(w.oneHand.speed)}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w-sm" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.oneHand.critChance)}</td><td>${fmtFumble(w.oneHand.fumbleThreshold)}</td>` : `<td style="color:var(--text-dim)">One-Handed</td><td colspan="8" class="note">Not usable one-handed — no 1H stats for this weapon</td>`}</tr>
-                ${w.twoHand ? `<tr><td>Two-Handed${wieldTag(it, 'two')}</td><td class="skval-cell">${Math.round(w.twoHand.hit)}</td><td>${Math.round(w.twoHand.dmgBonus)}</td><td>${Math.round(w.twoHand.speed)}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w-sm" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.twoHand.critChance)}</td><td>${fmtFumble(w.twoHand.fumbleThreshold)}</td></tr>` : ''}
-              </tbody>
-            </table>
-            <div class="note">Parry Used is capped at this weapon's Parry skill value; every point subtracts from this weapon's To-Hit and adds to your Protection (PR) below — but only against melee attacks. It does nothing against missile or magical attacks.</div>
-            ${w.missile ? `
-            <hr class="divider">
-            <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Missile Fire</div>
-            <div class="form-row">
-              <div class="form-group"><label>Range</label><input type="number" class="w-sm" value="${it.range||0}" onchange="updateWeaponField(${idx},'range',this.value)"></div>
-              <div class="form-group"><label>Target Distance</label><input type="number" class="w-sm" value="${it.targetDistance||0}" onchange="updateWeaponField(${idx},'targetDistance',this.value)"></div>
-              <div class="form-group"><label>Ammunition (from Inventory)</label>
-                <select class="w-lg" onchange="updateWeaponField(${idx},'ammunitionItemIdx',this.value)">
-                  <option value="">— none / self-contained —</option>
-                  ${(char.items||[]).map((amIt,amIdx)=> amIt.type==='Ammunition' ? `<option value="${amIdx}" ${String(it.ammunitionItemIdx)===String(amIdx)?'selected':''}>${amIt.name||'(unnamed)'}${amIt.masterwork?' ✦':''} (qty ${amIt.qty||1})</option>` : '').join('')}
-                </select>
-              </div>
-            </div>
-            <div class="computed-row">
-              ${it.weaponClass === 'Basic Spears' ? `<div class="computed-item"><span class="ci-label">Effective Range (ST + Spear Thrown)</span><span class="ci-value">${Math.round(w.missile.effectiveRange*10)/10}${w.missile.spearThrownRange ? ` <span class="note">(+${w.missile.spearThrownRange} from skill)</span>` : ''}</span></div>` : ''}
-              <div class="computed-item"><span class="ci-label">Range Modifier</span><span class="ci-value">${Math.round(w.missile.rangeMod*100)}</span></div>
-              <div class="computed-item"><span class="ci-label">Missile To-Hit</span><span class="ci-value skval">${Math.round(w.missile.finalHit)}</span></div>
-              <div class="computed-item"><span class="ci-label">Crit %</span><span class="ci-value">${fmtCrit(w.missile.critChance)}</span></div>
-              ${w.missile.magicDmgBefore ? `<div class="computed-item"><span class="ci-label">Magic Dmg Before Divider</span><span class="ci-value">+${w.missile.magicDmgBefore}</span></div>` : ''}
-              ${w.missile.magicDmgAfter ? `<div class="computed-item"><span class="ci-label">Magic Dmg After Divider</span><span class="ci-value">+${w.missile.magicDmgAfter}</span></div>` : ''}
-              <div class="computed-item"><span class="ci-label">Fumble %</span><span class="ci-value">${fmtFumble(w.missile.fumbleThreshold)}</span></div>
-            </div>
-            ${(char.items||[]).filter(i=>i.type==='Ammunition').length===0 ? '<div class="note" style="margin-top:6px">No ammunition items in inventory yet — add one on the Inventory page, Type: Weapon, Ammunition.</div>' : ''}
-            ${w.missile.ammoItem ? `
-            <div class="form-row">
-              <div class="form-group"><label>Damage Dice</label><input class="w-md" value="${w.missile.ammoItem.damageDice||''}" onchange="updateItem(${it.ammunitionItemIdx},'damageDice',this.value);renderCombatModule()"></div>
-              <div class="form-group"><label>Dividing Die</label><input type="number" class="w-sm" value="${w.missile.ammoItem.dividingDie||0}" onchange="updateItem(${it.ammunitionItemIdx},'dividingDie',this.value);renderCombatModule()"></div>
-              <div class="form-group"><label>Magic Bonus to Hit</label><input type="number" class="w-sm" value="${w.missile.ammoItem.magicBonusToHit||0}" onchange="updateItem(${it.ammunitionItemIdx},'magicBonusToHit',this.value);renderCombatModule()"></div>
-              <div class="form-group"><label>Magic Dmg After Divider</label><input type="number" class="w-sm" value="${w.missile.ammoItem.magicDamageAfterDivider||0}" onchange="updateItem(${it.ammunitionItemIdx},'magicDamageAfterDivider',this.value);renderCombatModule()"></div>
-              ${itemHasModKind(w.missile.ammoItem, 'offense') ? `<div class="form-group"><label>Magic Dmg Before Divider</label><input type="number" class="w-sm" value="${w.missile.ammoItem.magicDamageBeforeDivider||0}" onchange="updateItem(${it.ammunitionItemIdx},'magicDamageBeforeDivider',this.value);renderCombatModule()"></div>
-              <div class="form-group"><label>Magic Crit %</label><input type="number" class="w-sm" value="${w.missile.ammoItem.magicCritBonus||0}" onchange="updateItem(${it.ammunitionItemIdx},'magicCritBonus',this.value);renderCombatModule()"></div>` : ''}
-            </div>
-            ` : ''}
-            <div class="note">Missile to-hit = (1 − distance/range) × base hit chance, using ${w.missile.usedGrip} stats${w.missile.usedGrip==='2H' ? ' (no 1H mode available for this weapon)' : ''}. Base hit chance includes both the weapon's own Magic Bonus to Hit and the loaded ammunition's Magic Bonus to Hit — they add together. Total damage = weapon's own dice + ammunition's dice (including its own Magic Damage After Divider), if any.</div>
-            ` : ''}
-          </div>
-        </div>`;
-      })()).join('')}
-
-      <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Armor Breakdown</div>
-      <table class="skill-table">
-        <thead><tr><th>Item</th><th>AV</th><th>PR</th><th>Notes</th></tr></thead>
-        <tbody>
-          ${armor.armorItems.length === 0 ? '<tr><td colspan="4" class="note" style="padding:10px 0">No armor items yet. Add them on the Inventory page.</td></tr>' : ''}
-          ${armor.armorItems.map(it => `<tr><td>${it.name||'(unnamed)'}</td><td>${it.av||0}</td><td>${it.pr||0}</td><td class="note" style="${it.notes?'font-style:italic':''}">${it.notes||''}</td></tr>`).join('')}
-          <tr style="border-top:1px solid var(--gold-dim)"><td><strong>Armor Subtotal</strong></td><td><strong>${armor.armorItems.reduce((s,it)=>s+(parseFloat(it.av)||0),0)}</strong></td><td><strong>${armor.armorItems.reduce((s,it)=>s+(parseFloat(it.pr)||0),0)}</strong></td><td></td></tr>
-        </tbody>
-      </table>
-
-      <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weapon Protection & Other Bonuses</div>
-      <div class="form-row" style="margin-bottom:10px">
-        <div class="form-group"><label>Weapon Protection (PR)</label>
-          <input type="number" class="w-sm" value="${armor.weaponProtectionManual}" onchange="updateCombatExtra('weaponProtection',this.value)">
-          ${armor.weaponProtectionWielded ? `<div class="note" style="margin-top:2px">+ ${armor.weaponProtectionWielded} from weapons ticked "Wielding" above</div>` : `<div class="note" style="margin-top:2px">Tick "Wielding" on a weapon above to count its Weapon PR automatically.</div>`}
-        </div>
-      </div>
-      <table class="item-table">
-        <thead><tr><th>Other Bonus (rings, spells, etc.)</th><th>AV</th><th>PR</th></tr></thead>
-        <tbody>
-          ${[0,1,2].map(i => {
-            const b = armor.otherBonuses[i] || {};
-            return `<tr>
-              <td><input value="${b.label||''}" placeholder="e.g. Ring of Protection" onchange="updateOtherBonus(${i},'label',this.value)"></td>
-              <td class="item-qty"><input type="number" value="${b.av||0}" onchange="updateOtherBonus(${i},'av',this.value)"></td>
-              <td class="item-qty"><input type="number" value="${b.pr||0}" onchange="updateOtherBonus(${i},'pr',this.value)"></td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-
-      <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Shield Breakdown</div>
-      <table class="skill-table">
-        <thead><tr><th>Wielding</th><th>Shield</th><th>AV</th><th>Base PR</th><th>Shield Use Bonus</th><th>Effective PR</th><th>Notes</th></tr></thead>
-        <tbody>
-          ${armor.shieldsComputed.length === 0 ? '<tr><td colspan="7" class="note" style="padding:10px 0">No shield equipped.</td></tr>' : ''}
-          ${armor.shieldsComputed.map(s => `<tr><td><input type="checkbox" ${s.wielded ? 'checked' : ''} title="Tick the shield you are carrying: its AV and PR are added to your With Shield totals" onchange="updateWeaponField(${s.idx},'wielded',this.checked)"></td><td>${s.name||'(unnamed)'}</td><td>${s.av}</td><td>${s.basePR}</td><td>+${s.bonus}</td><td><strong>${s.effectivePR}</strong></td><td class="note" style="${s.notes?'font-style:italic':''}">${s.notes||''}</td></tr>`).join('')}
-        </tbody>
-      </table>
-      <div class="note">Basic Shield Use skval: ${armor.shieldUseSkval} — bonus = min(skval, base PR) + floor(max(0, skval − base PR) / 10)</div>
-
-      <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Totals</div>
-      <table class="skill-table">
-        <thead><tr><th></th><th colspan="2">With Shield</th><th colspan="2">No Shield / 2H</th></tr>
-        <tr><th></th><th>AV</th><th>PR</th><th>AV</th><th>PR</th></tr></thead>
-        <tbody>
-          <tr><td>Combined Armor${armor.shieldsComputed.length?' + Shield':''}</td><td>${armor.withShield.sumAV}</td><td>${armor.withShield.sumPR.toFixed(1)}</td><td>${armor.withoutShield.sumAV}</td><td>${armor.withoutShield.sumPR.toFixed(1)}</td></tr>
-          <tr><td>Avoidance skill (subtracted)</td><td colspan="2">−${armor.avoidanceSkval}</td><td colspan="2">−${armor.avoidanceSkval}</td></tr>
-          <tr><td>Protection skill ÷ 5 (added)</td><td colspan="2">+${(armor.protectionSkval/5).toFixed(1)}</td><td colspan="2">+${(armor.protectionSkval/5).toFixed(1)}</td></tr>
-          <tr><td>Weapon Protection</td><td colspan="2">+${armor.weaponProtection}</td><td colspan="2">+${armor.weaponProtection}</td></tr>
-          <tr><td>Parry Points Committed</td><td colspan="2">+${armor.parryPointsTotal}</td><td colspan="2">+${armor.parryPointsTotal}</td></tr>
-          <tr><td>Other Bonuses</td><td colspan="2">+${armor.sumOtherAV} / +${armor.sumOtherPR}</td><td colspan="2">+${armor.sumOtherAV} / +${armor.sumOtherPR}</td></tr>
-          ${armor.withShield.magicAV || armor.withShield.magicPR || armor.withoutShield.magicAV || armor.withoutShield.magicPR ? `<tr><td>Magic items (Avoidance / Protection)</td><td colspan="2">−${armor.withShield.magicAV} / +${armor.withShield.magicPR}</td><td colspan="2">−${armor.withoutShield.magicAV} / +${armor.withoutShield.magicPR}</td></tr>` : ''}
-          <tr style="border-top:1px solid var(--gold)"><td><strong>Total</strong></td><td><strong>${Math.round(armor.withShield.totalAV)}</strong></td><td><strong>${Math.round(armor.withShield.totalPR)}</strong></td><td><strong>${Math.round(armor.withoutShield.totalAV)}</strong></td><td><strong>${Math.round(armor.withoutShield.totalPR)}</strong></td></tr>
-          ${armor.parryPointsTotal > 0 ? `
-          <tr><td class="note">vs Missile / Magical attack<br>(Parry excluded)</td><td></td><td>${Math.round(armor.withShield.totalPRvsRangedOrMagic)}</td><td></td><td>${Math.round(armor.withoutShield.totalPRvsRangedOrMagic)}</td></tr>
-          ` : ''}
-        </tbody>
-      </table>
-
+      <div class="combat-section-head">Weapons</div>
+      ${wieldWarning ? `<div class="note" style="color:#c05050;margin-bottom:6px">⚠ ${escapeHtml(wieldWarning)} Untick one on the Inventory page.</div>` : ''}
+      ${weaponEntries.length === 0 ? '<div class="note" style="padding:6px 0">No weapons in use. Tick In Use on a carried weapon on the Inventory page.</div>' : `
+      <div class="combat-scroll"><table class="skill-table combat-table combat-weapons">
+        <thead><tr><th>Weapon</th><th>Grip</th><th>To-Hit</th><th>Dmg Bonus</th><th>Speed</th><th>Crit %</th><th>Fumble %</th><th>Parry Used</th><th>Multi</th><th></th></tr></thead>
+        <tbody>${weaponRows}</tbody>
+      </table></div>
+      <div class="note">Click a weapon's name for its stats, magic and missile settings. Parry Used is capped at the weapon's Parry skill; each point comes off that weapon's To-Hit and adds to your PR against melee attacks only.</div>`}
     </div>
   </div>`;
+
+  if (openCombatDetailState && document.getElementById('modal-overlay').classList.contains('open')) renderCombatDetail();
+}
+
+// The Combat page's popups: a weapon's stats (opened from its name) and the
+// Defense breakdown. They save as you edit, like the spell-pool popup; the
+// page and the popup are redrawn together.
+let openCombatDetailState = null;
+function openCombatDetail(kind, idx) { openCombatDetailState = { kind, idx }; renderCombatDetail(); }
+function closeCombatDetail() { openCombatDetailState = null; closeModal(); }
+function renderCombatDetail() {
+  const char = state.characters[state.activeChar];
+  const st = openCombatDetailState;
+  if (!char || !st) return;
+  const close = '<div class="modal-actions"><button class="btn btn-gold" onclick="closeCombatDetail()">Close</button></div>';
+  if (st.kind === 'defense') {
+    const armor = computeArmor(char);
+    const hasShield = armor.shieldsComputed.length > 0;
+    const cols = hasShield ? [['With Shield', armor.withShield], ['Shield Dropped', armor.withoutShield]] : [['Total', armor.withoutShield]];
+    const both = v => cols.map(() => `<td colspan="2">${v}</td>`).join('');
+    openModal(`<h3>Defense Details</h3>
+    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Armor Breakdown</div>
+    <table class="skill-table">
+      <thead><tr><th>Item</th><th>AV</th><th>PR</th><th>Notes</th></tr></thead>
+      <tbody>
+        ${armor.armorItems.length === 0 ? '<tr><td colspan="4" class="note" style="padding:10px 0">No armor in use. Tick In Use on carried armor on the Inventory page.</td></tr>' : ''}
+        ${armor.armorItems.map(it => `<tr><td>${escapeHtml(it.name||'(unnamed)')}</td><td>${it.av||0}</td><td>${it.pr||0}</td><td class="note">${escapeHtml(it.notes||'')}</td></tr>`).join('')}
+        <tr style="border-top:1px solid var(--gold-dim)"><td><strong>Armor Subtotal</strong></td><td><strong>${armor.armorItems.reduce((s,it)=>s+(parseFloat(it.av)||0),0)}</strong></td><td><strong>${armor.armorItems.reduce((s,it)=>s+(parseFloat(it.pr)||0),0)}</strong></td><td></td></tr>
+      </tbody>
+    </table>
+    
+    <hr class="divider">
+    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weapon Protection & Other Bonuses</div>
+    <div class="form-row" style="margin-bottom:10px">
+      <div class="form-group"><label>Weapon Protection (PR)</label>
+        <input type="number" class="w-sm" value="${armor.weaponProtectionManual}" onchange="updateCombatExtra('weaponProtection',this.value)">
+        ${armor.weaponProtectionWielded ? `<div class="note" style="margin-top:2px">+ ${armor.weaponProtectionWielded} from the weapons in use</div>` : `<div class="note" style="margin-top:2px">Weapons in use add their Weapon PR here automatically.</div>`}
+      </div>
+    </div>
+    <table class="item-table">
+      <thead><tr><th>Other Bonus (rings, spells, etc.)</th><th>AV</th><th>PR</th></tr></thead>
+      <tbody>
+        ${[0,1,2].map(i => {
+          const b = armor.otherBonuses[i] || {};
+          return `<tr>
+            <td><input value="${b.label||''}" placeholder="e.g. Ring of Protection" onchange="updateOtherBonus(${i},'label',this.value)"></td>
+            <td class="item-qty"><input type="number" value="${b.av||0}" onchange="updateOtherBonus(${i},'av',this.value)"></td>
+            <td class="item-qty"><input type="number" value="${b.pr||0}" onchange="updateOtherBonus(${i},'pr',this.value)"></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    
+    ${hasShield ? `<hr class="divider">
+    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Shield</div>
+    <table class="skill-table">
+      <thead><tr><th>Shield</th><th>AV</th><th>Base PR</th><th>Shield Use Bonus</th><th>Effective PR</th><th>Notes</th></tr></thead>
+      <tbody>
+        ${armor.shieldsComputed.map(s => `<tr><td>${escapeHtml(s.name||'(unnamed)')}</td><td>${s.av}</td><td>${s.basePR}</td><td>+${s.bonus}</td><td><strong>${s.effectivePR}</strong></td><td class="note">${escapeHtml(s.notes||'')}</td></tr>`).join('')}
+      </tbody>
+    </table>
+    <div class="note">Basic Shield Use skval: ${armor.shieldUseSkval} — bonus = min(skval, base PR) + floor(max(0, skval − base PR) / 10)</div>` : ''}
+
+    <hr class="divider">
+    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Totals</div>
+    <table class="skill-table">
+      <thead><tr><th></th>${cols.map(([l]) => `<th colspan="2">${l}</th>`).join('')}</tr>
+      <tr><th></th>${cols.map(() => '<th>AV</th><th>PR</th>').join('')}</tr></thead>
+      <tbody>
+        <tr><td>Armor${hasShield ? ' + Shield' : ''}</td>${cols.map(([, t]) => `<td>${t.sumAV}</td><td>${t.sumPR.toFixed(1)}</td>`).join('')}</tr>
+        <tr><td>Avoidance skill (subtracted)</td>${both(`−${armor.avoidanceSkval}`)}</tr>
+        <tr><td>Protection skill ÷ 5 (added)</td>${both(`+${(armor.protectionSkval/5).toFixed(1)}`)}</tr>
+        <tr><td>Weapon Protection</td>${both(`+${armor.weaponProtection}`)}</tr>
+        <tr><td>Parry Points Committed</td>${both(`+${armor.parryPointsTotal}`)}</tr>
+        <tr><td>Other Bonuses</td>${both(`+${armor.sumOtherAV} / +${armor.sumOtherPR}`)}</tr>
+        ${cols.some(([, t]) => t.magicAV || t.magicPR) ? `<tr><td>Magic items (Avoidance / Protection)</td>${cols.map(([, t]) => `<td colspan="2">−${t.magicAV} / +${t.magicPR}</td>`).join('')}</tr>` : ''}
+        <tr style="border-top:1px solid var(--gold)"><td><strong>Total</strong></td>${cols.map(([, t]) => `<td><strong>${Math.round(t.totalAV)}</strong></td><td><strong>${Math.round(t.totalPR)}</strong></td>`).join('')}</tr>
+        <tr><td>Protection min-max</td>${cols.map(([, t]) => `<td></td><td>${t.roll.min} – ${t.roll.max}</td>`).join('')}</tr>
+        ${armor.parryPointsTotal > 0 ? `
+        <tr><td class="note">vs Missile / Magical attack<br>(Parry excluded)</td>${cols.map(([, t]) => `<td></td><td>${Math.round(t.totalPRvsRangedOrMagic)}<br>min-max ${t.rollVsRangedOrMagic.min} – ${t.rollVsRangedOrMagic.max}</td>`).join('')}</tr>
+        ` : ''}
+      </tbody>
+    </table>
+    ${close}`, { wide: true, width: 'min(760px, 94vw)', className: 'plain-font' });
+    return;
+  }
+  if (st.kind === 'hand' || st.kind === 'shield') {
+    const it = st.kind === 'hand' ? handFootWeapon(char) : shieldWeaponItem(char, st.idx);
+    if (!it) return closeCombatDetail();
+    const w = computeWeapon(char, it);
+    openModal(`<h3>${escapeHtml(it.name)}</h3>
+      <div class="note" style="margin-bottom:8px">${st.kind === 'hand' ? 'Comes with Basic Martial artist: always available, no inventory item needed.' : 'This shield is also a weapon, one-handed only.'} Its numbers come from the catalog.</div>
+      <div class="form-row">
+        <div class="computed-item"><span class="ci-label">Damage</span><span class="ci-value">${escapeHtml(it.damageDice || '—')} / ${it.dividingDie || '—'}</span></div>
+        <div class="computed-item"><span class="ci-label">Speed</span><span class="ci-value">${it.speedMelee || '—'}</span></div>
+        <div class="computed-item"><span class="ci-label">Threat Range</span><span class="ci-value">${it.threatRange || 0}</span></div>
+        <div class="computed-item"><span class="ci-label">Parry skill</span><span class="ci-value">${w.parrySkval}</span></div>
+      </div>
+      <div class="note">Skill Ability: ${w.baseWeaponSkval} (${escapeHtml(it.weaponClass)}) + ${w.singleWeapSpec} (Single Weap Spec) = ${w.skillAbility}</div>
+      ${close}`, { wide: true, className: 'plain-font' });
+    return;
+  }
+  const idx = st.idx, it = (char.items || [])[idx];
+  if (!it || it.type !== 'Weapon') return closeCombatDetail();
+  const w = computeWeapon(char, it);
+  openModal(`<h3>${escapeHtml(it.name || '(unnamed weapon)')}${it.weaponModel ? ' — ' + escapeHtml(it.weaponModel) : ''}</h3>
+          <input class="w-full" value="${escapeHtml(it.notes||'')}" placeholder="Special history, charges, quirks..." style="margin-bottom:8px" onchange="updateItem(${idx},'notes',this.value);renderCombatModule()">
+          <div class="form-row">
+            ${[['stn1h','STN 1H'],['stn2h','STN 2H'],['stmod','STMOD'],['cdn1h','CDN 1H'],['cdn2h','CDN 2H'],['cdmod','CDMOD']].map(([f,l])=>`
+            <div class="form-group"><label>${l}</label><input type="number" step="0.01" class="w-sm" value="${it[f]||0}" onchange="updateWeaponField(${idx},'${f}',this.value)"></div>`).join('')}
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Damage Dice</label><input class="w-md" value="${it.damageDice||''}" onchange="updateWeaponField(${idx},'damageDice',this.value)"></div>
+            <div class="form-group"><label>Dividing Die</label><input type="number" class="w-sm" value="${it.dividingDie||0}" onchange="updateWeaponField(${idx},'dividingDie',this.value)"></div>
+            <div class="form-group"><label>Speed Melee</label><input type="number" class="w-sm" value="${it.speedMelee||0}" onchange="updateWeaponField(${idx},'speedMelee',this.value)"></div>
+            <div class="form-group"><label>Speed Missile</label><input type="number" class="w-sm" value="${it.speedMissile||0}" onchange="updateWeaponField(${idx},'speedMissile',this.value)"></div>
+            <div class="form-group"><label>Speed Readied</label><input type="number" class="w-sm" value="${it.speedReadied||0}" onchange="updateWeaponField(${idx},'speedReadied',this.value)"></div>
+            <div class="form-group"><label>Weapon PR</label><input type="number" class="w-sm" value="${it.weaponProtection||0}" onchange="updateWeaponField(${idx},'weaponProtection',this.value)"></div>
+            <div class="form-group"><label>Threat Range</label><input type="number" class="w-sm" value="${it.threatRange||0}" onchange="updateWeaponField(${idx},'threatRange',this.value)"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Magic Bonus to Hit</label><input type="number" class="w-sm" value="${it.magicBonusToHit||0}" onchange="updateWeaponField(${idx},'magicBonusToHit',this.value)"></div>
+            <div class="form-group"><label>Magic Dmg After Divider</label><input type="number" class="w-sm" value="${it.magicDamageAfterDivider||0}" onchange="updateWeaponField(${idx},'magicDamageAfterDivider',this.value)"></div>
+            ${itemHasModKind(it, 'offense') ? `<div class="form-group"><label>Magic Dmg Before Divider</label><input type="number" class="w-sm" value="${it.magicDamageBeforeDivider||0}" onchange="updateWeaponField(${idx},'magicDamageBeforeDivider',this.value)"></div>
+            <div class="form-group"><label>Magic Crit %</label><input type="number" class="w-sm" value="${it.magicCritBonus||0}" onchange="updateWeaponField(${idx},'magicCritBonus',this.value)"></div>` : ''}
+          </div>
+          <div class="note">Skill Ability: ${w.baseWeaponSkval} (${it.weaponClass||'—'}) + ${w.singleWeapSpec} (Single Weap Spec) = ${w.skillAbility}</div>
+          <div class="note">Crit % = 7 + floor(to-hit÷10) + (10% × Critical Hit Bonus skval [${w.critHitBonusSkval}]) + weapon threat range, capped at half of to-hit, floored at 3% minimum. Fumble range is 93-00, shifting up only if to-hit itself exceeds 93 (so it never overlaps your own hit range).</div>
+          <hr class="divider">
+          <table class="skill-table">
+            <thead><tr><th></th><th>To-Hit</th><th>Dmg Bonus</th><th>Speed</th><th>Parry</th><th>Parry Used</th><th>Multiple Attack</th><th>Crit %</th><th>Fumble %</th></tr></thead>
+            <tbody>
+              <tr>${w.oneHand ? `<td>One-Handed${wieldTag(it, 'one')}</td><td class="skval-cell">${Math.round(w.oneHand.hit)}</td><td>${Math.round(w.oneHand.dmgBonus)}</td><td>${Math.round(w.oneHand.speed)}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w-sm" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.oneHand.critChance)}</td><td>${fmtFumble(w.oneHand.fumbleThreshold)}</td>` : `<td style="color:var(--text-dim)">One-Handed</td><td colspan="8" class="note">Not usable one-handed — no 1H stats for this weapon</td>`}</tr>
+              ${w.twoHand ? `<tr><td>Two-Handed${wieldTag(it, 'two')}</td><td class="skval-cell">${Math.round(w.twoHand.hit)}</td><td>${Math.round(w.twoHand.dmgBonus)}</td><td>${Math.round(w.twoHand.speed)}</td><td>${w.parrySkval}</td><td><input type="number" min="0" max="${w.parrySkval}" class="w-sm" value="${w.parryPointsUsed}" onchange="updateWeaponField(${idx},'parryPointsUsed',this.value)"></td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.twoHand.critChance)}</td><td>${fmtFumble(w.twoHand.fumbleThreshold)}</td></tr>` : ''}
+            </tbody>
+          </table>
+          <div class="note">Parry Used is capped at this weapon's Parry skill value; every point subtracts from this weapon's To-Hit and adds to your Protection (PR) below — but only against melee attacks. It does nothing against missile or magical attacks.</div>
+          ${w.missile ? `
+          <hr class="divider">
+          <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Missile Fire</div>
+          <div class="form-row">
+            <div class="form-group"><label>Range</label><input type="number" class="w-sm" value="${it.range||0}" onchange="updateWeaponField(${idx},'range',this.value)"></div>
+            <div class="form-group"><label>Target Distance</label><input type="number" class="w-sm" value="${it.targetDistance||0}" onchange="updateWeaponField(${idx},'targetDistance',this.value)"></div>
+            <div class="form-group"><label>Ammunition (from Inventory)</label>
+              <select class="w-lg" onchange="updateWeaponField(${idx},'ammunitionItemIdx',this.value)">
+                <option value="">— none / self-contained —</option>
+                ${(char.items||[]).map((amIt,amIdx)=> amIt.type==='Ammunition' ? `<option value="${amIdx}" ${String(it.ammunitionItemIdx)===String(amIdx)?'selected':''}>${amIt.name||'(unnamed)'}${amIt.masterwork?' ✦':''} (qty ${amIt.qty||1})</option>` : '').join('')}
+              </select>
+            </div>
+          </div>
+          <div class="computed-row">
+            ${it.weaponClass === 'Basic Spears' ? `<div class="computed-item"><span class="ci-label">Effective Range (ST + Spear Thrown)</span><span class="ci-value">${Math.round(w.missile.effectiveRange*10)/10}${w.missile.spearThrownRange ? ` <span class="note">(+${w.missile.spearThrownRange} from skill)</span>` : ''}</span></div>` : ''}
+            <div class="computed-item"><span class="ci-label">Range Modifier</span><span class="ci-value">${Math.round(w.missile.rangeMod*100)}</span></div>
+            <div class="computed-item"><span class="ci-label">Missile To-Hit</span><span class="ci-value skval">${Math.round(w.missile.finalHit)}</span></div>
+            <div class="computed-item"><span class="ci-label">Crit %</span><span class="ci-value">${fmtCrit(w.missile.critChance)}</span></div>
+            ${w.missile.magicDmgBefore ? `<div class="computed-item"><span class="ci-label">Magic Dmg Before Divider</span><span class="ci-value">+${w.missile.magicDmgBefore}</span></div>` : ''}
+            ${w.missile.magicDmgAfter ? `<div class="computed-item"><span class="ci-label">Magic Dmg After Divider</span><span class="ci-value">+${w.missile.magicDmgAfter}</span></div>` : ''}
+            <div class="computed-item"><span class="ci-label">Fumble %</span><span class="ci-value">${fmtFumble(w.missile.fumbleThreshold)}</span></div>
+          </div>
+          ${(char.items||[]).filter(i=>i.type==='Ammunition').length===0 ? '<div class="note" style="margin-top:6px">No ammunition items in inventory yet — add one on the Inventory page, Type: Weapon, Ammunition.</div>' : ''}
+          ${w.missile.ammoItem ? `
+          <div class="form-row">
+            <div class="form-group"><label>Damage Dice</label><input class="w-md" value="${w.missile.ammoItem.damageDice||''}" onchange="updateItem(${it.ammunitionItemIdx},'damageDice',this.value);renderCombatModule()"></div>
+            <div class="form-group"><label>Dividing Die</label><input type="number" class="w-sm" value="${w.missile.ammoItem.dividingDie||0}" onchange="updateItem(${it.ammunitionItemIdx},'dividingDie',this.value);renderCombatModule()"></div>
+            <div class="form-group"><label>Magic Bonus to Hit</label><input type="number" class="w-sm" value="${w.missile.ammoItem.magicBonusToHit||0}" onchange="updateItem(${it.ammunitionItemIdx},'magicBonusToHit',this.value);renderCombatModule()"></div>
+            <div class="form-group"><label>Magic Dmg After Divider</label><input type="number" class="w-sm" value="${w.missile.ammoItem.magicDamageAfterDivider||0}" onchange="updateItem(${it.ammunitionItemIdx},'magicDamageAfterDivider',this.value);renderCombatModule()"></div>
+            ${itemHasModKind(w.missile.ammoItem, 'offense') ? `<div class="form-group"><label>Magic Dmg Before Divider</label><input type="number" class="w-sm" value="${w.missile.ammoItem.magicDamageBeforeDivider||0}" onchange="updateItem(${it.ammunitionItemIdx},'magicDamageBeforeDivider',this.value);renderCombatModule()"></div>
+            <div class="form-group"><label>Magic Crit %</label><input type="number" class="w-sm" value="${w.missile.ammoItem.magicCritBonus||0}" onchange="updateItem(${it.ammunitionItemIdx},'magicCritBonus',this.value);renderCombatModule()"></div>` : ''}
+          </div>
+          ` : ''}
+          <div class="note">Missile to-hit = (1 − distance/range) × base hit chance, using ${w.missile.usedGrip} stats${w.missile.usedGrip==='2H' ? ' (no 1H mode available for this weapon)' : ''}. Base hit chance includes both the weapon's own Magic Bonus to Hit and the loaded ammunition's Magic Bonus to Hit — they add together. Total damage = weapon's own dice + ammunition's dice (including its own Magic Damage After Divider), if any.</div>
+          ` : ''}
+    ${close}`, { wide: true, width: 'min(760px, 94vw)', className: 'plain-font' });
 }
 
 // A spell's duration as listed, plus what it works out to at the spell's

@@ -244,6 +244,21 @@ body {
 /* Spellbook rows: same 13px as the other Spells-page tables (the Cost
    breakdown keeps its smaller .note style, Notes its input size) */
 .spellbook-table td:not(.note) { font-size: 13px; }
+/* Combat page: Hit Points and Defense as small tables, weapons as a table
+   with a line per grip; a weapon's name opens its stats popup */
+.combat-section-head { font-size: 11px; color: var(--gold-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; display: flex; gap: 10px; align-items: baseline; }
+.combat-section-head .wiki-link { text-transform: none; letter-spacing: 0; }
+.combat-table { width: auto; }
+.combat-table tbody th { text-align: left; }
+.combat-table input[type=number] { font: inherit; background: var(--input-bg); color: var(--text); border: 1px solid transparent; padding: 2px 6px; }
+.combat-table input[type=number]:focus { border-color: var(--gold); outline: none; }
+.combat-table td { vertical-align: middle; }
+.combat-weapons tr.combat-weapon-first td { border-top: 1px solid var(--border); }
+.combat-weapons th, .combat-weapons td { white-space: nowrap; }
+.combat-weapons td.combat-weapon-name { white-space: normal; min-width: 110px; }
+.combat-scroll { overflow-x: auto; }
+.combat-small-btn { font-size: 11px; padding: 0 8px; }
+.combat-move span { margin-left: 0 !important; }
 /* A link out to the Celtricia wiki (e.g. a spell's name) */
 .wiki-link { color: inherit; text-decoration: underline dotted; }
 .wiki-link:hover { color: var(--gold); }

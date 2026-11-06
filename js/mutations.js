@@ -975,6 +975,25 @@ function updateWeaponField(idx, field, value) {
   renderCombatModule();
 }
 
+// The Inventory's In Use tick: a weapon or shield in hand, armor worn. What
+// can be in hand at once is checked first (see wieldingProblem).
+function setItemInUse(idx, checked) {
+  const char = state.characters[state.activeChar];
+  const it = char && char.items && char.items[idx];
+  if (!it) return;
+  if (it.type === 'Armor') it.worn = !!checked;
+  else {
+    if (checked) {
+      const inHand = char.items.filter(o => o !== it && (o.type === 'Weapon' || o.type === 'Shield') && itemInUse(char, o)).concat([it]);
+      const problem = wieldingProblem(inHand);
+      if (problem) { alert(problem + ' Untick something else first.'); renderInventoryModule(); return; }
+    }
+    it.wielded = !!checked;
+  }
+  saveState();
+  renderInventoryModule();
+}
+
 function selectWeaponModel(idx, weaponName) {
   const char = state.characters[state.activeChar];
   if (!char || !char.items || !char.items[idx]) return;
