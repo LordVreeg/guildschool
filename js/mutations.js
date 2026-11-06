@@ -165,6 +165,7 @@ function setItemPick(key, value) {
       }
     } else if (v !== ITEM_PICK_CUSTOM) d[s.key] = v;
   }
+  if (d.type === 'Spell Book') d.weight = SPELL_BOOK_WEIGHT;
   itemDraft = d;
   renderAddItemModal();
 }
@@ -223,6 +224,7 @@ function confirmAddItem() {
   delete d._mod_defense; delete d._mod_void;
   if (!char.items) char.items = [];
   const editing = editingItemIdx !== null && char.items[editingItemIdx];
+  if (d.type === 'Spell Book') { d.bookId = (editing && editing.bookId) || d.bookId || newBookId(); d.weight = SPELL_BOOK_WEIGHT; } else delete d.bookId;
   if (editing) char.items[editingItemIdx] = d;
   else char.items.push(d);
   itemDraft = null;
@@ -911,6 +913,69 @@ function isBlankSpell(sp) {
   return !String(sp.school || '').trim() && !String(sp.name || '').trim() && !String(sp.notes || '').trim();
 }
 
+// Spell books are inventory items of type "Spell Book". Each has a bookId,
+// and every spellbook entry names the book it is written in (sp.book). A
+// book holds spells costing up to SPELL_BOOK_CAPACITY in all.
+const SPELL_BOOK_CAPACITY = 450;
+const SPELL_BOOK_WEIGHT = 45;
+// Books shown closed on the Spells and Inventory pages, by bookId.
+let collapsedSpellBooks = new Set();
+function newBookId() { return 'bk_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function spellBooks(char) {
+  const books = ((char && char.items) || []).filter(it => it.type === 'Spell Book');
+  for (const b of books) if (!b.bookId) b.bookId = newBookId();
+  return books;
+}
+function spellsInBook(char, bookId) {
+  return (char.spellbook || []).map((sp, idx) => ({ sp, idx })).filter(({ sp }) => sp.book === bookId && !isBlankSpell(sp));
+}
+function spellBookUsed(char, bookId) {
+  return spellsInBook(char, bookId).reduce((sum, { sp }) => sum + (parseFloat(sp.cost) || 0), 0);
+}
+function spellBookRoom(char, book) { return SPELL_BOOK_CAPACITY - spellBookUsed(char, book.bookId); }
+// A character's first spell book, "My First", carried, is made the first time
+// it is needed; spells from before spell books existed are written into it.
+// Returns whether anything changed.
+function ensureSpellBooks(char) {
+  if (!char) return false;
+  let changed = false;
+  let books = spellBooks(char);
+  if (!books.length) {
+    (char.items = char.items || []).push({ type: 'Spell Book', name: 'My First', qty: 1, weight: SPELL_BOOK_WEIGHT, worth: '', notes: '', location: '', bookId: newBookId() });
+    books = spellBooks(char);
+    changed = true;
+  }
+  // a spell book's weight is fixed, whatever is written in it
+  for (const b of books) if (parseFloat(b.weight) !== SPELL_BOOK_WEIGHT) { b.weight = SPELL_BOOK_WEIGHT; changed = true; }
+  const ids = new Set(books.map(b => b.bookId));
+  for (const sp of char.spellbook || []) if (!ids.has(sp.book)) { sp.book = books[0].bookId; changed = true; }
+  return changed;
+}
+// The book a new spell costing `cost` goes in by default: a carried one with
+// room for it, else any with room, else none.
+function defaultSpellBook(char, cost) {
+  const fits = spellBooks(char).filter(b => spellBookRoom(char, b) >= (parseFloat(cost) || 0));
+  return fits.find(b => itemOnPerson(char, b)) || fits[0] || null;
+}
+function toggleSpellBook(bookId) {
+  if (collapsedSpellBooks.has(bookId)) collapsedSpellBooks.delete(bookId); else collapsedSpellBooks.add(bookId);
+  renderMain();
+}
+
+// The Add Spell Book popup (openAddSpellBookModal in modals.js): a name and
+// where it's kept, both required.
+let spellBookDraft = null;
+function confirmAddSpellBook() {
+  const char = state.characters[state.activeChar];
+  const d = spellBookDraft;
+  if (!char || !d || !String(d.name || '').trim()) return;
+  (char.items = char.items || []).push({ type: 'Spell Book', name: String(d.name).trim(), qty: 1, weight: SPELL_BOOK_WEIGHT, worth: '', notes: '', location: d.location || '', bookId: newBookId() });
+  spellBookDraft = null;
+  saveState();
+  closeModal();
+  renderMain();
+}
+
 // The Add Spell popup (openAddSpellModal in modals.js) builds spellDraft:
 // pick a school, then a spell; the SP cost comes from the catalog. A school
 // with no catalog entries takes a typed name instead (cost 0).
@@ -918,7 +983,7 @@ let spellDraft = null;
 let addNextSpell = false;
 function setSpellDraftSchool(school) {
   if (!spellDraft) return;
-  spellDraft = { school, name: '', cost: 0, notes: '' };
+  spellDraft = { school, name: '', cost: 0, notes: '', book: spellDraft.book || '' };
   renderAddSpellModal();
 }
 function setSpellDraftName(name, typed) {
@@ -929,12 +994,20 @@ function setSpellDraftName(name, typed) {
   if (!typed) renderAddSpellModal();
   else { const btn = document.getElementById('as-add'); if (btn) btn.disabled = !String(name).trim(); }
 }
+function setSpellDraftBook(bookId) {
+  if (!spellDraft) return;
+  spellDraft.book = bookId;
+  renderAddSpellModal();
+}
 function confirmAddSpell() {
   const char = state.characters[state.activeChar];
   const d = spellDraft;
   if (!char || !d || !d.school || !String(d.name || '').trim()) return;
+  // it has to go in a spell book with room for it
+  const book = spellBooks(char).find(b => b.bookId === d.book);
+  if (!book || spellBookRoom(char, book) < (parseFloat(d.cost) || 0)) return;
   if (!char.spellbook) char.spellbook = [];
-  char.spellbook.push({ school: d.school, name: String(d.name).trim(), cost: d.cost || 0, notes: '' });
+  char.spellbook.push({ school: d.school, name: String(d.name).trim(), cost: d.cost || 0, notes: '', book: book.bookId });
   spellDraft = null;
   saveState();
   renderSpellModule();
@@ -1023,8 +1096,12 @@ function selectBasicItem(idx, itemName) {
 function removeItem(idx) {
   const char = state.characters[state.activeChar];
   if (!char || !char.items || !char.items[idx]) return;
-  if (!confirm(`Delete "${char.items[idx].name || 'this item'}" from the inventory?`)) return;
+  const it = char.items[idx];
+  // a spell book takes the spells written in it along with it
+  const inBook = it.type === 'Spell Book' && it.bookId ? spellsInBook(char, it.bookId) : [];
+  if (!confirm(inBook.length ? `Delete the spell book "${it.name || 'this book'}" and the ${inBook.length} spell${inBook.length === 1 ? '' : 's'} in it?` : `Delete "${it.name || 'this item'}" from the inventory?`)) return;
   char.items.splice(idx, 1);
+  if (inBook.length) char.spellbook = (char.spellbook || []).filter(sp => sp.book !== it.bookId);
   saveState();
   renderInventoryModule();
 }
@@ -1173,7 +1250,7 @@ function deleteChar() {
 
 function openTransferOwnershipModal() {
   const char = state.characters[state.activeChar];
-  if (!char) return;
+  if (!char) { alert('Select a character first.'); return; }
   openModal(`
     <h3>Transfer Ownership</h3>
     <div class="note" style="margin-bottom:8px;color:#c05050">You will lose access to "${escapeHtml(char.name || 'this character')}" once transferred — the new owner gets full control, and you won't be able to see or edit it anymore (unless you're an admin).</div>

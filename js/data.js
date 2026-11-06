@@ -60,7 +60,7 @@ const WEAPON_CLASSES = [
 const ITEM_TYPE_LABELS = { 'Ammunition': 'Weapon, Ammunition' };
 function itemTypeLabel(type) { return ITEM_TYPE_LABELS[type] || type; }
 // Listed alphabetically by label in the Add/Edit Item popup.
-const ITEM_TYPES = ['Ammunition', 'Armor', 'Coin', 'Item', 'Magic Item', 'Shield', 'Weapon']
+const ITEM_TYPES = ['Ammunition', 'Armor', 'Coin', 'Item', 'Magic Item', 'Shield', 'Spell Book', 'Weapon']
   .sort((a, b) => itemTypeLabel(a).localeCompare(itemTypeLabel(b)));
 // Magic items (and magic weapons, armor, shields and ammunition) can carry
 // spells, each cast at a fixed level with a usage limit: N uses per period,
@@ -210,5 +210,5 @@ async function loadData() {
     'bestiary-templates',
   ].map(fetchDataFile));
   applyCustomData();
-  renderApp();
+  restoreLastView(); // the page from before a refresh, else the Overview
 }
