@@ -459,14 +459,14 @@ async function moveRosterMember(groupId, characterId, direction) {
 
 async function removeRosterMember(characterId) {
   const c = groupRosterCache.find(x => x.id === characterId);
-  if (!confirm(`Remove ${c && c.name ? c.name : 'this character'} from the group? The character itself is not deleted.`)) return;
+  if (!await appConfirm(`Remove ${c && c.name ? c.name : 'this character'} from the group? The character itself is not deleted.`)) return;
   const { error } = await sb.rpc('gm_remove_character_from_group', { p_character_id: characterId });
   if (error) { alert('Failed to remove from group: ' + error.message); return; }
   renderGroupModule();
 }
 
 async function deleteTempCharacter(id, groupId) {
-  if (!confirm('Delete this temp character? This cannot be undone.')) return;
+  if (!await appConfirm('Delete this temp character? This cannot be undone.')) return;
   const { error } = await sb.from('bestiary_entries').delete().eq('id', id);
   if (error) { alert('Failed to delete: ' + error.message); return; }
   renderGroupModule();

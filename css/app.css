@@ -355,3 +355,8 @@ body.sidebar-resizing { cursor: col-resize; user-select: none; }
 .form-group.one-line-label { width: auto; min-width: var(--w-sm); }
 .form-group.one-line-label > label { white-space: nowrap; }
 .form-group.one-line-label > input { width: 0; min-width: 100%; }
+#topbar .top-menu-panel button:disabled { opacity: .45; cursor: default; background: none; }
+/* appConfirm: "Are you sure?" above everything, including an open popup */
+#confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 10002; display: flex; align-items: center; justify-content: center; padding: 16px; }
+#confirm-box { background: var(--panel); border: 1px solid var(--gold-dim); padding: 18px 20px; min-width: 300px; max-width: 440px; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+#confirm-box .confirm-text { color: var(--text); line-height: 1.4; }

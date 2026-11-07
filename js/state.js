@@ -23,7 +23,9 @@ async function loadState() {
       lastSheetHpState[row.id] = stableJson(row.data.hpState || null);
     }
     state.characters = characters;
-    state.activeChar = localStorage.getItem('gs_active_char') || Object.keys(characters)[0] || null;
+    // the character selected last in this browser, if it still exists
+    const remembered = localStorage.getItem('gs_active_char');
+    state.activeChar = (remembered && characters[remembered]) ? remembered : (Object.keys(characters)[0] || null);
   } catch (e) {
     console.error('Failed to load characters from Supabase', e);
     alert('Could not load your characters. Check your connection and try reloading the page.');

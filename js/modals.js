@@ -12,6 +12,31 @@ function openModal(html, opts) {
   box.className = (opts && opts.className) || '';
   document.getElementById('modal-overlay').classList.add('open');
 }
+// "Are you sure?" in the app's own popup, in place of the browser's
+// confirm(): some browsers and embedded views block native dialogs and
+// answer "no" without showing anything. Resolves true for OK, false for
+// Cancel / Escape. It has its own layer, above any open popup, so asking
+// from inside a popup leaves that popup as it was.
+function appConfirm(message, okLabel) {
+  return new Promise(resolve => {
+    const layer = document.createElement('div');
+    layer.id = 'confirm-overlay';
+    layer.innerHTML = `<div id="confirm-box" role="alertdialog" aria-modal="true">
+      <div class="confirm-text">${escapeHtml(message)}</div>
+      <div class="modal-actions"><button class="btn btn-dim" data-ok="0">Cancel</button><button class="btn btn-gold" data-ok="1">${escapeHtml(okLabel || 'OK')}</button></div>
+    </div>`;
+    const done = ok => { document.removeEventListener('keydown', onKey, true); layer.remove(); resolve(ok); };
+    const onKey = e => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); }
+      else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); done(true); }
+    };
+    layer.addEventListener('click', e => { const b = e.target.closest('[data-ok]'); if (b) done(b.dataset.ok === '1'); });
+    document.addEventListener('keydown', onKey, true);
+    document.body.appendChild(layer);
+    layer.querySelector('[data-ok="1"]').focus();
+  });
+}
+
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
 }

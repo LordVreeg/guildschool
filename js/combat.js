@@ -728,7 +728,7 @@ function focusCombatantCard(combatantId) {
 }
 
 async function removeCombatant(id) {
-  if (!confirm('Remove this combatant from the fight?')) return;
+  if (!await appConfirm('Remove this combatant from the fight?')) return;
   const { error } = await sb.from('combat_combatants').delete().eq('id', id);
   if (error) { alert('Failed to remove: ' + error.message); return; }
   renderEncounterModule();
@@ -1324,7 +1324,7 @@ async function renameVolume(volumeId) {
 async function startNewLogVolume(groupId) {
   const group = myGroups.find(g => g.id === groupId);
   if (!group) return;
-  if (!confirm('Close the current log at this moment and start a new one? Old entries stay archived and viewable, just not shown by default.')) return;
+  if (!await appConfirm('Close the current log at this moment and start a new one? Old entries stay archived and viewable, just not shown by default.')) return;
   const active = groupVolumesCache.find(v => v.end_seconds == null);
   if (active) {
     const { error: closeErr } = await sb.from('group_note_volumes').update({ end_seconds: group.clock_seconds }).eq('id', active.id);

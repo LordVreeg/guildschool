@@ -277,7 +277,7 @@ async function saveSession(id) {
 
 async function cancelSession(id) {
   const s = scheduleCache[id];
-  if (!s || !confirm(`Cancel "${s.title}" and email everyone in the group?`)) return;
+  if (!s || !await appConfirm(`Cancel "${s.title}" and email everyone in the group?`)) return;
   const { error } = await sb.from('game_sessions').update({ cancelled_at: new Date().toISOString() }).eq('id', id);
   if (error) { alert('Could not cancel the game: ' + error.message); return; }
   scheduleNotice = 'Game cancelled. ' + await mailSession(id, 'cancelled');
@@ -287,7 +287,7 @@ async function cancelSession(id) {
 
 async function deleteSession(id) {
   const s = scheduleCache[id];
-  if (!s || !confirm(`Delete "${s.title}" from the calendar? No email is sent. (Use "Cancel game & email" to tell the players.)`)) return;
+  if (!s || !await appConfirm(`Delete "${s.title}" from the calendar? No email is sent. (Use "Cancel game & email" to tell the players.)`)) return;
   const { error } = await sb.from('game_sessions').delete().eq('id', id);
   if (error) { alert('Could not delete the game: ' + error.message); return; }
   scheduleNotice = 'Game deleted.';

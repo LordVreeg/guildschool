@@ -203,7 +203,7 @@ function blankBestiaryDraft() {
 let bestiaryReturnToGroup = false;
 
 // key is "wiki:<name>" (built-in BESTIARY_RACE_TEMPLATES) or "custom:<id>" (this GM's own saved bestiary_templates row)
-function loadBestiaryTemplate(key) {
+async function loadBestiaryTemplate(key) {
   if (!key) return;
   const idx = key.indexOf(':');
   const kind = key.slice(0, idx), ident = key.slice(idx + 1);
@@ -212,7 +212,7 @@ function loadBestiaryTemplate(key) {
   else if (kind === 'custom') t = customBestiaryTemplates.find(r => r.id === ident);
   if (!t) return;
   const hasStats = bestiaryDraft.hp_formula || bestiaryDraft.avg_hp || bestiaryDraft.avoidance || bestiaryDraft.protection || (bestiaryDraft.attacks||[]).length;
-  if (hasStats && !confirm(`Overwrite this foe's stats with the "${t.name}" template? Name and notes you already typed will be kept where possible.`)) return;
+  if (hasStats && !await appConfirm(`Overwrite this foe's stats with the "${t.name}" template? Name and notes you already typed will be kept where possible.`)) return;
   const keepName = bestiaryDraft.name;
   const clean = JSON.parse(JSON.stringify(t));
   delete clean.id; delete clean.created_by; delete clean.created_at; delete clean.updated_at;
@@ -266,7 +266,7 @@ async function deleteCustomBestiaryTemplate() {
   const id = key.slice(7);
   const t = customBestiaryTemplates.find(x => x.id === id);
   if (!t) return;
-  if (!confirm(`Delete your custom template "${t.name}"? This cannot be undone.`)) return;
+  if (!await appConfirm(`Delete your custom template "${t.name}"? This cannot be undone.`)) return;
   const { error } = await sb.from('bestiary_templates').delete().eq('id', id);
   if (error) { alert('Failed to delete: ' + error.message); return; }
   await fetchCustomBestiaryTemplates();
@@ -396,10 +396,10 @@ function rollBestiaryHp(formula, level) {
   if (perLevel) { for (let i = 1; i < lv; i++) total += rollHpSubExpr(perLevel); }
   return total;
 }
-function rollBestiaryHpClick() {
+async function rollBestiaryHpClick() {
   if (!bestiaryDraft.hp_formula) { alert('Enter an HP formula first.'); return; }
   if (bestiaryDraft.current_hp != null && bestiaryDraft.current_hp !== bestiaryDraft.max_hp) {
-    if (!confirm('This foe already has HP tracked (possibly mid-fight). Re-roll and reset Current HP to the new Max HP?')) return;
+    if (!await appConfirm('This foe already has HP tracked (possibly mid-fight). Re-roll and reset Current HP to the new Max HP?')) return;
   }
   const rolled = rollBestiaryHp(bestiaryDraft.hp_formula, bestiaryDraft.level || 1);
   if (rolled == null) { alert("Couldn't parse the HP formula -- enter Max HP by hand."); return; }
@@ -843,7 +843,7 @@ async function duplicateBestiaryEntry(id) {
 }
 
 async function deleteBestiaryEntry(id) {
-  if (!confirm('Delete this bestiary entry? This cannot be undone.')) return;
+  if (!await appConfirm('Delete this bestiary entry? This cannot be undone.')) return;
   const { error } = await sb.from('bestiary_entries').delete().eq('id', id);
   if (error) { alert('Failed to delete: ' + error.message); return; }
   if (bestiaryEditingId === id) { bestiaryEditingId = null; bestiaryDraft = null; }

@@ -137,6 +137,29 @@ weapon tables (see the ammunition rule in `CLAUDE.md`).
   1,400px. On anything narrower (laptops, tablets, phones, a docked window),
   the buttons don't fit and the whole page scrolls sideways.
 
+## Characters
+
+### Transfer Ownership does nothing
+
+Character → Transfer Ownership asks for the new owner's email and calls the
+Supabase function `transfer_character_ownership`, but the character stays
+with its owner. The menu item is disabled until this is fixed. The admin
+panel's Transfer button calls the same function, so it probably fails the
+same way.
+
+To look into: whether `transfer_character_ownership` exists in the Supabase
+project, whether it finds the new owner by email in `profiles`, and whether
+it is allowed to change `owner_id` for a character the caller owns.
+
+### Deleting a character in a group
+
+Deleting a character used to drop it from the page even when Supabase
+refused the delete, so it came back on the next load. Now the app deletes
+the row first and, if Supabase refuses, says why and keeps the character.
+A character that belongs to a group (or sits in an encounter) may be refused
+because other tables still point to it. If that's the cause, the fix is in
+Supabase (cascade, or remove it from the group first).
+
 ## Local development
 
 - **Opening `index.html` straight from disk doesn't work.** The app fetches

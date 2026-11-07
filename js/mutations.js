@@ -3,6 +3,8 @@
 // ============================================================
 function selectChar(id) {
   state.activeChar = id || null;
+  // remembered so a refresh comes back to this character, not the last one saved
+  try { if (state.activeChar) localStorage.setItem('gs_active_char', state.activeChar); else localStorage.removeItem('gs_active_char'); } catch (e) {}
   state.activeSkillId = null;
   state.activeView = 'overview';
   renderApp();
@@ -1068,10 +1070,10 @@ function updateSpell(idx, field, value) {
   renderSpellModule();
 }
 
-function removeSpell(idx) {
+async function removeSpell(idx) {
   const char = state.characters[state.activeChar];
   if (!char || !char.spellbook || !char.spellbook[idx]) return;
-  if (!confirm(`Remove "${char.spellbook[idx].name || 'this spell'}" from the spellbook?`)) return;
+  if (!await appConfirm(`Remove "${char.spellbook[idx].name || 'this spell'}" from the spellbook?`)) return;
   char.spellbook.splice(idx, 1);
   saveState();
   renderSpellModule();
@@ -1158,13 +1160,13 @@ function selectBasicItem(idx, itemName) {
   renderInventoryModule();
 }
 
-function removeItem(idx) {
+async function removeItem(idx) {
   const char = state.characters[state.activeChar];
   if (!char || !char.items || !char.items[idx]) return;
   const it = char.items[idx];
   // a spell book takes the spells written in it along with it
   const inBook = it.type === 'Spell Book' && it.bookId ? spellsInBook(char, it.bookId) : [];
-  if (!confirm(inBook.length ? `Delete the spell book "${it.name || 'this book'}" and the ${inBook.length} spell${inBook.length === 1 ? '' : 's'} in it?` : `Delete "${it.name || 'this item'}" from the inventory?`)) return;
+  if (!await appConfirm(inBook.length ? `Delete the spell book "${it.name || 'this book'}" and the ${inBook.length} spell${inBook.length === 1 ? '' : 's'} in it?` : `Delete "${it.name || 'this item'}" from the inventory?`)) return;
   char.items.splice(idx, 1);
   if (inBook.length) char.spellbook = (char.spellbook || []).filter(sp => sp.book !== it.bookId);
   saveState();
@@ -1274,7 +1276,7 @@ function skillDescendantIds(skillId, skills) {
 }
 
 // Removing a skill removes all of its sub-skills with it.
-function deleteSkill(skillId) {
+async function deleteSkill(skillId) {
   const char = state.characters[state.activeChar];
   const skills = (char && char.skills) || [];
   const si = skills.find(s => s.id === skillId);
@@ -1284,7 +1286,7 @@ function deleteSkill(skillId) {
   const msg = subNames.length
     ? `Remove ${si.skillName} and its ${subNames.length} sub-skill${subNames.length === 1 ? '' : 's'}?\n\n${subNames.join('\n')}`
     : `Remove ${si.skillName}?`;
-  if (!confirm(msg)) return;
+  if (!await appConfirm(msg)) return;
   char.skills = skills.filter(s => s.id !== skillId && !subs.has(s.id));
   state.activeSkillId = null;
   state.activeView = 'overview';
@@ -1293,21 +1295,34 @@ function deleteSkill(skillId) {
   renderOverview();
 }
 
-function deleteChar() {
-  if (!state.activeChar) { alert('Select a character to delete first.'); return; }
-  if (!confirm('Delete this character? This cannot be undone.')) return;
+// Asks with appConfirm, then deletes the row in Supabase first, and only
+// drops the character here once that worked: before, a failed delete went
+// unnoticed and the character came back on the next load. A delete Supabase
+// refuses (an error, or no row removed) leaves the character in place and
+// says why.
+async function deleteChar() {
+  const char = state.characters[state.activeChar];
+  if (!char) { alert('Select a character to delete first.'); return; }
+  if (!await appConfirm(`Delete "${char.name || 'this character'}"? This cannot be undone.`, 'Delete')) return;
   const appId = state.activeChar;
+  // a character saved moments ago may still be on its way to Supabase
+  while (flushBusy) await new Promise(r => setTimeout(r, 100));
+  if (saveStateTimer) { clearTimeout(saveStateTimer); saveStateTimer = null; await flushCharactersToSupabase(); }
   const rowId = charRowIds[appId];
+  if (rowId) {
+    const { data, error } = await sb.from('characters').delete().eq('id', rowId).select('id');
+    if (error || !data || !data.length) {
+      console.error('Delete failed for', appId, error || 'no row deleted');
+      openModal(`<h3>Delete Character</h3><div class="warn">Could not delete this character${error ? ': ' + escapeHtml(error.message) : ' (the server did not remove it)'}. It has not been deleted.</div><div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">OK</button></div>`);
+      return;
+    }
+  }
   delete state.characters[appId];
   delete charRowIds[appId];
+  delete savedCharJson[appId];
   state.activeChar = null;
   state.activeSkillId = null;
-  saveState();
-  if (rowId) {
-    sb.from('characters').delete().eq('id', rowId).then(({ error }) => {
-      if (error) console.error('Delete failed for', appId, error);
-    });
-  }
+  try { localStorage.removeItem('gs_active_char'); } catch (e) {}
   renderApp();
   document.getElementById('main').innerHTML = '<div class="note placeholder">Character deleted.</div>';
   document.getElementById('sidebar').innerHTML = '<div class="note placeholder">Select or create a character</div>';
@@ -1333,7 +1348,7 @@ async function confirmTransferOwnership() {
   const statusEl = document.getElementById('transfer-status');
   statusEl.style.display = 'none';
   if (!email) return;
-  if (!confirm(`Really transfer "${char.name || 'this character'}" to ${email}? This can't be undone by you -- only an admin could reverse it.`)) return;
+  if (!await appConfirm(`Really transfer "${char.name || 'this character'}" to ${email}? This can't be undone by you -- only an admin could reverse it.`)) return;
   const { error } = await sb.rpc('transfer_character_ownership', { p_character_id: rowId, p_new_owner_email: email });
   if (error) {
     statusEl.textContent = 'Failed to transfer: ' + error.message;
