@@ -496,6 +496,18 @@ function renderInventoryModule() {
   </div>`;
 }
 
+// Which grip rows to show for a weapon: one weapon in use alone is held in two
+// hands (only its Two-Handed stats); with a second weapon or a shield in hand
+// it is held in one (only its One-Handed stats). A weapon that isn't in use,
+// or has stats for only one grip, shows what it has (see computeWielding).
+function weaponGripsShown(char, it, w) {
+  const mode = itemInUse(char, it) ? computeWielding(char).mode : null;
+  return {
+    one: !(mode === 'two' && w.twoHand),
+    two: !(mode === 'one' && w.oneHand)
+  };
+}
+
 // Marks the One-/Two-Handed row that applies to a wielded weapon (see computeWielding).
 function wieldTag(it, which) {
   const c = state.characters[state.activeChar];
@@ -589,16 +601,14 @@ function renderCombatModule() {
     </table>`;
 
   // Weapons: a line per grip (and Missile), the weapon's name opens its popup
-  const handsFull = computeWielding(char).mode === 'one';
   const weaponRows = weaponEntries.map((entry, pos) => {
     const it = entry.kind === 'hand' ? handFootWeapon(char) : entry.it;
     if (!it) return '';
     const w = computeWeapon(char, it);
     const lines = [];
-    if (w.oneHand) lines.push({ grip: 'One-Handed', which: 'one', v: w.oneHand });
-    // With a second weapon or a shield in hand, no weapon can be held in two
-    // hands, so only its one-handed line is shown (see computeWielding).
-    if (w.twoHand && !(handsFull && entry.kind === 'item' && w.oneHand)) lines.push({ grip: 'Two-Handed', which: 'two', v: w.twoHand });
+    const grips = entry.kind === 'item' ? weaponGripsShown(char, it, w) : { one: true, two: true };
+    if (w.oneHand && grips.one) lines.push({ grip: 'One-Handed', which: 'one', v: w.oneHand });
+    if (w.twoHand && grips.two) lines.push({ grip: 'Two-Handed', which: 'two', v: w.twoHand });
     // a weapon that fires ammunition shoots (Missile); any other missile use is a throw
     if (w.missile) lines.push({ grip: weaponTakesAmmo(it) ? 'Missile' : 'Throw', missile: w.missile });
     if (!lines.length) lines.push({ grip: '—' });
@@ -838,6 +848,7 @@ function renderCombatDetail() {
   const idx = st.idx, it = (char.items || [])[idx];
   if (!it || it.type !== 'Weapon') return closeCombatDetail();
   const w = computeWeapon(char, it);
+  const grips = weaponGripsShown(char, it, w);
   const readied = w.readiedSpeed;
   // Ammunition (data/ammunition.json's compatible_with): only what this weapon
   // takes is offered (custom ammunition fits any weapon that takes some); one
@@ -883,8 +894,8 @@ function renderCombatDetail() {
           <table class="skill-table">
             <thead><tr><th></th><th>Multi</th><th>To Hit</th><th>Crit${infoTip(`A roll at or under this crits. 7 + floor(to hit ÷ 10) + (10% × Critical Hit Bonus skval [${w.critHitBonusSkval}]) + weapon threat range, capped at half of to hit, floored at 3%.`)}</th><th>Fumble${infoTip(FUMBLE_HELP)}</th><th>Dmg Roll${infoTip(DMG_ROLL_HELP)}</th><th>Init Roll${infoTip(INIT_ROLL_HELP)}</th><th>Parry</th><th>Parry Used${infoTip("Capped at this weapon's Parry skill. Each point comes off this weapon's To Hit and adds to your PR, against melee attacks only.")}</th></tr></thead>
             <tbody>
-              ${w.oneHand ? gripRow('One-Handed', 'one', w.oneHand) : `<tr><td class="note">One-Handed</td><td colspan="8" class="note">Not usable one-handed — no 1H stats for this weapon</td></tr>`}
-              ${w.twoHand && !(w.oneHand && computeWielding(char).mode === 'one' && itemInUse(char, it)) ? gripRow('Two-Handed', 'two', w.twoHand) : ''}
+              ${!grips.one ? '' : w.oneHand ? gripRow('One-Handed', 'one', w.oneHand) : `<tr><td class="note">One-Handed</td><td colspan="8" class="note">Not usable one-handed — no 1H stats for this weapon</td></tr>`}
+              ${w.twoHand && grips.two ? gripRow('Two-Handed', 'two', w.twoHand) : ''}
             </tbody>
           </table>
           ${w.missile ? `
