@@ -721,6 +721,10 @@ const CHAT_HELP_HTML = `
     <tr><td>**bold** *italic* ~~strike~~ [text](https://…)</td><td>Formatting and links</td></tr>
     <tr><td>↑ / ↓</td><td>Step through what you've sent</td></tr>
   </table>
+  <b>Game rolls</b>
+  <table>
+    <tr><td>/prot <i>number</i></td><td>Armor protection roll: <code>/prot 40</code> rolls <code>(40-d10)/(2d6/2)</code></td></tr>
+  </table>
   <b>Dice</b>
   <table>
     <tr><td>2d6 d20 d% 4dF (2+1)d6</td><td>Dice, percentile, fate (−1/0/+1), worked-out counts</td></tr>
@@ -750,6 +754,19 @@ function chatTakeName(s) {
   return w ? { name: w[1], rest: w[2] } : { name: '', rest: '' };
 }
 
+// Celtricia shortcuts: "/name args" becomes an ordinary roll of the expression
+// build() returns, so it's drawn (and can be whispered with /w) like any /roll.
+// Add new game rolls here and in the "Game rolls" table of CHAT_HELP_HTML.
+const CHAT_GAME_ROLLS = {
+  // Armor protection: (protection - d10) / (2d6 / 2)
+  prot: { usage: '/prot 40', build: arg => `(${chatNumberArg(arg, '/prot', 'a protection number, e.g. /prot 40')}-d10)/(2d6/2)` }
+};
+function chatNumberArg(arg, cmd, what) {
+  const s = String(arg).trim();
+  if (!/^-?\d+(\.\d+)?$/.test(s)) throw new Error(`${cmd} needs ${what}`);
+  return s;
+}
+
 // Works out what a typed line means. Returns the row to send (without
 // group/character), or { local } for something shown only to you.
 function chatParseCommand(text) {
@@ -761,6 +778,7 @@ function chatParseCommand(text) {
   switch (name) {
     case 'r': case 'roll': needArg('a roll, e.g. /r 1d20+5'); return { kind: 'roll', body: arg.trim() };
     case 'gr': case 'gmroll': needArg('a roll, e.g. /gr 1d20'); return { kind: 'roll', body: arg.trim(), whisper: { characters: [], gm: true } };
+    case 'prot': return { kind: 'roll', body: CHAT_GAME_ROLLS.prot.build(arg) };
     case 'em': case 'me': needArg('an action'); return { kind: 'emote', body: arg.trim() };
     case 'ooc': needArg('a message'); return { kind: 'ooc', body: arg.trim() };
     case 'desc': gmOnly(); needArg('some text'); return { kind: 'desc', body: arg.trim() };
