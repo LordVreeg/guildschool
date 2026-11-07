@@ -128,8 +128,8 @@ function addCustomSkill() {
   alert(`"${name}" added to the master skill list.`);
 }
 
-function removeCustomSkill(idx) {
-  if (!confirm('Remove this custom skill? Characters already using it will keep it, but new lookups will fail.')) return;
+async function removeCustomSkill(idx) {
+  if (!await appConfirm('Remove this custom skill? Characters already using it will keep it, but new lookups will fail.')) return;
   const custom = loadCustomData();
   const skill = custom.customSkills[idx];
   custom.customSkills.splice(idx, 1);
@@ -139,7 +139,7 @@ function removeCustomSkill(idx) {
   renderUtilitiesModule();
 }
 
-function addCustomGuildBonus() {
+async function addCustomGuildBonus() {
   const existingGuild = document.getElementById('ge-guild').value;
   const newGuild = document.getElementById('ge-newguild').value.trim();
   const guildName = newGuild || existingGuild;
@@ -149,7 +149,7 @@ function addCustomGuildBonus() {
   if (!skillName) { alert('Skill name is required.'); return; }
   if (isNaN(bxp)) { alert('EXPMOD value is required.'); return; }
   if (!findSkillDef(skillName)) {
-    if (!confirm(`"${skillName}" isn't in the master skill list yet. Set the EXPMOD anyway?`)) return;
+    if (!await appConfirm(`"${skillName}" isn't in the master skill list yet. Set the EXPMOD anyway?`)) return;
   }
   if (!GUILDS[guildName]) GUILDS[guildName] = {};
   GUILDS[guildName][skillName] = bxp;
@@ -161,8 +161,8 @@ function addCustomGuildBonus() {
   alert(`${guildName} — ${skillName}: ${bxp} saved.`);
 }
 
-function removeCustomGuildBonus(guildName, skillName) {
-  if (!confirm('Remove this guild EXPMOD entry?')) return;
+async function removeCustomGuildBonus(guildName, skillName) {
+  if (!await appConfirm('Remove this guild EXPMOD entry?')) return;
   const custom = loadCustomData();
   if (custom.customGuildBonuses[guildName]) {
     delete custom.customGuildBonuses[guildName][skillName];
@@ -217,7 +217,7 @@ function showImportReport(title, summary, sectionsHtml, canImport, onImport) {
   openModal(`
     <h3>${escapeHtml(title)}</h3>
     <div>${summary}</div>
-    ${sectionsHtml || '<div class="note" style="margin-top:8px">No problems found.</div>'}
+    ${sectionsHtml || '<div class="note">No problems found.</div>'}
     <div class="modal-actions">
       <button class="btn btn-dim" onclick="pendingImport=null;closeModal()">Cancel</button>
       <button class="btn btn-gold" ${canImport ? '' : 'disabled'} onclick="${onImport}">Import</button>

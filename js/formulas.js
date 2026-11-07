@@ -154,10 +154,13 @@ function computeWeight(character) {
   // Blank location = on the person. A named container also counts if the
   // player marked it "on person" (a backpack they're wearing) -- so they can
   // track its contents without losing the weight.
+  // A container ticked "Does not encumber" (a bag of holding) adds none of
+  // its contents' weight, on the person or not.
   const onPerson = character.storageOnPerson || {};
+  const noEncumber = character.storageNoEncumber || {};
   const carried = items.filter(it => {
     const loc = it.location ? it.location.trim() : '';
-    return !loc || onPerson[loc];
+    return !loc || (onPerson[loc] && !noEncumber[loc]);
   }).reduce((sum, it) => sum + ((parseFloat(it.weight) || 0) * (parseFloat(it.qty) || 1)), 0);
   return { possible, carried };
 }
@@ -223,6 +226,7 @@ function computeStorageSummary(character) {
     }
     g.over = g.remaining !== null && g.remaining < 0;
     g.onPerson = g.location === ON_PERSON_LOCATION || !!(character.storageOnPerson || {})[g.location];
+    g.noEncumber = g.location !== ON_PERSON_LOCATION && !!(character.storageNoEncumber || {})[g.location];
   }
   const order = orderedContainers(character, Object.keys(groups).filter(l => l !== ON_PERSON_LOCATION));
   return [groups[ON_PERSON_LOCATION], ...order.map(l => groups[l])];
@@ -248,14 +252,13 @@ function shieldUseBonus(skval, shieldBasePR) {
   return doublingPart + ratioPart;
 }
 
+// Crit and fumble show just the number: a roll at or under the crit number
+// crits; a roll at or over the fumble number fumbles.
 function fmtCrit(critChance) {
-  const n = Math.round(critChance);
-  return `01-${String(n).padStart(2,'0')}`;
+  return String(Math.round(critChance));
 }
 function fmtFumble(fumbleThreshold) {
-  const n = Math.round(fumbleThreshold);
-  const start = n >= 100 ? '00' : String(n).padStart(2,'0');
-  return `${start}-00`;
+  return String(Math.min(100, Math.round(fumbleThreshold))); // a d100 tops out at 100 (00)
 }
 
 // Same formula as a character weapon's critFumble() inside computeWeapon
@@ -285,10 +288,13 @@ function computeWeapon(character, item) {
   const magicBonusToHit = parseFloat(item.magicBonusToHit) || 0;
   // Magic offense: this weapon's own, plus any non-weapon item in use with offense
   const otherOffense = magicOffenseFromOthers(character);
-  const magicBonusToHitAll = magicBonusToHit + otherOffense.toHit;
-  const magicDamageAfterDivider = (parseFloat(item.magicDamageAfterDivider) || 0) + otherOffense.after;
-  const magicDamageBeforeDivider = (parseFloat(item.magicDamageBeforeDivider) || 0) + otherOffense.before;
-  const magicCritBonus = (parseFloat(item.magicCritBonus) || 0) + otherOffense.crit;
+  // Spells cast onto the character in combat add to the weapons in hand only
+  const inHand = item.shieldWeapon ? itemInUse(character, (character.items || [])[item.shieldIdx]) : itemInUse(character, item);
+  const spellMods = inHand ? combatSpellMods(character) : { toHit: 0, dmgBefore: 0, dmgAfter: 0, crit: 0 };
+  const magicBonusToHitAll = magicBonusToHit + otherOffense.toHit + spellMods.toHit;
+  const magicDamageAfterDivider = (parseFloat(item.magicDamageAfterDivider) || 0) + otherOffense.after + spellMods.dmgAfter;
+  const magicDamageBeforeDivider = (parseFloat(item.magicDamageBeforeDivider) || 0) + otherOffense.before + spellMods.dmgBefore;
+  const magicCritBonus = (parseFloat(item.magicCritBonus) || 0) + otherOffense.crit + spellMods.crit;
 
   const baseWeaponSkval = item.weaponClass ? getSkillSkval(character, item.weaponClass) : 0;
   const singleWeapSpec = (character.skills||[]).filter(s => s.skillName === 'Single weap spec' && s.binding === item.name)
@@ -302,6 +308,15 @@ function computeWeapon(character, item) {
   const multipleAttackSkval = (character.skills||[]).filter(s => s.skillName === 'Multiple attack' && s.binding === item.weaponClass)
     .reduce((sum,s) => sum + computeSkillValues(s, character, character.skills||[]).skval, 0);
   const parryPointsUsed = Math.min(Math.max(0, parseFloat(item.parryPointsUsed) || 0), parrySkval);
+  // Wiki "Combat Skills": Damage Bonus gives +1 damage after the dividing die
+  // per 10 skill points (no max); Initiative bonus takes 1 off the action speed
+  // per 10 skill points (never below 1). Both are bound to the weapon class.
+  const boundSkval = name => (character.skills||[]).filter(s => String(s.skillName || '').toLowerCase() === name.toLowerCase() && s.binding === item.weaponClass)
+    .reduce((sum,s) => sum + computeSkillValues(s, character, character.skills||[]).skval, 0);
+  const damageBonusSkval = boundSkval('Damage Bonus');
+  const initiativeBonusSkval = boundSkval('Initiative bonus');
+  const skillDamageBonus = Math.floor(damageBonusSkval / 10);
+  const skillSpeedBonus = Math.floor(initiativeBonusSkval / 10);
 
   function critFumble(totalToHit) {
     const threatRange = parseFloat(item.threatRange) || 0;
@@ -315,8 +330,8 @@ function computeWeapon(character, item) {
 
   function calc(stn, cdn) {
     const hit = ((a.ST||0)-stn)*stmod + ((a.CD||0)-cdn)*cdmod + skillAbility + magicBonusToHitAll - parryPointsUsed;
-    const dmgBonus = (((a.ST||0)-stn)*stmod)/4 + magicDamageAfterDivider;
-    const speed = Math.max(1, speedMelee - ((((a.CD||0)-cdn)*cdmod)/4));
+    const dmgBonus = (((a.ST||0)-stn)*stmod)/4 + magicDamageAfterDivider + skillDamageBonus;
+    const speed = Math.max(1, speedMelee - ((((a.CD||0)-cdn)*cdmod)/4) - skillSpeedBonus);
     const cf = critFumble(hit);
     return { hit, dmgBonus, dmgBeforeDivider: magicDamageBeforeDivider, speed, critChance: cf.critChance, fumbleThreshold: cf.fumbleThreshold, fumbleChance: cf.fumbleChance };
   }
@@ -327,6 +342,9 @@ function computeWeapon(character, item) {
   const twoHand = (stn2h === 0 && cdn2h === 0) ? null : calc(stn2h, cdn2h);
 
   const speedMissile = parseFloat(item.speedMissile) || 0;
+  // Readied speed (for a first attack) takes the Initiative bonus too; 0 = none set
+  const speedReadied = parseFloat(item.speedReadied) || 0;
+  const readiedSpeed = speedReadied > 0 ? Math.max(1, speedReadied - skillSpeedBonus) : 0;
   const range = parseFloat(item.range) || 0;
   const targetDistance = parseFloat(item.targetDistance) || 0;
   let missile = null;
@@ -355,10 +373,13 @@ function computeWeapon(character, item) {
     const rangeMod = effectiveRange > 0 ? Math.max(0, 1 - (targetDistance / effectiveRange)) : 1;
     const finalHit = rawHit * rangeMod;
     const cf = critFumble(finalHit);
-    missile = { rawHit, rangeMod, effectiveRange, spearThrownRange, finalHit, ammoItem, speedMissile, usedGrip: oneHandUsable ? '1H' : '2H', magicDmgBefore: missileDmgBefore, magicDmgAfter: missileDmgAfter, critChance: cf.critChance + ammoMagicCrit, fumbleThreshold: cf.fumbleThreshold, fumbleChance: cf.fumbleChance };
+    // the same skill bonuses apply to a shot: damage after the divider, and speed
+    const speed = Math.max(1, speedMissile - skillSpeedBonus);
+    const dmgAfter = missileDmgAfter + skillDamageBonus;
+    missile = { rawHit, rangeMod, effectiveRange, spearThrownRange, finalHit, ammoItem, speedMissile, speed, dmgAfter, usedGrip: oneHandUsable ? '1H' : '2H', magicDmgBefore: missileDmgBefore, magicDmgAfter: missileDmgAfter, critChance: cf.critChance + ammoMagicCrit, fumbleThreshold: cf.fumbleThreshold, fumbleChance: cf.fumbleChance };
   }
 
-  return { skillAbility, baseWeaponSkval, singleWeapSpec, critHitBonusSkval, parrySkval, parryPointsUsed, multipleAttackSkval, oneHand, twoHand, missile, magicDamageBeforeDivider, magicCritBonus };
+  return { skillAbility, baseWeaponSkval, singleWeapSpec, critHitBonusSkval, damageBonusSkval, initiativeBonusSkval, skillDamageBonus, skillSpeedBonus, readiedSpeed, parrySkval, parryPointsUsed, multipleAttackSkval, oneHand, twoHand, missile, magicDamageBeforeDivider, magicCritBonus };
 }
 
 function computeSpellPools(character) {
@@ -648,42 +669,102 @@ function applyHPRecoveryRoll(character, rollResult) {
   }
 }
 
-// What the character has in hand, from the "Wielding" ticks on weapons and
-// shields. One weapon alone is held in two hands (2H values); two weapons are
-// each held in one hand (1H values); a weapon with a shield is 1H too. Wielded
-// weapons add their Weapon PR; a wielded shield adds its AV and PR. With
-// nothing ticked, nothing is assumed (mode null) and both 1H and 2H show.
+// Spells cast onto the character in combat, typed in on the Combat page
+// (char.combatExtras.spellMods). Defense (av, pr) adds to the Defense totals;
+// offense (toHit, dmgBefore, dmgAfter, crit) adds to the weapons in hand
+// only. damageRoll is a note for the player and isn't applied.
+const SPELL_MOD_FIELDS = ['av', 'pr', 'toHit', 'dmgBefore', 'dmgAfter', 'crit'];
+// What's worn and what's in hand, as text: when it changes, the spell mods
+// typed in for the old gear no longer apply (see syncSpellModsToGear).
+function spellModGearKeys(character) {
+  const inUse = (character.items || []).filter(it => itemInUse(character, it));
+  const key = it => [it.type, it.name, it.weaponModel, it.armorType, it.shieldType, it.av, it.pr, it.location].join('|');
+  return {
+    def: inUse.filter(it => it.type === 'Armor' || it.type === 'Shield').map(key).join('\n'),
+    off: inUse.filter(it => it.type === 'Weapon' || it.type === 'Shield').map(key).join('\n')
+  };
+}
+// Run on every save: a change to the armor or shield in use clears the
+// Defense spell mods, a change to the weapons (or shield) in hand clears the
+// Offense ones. The Damage Roll note stays (the ↺ clears all three rows).
+function syncSpellModsToGear(character) {
+  const m = character && character.combatExtras && character.combatExtras.spellMods;
+  if (!m) return;
+  const now = spellModGearKeys(character);
+  if (m.defGear !== undefined && m.defGear !== now.def) { delete m.av; delete m.pr; }
+  if (m.offGear !== undefined && m.offGear !== now.off) { for (const f of ['toHit', 'dmgBefore', 'dmgAfter', 'crit']) delete m[f]; }
+  m.defGear = now.def;
+  m.offGear = now.off;
+}
+function combatSpellMods(character) {
+  const m = ((character && character.combatExtras) || {}).spellMods || {};
+  const out = { damageRoll: m.damageRoll || '' };
+  for (const f of SPELL_MOD_FIELDS) out[f] = parseFloat(m[f]) || 0;
+  return out;
+}
+
+// Whether a weapon, shield or armor is in use: carried on the person and
+// ticked "In Use" on the Inventory page (weapons and shields: it.wielded;
+// armor: it.worn, which counts as worn until it's unticked). Only these
+// count on the Combat page.
+function itemInUse(character, it) {
+  if (!it || !itemOnPerson(character, it)) return false;
+  if (it.type === 'Armor') return it.worn !== false;
+  if (it.type === 'Weapon' || it.type === 'Shield') return !!it.wielded;
+  return false;
+}
+function weaponOneHanded(it) {
+  return (parseFloat(it.stn1h) || 0) !== 0 || (parseFloat(it.cdn1h) || 0) !== 0;
+}
+// What can be in hand at once: one weapon held two-handed, two one-handed
+// weapons, or a one-handed weapon and a shield. Returns why the given
+// weapons and shields break that, or '' when they don't.
+function wieldingProblem(items) {
+  const weapons = items.filter(it => it.type === 'Weapon');
+  const shields = items.filter(it => it.type === 'Shield');
+  if (shields.length > 1) return 'Only one shield can be in use at a time.';
+  if (weapons.length + shields.length > 2) return 'At most two things can be in hand: two one-handed weapons, or a one-handed weapon and a shield.';
+  if (weapons.length + shields.length === 2) {
+    const twoH = weapons.find(it => !weaponOneHanded(it));
+    if (twoH) return `${twoH.name || 'That weapon'} is two-handed only, so it has to be wielded alone.`;
+  }
+  return '';
+}
+
+// What the character has in hand, from the weapons and shield in use. One
+// weapon alone is held in two hands (2H values); two weapons are each held in
+// one hand (1H values); a weapon with a shield is 1H too. Wielded weapons add
+// their Weapon PR; a wielded shield adds its AV and PR. With nothing in hand,
+// nothing is assumed (mode null) and both 1H and 2H show.
 function computeWielding(character) {
   const items = character.items || [];
-  const weapons = items.filter(it => it.type === 'Weapon' && it.wielded).length;
-  const shields = items.filter(it => it.type === 'Shield' && it.wielded).length;
+  const weapons = items.filter(it => it.type === 'Weapon' && itemInUse(character, it)).length;
+  const shields = items.filter(it => it.type === 'Shield' && itemInUse(character, it)).length;
   // A lone weapon is held two-handed only if it has two-handed values at all.
-  const lone = weapons === 1 && shields === 0 ? items.find(it => it.type === 'Weapon' && it.wielded) : null;
+  const lone = weapons === 1 && shields === 0 ? items.find(it => it.type === 'Weapon' && itemInUse(character, it)) : null;
   const canTwoHand = lone && ((parseFloat(lone.stn2h) || 0) !== 0 || (parseFloat(lone.cdn2h) || 0) !== 0);
   const mode = weapons === 0 ? null : (canTwoHand ? 'two' : 'one');
   return { weapons, shields, mode, active: weapons + shields > 0 };
 }
 
-// Which items' magic modifiers count right now: all armor (as in the armor
-// totals), shields counted the same way as there, weapons ticked Wielding,
-// and Magic Items carried on the person (Carried, or an On Person container).
+// Which items' magic modifiers count right now: armor, shields and weapons in
+// use (see itemInUse), ammunition loaded in a weapon, and Magic Items carried
+// on the person (Carried, or an On Person container).
 function itemOnPerson(character, it) {
   const loc = (it.location || '').trim();
   return !loc || !!(character.storageOnPerson || {})[loc];
 }
 function itemModsInUse(character, it, countedShields) {
-  if (it.type === 'Armor') return true;
+  if (it.type === 'Armor' || it.type === 'Weapon') return itemInUse(character, it);
   if (it.type === 'Ammunition') {
     const idx = (character.items || []).indexOf(it);
     return (character.items || []).some(w => w.type === 'Weapon' && w.ammunitionItemIdx !== undefined && w.ammunitionItemIdx !== '' && String(w.ammunitionItemIdx) === String(idx));
   }
-  if (it.type === 'Shield') return countedShields ? countedShields.includes(it) : true;
-  if (it.type === 'Weapon') return !!it.wielded;
+  if (it.type === 'Shield') return itemInUse(character, it);
   return itemOnPerson(character, it);
 }
 function shieldsCountedItems(character) {
-  const shields = (character.items || []).filter(it => it.type === 'Shield');
-  return shields.some(s => s.wielded) ? shields.filter(s => s.wielded) : shields;
+  return (character.items || []).filter(it => it.type === 'Shield' && itemInUse(character, it));
 }
 // Defense modifiers stack across every item in use. Shields' are kept apart
 // because they only count in the With Shield totals.
@@ -721,20 +802,24 @@ function magicVoidReduction(character, poolName) {
   return best + stacked;
 }
 
+// A protection roll is (Protection − 1d10) ÷ (2d6 ÷ 2), rounded, never below
+// 0: at least (PR − 10) ÷ 6, at most PR − 1.
+function protectionRollRange(pr) {
+  return { min: Math.max(0, Math.round((pr - 10) / 6)), max: Math.max(0, Math.round(pr - 1)) };
+}
+
+// Defense from the armor, shield and weapons in use (see itemInUse).
 function computeArmor(character) {
   const items = character.items || [];
-  const armorItems = items.filter(it => it.type === 'Armor');
-  const shieldItems = items.filter(it => it.type === 'Shield');
+  const armorItems = items.filter(it => it.type === 'Armor' && itemInUse(character, it));
   const shieldUseSkval = getSkillSkval(character, 'Basic Shield Use');
 
-  const shieldsComputed = items.map((it, idx) => ({ it, idx })).filter(x => x.it.type === 'Shield').map(({ it, idx }) => {
+  const shieldsComputed = items.map((it, idx) => ({ it, idx })).filter(x => x.it.type === 'Shield' && itemInUse(character, x.it)).map(({ it, idx }) => {
     const basePR = parseFloat(it.pr) || 0;
     const bonus = shieldUseSkval > 0 ? shieldUseBonus(shieldUseSkval, basePR) : 0;
     return { idx, wielded: !!it.wielded, name: it.name, av: parseFloat(it.av) || 0, basePR, bonus, effectivePR: basePR + bonus, notes: it.notes || '' };
   });
-  // If any shield is ticked "Wielding", only those count toward the With
-  // Shield totals; with none ticked, every shield counts, as before.
-  const shieldsCounted = shieldsComputed.some(s => s.wielded) ? shieldsComputed.filter(s => s.wielded) : shieldsComputed;
+  const shieldsCounted = shieldsComputed;
 
   const sumArmorAV = armorItems.reduce((sum, it) => sum + (parseFloat(it.av) || 0), 0);
   const sumArmorPR = armorItems.reduce((sum, it) => sum + (parseFloat(it.pr) || 0), 0);
@@ -746,33 +831,36 @@ function computeArmor(character) {
 
   const combatExtras = character.combatExtras || {};
   // Weapon Protection: the hand-entered box, plus the Weapon PR of every
-  // weapon ticked "Wielding" (the one(s) actually in hand, e.g. a main
-  // gauche) -- not every weapon owned, or a bag of spare weapons would count.
+  // weapon in use (the one(s) actually in hand, e.g. a main gauche) -- not
+  // every weapon owned, or a bag of spare weapons would count.
   const weaponProtectionManual = parseFloat(combatExtras.weaponProtection) || 0;
-  const weaponProtectionWielded = items.filter(it => it.type === 'Weapon' && it.wielded)
+  const weaponProtectionWielded = items.filter(it => it.type === 'Weapon' && itemInUse(character, it))
     .reduce((sum, it) => sum + (parseFloat(it.weaponProtection) || 0), 0);
   const weaponProtection = weaponProtectionManual + weaponProtectionWielded;
   const otherBonuses = combatExtras.otherBonuses || [{},{},{}];
   const sumOtherAV = otherBonuses.reduce((sum, b) => sum + (parseFloat(b && b.av) || 0), 0);
   const sumOtherPR = otherBonuses.reduce((sum, b) => sum + (parseFloat(b && b.pr) || 0), 0);
 
-  const weaponItems = items.filter(it => it.type === 'Weapon');
+  // Parry counts only from weapons in hand (and Hand/Foot, always there).
+  const weaponItems = items.filter(it => it.type === 'Weapon' && itemInUse(character, it));
   const handFoot = handFootWeapon(character);
   const parryPointsTotal = weaponItems.reduce((sum, it) => sum + computeWeapon(character, it).parryPointsUsed, 0)
     + (handFoot ? computeWeapon(character, handFoot).parryPointsUsed : 0)
-    + shieldWeaponItems(character).reduce((sum, sw) => sum + computeWeapon(character, sw).parryPointsUsed, 0);
+    + shieldWeaponItems(character).filter(sw => itemInUse(character, items[sw.shieldIdx])).reduce((sum, sw) => sum + computeWeapon(character, sw).parryPointsUsed, 0);
 
   const magicDefense = magicDefenseTotals(character);
+  const spellMods = combatSpellMods(character);
   function buildTotals(includeShield) {
     const sumAV = sumArmorAV + (includeShield ? sumShieldAV : 0);
     const sumPR = sumArmorPR + (includeShield ? sumShieldPR : 0);
     const magicAV = magicDefense.av + (includeShield ? magicDefense.shieldAv : 0);
     const magicPR = magicDefense.pr + (includeShield ? magicDefense.shieldPr : 0);
-    const totalAV = sumAV - avoidanceSkval + sumOtherAV - magicAV;
-    const totalPR = sumPR + (protectionSkval / 5) + weaponProtection + sumOtherPR + parryPointsTotal + magicPR;
+    const totalAV = sumAV - avoidanceSkval + sumOtherAV - magicAV + spellMods.av;
+    const totalPR = sumPR + (protectionSkval / 5) + weaponProtection + sumOtherPR + parryPointsTotal + magicPR + spellMods.pr;
     // Parry only defends against melee attacks -- it can't block a missile or a spell.
     const totalPRvsRangedOrMagic = totalPR - parryPointsTotal;
-    return { sumAV, sumPR, totalAV, totalPR, totalPRvsRangedOrMagic, magicAV, magicPR };
+    return { sumAV, sumPR, totalAV, totalPR, totalPRvsRangedOrMagic, magicAV, magicPR,
+             roll: protectionRollRange(totalPR), rollVsRangedOrMagic: protectionRollRange(totalPRvsRangedOrMagic) };
   }
 
   const withShield = buildTotals(true);
@@ -782,7 +870,7 @@ function computeArmor(character) {
   const wield = computeWielding(character);
   const current = wield.shields ? withShield : withoutShield;
 
-  return { armorItems, shieldsComputed, shieldUseSkval, avoidanceSkval, protectionSkval,
+  return { spellMods, armorItems, shieldsComputed, shieldUseSkval, avoidanceSkval, protectionSkval,
            weaponProtection, weaponProtectionManual, weaponProtectionWielded, otherBonuses, sumOtherAV, sumOtherPR, parryPointsTotal,
            sumArmorAV, sumArmorPR, sumShieldAV, sumShieldPR,
            withShield, withoutShield, current, wield, shieldsCounted };

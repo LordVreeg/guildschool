@@ -39,12 +39,19 @@ const COST_KEY_TO_POOL = {
   'Restorative': 'Restorative SP', 'Necromantic': 'Necromantic SP', 'Mentalist': 'Mentalist SP',
   'Artificer': 'Artificer SP', 'Animist': 'Animist SP',
 };
+// The weapon class (skill) for each data/weapons.json category. More than one
+// category can share a class: thrown weapons, like Hand/Foot, are covered by
+// Basic Martial artist.
 const WEAPON_CATEGORY_TO_SKILL = {
   'Axes': 'Basic Axe', 'Blunt': 'Basic Blunt Weapons', 'Bows': 'Basic Bows',
   'Crossbow': 'Basic Crossbow', 'Curved Swords': 'Basic Curved Swords', 'Daggers': 'Basic Dagger',
   'Dress Swords': 'Basic Dress swords', 'Martial': 'Basic Martial artist', 'Pole Arms': 'Basic Pole Weapons', 'Spears': 'Basic Spears',
-  'Straight Swords': 'Basic Straight Swords', 'Thrown': null
+  'Straight Swords': 'Basic Straight Swords', 'Thrown': 'Basic Martial artist'
 };
+// Every category whose weapons a weapon class covers.
+function weaponCategoriesForClass(weaponClass) {
+  return Object.keys(WEAPON_CATEGORY_TO_SKILL).filter(c => WEAPON_CATEGORY_TO_SKILL[c] === weaponClass);
+}
 let GUILDS = {};
 let LEVELS = [];
 const WEAPON_CLASSES = [
@@ -60,7 +67,7 @@ const WEAPON_CLASSES = [
 const ITEM_TYPE_LABELS = { 'Ammunition': 'Weapon, Ammunition' };
 function itemTypeLabel(type) { return ITEM_TYPE_LABELS[type] || type; }
 // Listed alphabetically by label in the Add/Edit Item popup.
-const ITEM_TYPES = ['Ammunition', 'Armor', 'Coin', 'Item', 'Magic Item', 'Shield', 'Weapon']
+const ITEM_TYPES = ['Ammunition', 'Armor', 'Coin', 'Item', 'Magic Item', 'Shield', 'Spell Book', 'Weapon']
   .sort((a, b) => itemTypeLabel(a).localeCompare(itemTypeLabel(b)));
 // Magic items (and magic weapons, armor, shields and ammunition) can carry
 // spells, each cast at a fixed level with a usage limit: N uses per period,
@@ -112,22 +119,69 @@ function itemSpellUsageText(sp, char, rule) {
 //   offense: magicBonusToHit, magicDamageBeforeDivider, magicDamageAfterDivider, magicCritBonus (%)
 //   void:    magicVoid [{ pool, amount }] spell cost reduction per pool,
 //            magicVoidStacks (adds to other items' void instead of best-only)
-// Which kinds an item has (base) and can add (optional) depends on its type;
-// only magical items get any (MW/Magic ticked, or a Magic Item that isn't a
-// potion or scroll).
+// Only magical items get any: a Magic Item that isn't a potion or scroll, or
+// anything else with Masterwork / Magic ticked.
+// Which ammunition a weapon takes, from data/ammunition.json's compatible_with:
+// a weapon category ("Bows", "Crossbow") or one weapon's name ("Sling"), or a
+// list of them. An ammunition item is matched to its catalog entry by the
+// entry it was picked from (ammoBase), else by name. Custom ammunition says
+// what fires it itself (compatibleWith, picked in the item popup); older custom
+// ammunition with neither fits any weapon that takes ammunition (null).
+function ammoCompatibleWith(ammoItem) {
+  const def = AMMUNITION.find(a => a.name === (ammoItem.ammoBase || ammoItem.name));
+  if (def && def.compatible_with) return [].concat(def.compatible_with);
+  return ammoItem.compatibleWith ? [].concat(ammoItem.compatibleWith) : null;
+}
+// Everything the catalog's ammunition can be fired from, for custom ammunition.
+function ammoLaunchers() {
+  return [...new Set(AMMUNITION.flatMap(a => [].concat(a.compatible_with || [])))].sort();
+}
+// What compatible_with can name for this weapon item: its catalog model and
+// that model's category, the category its weapon class comes from, and its own
+// name (a custom "Sling" still takes sling shot).
+function weaponAmmoKeys(weaponItem) {
+  const def = WEAPONS.find(w => w.name === weaponItem.weaponModel);
+  const cats = weaponItem.weaponClass ? weaponCategoriesForClass(weaponItem.weaponClass) : [];
+  return [def && def.name, def && def.category, ...cats, weaponItem.name].filter(Boolean).map(k => String(k).trim().toLowerCase());
+}
+function ammoFitsWeapon(ammoItem, weaponItem) {
+  const comp = ammoCompatibleWith(ammoItem);
+  if (!comp) return true;
+  const keys = weaponAmmoKeys(weaponItem);
+  return comp.some(c => keys.includes(String(c).trim().toLowerCase()));
+}
+// Whether a weapon fires ammunition at all: some catalog ammunition names it.
+function weaponTakesAmmo(weaponItem) {
+  const keys = weaponAmmoKeys(weaponItem);
+  return AMMUNITION.some(a => [].concat(a.compatible_with || []).some(c => keys.includes(String(c).trim().toLowerCase())));
+}
+// The catalog ammunition a weapon takes, by name, for the "takes: ..." hint.
+function ammoNamesForWeapon(weaponItem) {
+  return AMMUNITION.filter(a => ammoFitsWeapon({ ammoBase: a.name }, weaponItem)).map(a => a.name);
+}
+
 const MAGIC_MOD_FIELDS = {
   defense: ['magicAvoidance', 'magicProtection'],
   offense: ['magicBonusToHit', 'magicDamageBeforeDivider', 'magicDamageAfterDivider', 'magicCritBonus'],
 };
+// Every magical item has all three, the same everywhere. (Ammunition's
+// offense adds to the missile weapon firing it, see computeWeapon.)
+const ALL_MOD_KINDS = { base: ['defense', 'offense', 'void'], optional: [] };
 function itemModKinds(it) {
   if (!it) return null;
-  if (it.type === 'Magic Item') return itemSpellRule(it) ? null : { base: ['void'], optional: ['defense'] };
-  if (!it.masterwork) return null;
-  if (it.type === 'Weapon') return { base: ['offense'], optional: ['defense', 'void'] };
-  if (it.type === 'Armor' || it.type === 'Shield') return { base: ['defense'], optional: ['void'] };
-  // Ammunition's offense adds to the missile weapon firing it (see computeWeapon)
-  if (it.type === 'Ammunition') return { base: ['offense'], optional: [] };
-  return null;
+  if (it.type === 'Magic Item') return itemSpellRule(it) ? null : ALL_MOD_KINDS;
+  return it.masterwork ? ALL_MOD_KINDS : null;
+}
+// The kind an item type is mostly about, whose part of the item popup starts
+// open: offense on weapons and ammunition, defense on armor and shields, void
+// on Magic Items.
+function itemNaturalModKind(it) {
+  return { Weapon: 'offense', Ammunition: 'offense', Armor: 'defense', Shield: 'defense', 'Magic Item': 'void' }[it && it.type] || null;
+}
+// Whether an item has any value set for a kind.
+function itemModKindHasValues(it, kind) {
+  if (kind === 'void') return (it.magicVoid || []).some(v => v && v.pool && parseFloat(v.amount));
+  return (MAGIC_MOD_FIELDS[kind] || []).some(f => parseFloat(it[f]));
 }
 // Has this kind: one of its base kinds, or an optional one that's been added
 // (any value set, or opened in the popup).
@@ -210,5 +264,5 @@ async function loadData() {
     'bestiary-templates',
   ].map(fetchDataFile));
   applyCustomData();
-  renderApp();
+  restoreLastView(); // the page from before a refresh, else the Overview
 }

@@ -123,7 +123,12 @@ let groupVolumesCache = [];
 let viewingVolumeId = null;
 let groupEncountersCache = [];
 
-function showGroupModule() {
+// Which groups the group page's picker offers. Opened from a character's
+// group link in the sidebar ('char'): only the character's group, plus any
+// group you GM. Opened from File → Groups ('all'): every group you're in.
+let groupPickerScope = 'all';
+function showGroupModule(scope) {
+  if (scope) groupPickerScope = scope;
   state.activeSkillId = null;
   state.activeView = 'group';
   renderSidebar();
@@ -146,14 +151,19 @@ async function renderGroupModule() {
   if (activeGroupId && !myGroups.find(g => g.id === activeGroupId)) activeGroupId = null;
   if (!activeGroupId && myGroups.length) activeGroupId = myGroups[0].id;
 
+  const char = state.characters[state.activeChar];
+  const charGroups = [char && char.playGroupId].filter(Boolean);
+  const shown = groupPickerScope === 'char' && charGroups.length
+    ? myGroups.filter(g => charGroups.includes(g.id) || g.myRole === 'gm' || g.id === activeGroupId)
+    : myGroups;
+  // ★ marks the selected character's group, when there's a choice of groups
   const picker = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-      ${myGroups.map(g => `<button class="btn ${g.id===activeGroupId?'btn-gold':'btn-dim'}" onclick="selectGroup('${g.id}')">${escapeHtml(g.name)}${g.myRole==='gm'?' ★':''}</button>`).join('')}
-      <button class="btn btn-dim" onclick="openCreateGroupModal()">New Group</button>
+      ${shown.map(g => `<button class="btn ${g.id===activeGroupId?'btn-gold':'btn-dim'}" onclick="selectGroup('${g.id}')">${escapeHtml(g.name)}${shown.length > 1 && charGroups.includes(g.id) ? ' ★' : ''}</button>`).join('')}
     </div>`;
 
   if (!activeGroupId) {
-    document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body">${picker}<div class="note">You're not in any groups yet. Create one, or ask your GM to invite you by email.</div></div></div>`;
+    document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body">${picker}<div class="note">You're not in any groups yet. Create one (File → New Group), or ask your GM to invite you by email.</div></div></div>`;
     return;
   }
   document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body">${picker}<div id="group-detail">Loading…</div></div></div>`;
@@ -162,6 +172,7 @@ async function renderGroupModule() {
 
 function selectGroup(groupId) {
   activeGroupId = groupId;
+  renderSidebar(); // its group link shows which group is open
   renderGroupModule();
 }
 
@@ -364,7 +375,8 @@ async function renderGroupDetail(group) {
         ${celestialIconsHtml(groupClock.hour)}
         ${combatFlagHtml}
       </div>
-      ${isGM ? `<button class="btn btn-dim" onclick="openAddToGroupModal('${group.id}')">Add to Group</button>` : ''}
+      <div style="display:flex;gap:6px"><button class="btn btn-dim" onclick="showScheduleModule('${group.id}')">📅 Game Schedule</button>
+      ${isGM ? `<button class="btn btn-dim" onclick="openAddToGroupModal('${group.id}')">Add to Group</button>` : ''}</div>
     </div>
     <div class="form-group" style="margin-top:8px"><label>Roster (PCs &amp; NPCs)</label>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0">${orderToggleHtml}</div>
@@ -378,10 +390,9 @@ async function renderGroupDetail(group) {
     ${isGM ? `
     <div class="form-group" style="margin-top:8px">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <label style="margin:0">Temp Characters</label>
+        <label style="margin:0">Temp Characters${infoTip(`Quick stat blocks for players without a full character sheet yet -- used by the combat module.`)}</label>
         <button class="btn btn-dim" style="font-size:11px;padding:3px 8px" onclick="openNewTempCharacter('${group.id}')">Add Temp Character</button>
       </div>
-      <div class="note" style="margin:2px 0">Quick stat blocks for players without a full character sheet yet -- used by the combat module.</div>
       <ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${tempCharsHtml}</ul>
     </div>` : ''}
     <div class="form-group" style="margin-top:8px">
@@ -430,11 +441,10 @@ async function renderGroupDetail(group) {
     ${viewingVolumeId === (activeVolume && activeVolume.id) ? `
     <div class="form-row">
       <div class="form-group" style="flex:1"><textarea class="w-full" id="new-group-note" rows="2"  placeholder="Add a note at the current time..."></textarea></div>
-      <div class="form-group"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="new-group-note-visible"> Visible to everyone</label></div>
+      <div class="form-group"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="new-group-note-visible"> Visible to everyone${infoTip(`Notes default to private (you + the GM). Check the box, or use the toggle after posting, to share with the whole group.`)}</label></div>
       <div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="addGroupNote('${group.id}')">Add Note</button></div>
     </div>
-    <div class="note" style="margin-top:4px">Notes default to private (you + the GM). Check the box, or use the toggle after posting, to share with the whole group.</div>
-    ` : `<div class="note" style="margin-bottom:4px">Viewing an archived log -- new notes go to the current one. Editing/visibility still works here for corrections.</div>`}
+    ` : `<div class="note">Viewing an archived log -- new notes go to the current one. Editing/visibility still works here for corrections.</div>`}
     <table class="skill-table" style="margin-top:8px">
       <thead><tr><th>When (in-game)</th><th>Note</th></tr></thead>
       <tbody>${notesHtml}</tbody>
@@ -460,14 +470,14 @@ async function moveRosterMember(groupId, characterId, direction) {
 
 async function removeRosterMember(characterId) {
   const c = groupRosterCache.find(x => x.id === characterId);
-  if (!confirm(`Remove ${c && c.name ? c.name : 'this character'} from the group? The character itself is not deleted.`)) return;
+  if (!await appConfirm(`Remove ${c && c.name ? c.name : 'this character'} from the group? The character itself is not deleted.`)) return;
   const { error } = await sb.rpc('gm_remove_character_from_group', { p_character_id: characterId });
   if (error) { alert('Failed to remove from group: ' + error.message); return; }
   renderGroupModule();
 }
 
 async function deleteTempCharacter(id, groupId) {
-  if (!confirm('Delete this temp character? This cannot be undone.')) return;
+  if (!await appConfirm('Delete this temp character? This cannot be undone.')) return;
   const { error } = await sb.from('bestiary_entries').delete().eq('id', id);
   if (error) { alert('Failed to delete: ' + error.message); return; }
   renderGroupModule();

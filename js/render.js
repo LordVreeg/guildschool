@@ -216,12 +216,13 @@ function renderSidebar() {
   }
   for (const type in byType) byType[type] = sortSkillsForDisplay(type, byType[type]);
   const view = state.activeSkillId ? 'skill' : (state.activeView || 'overview');
-  const navItem = (key, onclick, label) => `<div class="sidebar-item ${view === key ? 'active' : ''}" onclick="${onclick}">${label}</div>`;
-  let html = navItem('overview', 'showOverview()', '📋 Overview');
-  html += navItem('general', 'showGeneralModule()', '👤 General Info');
-  html += navItem('combat', 'showCombatModule()', '⚔ Combat');
-  if (hasSpiritLevel(char)) html += navItem('spell', 'showSpellModule()', '✦ Spells');
-  html += navItem('inventory', 'showInventoryModule()', '🎒 Inventory');
+  // icon and text in their own columns, so the text lines up whatever the icon's width
+  const navItem = (key, onclick, icon, label) => `<div class="sidebar-item sidebar-nav ${view === key ? 'active' : ''}" onclick="${onclick}"><span class="nav-icon">${icon}</span><span>${label}</span></div>`;
+  let html = navItem('overview', 'showOverview()', '📋', 'Overview');
+  html += navItem('general', 'showGeneralModule()', '👤', 'General Info');
+  html += navItem('combat', 'showCombatModule()', '⚔', 'Combat');
+  if (hasSpiritLevel(char)) html += navItem('spell', 'showSpellModule()', '✦', 'Spells');
+  html += navItem('inventory', 'showInventoryModule()', '🎒', 'Inventory');
   html += `<hr style="border-color:var(--border);margin:4px 0">`;
   const typeOrder = SKILL_TYPE_ORDER;
   const sortedTypes = typeOrder.filter(t => byType[t]).concat(Object.keys(byType).filter(t => !typeOrder.includes(t)));
@@ -256,7 +257,31 @@ function renderSidebar() {
   }
   html += `<div class="sidebar-add"><button onclick="openAddSkillModal()">Add Skill</button></div>`;
   html += `<hr style="border-color:var(--border);margin:4px 0">`;
+  html += sidebarGroupsHtml(char, view);
   document.getElementById('sidebar').innerHTML = html;
+}
+
+// Under the skills: the group the character plays in (characters.group_id),
+// a link to that group's page. Its name comes from myGroups; if they haven't
+// been fetched yet, fetch them once and draw the sidebar again.
+let sidebarGroupsFetched = false;
+function sidebarGroupsHtml(char, view) {
+  const ids = [char.playGroupId].filter(Boolean);
+  if (!ids.length) return '';
+  if (ids.some(id => !myGroups.find(g => g.id === id)) && !sidebarGroupsFetched) {
+    sidebarGroupsFetched = true;
+    fetchMyGroups().then(() => renderSidebar());
+  }
+  return `<div class="sidebar-section">Group</div>` + ids.map(id => {
+    const g = myGroups.find(x => x.id === id);
+    const active = view === 'group' && activeGroupId === id ? 'active' : '';
+    return `<div class="sidebar-item sidebar-nav ${active}" data-group="${escapeHtml(id)}" onclick="openSidebarGroup(this.dataset.group)"><span class="nav-icon">👥</span><span>${escapeHtml(g ? g.name : 'Group')}</span></div>`;
+  }).join('');
+}
+function openSidebarGroup(id) {
+  activeGroupId = id;
+  viewingVolumeId = null;
+  showGroupModule('char');
 }
 
 function renderMain() {
@@ -270,6 +295,7 @@ function renderMain() {
   }
   if (state.activeView === 'utilities') { renderUtilitiesModule(); return; }
   if (state.activeView === 'group') { renderGroupModule(); return; }
+  if (state.activeView === 'schedule') { renderScheduleModule(); return; }
   if (state.activeView === 'bestiary') { renderBestiaryModule(); return; }
   if (state.activeView === 'chat') { renderChatModule(); return; }
   if (state.activeView === 'encounter') { renderEncounterModule(); return; }
@@ -333,9 +359,9 @@ function showPageIntroOnce(key, title, bodyHtml) {
 const COMBAT_PAGE_INTRO_HTML = `
   <p>This page builds itself from your inventory.</p>
   <ul style="margin:6px 0 6px 18px;padding:0">
-    <li><b>Weapons:</b> any item of type Weapon on your Inventory page (<i>Add Item</i>) appears here with its to-hit, damage bonus, speed, crit and fumble chances, and parry, worked out from your attributes and your skill in that weapon's class. Set the weapon's class to the skill you trained (for example Basic Spears).</li>
-    <li><b>Armor and shields:</b> items of type Armor or Shield add to your Avoidance and Protection totals here. Your Avoidance and Protection skills are applied on top.</li>
-    <li><b>Hit Points:</b> track your current HP here. It uses your Hit Points skill and works for both the Standard and Collegium systems.</li>
+    <li><b>Weapons:</b> a weapon you carry and tick In Use on your Inventory page appears here with its to-hit, damage bonus, speed, crit and fumble chances, and parry, worked out from your attributes and your skill in that weapon's class. Set the weapon's class to the skill you trained (for example Basic Spears).</li>
+    <li><b>Armor and shields:</b> armor and a shield you carry and tick In Use add to your Avoidance and Protection totals here. Your Avoidance and Protection skills are applied on top.</li>
+    <li><b>Hit Points:</b> track your current HP here. It uses your Hit Points skill; pick the Standard or Collegium system under Campaign Settings on General Info.</li>
     <li><b>Nothing is entered twice:</b> add, change or remove an item in your inventory and this page updates to match.</li>
   </ul>`;
 
@@ -355,7 +381,7 @@ function mainGuildBannerHtml(char, onGeneralPage) {
   if (char.guild || char.isNPC || char.welcomeShown === undefined) return '';
   return `<div style="border:2px solid var(--gold);border-radius:4px;padding:10px 12px;margin-bottom:12px;background:rgba(201,162,39,.12)">
     <b>Pick your main Guild/School first.</b> Do this before anything else. Your guild decides what you are better and worse at: it adjusts how fast every skill levels (the EXP modifier), so some skills come easily and others slowly. Skills you add afterwards are tagged to it.
-    ${onGeneralPage ? '<div class="note" style="margin-top:4px">Set it under Guilds, Primary Guild, further down this page.</div>' : '<div style="margin-top:6px"><button class="btn btn-gold" onclick="showGeneralModule()">Choose Primary Guild</button></div>'}
+    ${onGeneralPage ? '<div class="note">Set it under Guilds, Primary Guild, further down this page.</div>' : '<div style="margin-top:6px"><button class="btn btn-gold" onclick="showGeneralModule()">Choose Primary Guild</button></div>'}
   </div>`;
 }
 

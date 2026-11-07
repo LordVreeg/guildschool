@@ -76,5 +76,19 @@
     "max_dam": 16,
     "av_dam": 8.33,
     "compatible_with": "Bows"
+  },
+  {
+    "name": "small lead shot",
+    "cost": 0.2,
+    "weight": 2,
+    "size": 1,
+    "range_mod": 0,
+    "damage_dice": "2d4+9",
+    "dividing_die": 10,
+    "real_min": 1.7,
+    "max_dam": 17,
+    "av_dam": null,
+    "compatible_with": "Sling",
+    "threat_range": -1
   }
 ]

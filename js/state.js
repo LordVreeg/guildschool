@@ -23,16 +23,52 @@ async function loadState() {
       lastSheetHpState[row.id] = stableJson(row.data.hpState || null);
     }
     state.characters = characters;
-    state.activeChar = localStorage.getItem('gs_active_char') || Object.keys(characters)[0] || null;
+    // the character selected last in this browser, if it still exists
+    const remembered = localStorage.getItem('gs_active_char');
+    state.activeChar = (remembered && characters[remembered]) ? remembered : (Object.keys(characters)[0] || null);
   } catch (e) {
     console.error('Failed to load characters from Supabase', e);
     alert('Could not load your characters. Check your connection and try reloading the page.');
   }
 }
 
+// The page showing when the browser leaves or reloads, so a refresh comes back
+// to it (restoreLastView, after the data has loaded). Kept in this browser only.
+const LAST_VIEW_KEY = 'gs_last_view';
+window.addEventListener('pagehide', () => {
+  try {
+    localStorage.setItem(LAST_VIEW_KEY, JSON.stringify({
+      char: state.activeChar, view: state.activeView, skillId: state.activeSkillId,
+      groupScope: typeof groupPickerScope !== 'undefined' ? groupPickerScope : 'all',
+      groupId: typeof activeGroupId !== 'undefined' ? activeGroupId : null,
+      encounterId: typeof activeEncounterId !== 'undefined' ? activeEncounterId : null
+    }));
+  } catch (e) {}
+});
+function restoreLastView() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(LAST_VIEW_KEY) || 'null'); } catch (e) {}
+  const char = state.characters[state.activeChar];
+  // a character's own pages only come back for that same character
+  if (saved && char && saved.char === state.activeChar) {
+    if (['overview', 'general', 'combat', 'inventory', 'spell'].includes(saved.view)) state.activeView = saved.view;
+    else if (saved.view === 'skill' && (char.skills || []).some(s => s.id === saved.skillId)) { state.activeView = 'skill'; state.activeSkillId = saved.skillId; }
+  }
+  renderApp();
+  if (!saved) return;
+  if (saved.view === 'utilities') showUtilitiesModule();
+  else if (saved.view === 'bestiary') showBestiaryModule();
+  else if ((saved.view === 'group' || saved.view === 'encounter') && saved.groupId) {
+    activeGroupId = saved.groupId;
+    if (saved.groupScope) groupPickerScope = saved.groupScope;
+    if (saved.view === 'encounter' && saved.encounterId) openEncounter(saved.encounterId); else showGroupModule();
+  }
+}
+
 let saveStateTimer = null;
 function saveState() {
   if (state.activeChar) localStorage.setItem('gs_active_char', state.activeChar);
+  syncSpellModsToGear(state.characters[state.activeChar]);
   clearTimeout(saveStateTimer);
   saveStateTimer = setTimeout(async () => {
     saveStateTimer = null;

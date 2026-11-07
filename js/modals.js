@@ -12,6 +12,45 @@ function openModal(html, opts) {
   box.className = (opts && opts.className) || '';
   document.getElementById('modal-overlay').classList.add('open');
 }
+// "Are you sure?" in the app's own popup, in place of the browser's
+// confirm(): some browsers and embedded views block native dialogs and
+// answer "no" without showing anything. Resolves true for OK, false for
+// Cancel / Escape. It has its own layer, above any open popup, so asking
+// from inside a popup leaves that popup as it was.
+function appConfirm(message, okLabel) {
+  return new Promise(resolve => {
+    const layer = document.createElement('div');
+    layer.id = 'confirm-overlay';
+    layer.innerHTML = `<div id="confirm-box" role="alertdialog" aria-modal="true">
+      <div class="confirm-text">${escapeHtml(message)}</div>
+      <div class="modal-actions"><button class="btn btn-dim" data-ok="0">Cancel</button><button class="btn btn-gold" data-ok="1">${escapeHtml(okLabel || 'OK')}</button></div>
+    </div>`;
+    const done = ok => { document.removeEventListener('keydown', onKey, true); layer.remove(); resolve(ok); };
+    const onKey = e => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); }
+      else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); done(true); }
+    };
+    layer.addEventListener('click', e => { const b = e.target.closest('[data-ok]'); if (b) done(b.dataset.ok === '1'); });
+    document.addEventListener('keydown', onKey, true);
+    document.body.appendChild(layer);
+    layer.querySelector('[data-ok="1"]').focus();
+  });
+}
+
+// Other → About: the wiki, the version running (the ?v= tag, see
+// ASSET_VERSION) and credits.
+function openAboutModal() {
+  openModal(`
+    <h3>About GuildSchool</h3>
+    <div class="about-rows">
+      <div><a class="wiki-link" href="https://celtricia.pbworks.com/" target="_blank" rel="noopener">Celtricia Wiki ↗</a></div>
+      <div>Version ${escapeHtml(ASSET_VERSION || 'unknown')}</div>
+      <div>Concept and Content by Lord Vreeg</div>
+      <div>UI Design by Critic at large</div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Close</button></div>`);
+}
+
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
 }
@@ -77,7 +116,7 @@ function renderAddItemModal(justAdded) {
 
   openModal(`
     <h3>${editing ? 'Edit Item' : 'Add Item'}</h3>
-    ${justAdded ? `<div class="note" style="margin-bottom:8px;color:var(--gold-dim)">Added “${escapeHtml(justAdded)}”. Next item:</div>` : ''}
+    ${justAdded ? `<div class="note">Added “${escapeHtml(justAdded)}”. Next item:</div>` : ''}
     <div class="form-row">${dropdowns}</div>
     <div class="form-row">
       ${field('Name', `<input class="w-full" id="ai-name"  ${lock} value="${val(d.name)}" oninput="setAddItemField('name',this.value)">`, 'full')}
@@ -85,21 +124,21 @@ function renderAddItemModal(justAdded) {
     <div class="form-row">
       ${hasArmorStats ? field('AV', num('av'), 'sm') + field('PR', num('pr'), 'sm') : ''}
       ${field('Qty', num('qty', 'min="1"'), 'sm')}
-      ${field('Unit Weight', num('weight'), 'sm')}
-      ${field('Unit Worth', num('worth'), 'sm')}
+      ${field('Unit Weight', d.type === 'Spell Book' ? `<input class="w-full" type="number" value="${SPELL_BOOK_WEIGHT}" disabled title="A spell book always weighs ${SPELL_BOOK_WEIGHT}">` : num('weight'), 'sm one-line-label')}
+      ${field('Unit Worth', num('worth'), 'sm one-line-label')}
       ${d.type === 'Magic Item' ? '' : `<div class="form-group" style="justify-content:flex-end">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
-          <input type="checkbox" ${lock} ${d.masterwork ? 'checked' : ''} onchange="setAddItemField('masterwork',this.checked);renderAddItemModal()"> ${d.type === 'Item' ? 'Masterwork' : 'Masterwork / Magic'}
+          <input type="checkbox" ${lock} ${d.masterwork ? 'checked' : ''} onchange="setAddItemField('masterwork',this.checked);renderAddItemModal()"> Masterwork / Magic
         </label>
       </div>`}
     </div>
     <div class="form-row">
-      ${field('Location', `<select class="w-full"  ${lock} onchange="setAddItemField('location',this.value)">${opt('', 'Carried', !location)}${locations.map(l => opt(l, l, location === l)).join('')}</select>`, 'md')}
+      ${field('Location' + infoTip('Carried items count toward Weight Carried. To put an item in a new bag, stash or other location, add it under Storage Locations first.'), `<select class="w-full"  ${lock} onchange="setAddItemField('location',this.value)">${opt('', 'Carried', !location)}${locations.map(l => opt(l, l, location === l)).join('')}</select>`, 'md')}
       ${field('Notes', `<input class="w-full"  ${lock} value="${val(d.notes)}" oninput="setAddItemField('notes',this.value)">`, 'fill')}
     </div>
     ${ready && itemModKinds(d) ? itemModsSectionHtml(d) : ''}
     ${ready && itemCanHoldSpells(d) ? itemSpellsSectionHtml(d) : ''}
-    <div class="note" style="margin-top:2px">${ready ? 'Carried items count toward Weight Carried. To put an item in a new bag, stash or other location, add it under Storage Locations first.' : 'Choose from every list above to fill in the rest of the item.'}</div>
+    ${ready ? '' : '<div class="note">Choose from every list above to fill in the rest of the item.</div>'}
     <div id="ai-error" style="color:var(--red-b);font-size:12px;margin-top:8px;display:none"></div>
     <div class="modal-actions" style="align-items:center">
       ${editing ? '' : `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-right:auto">
@@ -116,10 +155,13 @@ function itemModsSectionHtml(d) {
   const k = itemModKinds(d);
   const val = x => escapeHtml(x === undefined || x === null ? '' : x);
   const num = (field, label) => `<div class="form-group"><label>${label}</label><input type="number" class="w-sm" value="${val(d[field])}" oninput="setAddItemField('${field}',this.value)"></div>`;
-  const head = (title, kind) => `<div style="font-size:12px;margin:8px 0 2px;color:var(--gold-dim)">${title}${k.optional.includes(kind) ? ` <span class="item-del" style="cursor:pointer;color:var(--red-b)" title="Remove ${title.toLowerCase()}" onclick="removeItemModKind('${kind}')">✕</span>` : ''}</div>`;
+  // each kind folds: open if the player opened it, else if it has values or
+  // is what this item type is mostly about; help is the part's ⓘ
+  const isOpen = kind => kind in itemModFoldOpen ? itemModFoldOpen[kind] : (itemNaturalModKind(d) === kind || itemModKindHasValues(d, kind));
+  const head = (title, kind, body, help) => `<details class="fold item-mod-kind" ${isOpen(kind) ? 'open' : ''}><summary onclick="itemModFoldOpen['${kind}'] = !this.parentElement.open">${title}${help ? infoTip(help) : ''}${k.optional.includes(kind) ? ` <span class="item-del" style="cursor:pointer;color:var(--red-b)" title="Remove ${title.toLowerCase()}" onclick="event.preventDefault();event.stopPropagation();removeItemModKind('${kind}')">✕</span>` : ''}</summary>${body}</details>`;
   const parts = [];
-  if (itemHasModKind(d, 'offense')) parts.push(head('Offense', 'offense') + `<div class="form-row">${num('magicBonusToHit', 'To Hit')}${num('magicDamageBeforeDivider', 'Dmg Before Divider')}${num('magicDamageAfterDivider', 'Dmg After Divider')}${num('magicCritBonus', 'Crit %')}</div>`);
-  if (itemHasModKind(d, 'defense')) parts.push(head('Defense', 'defense') + `<div class="form-row">${num('magicAvoidance', 'Avoidance')}${num('magicProtection', 'Protection')}</div><div class="note">Bonuses: Avoidance lowers AV, Protection adds to PR.</div>`);
+  if (itemHasModKind(d, 'defense')) parts.push(head('Defense', 'defense', `<div class="form-row">${num('magicAvoidance', 'Avoidance')}${num('magicProtection', 'Protection')}</div>`, 'Bonuses: Avoidance lowers AV, Protection adds to PR.'));
+  if (itemHasModKind(d, 'offense')) parts.push(head('Offense', 'offense', `<div class="form-row">${num('magicBonusToHit', 'To Hit')}${num('magicDamageBeforeDivider', 'Dmg Before Divider')}${num('magicDamageAfterDivider', 'Dmg After Divider')}${num('magicCritBonus', 'Crit %')}</div>`));
   if (itemHasModKind(d, 'void')) {
     if (!(d.magicVoid || []).length) d.magicVoid = [{ pool: '', amount: '' }]; // start with one row to fill in
     const pools = spellPoolNames();
@@ -129,19 +171,24 @@ function itemModsSectionHtml(d) {
       <div class="form-group"><label>Cost Reduction</label><input type="number" min="0" class="w-sm" value="${val(v.amount)}" oninput="setItemVoidRow(${i},'amount',this.value)"></div>
       <div class="form-group"><span class="item-del" style="cursor:pointer;color:var(--red-b);padding:6px 2px" title="Remove" onclick="removeItemVoidRow(${i})">✕</span></div>
     </div>`).join('');
-    parts.push(head('Void', 'void') + rows + `<div style="display:flex;align-items:center;gap:12px;margin-top:2px">
+    parts.push(head('Void', 'void', rows + `<div style="display:flex;align-items:center;gap:12px;margin-top:2px">
       <button type="button" class="btn btn-dim" onclick="addItemVoidRow()">Add pool</button>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${d.magicVoidStacks ? 'checked' : ''} onchange="setAddItemField('magicVoidStacks',this.checked)"> Stacks with other items' void bonuses</label>
-    </div><div class="note">Spell cost reduction per pool. Only the best single item counts, unless an item is marked as stacking.</div>`);
+    </div>`, 'Spell cost reduction per pool. Only the best single item counts, unless an item is marked as stacking.'));
   }
   const adders = k.optional.filter(kind => !itemHasModKind(d, kind))
     .map(kind => `<button type="button" class="btn btn-dim" onclick="addItemModKind('${kind}')">Add ${kind}</button>`).join(' ');
   return `
     <hr class="divider">
-    <div class="form-group"><label>Magic Modifiers</label></div>
+    <details class="fold item-mods" ${itemModFoldOpen.all === false ? '' : 'open'}>
+    <summary onclick="itemModFoldOpen.all = !this.parentElement.open">Magic Modifiers</summary>
     ${parts.join('')}
-    ${adders ? `<div style="margin-top:6px;display:flex;gap:6px">${adders}</div>` : ''}`;
+    ${adders ? `<div style="margin-top:6px;display:flex;gap:6px">${adders}</div>` : ''}
+    </details>`;
 }
+// Which parts of the item popup's Magic Modifiers are folded: all (the whole
+// section) and each kind; false = closed. Kept while the page is open.
+const itemModFoldOpen = {};
 
 // The item popup's Spells section (magic items): the spells already on the
 // item, then a row to add another at a fixed level with a usage limit.
@@ -153,13 +200,19 @@ function itemSpellsSectionHtml(d) {
   // One selection row per draft, on a single line, ending with ✕
   const rows = itemSpellDrafts.map((s, i) => {
     const catalog = s.school ? SPELLS.filter(sp => sp.school === s.school).sort((a, b) => a.name.localeCompare(b.name)) : [];
-    const spellField = !s.school
+    // once a catalog spell is picked (found or chosen), the Find box goes and
+    // School and Spell are fixed; ✕ the row to pick another
+    const picked = !!s.name && catalog.some(sp => sp.name === s.name);
+    const spellField = picked
+      ? `<input class="w-md" value="${escapeHtml(s.name)}" readonly>`
+      : !s.school
       ? '<select class="w-md" disabled><option>— select —</option></select>'
       : catalog.length
         ? `<select class="w-md" onchange="setItemSpellDraft(${i},'name',this.value,true)">${opt('', '— select —', !s.name)}${catalog.map(sp => opt(sp.name, sp.name, s.name === sp.name)).join('')}</select>`
         : `<input class="w-md" value="${escapeHtml(s.name || '')}" placeholder="Type its name" oninput="setItemSpellDraft(${i},'name',this.value)">`;
     return `<div class="form-row item-spell-edit" style="align-items:flex-end;margin-top:6px">
-      <div class="form-group"><label>School</label><select class="w-md" onchange="setItemSpellDraft(${i},'school',this.value,true)">${opt('', '— select —', !s.school)}${schools.map(sc => opt(sc, sc, s.school === sc)).join('')}</select></div>
+      ${picked ? '' : `<div class="form-group"><label>Find${i === 0 ? infoTip('Type part of a spell\'s name to search every school; picking one fills in School and Spell. Or choose them from the lists.') : ''}</label><input class="w-md" list="item-spell-search" placeholder="Search by name" onchange="pickItemSpellBySearch(${i}, this.value)"></div>`}
+      <div class="form-group"><label>School</label>${picked ? `<input class="w-md" value="${escapeHtml(s.school)}" readonly>` : `<select class="w-md" onchange="setItemSpellDraft(${i},'school',this.value,true)">${opt('', '— select —', !s.school)}${schools.map(sc => opt(sc, sc, s.school === sc)).join('')}</select>`}</div>
       <div class="form-group"><label>Spell</label>${spellField}</div>
       <div class="form-group"><label>Level</label><input type="number" min="1" class="w-sm" value="${escapeHtml(s.level)}" oninput="setItemSpellDraft(${i},'level',this.value)"></div>
       ${rule === 'scroll' ? '' : `<div class="form-group"><label>Uses</label><input type="number" min="1" class="w-sm" value="${escapeHtml(s.usesMax)}" oninput="setItemSpellDraft(${i},'usesMax',this.value)"></div>`}
@@ -167,20 +220,22 @@ function itemSpellsSectionHtml(d) {
       <div class="form-group"><span class="item-del" style="cursor:pointer;color:var(--red-b);padding:6px 2px" title="Remove this spell" onclick="closeItemSpellRow(${i})">✕</span></div>
     </div>`;
   }).join('');
+  // one suggestion list for every row's Find box: "Spell name — School"
+  const search = rows ? `<datalist id="item-spell-search">${spellSearchOptions().map(o => `<option value="${escapeHtml(o)}">`).join('')}</datalist>` : '';
   return `
+    ${search}
     <hr class="divider">
-    <div class="form-group"><label>Spells</label></div>
+    <div class="form-group"><label>Spells${infoTip((rule === 'potion' ? 'A potion holds exactly one spell. Each cast uses one of its uses; when they run out the potion is gone. ' : rule === 'scroll' ? 'A scroll holds one or more spells. Each can be cast once and is then gone; the scroll goes with its last spell. ' : '') + 'Spells are saved with the item. Each is cast at its fixed level, with no spell points, and always succeeds; a cast uses one of its uses.')}</label></div>
     ${list || (rows ? '' : '<div class="note">No spells on this item yet.</div>')}
     ${rows}
     ${rule === 'potion' && (d.spells || []).length + itemSpellDrafts.length >= 1 ? '' : '<div style="margin-top:6px"><button type="button" class="btn btn-dim" onclick="openItemSpellRow()">Add spell</button></div>'}
-    ${rule === 'potion' ? '<div class="note">A potion holds exactly one spell. Each cast uses one of its uses; when they run out the potion is gone.</div>' : rule === 'scroll' ? '<div class="note">A scroll holds one or more spells. Each can be cast once and is then gone; the scroll goes with its last spell.</div>' : ''}
-    <div class="note">Spells are saved with the item. Each is cast at its fixed level, with no spell points, and always succeeds; a cast uses one of its uses.</div>`;
+    `;
 }
 
 // "Add Container" and ✎ under Storage Locations: name, capacity (blank =
 // no limit) and whether it's on the person. Edits a draft; see confirmContainer.
 function openAddContainerModal() {
-  containerDraft = { name: '', capacity: '', onPerson: false };
+  containerDraft = { name: '', capacity: '', onPerson: false, noEncumber: false };
   editingContainerName = null;
   renderContainerModal();
 }
@@ -189,7 +244,7 @@ function openEditContainerModal(name) {
   const char = state.characters[state.activeChar];
   if (!char || name === ON_PERSON_LOCATION) return;
   const cap = (char.storageCapacities || {})[name];
-  containerDraft = { name, capacity: cap === undefined || cap === null ? '' : cap, onPerson: !!(char.storageOnPerson || {})[name] };
+  containerDraft = { name, capacity: cap === undefined || cap === null ? '' : cap, onPerson: !!(char.storageOnPerson || {})[name], noEncumber: !!(char.storageNoEncumber || {})[name] };
   editingContainerName = name;
   renderContainerModal();
 }
@@ -207,16 +262,18 @@ function renderContainerModal() {
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group w-sm"><label>Capacity</label>
+      <div class="form-group w-sm"><label>Capacity${infoTip(`Capacity is the weight it can hold; leave it blank for no limit. Tick On Person for something you wear or carry (a backpack), so its contents count toward Weight Carried. Tick Does not encumber for one whose contents weigh nothing (a bag of holding).${editing ? ' Renaming moves its items along with it.' : ''}`)}</label>
         <input class="w-full" type="number" min="0"  value="${val(d.capacity)}" placeholder="no limit" oninput="containerDraft.capacity=this.value">
       </div>
       <div class="form-group" style="justify-content:flex-end">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
           <input type="checkbox" ${d.onPerson ? 'checked' : ''} onchange="containerDraft.onPerson=this.checked"> On Person
         </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
+          <input type="checkbox" ${d.noEncumber ? 'checked' : ''} onchange="containerDraft.noEncumber=this.checked"> Does not encumber
+        </label>
       </div>
     </div>
-    <div class="note">Capacity is the weight it can hold; leave it blank for no limit. Tick On Person for something you wear or carry (a backpack), so its contents count toward Weight Carried.${editing ? ' Renaming moves its items along with it.' : ''}</div>
     <div id="ct-error" style="color:var(--red-b);font-size:12px;margin-top:8px;display:none"></div>
     <div class="modal-actions">
       <button class="btn btn-dim" onclick="containerDraft=null;editingContainerName=null;closeModal()">Cancel</button>
@@ -252,7 +309,8 @@ function openDeleteContainerModal(name) {
 // keeps the popup open for the next one.
 function openAddSpellModal(opts) {
   opts = opts || {};
-  spellDraft = { school: '', name: '', cost: 0, notes: '' };
+  if (ensureSpellBooks(state.characters[state.activeChar])) saveState();
+  spellDraft = { school: '', name: '', cost: 0, notes: '', book: '' };
   if (!opts.keepAddNext) addNextSpell = false;
   renderAddSpellModal(opts.justAdded);
 }
@@ -267,6 +325,16 @@ function renderAddSpellModal(justAdded) {
   const breakdown = def && def.costs ? spellCostText(def.costs) : '—';
   const char = state.characters[state.activeChar];
   const level = char && d.school ? spellLevel(char, d.school) : 0;
+  // Which spell book it goes in: only books with room for its cost can be
+  // picked; the default is a carried book with room (see defaultSpellBook).
+  const books = spellBooks(char);
+  const cost = parseFloat(d.cost) || 0;
+  const chosen = books.find(b => b.bookId === d.book);
+  if (!chosen || spellBookRoom(char, chosen) < cost) { const def = defaultSpellBook(char, cost); d.book = def ? def.bookId : ''; }
+  const bookField = `<select class="w-lg" onchange="setSpellDraftBook(this.value)">${opt('', '— select —', !d.book)}${books.map(b => {
+      const room = spellBookRoom(char, b);
+      return `<option value="${escapeHtml(b.bookId)}" ${d.book === b.bookId ? 'selected' : ''} ${room < cost ? 'disabled' : ''}>${escapeHtml(b.name || '(unnamed)')} (${escapeHtml(b.location || 'Carried')}) · ${SPELL_BOOK_CAPACITY - room} / ${SPELL_BOOK_CAPACITY}${room < cost ? ' · full' : ''}</option>`;
+    }).join('')}</select>`;
   const spellField = !d.school
     ? `<select class="w-lg" disabled><option>— select —</option></select>`
     : catalog.length
@@ -274,13 +342,15 @@ function renderAddSpellModal(justAdded) {
       : `<input class="w-lg" value="${escapeHtml(d.name)}" placeholder="Not in the catalog: type its name" oninput="setSpellDraftName(this.value, true)">`;
   openModal(`
     <h3>Add Spell</h3>
-    ${justAdded ? `<div class="note" style="margin-bottom:8px;color:var(--gold-dim)">Added “${escapeHtml(justAdded)}”. Next spell:</div>` : ''}
+    ${justAdded ? `<div class="note">Added “${escapeHtml(justAdded)}”. Next spell:</div>` : ''}
     <div class="form-row">
       <div class="form-group"><label>School</label>
         <select class="w-md" onchange="setSpellDraftSchool(this.value)">${opt('', '— select —', !d.school)}${schools.map(sc => opt(sc, sc, d.school === sc)).join('')}</select>
       </div>
       <div class="form-group"><label>Spell</label>${spellField}</div>
+      <div class="form-group"><label>Spell Book</label>${bookField}</div>
     </div>
+    ${d.book ? '' : `<div class="warn">No spell book has room for this spell (cost ${cost} of ${SPELL_BOOK_CAPACITY}). Add a spell book first.</div>`}
     <div class="form-row">
       <div class="computed-item"><span class="ci-label">Level</span><span class="ci-value">${d.school ? level : '—'}</span></div>
       <div class="computed-item"><span class="ci-label">Cost</span><span class="ci-value" style="font-size:13px">${escapeHtml(breakdown)}</span></div>
@@ -292,8 +362,34 @@ function renderAddSpellModal(justAdded) {
         <input type="checkbox" ${addNextSpell ? 'checked' : ''} onchange="addNextSpell=this.checked"> Add another spell
       </label>
       <button class="btn btn-dim" onclick="spellDraft=null;addNextSpell=false;closeModal()">Cancel</button>
-      <button class="btn btn-gold" id="as-add" ${d.school && String(d.name).trim() ? '' : 'disabled'} onclick="confirmAddSpell()">Add Spell</button>
+      <button class="btn btn-gold" id="as-add" ${d.school && String(d.name).trim() && d.book ? '' : 'disabled'} onclick="confirmAddSpell()">Add Spell</button>
     </div>`, { wide: true, width: 'min(560px, 92vw)' });
+}
+
+// Add Spell Book: a name and where it's kept. A character's first book
+// suggests "My First", carried.
+function openAddSpellBookModal() {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  spellBookDraft = { name: spellBooks(char).length ? '' : 'My First', location: '' };
+  renderAddSpellBookModal();
+}
+function renderAddSpellBookModal() {
+  const char = state.characters[state.activeChar];
+  const d = spellBookDraft;
+  if (!char || !d) return;
+  const opt = (value, label, selected) => `<option value="${escapeHtml(value)}" ${selected ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+  openModal(`
+    <h3>Add Spell Book${infoTip(`Holds spells costing up to ${SPELL_BOOK_CAPACITY} in all. It's added to the inventory, where it can be moved like any item; a new container comes from Add Container there.`)}</h3>
+    <div class="form-row">
+      <div class="form-group"><label>Name</label><input class="w-lg" value="${escapeHtml(d.name)}" placeholder="e.g. Travelling Book" oninput="spellBookDraft.name=this.value;document.getElementById('sb-add').disabled=!this.value.trim()"></div>
+      <div class="form-group"><label>Kept</label><select class="w-md" onchange="spellBookDraft.location=this.value">${opt('', 'Carried', !d.location)}${itemLocations(char).map(l => opt(l, l, d.location === l)).join('')}</select></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-dim" onclick="spellBookDraft=null;closeModal()">Cancel</button>
+      <button class="btn btn-gold" id="sb-add" ${String(d.name).trim() ? '' : 'disabled'} onclick="confirmAddSpellBook()">Add Spell Book</button>
+    </div>`, { width: 'min(520px, 92vw)' });
 }
 
 function openNewCharModal(preset) {
@@ -316,7 +412,7 @@ function openNewCharModal(preset) {
     <hr class="divider">
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:8px">
       <input type="checkbox" id="nc-roll" ${roll?'checked':''} onchange="document.getElementById('nc-roll-options').style.display=this.checked?'block':'none'">
-      Roll new character (attributes, race, subrace, height/weight/age, social background)
+      Roll new character (attributes, race, subrace, height/weight/age, social background)${infoTip(`Race and subrace are single d100 rolls each (no re-roll/choice). Stops after Social Number — does not roll the Acquisitions item chart.`)}
     </label>
     <div id="nc-roll-options" style="display:${roll?'block':'none'};margin-bottom:10px">
       <div class="form-row">
@@ -331,7 +427,6 @@ function openNewCharModal(preset) {
           </select>
         </div>
       </div>
-      <div class="note">Race and subrace are single d100 rolls each (no re-roll/choice). Stops after Social Number — does not roll the Acquisitions item chart.</div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-dim" onclick="openCharTutorial(captureNewCharFormState())">Quick Tutorial</button>
@@ -660,93 +755,96 @@ function createChar() {
   renderApp();
 }
 
-let addSkillModalMode = 'other';
-
+// Add Skill: which guild it's learned under (one button per guild the
+// character has), then a skill class (its type, in SKILL_TYPE_ORDER) and one
+// of that class's top-level skills, both dropdowns. Sub-skills aren't offered
+// (dropdown ones are filled in under their parent). The search box narrows
+// the Skill list: within the class if one is picked, else across all of them.
+// The class picked last is remembered while the page is open.
+let addSkillClass = '';
+let addSkillGuildKey = 'primary';
+let addSkillSearch = '';
+function addSkillGuilds(char) {
+  return [['primary', 'Primary', char.guild], ['secondary', 'Secondary', char.guild2], ['tertiary', 'Tertiary', char.guild3]]
+    .filter(g => g[2]).map(([key, label, name]) => ({ key, label, name }));
+}
+function addSkillGuildName(char) {
+  const g = addSkillGuilds(char).find(x => x.key === addSkillGuildKey);
+  return g ? g.name : (char.guild || '');
+}
+function addSkillClasses() {
+  const types = new Set(SKILLS.filter(s => !s.parent).map(s => s.type));
+  return SKILL_TYPE_ORDER.filter(t => types.has(t)).concat([...types].filter(t => !SKILL_TYPE_ORDER.includes(t)));
+}
 function openAddSkillModal() {
-  const char = state.characters[state.activeChar];
-  const guildTabs = [
-    char && char.guild ? { key: 'primary', label: `Primary Guild (${char.guild})` } : null,
-    char && char.guild2 ? { key: 'secondary', label: `Secondary Guild (${char.guild2})` } : null,
-    char && char.guild3 ? { key: 'tertiary', label: `Tertiary Guild (${char.guild3})` } : null,
-  ].filter(Boolean);
-
-  addSkillModalMode = guildTabs.length ? guildTabs[0].key : 'other';
-
-  openModal(`
-    <h3>Add Skill</h3>
-    <div class="form-group" style="margin-bottom:8px;display:flex;gap:6px;flex-wrap:wrap">
-      ${guildTabs.map(g => `<button class="btn btn-dim" id="skill-mode-${g.key}" onclick="setAddSkillMode('${g.key}')">${g.label}</button>`).join('')}
-      <button class="btn btn-dim" id="skill-mode-other" onclick="setAddSkillMode('other')">Other (All Skills)</button>
-    </div>
-    <div class="form-group" style="margin-bottom:8px"><label>Filter</label>
-      <input class="w-full" id="skill-filter"  placeholder="Type to search..." oninput="filterSkillList(this.value)">
-    </div>
-    <div id="skill-list" style="max-height:300px;overflow-y:auto;border:1px solid var(--border)"></div>
-    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button></div>`);
-
-  renderAddSkillList();
+  const char = state.characters[state.activeChar] || {};
+  const guilds = addSkillGuilds(char);
+  if (!guilds.some(g => g.key === addSkillGuildKey)) addSkillGuildKey = guilds.length ? guilds[0].key : 'primary';
+  if (!addSkillClasses().includes(addSkillClass)) addSkillClass = '';
+  addSkillSearch = '';
+  openModal(`<h3>Add Skill</h3><div id="add-skill-body"></div>`);
+  renderAddSkillForm();
 }
-
-function setAddSkillMode(mode) {
-  addSkillModalMode = mode;
-  const filterInput = document.getElementById('skill-filter');
-  if (filterInput) filterInput.value = '';
-  renderAddSkillList();
-}
-
-function renderAddSkillList() {
-  const char = state.characters[state.activeChar];
-  const typeOrder = SKILL_TYPE_ORDER;
-  const isGuildMode = addSkillModalMode === 'primary' || addSkillModalMode === 'secondary' || addSkillModalMode === 'tertiary';
-  const listEl = document.getElementById('skill-list');
-
-  if (isGuildMode) {
-    // Guild tables cover most of the skill list at varying bonus levels rather than
-    // a clean specialty/baseline split, so instead of hiding skills we surface the
-    // guild's best bonuses first — that's what actually cuts down the scrolling.
-    const guildName = addSkillModalMode === 'primary' ? char.guild : addSkillModalMode === 'secondary' ? char.guild2 : char.guild3;
-    const ranked = SKILLS
-      .map(s => ({ s, bonus: getGuildBase(guildName, s.name) }))
-      .filter(x => x.bonus > 0)
-      .sort((a, b) => b.bonus - a.bonus);
-
-    listEl.innerHTML = ranked.length ? ranked.map(({s, bonus}) => `
-      <div class="sidebar-item skill-opt" onclick="addSkill('${s.name.replace(/'/g,"\\'")}')" data-name="${s.name.toLowerCase()}" style="padding:5px 12px;border-bottom:1px solid rgba(179,154,102,.3);display:flex;justify-content:space-between;gap:8px">
-        <span>${s.name}</span>
-        <span style="display:flex;gap:8px;align-items:center;white-space:nowrap">
-          <span style="font-size:10px;color:var(--gold-dim)">${bonus.toFixed(3)}</span>
-          <span class="lv" style="font-size:10px">${s.parent ? '↳ '+s.parent : 'Base'}</span>
-        </span>
-      </div>`).join('') : '<div class="note" style="padding:10px">No skills found for this guild.</div>';
-  } else {
-    const byType = {};
-    for (const s of SKILLS) {
-      if (!byType[s.type]) byType[s.type] = [];
-      byType[s.type].push(s);
-    }
-    const sortedTypes = typeOrder.filter(t => byType[t]).concat(Object.keys(byType).filter(t => !typeOrder.includes(t)));
-
-    listEl.innerHTML = sortedTypes.length ? sortedTypes.map(type => `
-      <div style="padding:3px 8px;background:var(--header-bg);color:var(--header-text);font-size:10px;text-transform:uppercase">${type}</div>
-      ${(byType[type]||[]).map(s => `
-      <div class="sidebar-item skill-opt" onclick="addSkill('${s.name.replace(/'/g,"\\'")}')" data-name="${s.name.toLowerCase()}" style="padding:5px 12px;border-bottom:1px solid rgba(179,154,102,.3)">
-        <span>${s.name}</span>
-        <span class="lv" style="font-size:10px">${s.parent ? '↳ '+s.parent : 'Base'}</span>
-      </div>`).join('')}
-    `).join('') : '<div class="note" style="padding:10px">No skills found.</div>';
+function renderAddSkillForm(fromSearch) {
+  const body = document.getElementById('add-skill-body');
+  if (!body) return;
+  const char = state.characters[state.activeChar] || {};
+  const guilds = addSkillGuilds(char);
+  const guildName = addSkillGuildName(char);
+  const classes = addSkillClasses();
+  // a skill already on the sheet can't be added again, unless it's templated
+  // (a weapon skill bound to a different weapon class each time)
+  const have = new Set((char.skills || []).filter(si => !si.dropdownOnly).map(si => { const d = findSkillDef(si.skillName); return d ? d.name : si.skillName; }));
+  const q = addSkillSearch.trim().toLowerCase();
+  // what the search matches, by skill name or class name, in every class;
+  // the Class list keeps offering all the classes with matches even after
+  // one is picked, so you can switch between them
+  const allMatches = q ? SKILLS.filter(s => !s.parent && (s.name.toLowerCase().includes(q) || String(s.type).toLowerCase().includes(q))) : [];
+  const matchClasses = classes.filter(t => t === addSkillClass || allMatches.some(s => s.type === t));
+  const matches = addSkillClass ? allMatches.filter(s => s.type === addSkillClass) : allMatches;
+  const exact = matches.find(s => s.name.toLowerCase() === q);
+  const exactClass = !addSkillClass && classes.find(t => t.toLowerCase() === q);
+  // with no class picked, an exact name, or matches all in one class, settle
+  // the class; otherwise it's "multiple"
+  const shownClass = addSkillClass || (q ? (exact ? exact.type : exactClass ? exactClass : matchClasses.length === 1 ? matchClasses[0] : '') : '');
+  const classChoices = q ? matchClasses : classes;
+  const skills = (q ? matches.filter(s => !shownClass || s.type === shownClass) : SKILLS.filter(s => !s.parent && s.type === shownClass))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  // an exact name, or a single match, is picked for you
+  const pickedSkill = q ? (exact || (skills.length === 1 ? skills[0] : null)) : null;
+  const isTaken = s => have.has(s.name) && !s.templated;
+  const preselect = pickedSkill && !isTaken(pickedSkill) ? pickedSkill.name : '';
+  const opt = s => {
+    const taken = isTaken(s);
+    const bonus = guildName ? getGuildBase(guildName, s.name) : 0;
+    const extra = [shownClass ? '' : s.type, taken ? 'on sheet' : bonus > 0 ? bonus.toFixed(3) : ''].filter(Boolean).join(' · ');
+    return `<option value="${escapeHtml(s.name)}" ${taken ? 'disabled' : ''} ${s.name === preselect ? 'selected' : ''}>${escapeHtml(s.name)}${extra ? ' (' + escapeHtml(extra) + ')' : ''}</option>`;
+  };
+  const skillPrompt = !shownClass && !q ? '— pick a class or search —' : skills.length ? '— select —' : 'No matching skills';
+  const classPrompt = !q ? '— select —' : matchClasses.length > 1 ? '— multiple —' : matchClasses.length ? '— select —' : 'No matching skills';
+  body.innerHTML = `
+    ${guilds.length > 1 ? `<div class="form-group"><label>Learn Under</label><div class="add-skill-guilds">${guilds.map(g =>
+      `<button type="button" class="btn ${g.key === addSkillGuildKey ? 'btn-gold' : 'btn-dim'}" onclick="addSkillGuildKey='${g.key}';renderAddSkillForm()">${g.label} (${escapeHtml(g.name)})</button>`).join('')}</div></div>` : ''}
+    <div class="form-group"><label>Search</label>
+      <input class="w-full" id="add-skill-search" placeholder="Part of a skill or class name" value="${escapeHtml(addSkillSearch)}" oninput="addSkillSearch=this.value;renderAddSkillForm(true)">
+    </div>
+    <div class="form-group"><label>Skill Class</label>
+      <select class="w-full" onchange="addSkillClass=this.value;renderAddSkillForm()">
+        <option value="" ${shownClass ? '' : 'selected'}>${classPrompt}</option>
+        ${classChoices.map(t => `<option value="${escapeHtml(t)}" ${t === shownClass ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Skill${guildName ? infoTip('The number beside a skill is its ' + guildName + ' guild EXPMOD.') : ''}</label>
+      <select class="w-full" id="add-skill-pick" ${skills.length ? '' : 'disabled'} onchange="document.getElementById('add-skill-go').disabled = !this.value">
+        <option value="">${skillPrompt}</option>${skills.map(opt).join('')}
+      </select>
+    </div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" id="add-skill-go" ${preselect ? '' : 'disabled'} onclick="addSkill(document.getElementById('add-skill-pick').value)">Add</button></div>`;
+  // typing re-renders the form; keep the cursor in the search box
+  if (fromSearch) {
+    const box = document.getElementById('add-skill-search');
+    box.focus(); box.setSelectionRange(box.value.length, box.value.length);
   }
-
-  ['primary','secondary','tertiary','other'].forEach(m => {
-    const btn = document.getElementById('skill-mode-'+m);
-    if (btn) btn.classList.toggle('btn-gold', m === addSkillModalMode);
-  });
-}
-
-function filterSkillList(val) {
-  const v = val.toLowerCase();
-  document.querySelectorAll('.skill-opt').forEach(el => {
-    el.style.display = el.dataset.name.includes(v) ? '' : 'none';
-  });
 }
 
 function lookupRacialBonus(character, skillName) {
@@ -758,15 +856,23 @@ function lookupRacialBonus(character, skillName) {
   return entry ? entry.bonus : 0;
 }
 
-function autoPopulateDropdownChildren(character, parentInst) {
+// visited: skills already filled in during this call, so the recursion below
+// (a skill's templated children, a weapon class's shared skills) never loops.
+function autoPopulateDropdownChildren(character, parentInst, visited = new Set()) {
+  if (visited.has(parentInst.id)) return 0;
+  const topLevel = visited.size === 0;
+  visited.add(parentInst.id);
   const parentDef = findSkillDef(parentInst.skillName);
   if (!parentDef) return 0;
-  const existingKeys = new Set((character.skills||[]).map(s => s.skillName + '|' + (s.binding||'')));
+  // Looked up live: a nested call below may have added skills since this one started.
+  const findByKey = key => (character.skills||[]).find(s => s.skillName + '|' + (s.binding||'') === key);
   let added = 0;
 
+  // Returns the child's instance (the existing one if it is already there).
   function addChild(childDef, binding) {
     const key = childDef.name + '|' + (binding||'');
-    if (existingKeys.has(key)) return;
+    const existing = findByKey(key);
+    if (existing) return existing;
     // Self-heal: an existing instance of this skill with no binding, whose Parent Skill
     // reference points at the weapon being trained now, is almost certainly the same
     // skill that was never properly bound — fix it instead of creating a duplicate.
@@ -776,12 +882,11 @@ function autoPopulateDropdownChildren(character, parentInst) {
       );
       if (orphan) {
         orphan.binding = binding;
-        existingKeys.add(key);
-        return;
+        return orphan;
       }
     }
     const id = 'sk_' + Date.now() + '_' + Math.random().toString(36).slice(2,6) + '_' + added;
-    character.skills.push({
+    const inst = {
       id, skillName: childDef.name,
       guildName: parentInst.guildName || character.guild || '',
       dropdownOnly: true,
@@ -791,17 +896,28 @@ function autoPopulateDropdownChildren(character, parentInst) {
       rolls: Array(20).fill(''),
       bonusItem: 0, bonusRace: 0, bonusMagic: 0, bonusOther: 0,
       binding: binding || '', notes: ''
-    });
-    existingKeys.add(key);
+    };
+    character.skills.push(inst);
     added++;
+    return inst;
   }
 
-  // Direct dropdown children matched by literal parent field (e.g. Sculpt under Basic Artist)
+  // Direct dropdown children matched by literal parent field (e.g. Sculpt under Basic Artist).
+  // A templated child takes the weapon class its parent is bound to (Critical Hit Bonus
+  // under Damage Bonus bound to Basic Spears is bound to Basic Spears too), and its own
+  // dropdowns are filled in as well; with no class to bind to, it is left for the player.
+  const parentClass = WEAPON_CLASSES.includes(parentInst.binding) ? parentInst.binding
+    : (WEAPON_CLASSES.includes(parentDef.name) ? parentDef.name : null);
   const directChildren = SKILLS.filter(s =>
     s.parent && s.parent.trim().toLowerCase() === parentDef.name.trim().toLowerCase() &&
-    !s.templated && s.dropdown !== null && s.dropdown !== undefined
+    s.dropdown !== null && s.dropdown !== undefined
   );
-  for (const c of directChildren) addChild(c, '');
+  for (const c of directChildren) {
+    if (!c.templated) { addChild(c, ''); continue; }
+    if (!parentClass) continue;
+    const inst = addChild(c, parentClass);
+    if (inst) added += autoPopulateDropdownChildren(character, inst, visited);
+  }
 
   // Special case: every Basic weapon skill shares the same 5 templated combat dropdowns,
   // bound to that specific weapon class. Single weap spec is excluded — it binds to one
@@ -812,27 +928,35 @@ function autoPopulateDropdownChildren(character, parentInst) {
   // covers old characters where the base weapon skill entry was never added directly.
   const weaponClass = WEAPON_CLASSES.includes(parentDef.name) ? parentDef.name
     : (WEAPON_CLASSES.includes(parentInst.binding) ? parentInst.binding : null);
-  if (weaponClass) {
+  if (weaponClass && topLevel) {
     const sharedTemplated = ['Attack versus', 'Damage Bonus', 'Initiative bonus', 'Multiple attack', 'Parry'];
+    // ...and each of those gets its own dropdowns (Critical Hit Bonus, Call Damage
+    // and Stunning Attack under Damage Bonus, Disarm under Parry, and so on).
     for (const name of sharedTemplated) {
       const def = findSkillDef(name);
-      if (def) addChild(def, weaponClass);
+      const inst = def && addChild(def, weaponClass);
+      if (inst) added += autoPopulateDropdownChildren(character, inst, visited);
     }
   }
 
   return added;
 }
 
-function manualPopulateChildren(skillId) {
+// Character menu → Populate Missing Dropdown Skills: fills in the dropdown-only
+// sub-skills of every trained skill on the character that is missing them
+// (useful for skills trained before a dropdown was added to the catalog).
+function populateAllMissingDropdowns() {
   const char = state.characters[state.activeChar];
-  if (!char) return;
-  const si = (char.skills || []).find(s => s.id === skillId);
-  if (!si) return;
-  const added = autoPopulateDropdownChildren(char, si);
+  if (!char) { alert('Select a character first.'); return; }
+  const trained = (char.skills || []).filter(si => {
+    const def = !si.dropdownOnly && parseFloat(si.rawXP) > 0 && findSkillDef(si.skillName);
+    return def && (!def.templated || WEAPON_CLASSES.includes(si.binding));
+  });
+  const added = trained.reduce((n, si) => n + autoPopulateDropdownChildren(char, si), 0);
   saveState();
-  renderSkillModule(skillId);
   renderSidebar();
-  alert(added > 0 ? `Added ${added} dropdown skill(s).` : 'Nothing to add — all dropdown children already present.');
+  renderMain();
+  alert(added > 0 ? `Added ${added} dropdown skill(s).` : 'Nothing to add — all dropdown skills are already present.');
 }
 
 function addSkill(skillName) {
@@ -841,9 +965,8 @@ function addSkill(skillName) {
   if (!char.skills) char.skills = [];
   const def = findSkillDef(skillName);
   const id = 'sk_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
-  const guildForSkill = (addSkillModalMode === 'secondary' && char.guild2) ? char.guild2
-    : (addSkillModalMode === 'tertiary' && char.guild3) ? char.guild3
-    : char.guild || '';
+  // the guild picked in the Add Skill popup (the skill page can change it)
+  const guildForSkill = addSkillGuildName(char);
   char.skills.push({
     id, skillName,
     guildName: guildForSkill,

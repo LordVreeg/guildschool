@@ -29,6 +29,42 @@ function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+// A ⓘ for a formula or rule explanation, so it doesn't take up room on the
+// page (see "Help text" in CLAUDE.md). Its text shows in a tooltip the app
+// draws itself, on hover, click/tap or keyboard focus: a native title
+// tooltip doesn't show in every browser (or at all on touch screens).
+function infoTip(text) {
+  return ` <span class="info-tip" tabindex="0" role="note" aria-label="${escapeHtml(text)}" data-tip="${escapeHtml(text)}">ⓘ</span>`;
+}
+// One floating tooltip for every ⓘ, placed beside the one being shown.
+(function () {
+  let box = null;
+  const show = el => {
+    if (!box) { box = document.createElement('div'); box.id = 'info-tip-box'; document.body.appendChild(box); }
+    box.textContent = el.dataset.tip;
+    box.style.display = 'block';
+    const r = el.getBoundingClientRect(), w = box.offsetWidth, h = box.offsetHeight;
+    const left = Math.max(8, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - 8));
+    const top = r.bottom + 6 + h > window.innerHeight ? r.top - h - 6 : r.bottom + 6;
+    box.style.left = left + 'px';
+    box.style.top = Math.max(8, top) + 'px';
+  };
+  const hide = () => { if (box) box.style.display = 'none'; };
+  const tipOf = e => e.target.closest && e.target.closest('.info-tip');
+  document.addEventListener('mouseover', e => { const t = tipOf(e); if (t) show(t); });
+  document.addEventListener('mouseout', e => { if (tipOf(e) && !tipOf(e).contains(e.relatedTarget)) hide(); });
+  document.addEventListener('focusin', e => { const t = tipOf(e); if (t) show(t); });
+  document.addEventListener('focusout', e => { if (tipOf(e)) hide(); });
+  // click/tap shows it (without also clicking a label or header it sits in);
+  // a click anywhere else hides it
+  document.addEventListener('click', e => {
+    const t = tipOf(e);
+    if (t) { e.preventDefault(); e.stopPropagation(); show(t); }
+    else hide();
+  }, true);
+  document.addEventListener('scroll', hide, true);
+})();
+
 // GuildSchool names are all "Location: Name" (e.g. "Igbar: Bowyers of
 // Ceminiar") -- with 40+ guilds per location across several locations, a
 // flat list (even grouped) is a long scroll. <optgroup> can't collapse --
@@ -290,7 +326,7 @@ function shieldWeaponItem(char, idx) {
     speedMissile: 0, speedMelee: wp.speed_melee, speedReadied: 0,
     weaponProtection: 0, threatRange: 0, range: 0,
     magicBonusToHit: '0', magicDamageAfterDivider: '0',
-    parryPointsUsed: it.spikeParryUsed || 0, collapsed: !!it.spikeCollapsed, wielded: !!it.wielded, notes: ''
+    parryPointsUsed: it.spikeParryUsed || 0, wielded: !!it.wielded, notes: ''
   };
 }
 function shieldWeaponItems(char) {
@@ -325,86 +361,29 @@ function removeAutoHandFootItems(char) {
 // Weapon choices for a weapon class. Two overlaps: martial arts and daggers
 // (every weapon marked "(martial)" and the Katar is a choice under both Martial
 // artist and Dagger), and the Quarterstaff and War Staff, which can be used as
-// a Spear, a Pole Arm or a Martial weapon.
-function weaponModelsForClass(weaponClass, catName) {
+// a Spear, a Pole Arm or a Martial weapon. cats: the class's categories
+// (weaponCategoriesForClass), e.g. Martial and Thrown for Basic Martial artist.
+function weaponModelsForClass(weaponClass, cats) {
+  cats = [].concat(cats);
   const sharesMartialAndDagger = w => /martial|katar/i.test(w.name);
   const isMartialOrDagger = weaponClass === 'Basic Martial artist' || weaponClass === 'Basic Dagger';
   const sharesStaff = w => /^quarterstaff$|^war staff/i.test(w.name);
   const isStaffClass = weaponClass === 'Basic Spears' || weaponClass === 'Basic Pole Weapons' || weaponClass === 'Basic Martial artist';
   const seen = new Set();
   return WEAPONS.filter(w =>
-    w.category === catName ||
+    cats.includes(w.category) ||
     (isMartialOrDagger && sharesMartialAndDagger(w) && (w.category === 'Martial' || w.category === 'Daggers')) ||
     (isStaffClass && sharesStaff(w) && (w.category === 'Spears' || w.category === 'Pole Arms'))
   ).filter(w => !seen.has(w.name) && seen.add(w.name));
 }
-// The automatic Hand/Foot weapon's panel on the Combat page: same numbers as
-// any weapon, but read-only (it is not an inventory item) apart from how many
-// Parry points are committed to it.
-function renderHandFootPanel(char, pos, total) {
-  const hf = handFootWeapon(char);
-  if (!hf) return '';
-  const w = computeWeapon(char, hf);
-  const parryCell = `<input type="number" min="0" max="${w.parrySkval}" class="w-sm" value="${w.parryPointsUsed}" onchange="updateHandFootParry(this.value)">`;
-  const collapsed = !!char.handFootCollapsed;
-  return `
-  <div class="panel" style="margin-bottom:10px">
-    <div class="panel-header" style="cursor:pointer;display:flex;align-items:center;gap:8px;flex-wrap:wrap" onclick="toggleHandFootOpen()" title="Click to ${collapsed ? 'open' : 'close'}">
-      <span style="font-size:10px;width:10px">${collapsed ? '▶' : '▼'}</span>
-      <h2 style="font-size:13px">Hand/Foot</h2><span class="type-badge">Basic Martial artist</span><span class="type-badge" style="color:var(--gold)">automatic</span>
-      ${collapsed ? weaponSummaryHtml(hf, w) : ''}
-      ${weaponMoveButtonsHtml(pos || 0, total || 1)}
-    </div>
-    <div class="panel-body" style="display:${collapsed ? 'none' : 'block'}">
-      <div class="note" style="margin-bottom:8px;font-style:italic">Comes with Basic Martial artist: always available, no inventory item needed. Damage ${hf.damageDice} / ${hf.dividingDie}, speed ${hf.speedMelee}, threat range ${hf.threatRange}.</div>
-      <div class="note">Skill Ability: ${w.baseWeaponSkval} (${hf.weaponClass}) + ${w.singleWeapSpec} (Single Weap Spec) = ${w.skillAbility}</div>
-      <hr class="divider">
-      <table class="skill-table">
-        <thead><tr><th></th><th>To-Hit</th><th>Dmg Bonus</th><th>Speed</th><th>Parry</th><th>Parry Used</th><th>Multiple Attack</th><th>Crit %</th><th>Fumble %</th></tr></thead>
-        <tbody>
-          <tr>${w.oneHand ? `<td>One-Handed</td><td class="skval-cell">${Math.round(w.oneHand.hit)}</td><td>${Math.round(w.oneHand.dmgBonus)}</td><td>${Math.round(w.oneHand.speed)}</td><td>${w.parrySkval}</td><td>${parryCell}</td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.oneHand.critChance)}</td><td>${fmtFumble(w.oneHand.fumbleThreshold)}</td>` : ''}</tr>
-        </tbody>
-      </table>
-      <div class="note">Parry Used is capped at your Parry skill for this weapon; every point subtracts from its To-Hit and adds to your Protection (PR), against melee attacks only.</div>
-    </div>
-  </div>`;
-}
-
-// The spike of a spiked shield, on the Combat page: read-only like Hand/Foot
-// (its numbers come from the shield's catalog entry) apart from Parry points.
-function renderShieldWeaponPanel(char, entry, pos, total) {
-  const sw = entry.it, idx = entry.idx;
-  const w = computeWeapon(char, sw);
-  const parryCell = `<input type="number" min="0" max="${w.parrySkval}" class="w-sm" value="${w.parryPointsUsed}" onchange="updateShieldSpikeParry(${idx}, this.value)">`;
-  return `
-  <div class="panel" style="margin-bottom:10px">
-    <div class="panel-header" style="cursor:pointer;display:flex;align-items:center;gap:8px;flex-wrap:wrap" onclick="toggleShieldSpikeOpen(${idx})" title="Click to ${sw.collapsed ? 'open' : 'close'}">
-      <span style="font-size:10px;width:10px">${sw.collapsed ? '▶' : '▼'}</span>
-      <h2 style="font-size:13px">${escapeHtml(sw.name)}</h2><span class="type-badge">${sw.weaponClass}</span><span class="type-badge" style="color:var(--gold)">from shield</span>${sw.wielded ? '<span class="type-badge" style="color:var(--gold)">wielding</span>' : ''}
-      ${sw.collapsed ? weaponSummaryHtml(sw, w) : ''}
-      ${weaponMoveButtonsHtml(pos, total)}
-    </div>
-    <div class="panel-body" style="display:${sw.collapsed ? 'none' : 'block'}">
-      <div class="note" style="margin-bottom:8px;font-style:italic">This shield is also a weapon, one-handed only. Damage ${sw.damageDice} / ${sw.dividingDie}, speed ${sw.speedMelee}. Tick Wielding in the Shield Breakdown below to use it.</div>
-      <div class="note">Skill Ability: ${w.baseWeaponSkval} (${sw.weaponClass}) + ${w.singleWeapSpec} (Single Weap Spec) = ${w.skillAbility}</div>
-      <hr class="divider">
-      <table class="skill-table">
-        <thead><tr><th></th><th>To-Hit</th><th>Dmg Bonus</th><th>Speed</th><th>Parry</th><th>Parry Used</th><th>Multiple Attack</th><th>Crit %</th><th>Fumble %</th></tr></thead>
-        <tbody>
-          <tr>${w.oneHand ? `<td>One-Handed${sw.wielded ? ' <span class="type-badge" style="color:var(--gold)">in use</span>' : ''}</td><td class="skval-cell">${Math.round(w.oneHand.hit)}</td><td>${Math.round(w.oneHand.dmgBonus)}</td><td>${Math.round(w.oneHand.speed)}</td><td>${w.parrySkval}</td><td>${parryCell}</td><td>${w.multipleAttackSkval}</td><td>${fmtCrit(w.oneHand.critChance)}</td><td>${fmtFumble(w.oneHand.fumbleThreshold)}</td>` : ''}</tr>
-        </tbody>
-      </table>
-      <div class="note">Parry Used is capped at your Parry skill for this weapon; every point subtracts from its To-Hit and adds to your Protection (PR), against melee attacks only.</div>
-    </div>
-  </div>`;
-}
-
-// The Combat page's weapon list in display order: every weapon item (with its
-// index in char.items) plus the automatic Hand/Foot, which sits at
-// char.handFootPos among them (first by default).
+// The Combat page's weapon list in display order: every weapon in use (with
+// its index in char.items), the spike of a spiked shield in use, plus the
+// automatic Hand/Foot, which sits at char.handFootPos among them (first by
+// default).
 function combatWeaponEntries(char) {
   const entries = [];
   (char.items || []).forEach((it, idx) => {
+    if (!itemInUse(char, it)) return;
     if (it.type === 'Weapon') entries.push({ kind: 'item', idx, it });
     else if (it.type === 'Shield') { const sw = shieldWeaponItem(char, idx); if (sw) entries.push({ kind: 'shield', idx, it: sw }); }
   });
@@ -420,40 +399,6 @@ function weaponMoveButtonsHtml(pos, total) {
     <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${pos === 0 ? 'disabled' : ''} onclick="moveWeapon(${pos},-1)" title="Move up">▲</button>
     <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${pos === total - 1 ? 'disabled' : ''} onclick="moveWeapon(${pos},1)" title="Move down">▼</button>
   </span>`;
-}
-
-// What a closed weapon still shows in its header line.
-function weaponSummaryHtml(it, w) {
-  const bits = [];
-  bits.push(w.oneHand ? `to-hit ${Math.round(w.oneHand.hit)}` : (w.twoHand ? `2H to-hit ${Math.round(w.twoHand.hit)}` : 'to-hit —'));
-  if (it.damageDice) bits.push(`${it.damageDice} / ${it.dividingDie || '—'}`);
-  return `<span class="note" style="font-size:11px">${bits.join(' · ')}</span>`;
-}
-
-function toggleWeaponOpen(idx) {
-  const char = state.characters[state.activeChar];
-  const it = char && char.items && char.items[idx];
-  if (!it) return;
-  it.collapsed = !it.collapsed;
-  saveState();
-  renderCombatModule();
-}
-
-function toggleHandFootOpen() {
-  const char = state.characters[state.activeChar];
-  if (!char) return;
-  char.handFootCollapsed = !char.handFootCollapsed;
-  saveState();
-  renderCombatModule();
-}
-
-function setAllWeaponsOpen(open) {
-  const char = state.characters[state.activeChar];
-  if (!char) return;
-  for (const it of char.items || []) if (it.type === 'Weapon') it.collapsed = !open; else if (it.type === 'Shield') it.spikeCollapsed = !open;
-  char.handFootCollapsed = !open;
-  saveState();
-  renderCombatModule();
 }
 
 // Moves a weapon up or down the list as displayed. Two weapon items trade
@@ -473,15 +418,6 @@ function moveWeapon(pos, dir) {
   } else {
     char.handFootPos = pos;
   }
-  saveState();
-  renderCombatModule();
-}
-
-function toggleShieldSpikeOpen(idx) {
-  const char = state.characters[state.activeChar];
-  const it = char && char.items && char.items[idx];
-  if (!it) return;
-  it.spikeCollapsed = !it.spikeCollapsed;
   saveState();
   renderCombatModule();
 }
@@ -597,5 +533,5 @@ function viewCharacterReadOnly(rowId) {
       <button class="btn btn-dim" onclick="renderApp()">← Back to my characters</button>
     </div>
     <div class="panel admin-readonly-view"><div class="panel-body">${buildCharacterSheetHtml(char)}</div></div>`;
-  document.getElementById('sidebar').innerHTML = '<div class="note" style="padding:12px;text-align:center">Viewing another player\'s character (read-only)</div>';
+  document.getElementById('sidebar').innerHTML = '<div class="note placeholder">Viewing another player\'s character (read-only)</div>';
 }

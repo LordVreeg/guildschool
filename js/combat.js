@@ -222,7 +222,7 @@ function openFoeStatsModal(combatantId) {
   const hasCc = [e.cc_fortitude, e.cc_reflex, e.cc_will, e.cc_surprise, e.cc_social].some(v => v);
   openModal(`
     <h3>${escapeHtml(c.display_name)}${e.race && e.race.trim().toLowerCase() !== String(c.display_name).trim().toLowerCase() ? ` <span style="color:var(--text-dim);text-transform:none">(${escapeHtml(e.race)})</span>` : ''}</h3>
-    <div class="note" style="margin-bottom:6px">Level ${e.level || 1}${e.location ? ' · ' + escapeHtml(e.location) : ''}${combatFoeXp[c.id] != null ? ' · XP ' + combatFoeXp[c.id].toLocaleString() : ''} · from the Beastiary entry "${escapeHtml(e.name)}"</div>
+    <div class="note">Level ${e.level || 1}${e.location ? ' · ' + escapeHtml(e.location) : ''}${combatFoeXp[c.id] != null ? ' · XP ' + combatFoeXp[c.id].toLocaleString() : ''} · from the Beastiary entry "${escapeHtml(e.name)}"</div>
     <div style="display:flex;gap:14px;flex-wrap:wrap">
       ${stat('HP now', c.current_hp != null ? c.current_hp + '/' + (c.max_hp != null ? c.max_hp : '?') : null)}
       ${stat('Avoidance', e.avoidance || 0)}${stat('Protection', e.protection || 0)}${stat('Bmod', e.bmod || 0)}
@@ -542,11 +542,10 @@ function renderEncounterHtml(enc, isGM) {
       ${isGM ? `<div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="advanceToNextSegment('${enc.id}')">Advance to Next Queued Action</button></div>` : ''}
       ${foeXpHeaderHtml}
     </div>
-    <div class="note" style="margin-bottom:6px">Default order within a tied segment: Spell → Non-Combat → Missile → Melee. Use the ▲▼ on a tied row in the Turn Order to put whoever you like first. Click a name there to jump to their card. Everything here is an editable suggestion -- adjust freely.</div>
     <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
       <div style="width:300px;flex-shrink:0;border:2px solid var(--gold-dim);border-radius:4px;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:baseline;background:var(--header-bg);padding:8px 12px">
-          <span style="font-size:14px;font-weight:bold;color:var(--header-text);text-transform:uppercase;letter-spacing:1px">Turn Order</span>
+          <span style="font-size:14px;font-weight:bold;color:var(--header-text);text-transform:uppercase;letter-spacing:1px">Turn Order</span>${infoTip(`Default order within a tied segment: Spell → Non-Combat → Missile → Melee. Use the ▲▼ on a tied row in the Turn Order to put whoever you like first. Click a name there to jump to their card. Everything here is an editable suggestion -- adjust freely.`)}
           <span style="font-size:11px;color:var(--header-text);opacity:.7">Count: ${visibleOrderedTracks.length + visibleSidelined.length}</span>
         </div>
         ${upcomingHtml}
@@ -729,7 +728,7 @@ function focusCombatantCard(combatantId) {
 }
 
 async function removeCombatant(id) {
-  if (!confirm('Remove this combatant from the fight?')) return;
+  if (!await appConfirm('Remove this combatant from the fight?')) return;
   const { error } = await sb.from('combat_combatants').delete().eq('id', id);
   if (error) { alert('Failed to remove: ' + error.message); return; }
   renderEncounterModule();
@@ -797,7 +796,7 @@ function openAddEffectModal(combatantId) {
       <div class="form-group"><label>Lasts (segments from now)</label><input id="eff-duration" type="number" step="any" class="w-sm" placeholder="e.g. 30"></div>
       <div class="form-group"><label>or Ends at Segment</label><input id="eff-expiry" type="number" step="any" class="w-sm"></div>
     </div>
-    <div class="note" style="margin-bottom:8px">Now is segment ${now}. Fill in one (Lasts wins if both); leave both blank for no time limit. Timed effects show in the Turn Order at the segment they end.</div>
+    <div class="note">Now is segment ${now}.${infoTip('Fill in one (Lasts wins if both); leave both blank for no time limit. Timed effects show in the Turn Order at the segment they end.')}</div>
     <div class="form-group" style="margin-bottom:8px"><label>Who is affected</label>
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin:2px 0 6px">${quickBtn('All', '__all')}${teams.map(t => quickBtn(t, t)).join('')}${quickBtn('None', '__none')}</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:3px 12px;max-height:220px;overflow-y:auto">${targetsHtml}</div>
@@ -911,7 +910,7 @@ async function openAddCombatantModal() {
   const foesHtml = (foes||[]).filter(f => !existingBestIds.has(f.id) && !bestiaryIsArchived(f)).map(f => pickRow('bestiary', f, withType(f))).join('') || '<li class="note">None available.</li>';
   openModal(`
     <h3>Add Combatants</h3>
-    <div class="note" style="margin-bottom:6px">Tick as many as you like, then Add Selected.</div>
+    <div class="note">Tick as many as you like, then Add Selected.</div>
     <div class="form-row" style="align-items:flex-start">
       <div class="form-group" style="flex:1"><label>Player Characters</label><ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${rosterHtml}</ul></div>
       <div class="form-group" style="flex:1"><label>Temp Characters</label><ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${tempHtml}</ul></div>
@@ -982,7 +981,7 @@ function openCreateGroupModal() {
   openModal(`
     <h3>New Group</h3>
     <div class="form-group" style="margin-bottom:8px"><label>Group Name</label><input class="w-full" id="ng-name" ></div>
-    <div class="note" style="margin-bottom:8px">Starting date (Reckoning of Nebler)</div>
+    <div class="note">Starting date (Reckoning of Nebler)</div>
     <div class="form-row">
       <div class="form-group"><label>Year (RON)</label><input id="ng-year" type="number" class="w-sm" value="895"></div>
       <div class="form-group"><label>Month</label>
@@ -1015,7 +1014,7 @@ async function createGroup() {
   activeGroupId = data.id;
   viewingVolumeId = null;
   closeModal();
-  renderGroupModule();
+  showGroupModule();
 }
 
 async function advanceGroupClock(groupId) {
@@ -1103,8 +1102,7 @@ async function maybePromptResting(groupId, nextSeconds, elapsedSeconds) {
   restingPromptRoster = (rosterChars || []).filter(r => r.data);
   const hours = (elapsedSeconds / 3600).toFixed(1);
   openModal(`
-    <h3>Advancing ${hours} hours — who was resting?</h3>
-    <div class="note" style="margin-bottom:8px">Resting means asleep or trying to sleep. Anyone left unchecked is assumed active and still recovers spell points automatically at the normal awake rate.</div>
+    <h3>Advancing ${hours} hours — who was resting?${infoTip(`Resting means asleep or trying to sleep. Anyone left unchecked is assumed active and still recovers spell points automatically at the normal awake rate.`)}</h3>
     <div style="margin-bottom:10px"><button class="btn btn-gold" onclick="restAllFurthestDown()" title="Marks everyone resting and sends their sleep recovery to whichever pools are furthest below max">Recover all furthest down</button></div>
     ${restingPromptRoster.map(r => {
       const pools = computeSpellPools(r.data);
@@ -1119,11 +1117,11 @@ async function maybePromptResting(groupId, nextSeconds, elapsedSeconds) {
         <div id="rest-pools-${r.id}" style="display:none;margin:6px 0 0 22px">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:6px">
             <input type="checkbox" class="rest-furthest" id="rest-furthest-${r.id}" onchange="syncRestSection('${r.id}')">
-            <span><b>Recover furthest down</b> <span class="note">(sleep rate goes to the pools with the most points missing, up to ${SLEEP_POOL_CAP}, re-picked every hour)</span></span>
+            <span><b>Recover furthest down</b>${infoTip(`Sleep rate goes to the pools with the most points missing, up to ${SLEEP_POOL_CAP}, re-picked every hour.`)}</span>
           </label>
-          <div class="note" style="margin-bottom:4px">${down ? `Furthest down now: ${down}.` : 'No pool is below max right now.'}</div>
+          <div class="note">${down ? `Furthest down now: ${down}.` : 'No pool is below max right now.'}</div>
           <div id="rest-manual-${r.id}">
-            <div class="note" style="margin-bottom:4px">Or pick which spell points they were working on reclaiming (unchecked pools still recover at the normal awake rate)</div>
+            <div class="note">Or pick which spell points they were working on reclaiming (unchecked pools still recover at the normal awake rate)</div>
             ${poolBoxes || '<span class="note">No trained spell pools.</span>'}
           </div>
         </div>
@@ -1190,7 +1188,7 @@ function renderHpRollModal(groupId, uptoSeconds) {
   }).join('');
   openModal(`
     <h3>Nightly HP Recovery Due</h3>
-    <div class="note" style="margin-bottom:8px">A full night's rest completed for these characters. Enter each player's Fortitude CC roll (d100, roll ≤ target succeeds), or roll online.</div>
+    <div class="note">A full night's rest completed for these characters. Enter each player's Fortitude CC roll (d100, roll ≤ target succeeds), or roll online.</div>
     <div style="margin-bottom:8px"><button class="btn btn-gold" onclick="rollAllHpOnline()" title="Rolls a d100 for every row that doesn't have a roll yet; rolls you've typed in are kept">Roll all</button></div>
     <table class="skill-table"><thead><tr><th>Character</th><th>Fort CC Target</th><th>Roll</th><th></th></tr></thead><tbody>${rows}</tbody></table>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Skip For Now</button><button class="btn btn-gold" onclick="applyHpRolls('${groupId}', ${uptoSeconds})">Apply</button></div>`);
@@ -1326,7 +1324,7 @@ async function renameVolume(volumeId) {
 async function startNewLogVolume(groupId) {
   const group = myGroups.find(g => g.id === groupId);
   if (!group) return;
-  if (!confirm('Close the current log at this moment and start a new one? Old entries stay archived and viewable, just not shown by default.')) return;
+  if (!await appConfirm('Close the current log at this moment and start a new one? Old entries stay archived and viewable, just not shown by default.')) return;
   const active = groupVolumesCache.find(v => v.end_seconds == null);
   if (active) {
     const { error: closeErr } = await sb.from('group_note_volumes').update({ end_seconds: group.clock_seconds }).eq('id', active.id);

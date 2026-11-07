@@ -3,6 +3,8 @@
 // ============================================================
 function selectChar(id) {
   state.activeChar = id || null;
+  // remembered so a refresh comes back to this character, not the last one saved
+  try { if (state.activeChar) localStorage.setItem('gs_active_char', state.activeChar); else localStorage.removeItem('gs_active_char'); } catch (e) {}
   state.activeSkillId = null;
   state.activeView = 'overview';
   renderApp();
@@ -88,13 +90,14 @@ const ITEM_PICK_CUSTOM = '__custom__';
 // The popup's dropdowns for a draft, in order: Type, then the type's class
 // and/or catalog pickers. key is the draft field a class step sets; apply
 // fills the draft from a catalog pick; custom adds "— custom —" at the bottom.
-function itemPickSteps(d) {
+// picks: the choices made so far (itemPicks, unless another set is being built).
+function itemPickSteps(d, picks = itemPicks) {
   const steps = [{ key: 'type', label: 'Type', options: ITEM_TYPES, labelOf: itemTypeLabel }];
   if (d.type === 'Weapon') {
     steps.push({ key: 'weaponClass', label: 'Weapon Class', options: WEAPON_CLASSES, custom: true });
     if (d.weaponClass) {
-      const cat = Object.entries(WEAPON_CATEGORY_TO_SKILL).find(([c, sk]) => sk === d.weaponClass);
-      const models = cat ? weaponModelsForClass(d.weaponClass, cat[0]) : [];
+      const cats = weaponCategoriesForClass(d.weaponClass);
+      const models = cats.length ? weaponModelsForClass(d.weaponClass, cats) : [];
       steps.push({ key: 'weaponModel', label: 'Model', options: models.map(m => m.name), custom: true, apply: applyWeaponModel });
     }
   } else if (d.type === 'Armor') {
@@ -105,6 +108,11 @@ function itemPickSteps(d) {
     steps.push({ key: 'coin', label: 'Coin', options: COINAGE.map(c => `${c.name} (${c.metal})`), apply: applyCoinType });
   } else if (d.type === 'Ammunition') {
     steps.push({ key: 'ammoBase', label: 'Ammunition', options: AMMUNITION.map(a => a.name), custom: true, apply: applyAmmoType });
+    // custom ammunition must say what fires it (see ammoFitsWeapon): one of
+    // the weapon categories or weapons the catalog's ammunition names
+    if ((picks || {}).ammoBase === ITEM_PICK_CUSTOM) {
+      steps.push({ key: 'compatibleWith', label: 'Fires From', options: ammoLaunchers() });
+    }
   } else if (d.type === 'Item') {
     steps.push({ key: 'itemClass', label: 'Item Class', options: [...new Set(BASIC_ITEMS.map(b => b.class))].sort(), custom: true });
     if (d.itemClass) {
@@ -123,7 +131,7 @@ function itemPicksFromItem(item) {
   const picks = {};
   const d = { type: item.type };
   for (let i = 0; ; i++) {
-    const steps = itemPickSteps(d);
+    const steps = itemPickSteps(d, picks);
     if (i >= steps.length) break;
     const s = steps[i];
     let v = s.key === 'coin' ? (COINAGE.find(c => c.name === item.name) ? s.options[COINAGE.findIndex(c => c.name === item.name)] : undefined) : item[s.key];
@@ -165,6 +173,7 @@ function setItemPick(key, value) {
       }
     } else if (v !== ITEM_PICK_CUSTOM) d[s.key] = v;
   }
+  if (d.type === 'Spell Book') d.weight = SPELL_BOOK_WEIGHT;
   itemDraft = d;
   renderAddItemModal();
 }
@@ -220,9 +229,10 @@ function confirmAddItem() {
   if (!itemHasModKind(d, 'offense')) { delete d.magicDamageBeforeDivider; delete d.magicCritBonus; } // a weapon's older to-hit/damage fields stay
   if (itemHasModKind(d, 'void')) d.magicVoid = (d.magicVoid || []).filter(v => v && v.pool && parseFloat(v.amount));
   if (!itemHasModKind(d, 'void') || !(d.magicVoid || []).length) { delete d.magicVoid; delete d.magicVoidStacks; }
-  delete d._mod_defense; delete d._mod_void;
+  delete d._mod_offense; delete d._mod_defense; delete d._mod_void;
   if (!char.items) char.items = [];
   const editing = editingItemIdx !== null && char.items[editingItemIdx];
+  if (d.type === 'Spell Book') { d.bookId = (editing && editing.bookId) || d.bookId || newBookId(); d.weight = SPELL_BOOK_WEIGHT; } else delete d.bookId;
   if (editing) char.items[editingItemIdx] = d;
   else char.items.push(d);
   itemDraft = null;
@@ -264,6 +274,25 @@ function setItemSpellDraft(i, field, value, rerender) {
   if (field === 'school') s.name = '';
   if (rerender) renderAddItemModal();
 }
+// The item popup's Find box: every catalog spell as "Name — School", and
+// picking one fills in that row's school and spell. A typed name that matches
+// exactly one spell (ignoring case) works too.
+const SPELL_SEARCH_SEP = ' — ';
+function spellSearchOptions() {
+  return SPELLS.map(sp => sp.name + SPELL_SEARCH_SEP + sp.school).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+}
+function pickItemSpellBySearch(i, text) {
+  const s = itemSpellDrafts[i];
+  const t = String(text || '').trim();
+  if (!s || !t) return;
+  const cut = t.lastIndexOf(SPELL_SEARCH_SEP);
+  let sp = cut > 0 ? SPELLS.find(x => x.name === t.slice(0, cut) && x.school === t.slice(cut + SPELL_SEARCH_SEP.length)) : null;
+  if (!sp) { const byName = SPELLS.filter(x => x.name.toLowerCase() === t.toLowerCase()); if (byName.length === 1) sp = byName[0]; }
+  if (!sp) return;
+  s.school = sp.school;
+  s.name = sp.name;
+  renderAddItemModal();
+}
 function removeItemSpellFromDraft(i) {
   if (!itemDraft || !itemDraft.spells) return;
   itemDraft.spells.splice(i, 1);
@@ -271,7 +300,7 @@ function removeItemSpellFromDraft(i) {
 }
 
 // Casting a spell from an item (the Cast button under it on the Inventory
-// page): no spell points, always succeeds, uses one of the item's uses; a
+// and Combat pages): no spell points, always succeeds, uses one of the item's uses; a
 // character in a group then gets the usual "Mark duration?" step.
 let itemCastState = null;
 function openItemCastModal(itemIdx, spellIdx) {
@@ -284,14 +313,14 @@ function openItemCastModal(itemIdx, spellIdx) {
   const left = itemSpellUsesLeft(sp, char);
   openModal(`
     <h3>Cast: ${escapeHtml(sp.name)}</h3>
-    <div class="note" style="margin-bottom:10px">From ${escapeHtml(it.name || 'this item')}. Cast at level ${sp.level}, with no spell points, and it always succeeds.</div>
+    <div class="note">From ${escapeHtml(it.name || 'this item')}. Cast at level ${sp.level}, with no spell points, and it always succeeds.</div>
     <div class="form-row">
       <div class="computed-item"><span class="ci-label">Level</span><span class="ci-value">${sp.level}</span></div>
       <div class="computed-item"><span class="ci-label">Duration</span><span class="ci-value" style="font-size:13px">${escapeHtml(spellDurationText(def && def.duration, sp.level))}</span></div>
       <div class="computed-item"><span class="ci-label">Uses</span><span class="ci-value" style="font-size:13px">${escapeHtml(itemSpellUsageText(sp, char, itemSpellRule(it)))}${left > 0 && itemSpellRule(it) !== 'scroll' ? ` → ${left - 1} after this` : ''}</span></div>
     </div>
-    ${left > 0 ? '' : '<div class="note" style="color:#c05050">No uses left. Reset its uses (↺) when they come back.</div>'}
-    ${itemSpellRule(it) === 'scroll' ? `<div class="note" style="color:var(--gold-dim)">Casting uses this spell up${(it.spells || []).length === 1 ? ', and with it the scroll' : ''}.</div>` : itemSpellRule(it) === 'potion' && left === 1 ? `<div class="note" style="color:var(--gold-dim)">This is its last use: the potion${(parseInt(it.qty) || 1) > 1 ? ' (one of ' + it.qty + ')' : ''} will be used up.</div>` : ''}
+    ${left > 0 ? '' : '<div class="warn">No uses left. Reset its uses (↺) when they come back.</div>'}
+    ${itemSpellRule(it) === 'scroll' ? `<div class="warn">Casting uses this spell up${(it.spells || []).length === 1 ? ', and with it the scroll' : ''}.</div>` : itemSpellRule(it) === 'potion' && left === 1 ? `<div class="warn">This is its last use: the potion${(parseInt(it.qty) || 1) > 1 ? ' (one of ' + it.qty + ')' : ''} will be used up.</div>` : ''}
     <div class="modal-actions">
       <button class="btn btn-dim" onclick="itemCastState=null;closeModal()">Cancel</button>
       <button class="btn btn-gold" ${left > 0 ? '' : 'disabled'} onclick="confirmItemCast()">Cast</button>
@@ -317,7 +346,7 @@ function confirmItemCast() {
   }
   itemCastState = null;
   saveState();
-  renderInventoryModule();
+  renderItemSpellPage();
   if (char.playGroupId) {
     const def = SPELLS.find(x => x.name === sp.name && x.school === sp.school);
     hardcastState = { spellName: sp.name, duration: spellDurationText(def && def.duration, sp.level), fromItem: it.name || 'an item', level: sp.level };
@@ -332,13 +361,19 @@ function rechargeItemSpell(itemIdx, spellIdx) {
   sp.usesLeft = parseInt(sp.usesMax) || 0;
   sp.periodIndex = itemSpellPeriodIndex(sp.period, characterClockSeconds(char));
   saveState();
-  renderInventoryModule();
+  renderItemSpellPage();
+}
+// Item spells are cast from the Inventory page and the Combat page; redraw
+// whichever one is showing.
+function renderItemSpellPage() {
+  if (state.activeView === 'combat') renderCombatModule(); else renderInventoryModule();
 }
 
 // Storage Locations: containers are the keys of char.storageCapacities (a
 // capacity, or null for no limit) plus any location an item already names;
 // char.storageOnPerson marks the ones worn/carried, whose weight counts
-// toward Weight Carried. The Add/Edit Container popup edits containerDraft;
+// toward Weight Carried, unless char.storageNoEncumber marks them as adding
+// no weight (a bag of holding). The Add/Edit Container popup edits containerDraft;
 // editingContainerName is the container being edited, or null when adding.
 let containerDraft = null;
 let editingContainerName = null;
@@ -359,16 +394,19 @@ function confirmContainer() {
 
   if (!char.storageCapacities) char.storageCapacities = {};
   if (!char.storageOnPerson) char.storageOnPerson = {};
+  if (!char.storageNoEncumber) char.storageNoEncumber = {};
   const old = editingContainerName;
   if (old !== null && old !== name) {
     // Renaming: the items inside follow the container
     delete char.storageCapacities[old];
     if (char.storageOrder) char.storageOrder = char.storageOrder.map(n => n === old ? name : n);
     delete char.storageOnPerson[old];
+    delete char.storageNoEncumber[old];
     for (const it of char.items || []) if ((it.location || '').trim() === old) it.location = name;
   }
   char.storageCapacities[name] = capacity;
   if (d.onPerson) char.storageOnPerson[name] = true; else delete char.storageOnPerson[name];
+  if (d.noEncumber) char.storageNoEncumber[name] = true; else delete char.storageNoEncumber[name];
   containerDraft = null;
   editingContainerName = null;
   saveState();
@@ -384,6 +422,7 @@ function confirmDeleteContainer(name, moveTo) {
   for (const it of char.items || []) if ((it.location || '').trim() === name) it.location = moveTo || '';
   if (char.storageCapacities) delete char.storageCapacities[name];
   if (char.storageOnPerson) delete char.storageOnPerson[name];
+  if (char.storageNoEncumber) delete char.storageNoEncumber[name];
   if (char.storageOrder) char.storageOrder = char.storageOrder.filter(n => n !== name);
   collapsedItemGroups.delete(name);
   saveState();
@@ -492,6 +531,28 @@ function selectArmorType(idx, armorName) {
   applyArmorType(char.items[idx], armorName);
   saveState();
   renderInventoryModule();
+}
+
+// The Combat page's Applied Spell Mods fields (see combatSpellMods)
+function updateSpellMod(field, value) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const extras = char.combatExtras || (char.combatExtras = {});
+  const m = extras.spellMods || (extras.spellMods = {});
+  if (field === 'damageRoll') m.damageRoll = String(value || '').trim(); else m[field] = value === '' ? '' : (parseFloat(value) || 0);
+  saveState();
+  renderCombatModule();
+}
+
+// The ↺ in Applied Spell Mods: clears all three rows
+function resetSpellMods() {
+  const char = state.characters[state.activeChar];
+  if (!char || !char.combatExtras || !char.combatExtras.spellMods) return;
+  const m = char.combatExtras.spellMods;
+  for (const f of SPELL_MOD_FIELDS) delete m[f];
+  delete m.damageRoll;
+  saveState();
+  renderCombatModule();
 }
 
 function updateCombatExtra(field, value) {
@@ -683,19 +744,19 @@ function renderHardcastModal() {
   });
   const canCast = shortfalls.length === 0 && eligibilityIssues.length === 0;
 
-  const modeBtn = (m, label) => `<button class="btn ${mode===m?'btn-gold':'btn-dim'}" onclick="setCastMode('${m}')">${label}</button>`;
+  const modeHelp = {
+    hardcast: 'Full SP cost from your own pools. Spirit substitution and overcasting for extra success are both available.',
+    plaque: 'Half SP cost, but only for a spell you could already hardcast: no substitution, must have every power source type trained, and no overcasting.',
+    scroll: '1/10 SP cost, and can exceed your own ability (up to 2× your max in any pool), but requires every power source type trained, no substitution, no overcasting.'
+  };
+  const modeBtn = (m, label) => `<button class="btn ${mode===m?'btn-gold':'btn-dim'}" onclick="setCastMode('${m}')">${label}</button>${infoTip(modeHelp[m])}`;
 
   openModal(`
     <h3>Cast: ${hs.spellName}</h3>
-    <div class="note" style="margin-bottom:10px">${hs.school} — base cost ${Object.entries(hs.baseCosts).map(([s,v])=>`${s} ${v}`).join(', ')}${hs.duration ? ` — duration ${escapeHtml(hs.duration)}` : ''}</div>
+    <div class="note">${hs.school} — base cost ${Object.entries(hs.baseCosts).map(([s,v])=>`${s} ${v}`).join(', ')}${hs.duration ? ` — duration ${escapeHtml(hs.duration)}` : ''}</div>
 
     <div style="display:flex;gap:8px;margin-bottom:12px">
       ${modeBtn('hardcast','Hardcast')} ${modeBtn('plaque','Plaque')} ${modeBtn('scroll','Scrollcast')}
-    </div>
-    <div class="note" style="margin-bottom:10px">
-      ${mode==='hardcast' ? 'Full SP cost from your own pools. Spirit substitution and overcasting for extra success are both available.' : ''}
-      ${mode==='plaque' ? 'Half SP cost, but only for a spell you could already hardcast — no substitution, must have every power source type trained, and no overcasting.' : ''}
-      ${mode==='scroll' ? '1/10 SP cost, and can exceed your own ability (up to 2× your max in any pool) — but requires every power source type trained, no substitution, no overcasting.' : ''}
     </div>
 
     ${mode === 'hardcast' ? `
@@ -718,7 +779,7 @@ function renderHardcastModal() {
     </div>
     ` : ''}
 
-    ${eligibilityIssues.length ? `<hr class="divider"><div class="note" style="color:#c05050">${eligibilityIssues.join('<br>')}</div>` : ''}
+    ${eligibilityIssues.length ? `<hr class="divider"><div class="warn">${eligibilityIssues.join('<br>')}</div>` : ''}
 
     <hr class="divider">
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Final Cost & Success</div>
@@ -732,8 +793,7 @@ function renderHardcastModal() {
         }).join('')}
       </tbody>
     </table>
-    <div class="computed-item" style="margin-bottom:8px"><span class="ci-label">Success Chance (before the GM's d50)</span><span class="ci-value skval" style="font-size:20px">${totalSuccess}</span></div>
-    <div class="note">Base ${hs.spellSuccessBase} + Spirit Success [${spiritSuccessSkval}] + ${hs.school} Success [${majorSuccessSkval}] + Magic Bonus [${successBonus}]${mode==='hardcast' ? ` + Overcast [${overcastBonus}]` : ''}</div>
+    <div class="computed-item" style="margin-bottom:8px"><span class="ci-label">Success Chance (before the GM's d50)${infoTip(`Base ${hs.spellSuccessBase} + Spirit Success [${spiritSuccessSkval}] + ${hs.school} Success [${majorSuccessSkval}] + Magic Bonus [${successBonus}]${mode==='hardcast' ? ` + Overcast [${overcastBonus}]` : ''}`)}</span><span class="ci-value skval" style="font-size:20px">${totalSuccess}</span></div>
 
     <div class="modal-actions">
       <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
@@ -777,8 +837,7 @@ function openSpellResolveModal() {
   const hs = hardcastState;
   if (!hs) return;
   openModal(`
-    <h3>Resolve: ${escapeHtml(hs.spellName)}</h3>
-    <div class="note" style="margin-bottom:10px">Success chance ${hs.totalSuccess}% plus the GM's d50 roll sets the target. Then the caster rolls d100 and must roll at or under the target to succeed.</div>
+    <h3>Resolve: ${escapeHtml(hs.spellName)}${infoTip(`Success chance ${hs.totalSuccess}% plus the GM's d50 roll sets the target. Then the caster rolls d100 and must roll at or under the target to succeed.`)}</h3>
 
     <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">1. GM roll (d50)</div>
     <div class="form-row" style="align-items:flex-end;margin-bottom:6px">
@@ -861,7 +920,7 @@ function openMarkDurationModal(roll) {
   if (!hs) return;
   openModal(`
     <h3>${escapeHtml(hs.spellName)} — Success!</h3>
-    <div class="note" style="margin-bottom:8px">${hs.fromItem ? `Cast from ${escapeHtml(hs.fromItem)} at level ${hs.level}.` : `Rolled ${roll} against a target of ${hs.finalTarget} (${hs.totalSuccess}% + GM d50 ${hs.gmRoll}).`}${hs.duration ? ` Listed duration: ${escapeHtml(hs.duration)}` : ''}</div>
+    <div class="note">${hs.fromItem ? `Cast from ${escapeHtml(hs.fromItem)} at level ${hs.level}.` : `Rolled ${roll} against a target of ${hs.finalTarget} (${hs.totalSuccess}% + GM d50 ${hs.gmRoll}).`}${hs.duration ? ` Listed duration: ${escapeHtml(hs.duration)}` : ''}</div>
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:8px">
       <input type="checkbox" id="mark-duration-check" checked onchange="document.getElementById('mark-duration-fields').style.display=this.checked?'flex':'none'">
       Mark duration?
@@ -911,6 +970,69 @@ function isBlankSpell(sp) {
   return !String(sp.school || '').trim() && !String(sp.name || '').trim() && !String(sp.notes || '').trim();
 }
 
+// Spell books are inventory items of type "Spell Book". Each has a bookId,
+// and every spellbook entry names the book it is written in (sp.book). A
+// book holds spells costing up to SPELL_BOOK_CAPACITY in all.
+const SPELL_BOOK_CAPACITY = 450;
+const SPELL_BOOK_WEIGHT = 45;
+// Books shown closed on the Spells and Inventory pages, by bookId.
+let collapsedSpellBooks = new Set();
+function newBookId() { return 'bk_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function spellBooks(char) {
+  const books = ((char && char.items) || []).filter(it => it.type === 'Spell Book');
+  for (const b of books) if (!b.bookId) b.bookId = newBookId();
+  return books;
+}
+function spellsInBook(char, bookId) {
+  return (char.spellbook || []).map((sp, idx) => ({ sp, idx })).filter(({ sp }) => sp.book === bookId && !isBlankSpell(sp));
+}
+function spellBookUsed(char, bookId) {
+  return spellsInBook(char, bookId).reduce((sum, { sp }) => sum + (parseFloat(sp.cost) || 0), 0);
+}
+function spellBookRoom(char, book) { return SPELL_BOOK_CAPACITY - spellBookUsed(char, book.bookId); }
+// A character's first spell book, "My First", carried, is made the first time
+// it is needed; spells from before spell books existed are written into it.
+// Returns whether anything changed.
+function ensureSpellBooks(char) {
+  if (!char) return false;
+  let changed = false;
+  let books = spellBooks(char);
+  if (!books.length) {
+    (char.items = char.items || []).push({ type: 'Spell Book', name: 'My First', qty: 1, weight: SPELL_BOOK_WEIGHT, worth: '', notes: '', location: '', bookId: newBookId() });
+    books = spellBooks(char);
+    changed = true;
+  }
+  // a spell book's weight is fixed, whatever is written in it
+  for (const b of books) if (parseFloat(b.weight) !== SPELL_BOOK_WEIGHT) { b.weight = SPELL_BOOK_WEIGHT; changed = true; }
+  const ids = new Set(books.map(b => b.bookId));
+  for (const sp of char.spellbook || []) if (!ids.has(sp.book)) { sp.book = books[0].bookId; changed = true; }
+  return changed;
+}
+// The book a new spell costing `cost` goes in by default: a carried one with
+// room for it, else any with room, else none.
+function defaultSpellBook(char, cost) {
+  const fits = spellBooks(char).filter(b => spellBookRoom(char, b) >= (parseFloat(cost) || 0));
+  return fits.find(b => itemOnPerson(char, b)) || fits[0] || null;
+}
+function toggleSpellBook(bookId) {
+  if (collapsedSpellBooks.has(bookId)) collapsedSpellBooks.delete(bookId); else collapsedSpellBooks.add(bookId);
+  renderMain();
+}
+
+// The Add Spell Book popup (openAddSpellBookModal in modals.js): a name and
+// where it's kept, both required.
+let spellBookDraft = null;
+function confirmAddSpellBook() {
+  const char = state.characters[state.activeChar];
+  const d = spellBookDraft;
+  if (!char || !d || !String(d.name || '').trim()) return;
+  (char.items = char.items || []).push({ type: 'Spell Book', name: String(d.name).trim(), qty: 1, weight: SPELL_BOOK_WEIGHT, worth: '', notes: '', location: d.location || '', bookId: newBookId() });
+  spellBookDraft = null;
+  saveState();
+  closeModal();
+  renderMain();
+}
+
 // The Add Spell popup (openAddSpellModal in modals.js) builds spellDraft:
 // pick a school, then a spell; the SP cost comes from the catalog. A school
 // with no catalog entries takes a typed name instead (cost 0).
@@ -918,7 +1040,7 @@ let spellDraft = null;
 let addNextSpell = false;
 function setSpellDraftSchool(school) {
   if (!spellDraft) return;
-  spellDraft = { school, name: '', cost: 0, notes: '' };
+  spellDraft = { school, name: '', cost: 0, notes: '', book: spellDraft.book || '' };
   renderAddSpellModal();
 }
 function setSpellDraftName(name, typed) {
@@ -929,12 +1051,20 @@ function setSpellDraftName(name, typed) {
   if (!typed) renderAddSpellModal();
   else { const btn = document.getElementById('as-add'); if (btn) btn.disabled = !String(name).trim(); }
 }
+function setSpellDraftBook(bookId) {
+  if (!spellDraft) return;
+  spellDraft.book = bookId;
+  renderAddSpellModal();
+}
 function confirmAddSpell() {
   const char = state.characters[state.activeChar];
   const d = spellDraft;
   if (!char || !d || !d.school || !String(d.name || '').trim()) return;
+  // it has to go in a spell book with room for it
+  const book = spellBooks(char).find(b => b.bookId === d.book);
+  if (!book || spellBookRoom(char, book) < (parseFloat(d.cost) || 0)) return;
   if (!char.spellbook) char.spellbook = [];
-  char.spellbook.push({ school: d.school, name: String(d.name).trim(), cost: d.cost || 0, notes: '' });
+  char.spellbook.push({ school: d.school, name: String(d.name).trim(), cost: d.cost || 0, notes: '', book: book.bookId });
   spellDraft = null;
   saveState();
   renderSpellModule();
@@ -950,10 +1080,10 @@ function updateSpell(idx, field, value) {
   renderSpellModule();
 }
 
-function removeSpell(idx) {
+async function removeSpell(idx) {
   const char = state.characters[state.activeChar];
   if (!char || !char.spellbook || !char.spellbook[idx]) return;
-  if (!confirm(`Remove "${char.spellbook[idx].name || 'this spell'}" from the spellbook?`)) return;
+  if (!await appConfirm(`Remove "${char.spellbook[idx].name || 'this spell'}" from the spellbook?`)) return;
   char.spellbook.splice(idx, 1);
   saveState();
   renderSpellModule();
@@ -969,7 +1099,8 @@ function updateHPState(field, value) {
   if (!char.hpState) char.hpState = {};
   char.hpState[field] = (field === 'system') ? value : (parseFloat(value) || 0);
   saveState();
-  renderCombatModule();
+  // The HP system is set on General Info; current HP on the Combat page
+  if (state.activeView === 'general') renderGeneralModule(); else renderCombatModule();
 }
 
 function updateWeaponField(idx, field, value) {
@@ -978,6 +1109,25 @@ function updateWeaponField(idx, field, value) {
   char.items[idx][field] = value;
   saveState();
   renderCombatModule();
+}
+
+// The Inventory's In Use tick: a weapon or shield in hand, armor worn. What
+// can be in hand at once is checked first (see wieldingProblem).
+function setItemInUse(idx, checked) {
+  const char = state.characters[state.activeChar];
+  const it = char && char.items && char.items[idx];
+  if (!it) return;
+  if (it.type === 'Armor') it.worn = !!checked;
+  else {
+    if (checked) {
+      const inHand = char.items.filter(o => o !== it && (o.type === 'Weapon' || o.type === 'Shield') && itemInUse(char, o)).concat([it]);
+      const problem = wieldingProblem(inHand);
+      if (problem) { alert(problem + ' Untick something else first.'); renderInventoryModule(); return; }
+    }
+    it.wielded = !!checked;
+  }
+  saveState();
+  renderInventoryModule();
 }
 
 function selectWeaponModel(idx, weaponName) {
@@ -1020,11 +1170,15 @@ function selectBasicItem(idx, itemName) {
   renderInventoryModule();
 }
 
-function removeItem(idx) {
+async function removeItem(idx) {
   const char = state.characters[state.activeChar];
   if (!char || !char.items || !char.items[idx]) return;
-  if (!confirm(`Delete "${char.items[idx].name || 'this item'}" from the inventory?`)) return;
+  const it = char.items[idx];
+  // a spell book takes the spells written in it along with it
+  const inBook = it.type === 'Spell Book' && it.bookId ? spellsInBook(char, it.bookId) : [];
+  if (!await appConfirm(inBook.length ? `Delete the spell book "${it.name || 'this book'}" and the ${inBook.length} spell${inBook.length === 1 ? '' : 's'} in it?` : `Delete "${it.name || 'this item'}" from the inventory?`)) return;
   char.items.splice(idx, 1);
+  if (inBook.length) char.spellbook = (char.spellbook || []).filter(sp => sp.book !== it.bookId);
   saveState();
   renderInventoryModule();
 }
@@ -1132,7 +1286,7 @@ function skillDescendantIds(skillId, skills) {
 }
 
 // Removing a skill removes all of its sub-skills with it.
-function deleteSkill(skillId) {
+async function deleteSkill(skillId) {
   const char = state.characters[state.activeChar];
   const skills = (char && char.skills) || [];
   const si = skills.find(s => s.id === skillId);
@@ -1142,7 +1296,7 @@ function deleteSkill(skillId) {
   const msg = subNames.length
     ? `Remove ${si.skillName} and its ${subNames.length} sub-skill${subNames.length === 1 ? '' : 's'}?\n\n${subNames.join('\n')}`
     : `Remove ${si.skillName}?`;
-  if (!confirm(msg)) return;
+  if (!await appConfirm(msg)) return;
   char.skills = skills.filter(s => s.id !== skillId && !subs.has(s.id));
   state.activeSkillId = null;
   state.activeView = 'overview';
@@ -1151,32 +1305,45 @@ function deleteSkill(skillId) {
   renderOverview();
 }
 
-function deleteChar() {
-  if (!state.activeChar) { alert('Select a character to delete first.'); return; }
-  if (!confirm('Delete this character? This cannot be undone.')) return;
+// Asks with appConfirm, then deletes the row in Supabase first, and only
+// drops the character here once that worked: before, a failed delete went
+// unnoticed and the character came back on the next load. A delete Supabase
+// refuses (an error, or no row removed) leaves the character in place and
+// says why.
+async function deleteChar() {
+  const char = state.characters[state.activeChar];
+  if (!char) { alert('Select a character to delete first.'); return; }
+  if (!await appConfirm(`Delete "${char.name || 'this character'}"? This cannot be undone.`, 'Delete')) return;
   const appId = state.activeChar;
+  // a character saved moments ago may still be on its way to Supabase
+  while (flushBusy) await new Promise(r => setTimeout(r, 100));
+  if (saveStateTimer) { clearTimeout(saveStateTimer); saveStateTimer = null; await flushCharactersToSupabase(); }
   const rowId = charRowIds[appId];
+  if (rowId) {
+    const { data, error } = await sb.from('characters').delete().eq('id', rowId).select('id');
+    if (error || !data || !data.length) {
+      console.error('Delete failed for', appId, error || 'no row deleted');
+      openModal(`<h3>Delete Character</h3><div class="warn">Could not delete this character${error ? ': ' + escapeHtml(error.message) : ' (the server did not remove it)'}. It has not been deleted.</div><div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">OK</button></div>`);
+      return;
+    }
+  }
   delete state.characters[appId];
   delete charRowIds[appId];
+  delete savedCharJson[appId];
   state.activeChar = null;
   state.activeSkillId = null;
-  saveState();
-  if (rowId) {
-    sb.from('characters').delete().eq('id', rowId).then(({ error }) => {
-      if (error) console.error('Delete failed for', appId, error);
-    });
-  }
+  try { localStorage.removeItem('gs_active_char'); } catch (e) {}
   renderApp();
-  document.getElementById('main').innerHTML = '<div class="note" style="text-align:center;padding:40px">Character deleted.</div>';
-  document.getElementById('sidebar').innerHTML = '<div class="note" style="padding:12px;text-align:center">Select or create a character</div>';
+  document.getElementById('main').innerHTML = '<div class="note placeholder">Character deleted.</div>';
+  document.getElementById('sidebar').innerHTML = '<div class="note placeholder">Select or create a character</div>';
 }
 
 function openTransferOwnershipModal() {
   const char = state.characters[state.activeChar];
-  if (!char) return;
+  if (!char) { alert('Select a character first.'); return; }
   openModal(`
     <h3>Transfer Ownership</h3>
-    <div class="note" style="margin-bottom:8px;color:#c05050">You will lose access to "${escapeHtml(char.name || 'this character')}" once transferred — the new owner gets full control, and you won't be able to see or edit it anymore (unless you're an admin).</div>
+    <div class="warn">You will lose access to "${escapeHtml(char.name || 'this character')}" once transferred — the new owner gets full control, and you won't be able to see or edit it anymore (unless you're an admin).</div>
     <div class="form-group" style="margin-bottom:8px"><label>New Owner's Email</label><input class="w-full" id="transfer-email"  type="email"></div>
     <div id="transfer-status" style="font-size:12px;color:var(--red-b);margin-bottom:8px;display:none"></div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-red" onclick="confirmTransferOwnership()">Transfer</button></div>`);
@@ -1191,7 +1358,7 @@ async function confirmTransferOwnership() {
   const statusEl = document.getElementById('transfer-status');
   statusEl.style.display = 'none';
   if (!email) return;
-  if (!confirm(`Really transfer "${char.name || 'this character'}" to ${email}? This can't be undone by you -- only an admin could reverse it.`)) return;
+  if (!await appConfirm(`Really transfer "${char.name || 'this character'}" to ${email}? This can't be undone by you -- only an admin could reverse it.`)) return;
   const { error } = await sb.rpc('transfer_character_ownership', { p_character_id: rowId, p_new_owner_email: email });
   if (error) {
     statusEl.textContent = 'Failed to transfer: ' + error.message;
@@ -1204,6 +1371,6 @@ async function confirmTransferOwnership() {
   state.activeSkillId = null;
   closeModal();
   renderApp();
-  document.getElementById('main').innerHTML = '<div class="note" style="text-align:center;padding:40px">Character transferred.</div>';
-  document.getElementById('sidebar').innerHTML = '<div class="note" style="padding:12px;text-align:center">Select or create a character</div>';
+  document.getElementById('main').innerHTML = '<div class="note placeholder">Character transferred.</div>';
+  document.getElementById('sidebar').innerHTML = '<div class="note placeholder">Select or create a character</div>';
 }

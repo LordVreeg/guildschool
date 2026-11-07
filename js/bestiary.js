@@ -69,11 +69,10 @@ async function renderBestiaryModule() {
   document.getElementById('main').innerHTML = `
   <div class="panel">
     <div class="panel-header" style="display:flex;justify-content:space-between;align-items:center">
-      <h2>Beastiary</h2>
+      <h2>Beastiary${infoTip(`Your personal library of foe templates — private to you, not visible to players or other GMs. Keep the foes you use now in Active; tick the rest and Archive them. Archived foes stay safe here but drop out of the Add Combatants list.`)}</h2>
       <button class="btn btn-neon" onclick="openNewBestiaryEntry()">New Foe</button>
     </div>
     <div class="panel-body">
-      <div class="note" style="margin-bottom:10px">Your personal library of foe templates — private to you, not visible to players or other GMs. Keep the foes you use now in <b>Active</b>; tick the rest and Archive them. Archived foes stay safe here but drop out of the Add Combatants list.</div>
       <div id="bestiary-tabs" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px"></div>
       <div id="bestiary-list"></div>
     </div>
@@ -114,8 +113,8 @@ function paintBestiary() {
     <button class="btn btn-dim" ${selCount ? '' : 'disabled'} onclick="archiveSelectedBestiary(${isArchiveTab ? 'false' : 'true'})">${isArchiveTab ? 'Restore' : 'Archive'} selected (${selCount})</button>`;
   if (!rows.length) {
     listEl.innerHTML = bestiaryCache.length === 0
-      ? '<div class="note" style="padding:10px 0">No foes yet. Click "New Foe" to build one.</div>'
-      : `<div class="note" style="padding:10px 0">${bestiaryFilter.trim() ? 'No foes match that filter.' : (isArchiveTab ? 'Nothing archived yet. Tick foes on the Active tab and choose Archive selected.' : 'No active foes. Restore some from the Archive tab, or click "New Foe".')}</div>`;
+      ? '<div class="note">No foes yet. Click "New Foe" to build one.</div>'
+      : `<div class="note">${bestiaryFilter.trim() ? 'No foes match that filter.' : (isArchiveTab ? 'Nothing archived yet. Tick foes on the Active tab and choose Archive selected.' : 'No active foes. Restore some from the Archive tab, or click "New Foe".')}</div>`;
     return;
   }
   listEl.innerHTML = `<table class="skill-table">
@@ -204,7 +203,7 @@ function blankBestiaryDraft() {
 let bestiaryReturnToGroup = false;
 
 // key is "wiki:<name>" (built-in BESTIARY_RACE_TEMPLATES) or "custom:<id>" (this GM's own saved bestiary_templates row)
-function loadBestiaryTemplate(key) {
+async function loadBestiaryTemplate(key) {
   if (!key) return;
   const idx = key.indexOf(':');
   const kind = key.slice(0, idx), ident = key.slice(idx + 1);
@@ -213,7 +212,7 @@ function loadBestiaryTemplate(key) {
   else if (kind === 'custom') t = customBestiaryTemplates.find(r => r.id === ident);
   if (!t) return;
   const hasStats = bestiaryDraft.hp_formula || bestiaryDraft.avg_hp || bestiaryDraft.avoidance || bestiaryDraft.protection || (bestiaryDraft.attacks||[]).length;
-  if (hasStats && !confirm(`Overwrite this foe's stats with the "${t.name}" template? Name and notes you already typed will be kept where possible.`)) return;
+  if (hasStats && !await appConfirm(`Overwrite this foe's stats with the "${t.name}" template? Name and notes you already typed will be kept where possible.`)) return;
   const keepName = bestiaryDraft.name;
   const clean = JSON.parse(JSON.stringify(t));
   delete clean.id; delete clean.created_by; delete clean.created_at; delete clean.updated_at;
@@ -267,7 +266,7 @@ async function deleteCustomBestiaryTemplate() {
   const id = key.slice(7);
   const t = customBestiaryTemplates.find(x => x.id === id);
   if (!t) return;
-  if (!confirm(`Delete your custom template "${t.name}"? This cannot be undone.`)) return;
+  if (!await appConfirm(`Delete your custom template "${t.name}"? This cannot be undone.`)) return;
   const { error } = await sb.from('bestiary_templates').delete().eq('id', id);
   if (error) { alert('Failed to delete: ' + error.message); return; }
   await fetchCustomBestiaryTemplates();
@@ -397,10 +396,10 @@ function rollBestiaryHp(formula, level) {
   if (perLevel) { for (let i = 1; i < lv; i++) total += rollHpSubExpr(perLevel); }
   return total;
 }
-function rollBestiaryHpClick() {
+async function rollBestiaryHpClick() {
   if (!bestiaryDraft.hp_formula) { alert('Enter an HP formula first.'); return; }
   if (bestiaryDraft.current_hp != null && bestiaryDraft.current_hp !== bestiaryDraft.max_hp) {
-    if (!confirm('This foe already has HP tracked (possibly mid-fight). Re-roll and reset Current HP to the new Max HP?')) return;
+    if (!await appConfirm('This foe already has HP tracked (possibly mid-fight). Re-roll and reset Current HP to the new Max HP?')) return;
   }
   const rolled = rollBestiaryHp(bestiaryDraft.hp_formula, bestiaryDraft.level || 1);
   if (rolled == null) { alert("Couldn't parse the HP formula -- enter Max HP by hand."); return; }
@@ -436,8 +435,7 @@ function showVoidDrModal() {
   if (!bestiaryDraft) { alert('No foe is currently open for editing.'); return; }
   const { tiers } = voidDrTiers();
   openModal(`
-    <h3>Void Damage Reduction</h3>
-    <div class="note" style="margin-bottom:10px">Protection by weapon quality, ±10 per tier, based on the Protection value above.</div>
+    <h3>Void Damage Reduction${infoTip(`Protection by weapon quality, ±10 per tier, based on the Protection value above.`)}</h3>
     <table class="skill-table" style="margin-bottom:14px">
       <tbody>
         ${tiers.map(([label,val]) => `<tr><td>${label}</td><td class="skval-cell">${val}</td></tr>`).join('')}
@@ -624,7 +622,7 @@ function renderBestiaryEditor() {
         </div>
       </div>
       <div class="form-row" style="align-items:flex-end;margin-bottom:10px">
-        <div class="form-group" style="flex:1"><label>Load base stats from a template</label>
+        <div class="form-group" style="flex:1"><label>Load base stats from a template${infoTip(`"Wiki creatures" come from the current wiki Bestiary. "My templates" are ones you've saved yourself -- see the button below. Loading fills in stats -- still fully editable after. "Delete selected" only works on your own templates.`)}</label>
           <select id="bf-race-template" class="w-lg">
             <option value="">— pick a template —</option>
             <optgroup label="Wiki creatures">
@@ -638,7 +636,6 @@ function renderBestiaryEditor() {
         <div class="form-group"><button class="btn btn-dim" onclick="loadBestiaryTemplate(document.getElementById('bf-race-template').value)">Load</button></div>
         <div class="form-group"><button class="btn btn-dim" style="color:var(--red-b)" onclick="deleteCustomBestiaryTemplate()">Delete selected</button></div>
       </div>
-      <div class="note" style="margin-bottom:10px">"Wiki creatures" come from the current wiki Bestiary. "My templates" are ones you've saved yourself -- see the button below. Loading fills in stats -- still fully editable after. "Delete selected" only works on your own templates.</div>
       <div class="form-row" style="margin-bottom:10px">
         <div class="form-group"><button class="btn btn-dim" onclick="saveCurrentAsBestiaryTemplate()">Save current stats as a new template</button></div>
       </div>
@@ -654,20 +651,18 @@ function renderBestiaryEditor() {
         <div class="form-group"><label>Multi</label><input type="number" class="w-sm" value="${d.multi||0}" onchange="updateBestiaryNum('multi',this.value)"></div>
         <div class="form-group"><label>Crit Bonus</label><input type="number" class="w-sm" value="${d.crit_bonus||0}" onchange="updateBestiaryNum('crit_bonus',this.value)"></div>
       </div>
-      <div class="note" style="margin-bottom:10px">Bmod × Avg HP = ${Math.round((parseFloat(d.bmod)||0) * (parseFloat(d.avg_hp)||0) * 100) / 100} -- basic chance to hit.</div>
+      <div class="note">Bmod × Avg HP = ${Math.round((parseFloat(d.bmod)||0) * (parseFloat(d.avg_hp)||0) * 100) / 100} -- basic chance to hit.</div>
       <div class="form-row" style="margin-bottom:10px">
-        <div class="form-group"><button class="btn btn-dim" onclick="showVoidDrModal()">⛓ Void DR continuum</button></div>
-        <div class="note" style="flex:1;align-self:center">Shows the full Normal/Silver/Masterwork/Magicked/+5%/+10%/+15%/+20%/+25% Protection ladder (±10 per tier off the Protection value above) in a popup, with an option to insert it into Notes below.</div>
+        <div class="form-group"><button class="btn btn-dim" onclick="showVoidDrModal()">⛓ Void DR continuum</button>${infoTip(`Shows the full Normal/Silver/Masterwork/Magicked/+5%/+10%/+15%/+20%/+25% Protection ladder (±10 per tier off the Protection value above) in a popup, with an option to insert it into Notes below.`)}</div>
       </div>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Hit points (this foe)</div>
       <div class="form-row" style="align-items:flex-end">
         <div class="form-group"><label>Level</label><input type="number" class="w-sm" value="${d.level||1}" onchange="updateBestiaryNum('level',this.value)"></div>
-        <div class="form-group"><button class="btn btn-dim" onclick="rollBestiaryHpClick()">🎲 Roll HP</button></div>
+        <div class="form-group"><button class="btn btn-dim" onclick="rollBestiaryHpClick()">🎲 Roll HP</button>${infoTip(`Rolls from the HP formula above using Level (for level-capable foes, "d4 per former level" rolls an extra d4 for each level past 1st) -- separate from Avg HP, which is just the XP-calc baseline. Current HP is what actually drops as this foe takes damage; edit it directly during a fight.`)}</div>
         <div class="form-group"><label>Max HP</label><input type="number" class="w-sm" value="${d.max_hp!=null?d.max_hp:''}" onchange="updateBestiaryNum('max_hp',this.value)"></div>
         <div class="form-group"><label>Current HP</label><input type="number" class="w-sm" value="${d.current_hp!=null?d.current_hp:''}" onchange="updateBestiaryNum('current_hp',this.value)"></div>
       </div>
-      <div class="note" style="margin-bottom:10px">Rolls from the HP formula above using Level (for level-capable foes, "d4 per former level" rolls an extra d4 for each level past 1st) -- separate from Avg HP, which is just the XP-calc baseline. Current HP is what actually drops as this foe takes damage; edit it directly during a fight.</div>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">CCs (Circumstance Checks)</div>
       <div class="form-row">
@@ -680,7 +675,7 @@ function renderBestiaryEditor() {
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Armor &amp; shield</div>
       <div class="form-row">
-        <div class="form-group"><label>Armor</label>
+        <div class="form-group"><label>Armor${infoTip(`Picking an Armor/Shield pre-fills Avoidance/Protection above — still editable after, for a raggedy or masterwork copy.`)}</label>
           <select onchange="selectBestiaryArmor(this.value)">
             <option value="">— custom / none —</option>
             ${ARMOR.map(a=>`<option ${d.armor_name===a.name?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}
@@ -693,11 +688,10 @@ function renderBestiaryEditor() {
           </select>
         </div>
       </div>
-      <div class="note">Picking an Armor/Shield pre-fills Avoidance/Protection above — still editable after, for a raggedy or masterwork copy.</div>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Attacks</div>
       <table class="skill-table">
-        <thead><tr><th>Name</th><th>Weapon</th><th>To-hit</th><th>Crit %</th><th>Fumble %</th><th>Damage dice</th><th>Speed</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Weapon</th><th>To-hit${infoTip(`To-Hit defaults to Bmod × Max HP once both are set -- only fills a blank To-Hit, so per-attack overrides you type stick even after re-rolling HP or changing Bmod.`)}</th><th>Crit %${infoTip(`Crit %/Fumble % are computed the same way as a character weapon's: 7 + To-hit÷10 + .10×Crit Bonus (capped at half To-hit, floor 3); Fumble is 93 and up unless To-hit itself is higher. Both show one number: a roll at or under Crit crits, at or over Fumble fumbles.`)}</th><th>Fumble %</th><th>Damage dice</th><th>Speed</th><th></th></tr></thead>
         <tbody>
           ${(d.attacks||[]).map((a,i)=>{
             const cf = bestiaryCritFumble(a.toHit, d.crit_bonus);
@@ -715,12 +709,10 @@ function renderBestiaryEditor() {
             <td style="text-align:center;color:var(--red-b);cursor:pointer" onclick="removeBestiaryAttack(${i})">✕</td>
           </tr>`;
           }).join('')}
-          ${(d.attacks||[]).length===0 ? '<tr><td colspan="8" class="note" style="padding:8px 0">No attacks yet.</td></tr>' : ''}
+          ${(d.attacks||[]).length===0 ? '<tr><td colspan="8" class="note">No attacks yet.</td></tr>' : ''}
         </tbody>
       </table>
       <button class="btn btn-dim" onclick="addBestiaryAttack()">Add attack</button>
-      <div class="note" style="margin-top:6px">To-Hit defaults to Bmod × Max HP once both are set -- only fills a blank To-Hit, so per-attack overrides you type stick even after re-rolling HP or changing Bmod.</div>
-      <div class="note" style="margin-top:2px">Crit %/Fumble % are computed the same way as a character weapon's: 7 + To-hit÷10 + .10×Crit Bonus (capped at half To-hit, floor 3); Fumble is 93-up unless To-hit itself is higher.</div>
 
       <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Abilities</div>
       <div class="form-row" style="align-items:flex-start">
@@ -851,7 +843,7 @@ async function duplicateBestiaryEntry(id) {
 }
 
 async function deleteBestiaryEntry(id) {
-  if (!confirm('Delete this bestiary entry? This cannot be undone.')) return;
+  if (!await appConfirm('Delete this bestiary entry? This cannot be undone.')) return;
   const { error } = await sb.from('bestiary_entries').delete().eq('id', id);
   if (error) { alert('Failed to delete: ' + error.message); return; }
   if (bestiaryEditingId === id) { bestiaryEditingId = null; bestiaryDraft = null; }
