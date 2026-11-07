@@ -399,7 +399,15 @@ function computeSpellPools(character) {
       const inst = skills.find(s => s.skillName === c.name);
       return { name: c.name, trained: !!inst, skval: inst ? computeSkillValues(inst, character, skills).skval : 0 };
     });
-    const currentSP = spellState[poolDef.name] && spellState[poolDef.name].current !== undefined ? spellState[poolDef.name].current : maxSP;
+    // Spell points are whole numbers. Recovery accrues slower than a point an
+    // hour, so the partial progress toward the next point is kept apart in
+    // spellState[pool].frac; trueSP is whole points + that fraction (older
+    // saves may hold a decimal straight in `current`, which this also covers).
+    const stored = spellState[poolDef.name];
+    const trueSP = stored && stored.current !== undefined
+      ? Math.min(maxSP, (parseFloat(stored.current) || 0) + (parseFloat(stored.frac) || 0))
+      : maxSP;
+    const currentSP = Math.floor(trueSP + 1e-9);
     const usedSP = Math.max(0, maxSP - currentSP);
 
     let familiarity = 'Familiar', conversionRatio = 3, effectiveLevel = spiritLevel;
@@ -426,7 +434,7 @@ function computeSpellPools(character) {
     const successBonus = parseFloat(enhancers.successBonus) || 0;
     const recoverAwake = Math.round(((reclamationSkval * 0.10) + reclamationBonus) * 10) / 10;
     const recoverSleep = Math.round(((reclamationSkval * 0.20) + reclamationBonus) * 10) / 10;
-    pools.push({ name: poolDef.name, maxSP, currentSP, usedSP, level, children: childStatus,
+    pools.push({ name: poolDef.name, maxSP, currentSP, trueSP, usedSP, level, children: childStatus,
                  familiarity, conversionRatio, effectiveLevel: Math.ceil(effectiveLevel - 1e-9), // spell levels are whole numbers, rounded up
                  reclamationSkval, recoverAwake, recoverSleep,
                  spReduction, spReductionManual, spReductionItems, reclamationBonus, successBonus });
@@ -556,6 +564,17 @@ function computeHpStatus(character) {
 // pools with the most points missing.
 const SLEEP_POOL_CAP = 5;
 
+// Stores a pool's true value (whole points plus the fraction toward the next
+// point) as an integer `current` and a separate `frac`; see computeSpellPools.
+function setPoolTrueSP(character, poolName, value, maxSP) {
+  if (!character.spellState) character.spellState = {};
+  const st = character.spellState[poolName] || (character.spellState[poolName] = {});
+  const whole = Math.floor(value + 1e-9);
+  st.current = whole;
+  const frac = value >= maxSP ? 0 : Math.round((value - whole) * 1e6) / 1e6;
+  if (frac > 0) st.frac = frac; else delete st.frac;
+}
+
 function settleCharacterRecovery(character, uptoSeconds, opts) {
   opts = opts || {};
   const focusPools = opts.focusPools || null;
@@ -572,18 +591,15 @@ function settleCharacterRecovery(character, uptoSeconds, opts) {
     const before = {};
     for (const p of computeSpellPools(character)) before[p.name] = p.currentSP;
     // One slice of time: pools in sleepNames reclaim at the sleep rate, the
-    // rest at the awake rate. Always applies the fractional gain so it keeps
-    // accumulating silently across settlements.
+    // rest at the awake rate. The fractional gain keeps accumulating silently
+    // (in each pool's `frac`) across settlements, so only whole points show.
     const applySlice = (dtHours, sleepNames) => {
       for (const pool of computeSpellPools(character)) {
-        if (pool.currentSP >= pool.maxSP) continue;
+        if (pool.trueSP >= pool.maxSP) continue;
         const rate = sleepNames.has(pool.name) ? pool.recoverSleep : pool.recoverAwake;
         if (rate <= 0) continue;
-        const next = Math.min(pool.maxSP, pool.currentSP + rate * dtHours);
-        if (next > pool.currentSP) {
-          if (!character.spellState[pool.name]) character.spellState[pool.name] = {};
-          character.spellState[pool.name].current = next;
-        }
+        const next = Math.min(pool.maxSP, pool.trueSP + rate * dtHours);
+        if (next > pool.trueSP) setPoolTrueSP(character, pool.name, next, pool.maxSP);
       }
     };
     if (furthestDown) {
@@ -605,9 +621,9 @@ function settleCharacterRecovery(character, uptoSeconds, opts) {
       applySlice(elapsedHours, new Set(isResting && focusPools ? focusPools : []));
     }
     for (const p of computeSpellPools(character)) {
-      const gained = Math.round((p.currentSP - (before[p.name] || 0)) * 10) / 10;
+      const gained = p.currentSP - (before[p.name] || 0);
       // Only mention a pool once it adds up to a full point.
-      if (gained >= 1) spGains.push(`+${Math.floor(gained)} ${p.name}`);
+      if (gained >= 1) spGains.push(`+${gained} ${p.name}`);
     }
     if (isResting) rs.restHoursAccrued = (rs.restHoursAccrued || 0) + elapsedHours;
   }

@@ -274,11 +274,6 @@ function renderGeneralModule() {
         <input type="checkbox" ${computeHP(char).system==='collegium'?'checked':''} onchange="updateHPState('system', this.checked ? 'collegium' : 'standard')">
         Collegium System (uncheck for Standard)${infoTip('How Hit Points work. Standard: one HP pool. Collegium: Physical and Endurance; damage hits Endurance first, and Physical is only touched once Endurance is depleted. Physical = ceil(total ÷ 2), Endurance = floor(total ÷ 2).')}
       </label>
-      <div style="margin-top:12px;display:flex;gap:8px">
-        <button class="btn btn-gold" onclick="saveState();showOverview()">Save & Return</button>
-        <button class="btn btn-red" onclick="openTransferOwnershipModal()">Transfer Ownership</button>
-        <button class="btn btn-red" onclick="deleteChar()">Delete Character</button>
-      </div>
     </div>
   </div>`;
 
@@ -319,6 +314,18 @@ function itemKindLabel(it) {
 
 // The line under a magical item listing its modifiers, and whether they're in
 // effect right now (worn / wielded / carried, see itemModsInUse).
+// Under a spell book on the Inventory page: how full it is, and (unless the
+// book is folded) the spells written in it.
+function spellBookLinesHtml(char, it) {
+  if (it.type !== 'Spell Book' || !it.bookId) return '';
+  const inBook = spellsInBook(char, it.bookId).sort((a, b) => String(a.sp.name || '').localeCompare(String(b.sp.name || ''), undefined, { sensitivity: 'base' }));
+  const used = spellBookUsed(char, it.bookId);
+  const hidden = collapsedSpellBooks.has(it.bookId);
+  const head = `<tr class="item-spell-row"><td colspan="8"><span class="item-group-toggle" style="cursor:pointer" data-book="${escapeHtml(it.bookId)}" onclick="toggleSpellBook(this.dataset.book)" title="${hidden ? 'Show' : 'Hide'} its spells">${hidden ? '▸' : '▾'}</span>📖 ${inBook.length} spell${inBook.length === 1 ? '' : 's'} · ${used} / ${SPELL_BOOK_CAPACITY}${used > SPELL_BOOK_CAPACITY ? ' <span class="warn">⚠ over capacity</span>' : ''}</td></tr>`;
+  if (hidden) return head;
+  return head + inBook.map(({ sp }) => `<tr class="item-spell-row"><td colspan="8" style="padding-left:28px">✦ <a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener">${escapeHtml(sp.name)}</a> · ${escapeHtml(sp.school || '')} · cost ${parseFloat(sp.cost) || 0}</td></tr>`).join('');
+}
+
 function itemModsLineHtml(char, it) {
   if (!itemModKinds(it)) return '';
   const fmt = (v, suffix) => { const n = parseFloat(v) || 0; return n ? (n > 0 ? '+' : '') + n + (suffix || '') : ''; };
@@ -403,7 +410,7 @@ function inventoryGroupsHtml(char) {
         <td class="item-kind">${escapeHtml(it.notes || '')}</td>
         <td class="item-edit" title="Edit" onclick="openEditItemModal(${idx})">✎</td>
         <td class="item-del" title="Delete" onclick="removeItem(${idx})">✕</td>
-      </tr>` + itemModsLineHtml(char, it) + (itemCanHoldSpells(it) ? (it.spells || []).map((sp, j) => {
+      </tr>` + itemModsLineHtml(char, it) + spellBookLinesHtml(char, it) + (itemCanHoldSpells(it) ? (it.spells || []).map((sp, j) => {
         const left = itemSpellUsesLeft(sp, char);
         const rule = itemSpellRule(it);
         return `<tr class="item-spell-row"><td colspan="8">✦ <a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener">${escapeHtml(sp.name)}</a> · Level ${sp.level} · <span style="${left > 0 ? '' : 'color:#c05050'}" title="${rule ? 'Used up as it is cast; does not come back' : sp.period === 'charges' ? 'Charges only come back with ↺' : characterClockSeconds(char) != null ? 'Comes back as the group clock passes into the next ' + escapeHtml(itemSpellPeriodLabel(sp.period).replace(/^per /, '')) + ', or with ↺' : 'Comes back with ↺ (or as the group clock passes, once this character is in a group)'}">${escapeHtml(itemSpellUsageText(sp, char, rule))}</span>
@@ -898,6 +905,7 @@ function spellWikiUrl(name) {
 function renderSpellModule() {
   const char = state.characters[state.activeChar];
   if (!char) return;
+  if (ensureSpellBooks(char)) saveState();
   const pools = spellPoolsInOrder(char);
   // Spellbook entries with nothing in them (left by the old "Add Spell") are hidden
   const spellbook = char.spellbook || [];
@@ -924,7 +932,7 @@ function renderSpellModule() {
         <thead><tr><th></th>${pools.map(p => `<th class="spell-pool-head" title="Open ${escapeHtml(p.name)}" data-pool="${escapeHtml(p.name)}" onclick="openSpellPoolModal(this.dataset.pool)">${escapeHtml(p.name)}</th>`).join('')}</tr></thead>
         <tbody>
           <tr><th>Max</th>${pools.map(p => `<td>${p.maxSP}</td>`).join('')}</tr>
-          <tr><th>Current</th>${pools.map(p => `<td><input type="number" class="w-sm" value="${p.currentSP}" data-pool="${escapeHtml(p.name)}" onchange="updateSpellState(this.dataset.pool,'current',this.value)"></td>`).join('')}</tr>
+          <tr><th>Current</th>${pools.map(p => `<td><input type="number" step="1" class="w-sm" value="${p.currentSP}" data-pool="${escapeHtml(p.name)}" onchange="updateSpellState(this.dataset.pool,'current',this.value)"></td>`).join('')}</tr>
           <tr><th>Used</th>${pools.map(p => `<td>${p.usedSP}</td>`).join('')}</tr>
           <tr><th>Familiarity</th>${pools.map(p => `<td>${escapeHtml(p.familiarity)}</td>`).join('')}</tr>
         </tbody>
@@ -932,7 +940,7 @@ function renderSpellModule() {
       <div class="note">Click a pool's name for its details, recovery and Magic Enhancers.</div>` : ''}
 
       <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Spellbook${infoTip(`${SPELLS.length} spells cataloged (${SPELLS.filter(s=>s.costs).length} with full per-school cost breakdown). Spirit and Shade schools aren't in this catalog yet.`)}</div>
+      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Spellbook</div>
       ${Object.keys(schoolBreakdown).length ? `
       <table class="skill-table" style="margin-bottom:12px">
         <thead><tr><th>School</th><th># Spells</th><th>Total SP Cost</th></tr></thead>
@@ -945,7 +953,13 @@ function renderSpellModule() {
       <table class="item-table spellbook-table">
         <thead><tr><th>Spell Name</th><th>Level</th><th>Cost</th><th>Duration</th><th>Notes</th><th></th><th></th></tr></thead>
         <tbody>
-          ${shownSpells.map(({ sp, idx }) => {
+          ${spellBooks(char).map(book => {
+            const inBook = shownSpells.filter(({ sp }) => sp.book === book.bookId);
+            const used = spellBookUsed(char, book.bookId);
+            const hidden = collapsedSpellBooks.has(book.bookId);
+            const head = `<tr class="item-group" data-book="${escapeHtml(book.bookId)}" title="${hidden ? 'Show' : 'Hide'} this book's spells" onclick="toggleSpellBook(this.dataset.book)"><td colspan="7"><span class="item-group-toggle">${hidden ? '▸' : '▾'}</span>${escapeHtml(book.name || '(unnamed book)')} <span class="item-group-stats">(${escapeHtml(book.location || 'Carried')} · ${inBook.length} spell${inBook.length === 1 ? '' : 's'} · ${used} / ${SPELL_BOOK_CAPACITY})</span>${used > SPELL_BOOK_CAPACITY ? ' <span class="warn">⚠ over capacity</span>' : ''}</td></tr>`;
+            if (hidden) return head;
+            return head + (inBook.map(({ sp, idx }) => {
             const catalogEntry = SPELLS.find(s => s.name === sp.name && s.school === sp.school);
             const level = spellLevel(char, sp.school, pools);
             const breakdown = catalogEntry && catalogEntry.costs ? spellCostText(catalogEntry.costs) : (catalogEntry ? '—' : 'not in detail catalog');
@@ -959,10 +973,14 @@ function renderSpellModule() {
             <td>${catalogEntry && catalogEntry.costs ? `<button class="btn btn-gold" style="font-size:11px;padding:3px 8px" onclick="openHardcastModal(${idx})">Cast</button>` : ''}</td>
             <td class="item-del" onclick="removeSpell(${idx})">✕</td>
           </tr>`;
-          }).join('') || '<tr><td colspan="7" class="note">No spells yet. Use <i>Add Spell</i> below.</td></tr>'}
+          }).join('') || '<tr><td colspan="7" class="note">No spells in this book yet.</td></tr>');
+          }).join('')}
         </tbody>
       </table>
-      <button class="btn btn-gold" onclick="openAddSpellModal()">Add Spell</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-gold" onclick="openAddSpellModal()">Add Spell</button>
+        <button class="btn btn-dim" onclick="openAddSpellBookModal()">Add Spell Book</button>
+      </div>
 
     </div>
   </div>`;
@@ -988,7 +1006,7 @@ function renderSpellPoolModal() {
     <h3>${escapeHtml(p.name)}</h3>
     <div class="form-row">
       <div class="computed-item"><span class="ci-label">Max SP</span><span class="ci-value skval">${p.maxSP}</span></div>
-      <div class="form-group"><label>Current SP</label><input type="number" class="w-sm" value="${p.currentSP}" onchange="updateSpellState('${p.name.replace(/'/g,"\\'")}','current',this.value)"></div>
+      <div class="form-group"><label>Current SP</label><input type="number" step="1" class="w-sm" value="${p.currentSP}" onchange="updateSpellState('${p.name.replace(/'/g,"\\'")}','current',this.value)"></div>
       <div class="computed-item"><span class="ci-label">Used SP</span><span class="ci-value">${p.usedSP}</span></div>
       <button class="btn btn-dim" style="align-self:flex-end" onclick="updateSpellState('${p.name.replace(/'/g,"\\'")}','current',${p.maxSP})">Reset to Max</button>
     </div>

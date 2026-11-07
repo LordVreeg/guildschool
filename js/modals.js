@@ -85,7 +85,7 @@ function renderAddItemModal(justAdded) {
     <div class="form-row">
       ${hasArmorStats ? field('AV', num('av'), 'sm') + field('PR', num('pr'), 'sm') : ''}
       ${field('Qty', num('qty', 'min="1"'), 'sm')}
-      ${field('Unit Weight', num('weight'), 'sm')}
+      ${field('Unit Weight', d.type === 'Spell Book' ? `<input class="w-full" type="number" value="${SPELL_BOOK_WEIGHT}" disabled title="A spell book always weighs ${SPELL_BOOK_WEIGHT}">` : num('weight'), 'sm')}
       ${field('Unit Worth', num('worth'), 'sm')}
       ${d.type === 'Magic Item' ? '' : `<div class="form-group" style="justify-content:flex-end">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
@@ -262,7 +262,8 @@ function openDeleteContainerModal(name) {
 // keeps the popup open for the next one.
 function openAddSpellModal(opts) {
   opts = opts || {};
-  spellDraft = { school: '', name: '', cost: 0, notes: '' };
+  if (ensureSpellBooks(state.characters[state.activeChar])) saveState();
+  spellDraft = { school: '', name: '', cost: 0, notes: '', book: '' };
   if (!opts.keepAddNext) addNextSpell = false;
   renderAddSpellModal(opts.justAdded);
 }
@@ -277,6 +278,16 @@ function renderAddSpellModal(justAdded) {
   const breakdown = def && def.costs ? spellCostText(def.costs) : '—';
   const char = state.characters[state.activeChar];
   const level = char && d.school ? spellLevel(char, d.school) : 0;
+  // Which spell book it goes in: only books with room for its cost can be
+  // picked; the default is a carried book with room (see defaultSpellBook).
+  const books = spellBooks(char);
+  const cost = parseFloat(d.cost) || 0;
+  const chosen = books.find(b => b.bookId === d.book);
+  if (!chosen || spellBookRoom(char, chosen) < cost) { const def = defaultSpellBook(char, cost); d.book = def ? def.bookId : ''; }
+  const bookField = `<select class="w-lg" onchange="setSpellDraftBook(this.value)">${opt('', '— select —', !d.book)}${books.map(b => {
+      const room = spellBookRoom(char, b);
+      return `<option value="${escapeHtml(b.bookId)}" ${d.book === b.bookId ? 'selected' : ''} ${room < cost ? 'disabled' : ''}>${escapeHtml(b.name || '(unnamed)')} (${escapeHtml(b.location || 'Carried')}) · ${SPELL_BOOK_CAPACITY - room} / ${SPELL_BOOK_CAPACITY}${room < cost ? ' · full' : ''}</option>`;
+    }).join('')}</select>`;
   const spellField = !d.school
     ? `<select class="w-lg" disabled><option>— select —</option></select>`
     : catalog.length
@@ -290,7 +301,9 @@ function renderAddSpellModal(justAdded) {
         <select class="w-md" onchange="setSpellDraftSchool(this.value)">${opt('', '— select —', !d.school)}${schools.map(sc => opt(sc, sc, d.school === sc)).join('')}</select>
       </div>
       <div class="form-group"><label>Spell</label>${spellField}</div>
+      <div class="form-group"><label>Spell Book</label>${bookField}</div>
     </div>
+    ${d.book ? '' : `<div class="warn">No spell book has room for this spell (cost ${cost} of ${SPELL_BOOK_CAPACITY}). Add a spell book first.</div>`}
     <div class="form-row">
       <div class="computed-item"><span class="ci-label">Level</span><span class="ci-value">${d.school ? level : '—'}</span></div>
       <div class="computed-item"><span class="ci-label">Cost</span><span class="ci-value" style="font-size:13px">${escapeHtml(breakdown)}</span></div>
@@ -302,8 +315,33 @@ function renderAddSpellModal(justAdded) {
         <input type="checkbox" ${addNextSpell ? 'checked' : ''} onchange="addNextSpell=this.checked"> Add another spell
       </label>
       <button class="btn btn-dim" onclick="spellDraft=null;addNextSpell=false;closeModal()">Cancel</button>
-      <button class="btn btn-gold" id="as-add" ${d.school && String(d.name).trim() ? '' : 'disabled'} onclick="confirmAddSpell()">Add Spell</button>
+      <button class="btn btn-gold" id="as-add" ${d.school && String(d.name).trim() && d.book ? '' : 'disabled'} onclick="confirmAddSpell()">Add Spell</button>
     </div>`, { wide: true, width: 'min(560px, 92vw)' });
+}
+
+// Add Spell Book: a name and where it's kept. A character's first book
+// suggests "My First", carried.
+function openAddSpellBookModal() {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  spellBookDraft = { name: spellBooks(char).length ? '' : 'My First', location: '' };
+  renderAddSpellBookModal();
+}
+function renderAddSpellBookModal() {
+  const char = state.characters[state.activeChar];
+  const d = spellBookDraft;
+  if (!char || !d) return;
+  const opt = (value, label, selected) => `<option value="${escapeHtml(value)}" ${selected ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+  openModal(`
+    <h3>Add Spell Book${infoTip(`Holds spells costing up to ${SPELL_BOOK_CAPACITY} in all. It's added to the inventory, where it can be moved like any item; a new container comes from Add Container there.`)}</h3>
+    <div class="form-row">
+      <div class="form-group"><label>Name</label><input class="w-lg" value="${escapeHtml(d.name)}" placeholder="e.g. Travelling Book" oninput="spellBookDraft.name=this.value;document.getElementById('sb-add').disabled=!this.value.trim()"></div>
+      <div class="form-group"><label>Kept</label><select class="w-md" onchange="spellBookDraft.location=this.value">${opt('', 'Carried', !d.location)}${itemLocations(char).map(l => opt(l, l, d.location === l)).join('')}</select></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-dim" onclick="spellBookDraft=null;closeModal()">Cancel</button>
+      <button class="btn btn-gold" id="sb-add" ${String(d.name).trim() ? '' : 'disabled'} onclick="confirmAddSpellBook()">Add Spell Book</button>
+    </div>`, { width: 'min(520px, 92vw)' });
 }
 
 function openNewCharModal(preset) {
