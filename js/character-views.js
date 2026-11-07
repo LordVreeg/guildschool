@@ -589,13 +589,16 @@ function renderCombatModule() {
     </table>`;
 
   // Weapons: a line per grip (and Missile), the weapon's name opens its popup
+  const handsFull = computeWielding(char).mode === 'one';
   const weaponRows = weaponEntries.map((entry, pos) => {
     const it = entry.kind === 'hand' ? handFootWeapon(char) : entry.it;
     if (!it) return '';
     const w = computeWeapon(char, it);
     const lines = [];
     if (w.oneHand) lines.push({ grip: 'One-Handed', which: 'one', v: w.oneHand });
-    if (w.twoHand) lines.push({ grip: 'Two-Handed', which: 'two', v: w.twoHand });
+    // With a second weapon or a shield in hand, no weapon can be held in two
+    // hands, so only its one-handed line is shown (see computeWielding).
+    if (w.twoHand && !(handsFull && entry.kind === 'item' && w.oneHand)) lines.push({ grip: 'Two-Handed', which: 'two', v: w.twoHand });
     // a weapon that fires ammunition shoots (Missile); any other missile use is a throw
     if (w.missile) lines.push({ grip: weaponTakesAmmo(it) ? 'Missile' : 'Throw', missile: w.missile });
     if (!lines.length) lines.push({ grip: '—' });
@@ -641,7 +644,8 @@ function renderCombatModule() {
 
       <div class="combat-top">
       <div class="combat-top-col">
-      <div class="combat-section-head"><span>Hit Points${hp.system === 'standard' ? '' : infoTip('Collegium System (set under Campaign Settings on General Info). Damage hits Endurance first; Physical is only touched once Endurance is depleted. Physical = ceil(total ÷ 2), Endurance = floor(total ÷ 2).')}</span></div>
+      <div class="combat-section-head"><span>Hit Points${infoTip('Standard: one HP pool. Collegium: Physical and Endurance; damage hits Endurance first, and Physical is only touched once Endurance is depleted. Physical = ceil(total ÷ 2), Endurance = floor(total ÷ 2). The same setting is under Campaign Settings on General Info.')}</span></div>
+      <label class="check-row"><input type="checkbox" ${hp.system === 'collegium' ? 'checked' : ''} onchange="updateHPState('system', this.checked ? 'collegium' : 'standard')"> Collegium System (uncheck for Standard)</label>
       ${hpTable}
       </div>
       <div class="combat-top-col">
@@ -880,7 +884,7 @@ function renderCombatDetail() {
             <thead><tr><th></th><th>Multi</th><th>To Hit</th><th>Crit${infoTip(`A roll at or under this crits. 7 + floor(to hit ÷ 10) + (10% × Critical Hit Bonus skval [${w.critHitBonusSkval}]) + weapon threat range, capped at half of to hit, floored at 3%.`)}</th><th>Fumble${infoTip(FUMBLE_HELP)}</th><th>Dmg Roll${infoTip(DMG_ROLL_HELP)}</th><th>Init Roll${infoTip(INIT_ROLL_HELP)}</th><th>Parry</th><th>Parry Used${infoTip("Capped at this weapon's Parry skill. Each point comes off this weapon's To Hit and adds to your PR, against melee attacks only.")}</th></tr></thead>
             <tbody>
               ${w.oneHand ? gripRow('One-Handed', 'one', w.oneHand) : `<tr><td class="note">One-Handed</td><td colspan="8" class="note">Not usable one-handed — no 1H stats for this weapon</td></tr>`}
-              ${w.twoHand ? gripRow('Two-Handed', 'two', w.twoHand) : ''}
+              ${w.twoHand && !(w.oneHand && computeWielding(char).mode === 'one' && itemInUse(char, it)) ? gripRow('Two-Handed', 'two', w.twoHand) : ''}
             </tbody>
           </table>
           ${w.missile ? `
