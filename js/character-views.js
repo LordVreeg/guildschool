@@ -102,6 +102,21 @@ function weightSummaryHtml(char) {
   `;
 }
 
+// The Inventory title bar's centre: Weight Carried, with a small gauge under
+// it running green (nothing carried) to red (Weight Possible reached).
+function inventoryWeightGaugeHtml(char) {
+  const w = computeWeight(char);
+  const pct = w.possible > 0 ? Math.min(100, (w.carried / w.possible) * 100) : (w.carried > 0 ? 100 : 0);
+  const over = w.carried > w.possible;
+  const tip = `Max weight: ${w.possible.toLocaleString()}
+Current weight: ${w.carried.toLocaleString()}
+ST×90 + HE×10 + (Basic Move skval×10) + (Ignore Encumbrance skval×10)`;
+  return `<div class="inventory-weight">
+      <div class="computed-item"><span class="ci-label">Weight Carried${infoTip(tip)}</span></div>
+      <div class="weight-gauge${over ? ' over' : ''}"><div class="weight-gauge-rest" style="left:${pct}%"></div></div>
+    </div>`;
+}
+
 function renderGeneralModule() {
   const char = state.characters[state.activeChar];
   if (!char) return;
@@ -312,20 +327,21 @@ function itemKindLabel(it) {
   return last === 'Custom' && labels.length > 1 ? `${labels[labels.length - 2]}, Custom` : last;
 }
 
-// The line under a magical item listing its modifiers, and whether they're in
-// effect right now (worn / wielded / carried, see itemModsInUse).
-// Under a spell book on the Inventory page: how full it is, and (unless the
-// book is folded) the spells written in it.
-function spellBookLinesHtml(char, it) {
-  if (it.type !== 'Spell Book' || !it.bookId) return '';
-  const inBook = spellsInBook(char, it.bookId).sort((a, b) => String(a.sp.name || '').localeCompare(String(b.sp.name || ''), undefined, { sensitivity: 'base' }));
-  const used = spellBookUsed(char, it.bookId);
-  const hidden = collapsedSpellBooks.has(it.bookId);
-  const head = `<tr class="item-spell-row"><td colspan="8"><span class="item-group-toggle" style="cursor:pointer" data-book="${escapeHtml(it.bookId)}" onclick="toggleSpellBook(this.dataset.book)" title="${hidden ? 'Show' : 'Hide'} its spells">${hidden ? '▸' : '▾'}</span>📖 ${inBook.length} spell${inBook.length === 1 ? '' : 's'} · ${used} / ${SPELL_BOOK_CAPACITY}${used > SPELL_BOOK_CAPACITY ? ' <span class="warn">⚠ over capacity</span>' : ''}</td></tr>`;
-  if (hidden) return head;
-  return head + inBook.map(({ sp }) => `<tr class="item-spell-row"><td colspan="8" style="padding-left:28px">✦ <a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener">${escapeHtml(sp.name)}</a> · ${escapeHtml(sp.school || '')} · cost ${parseFloat(sp.cost) || 0}</td></tr>`).join('');
+// The Inventory's sections, in order, and which one an item goes in.
+const INVENTORY_SECTIONS = ['Armor & Weapons', 'Scrolls', 'Potions', 'Magic Items', 'Items', 'Money', 'Spell Books'];
+function inventorySectionOf(it) {
+  if (['Weapon', 'Shield', 'Armor', 'Ammunition'].includes(it.type)) return 'Armor & Weapons';
+  if (it.type === 'Spell Book') return 'Spell Books';
+  if (it.type === 'Coin') return 'Money';
+  const rule = itemSpellRule(it);
+  if (rule === 'scroll') return 'Scrolls';
+  if (rule === 'potion') return 'Potions';
+  if (it.type === 'Magic Item') return 'Magic Items';
+  return 'Items';
 }
 
+// The line under a magical item listing its modifiers, and whether they're in
+// effect right now (worn / wielded / carried, see itemModsInUse).
 function itemModsLineHtml(char, it) {
   if (!itemModKinds(it)) return '';
   const fmt = (v, suffix) => { const n = parseFloat(v) || 0; return n ? (n > 0 ? '+' : '') + n + (suffix || '') : ''; };
@@ -345,7 +361,7 @@ function itemModsLineHtml(char, it) {
   if (!bits.length) return '';
   const inUse = itemModsInUse(char, it, shieldsCountedItems(char));
   const why = it.type === 'Ammunition' ? "pick it as a missile weapon's ammunition on the Combat page" : (it.type === 'Weapon' || it.type === 'Shield' || it.type === 'Armor') ? 'carry it and tick In Use' : 'carry it on your person';
-  return `<tr class="item-spell-row"><td colspan="8">◈ ${escapeHtml(bits.join(' · '))}${inUse ? '' : ` <span style="color:#c05050" title="Not counting right now: ${why}">(not in use)</span>`}</td></tr>`;
+  return `<tr class="item-spell-row"><td colspan="9">◈ ${escapeHtml(bits.join(' · '))}${inUse ? '' : ` <span style="color:#c05050" title="Not counting right now: ${why}">(not in use)</span>`}</td></tr>`;
 }
 
 // Where an item can go: Carried (an empty location) plus every container
@@ -389,36 +405,40 @@ function inUseCellHtml(char, it, idx) {
   return `<input type="checkbox" ${itemInUse(char, it) ? 'checked' : ''} title="${it.type === 'Armor' ? 'Worn' : 'In hand. One two-handed weapon, two one-handed weapons, or a one-handed weapon and a shield.'}" onchange="setItemInUse(${idx}, this.checked)">`;
 }
 
-// Read-only inventory rows, grouped under a header per location (Carried
-// first), with that location's totals from computeStorageSummary.
+// Read-only inventory rows, grouped into folding sections by kind
+// (INVENTORY_SECTIONS); the Location column says where each one is kept.
 function inventoryGroupsHtml(char) {
-  const CARRIED = 'On Person (Carried)';
   const entries = (char.items || []).map((it, idx) => ({ it, idx })).filter(({ it }) => !isBlankItem(it));
-  const html = computeStorageSummary(char).map(g => {
-    const rows = entries.filter(({ it }) => ((it.location || '').trim() || CARRIED) === g.location);
+  const containers = itemLocations(char);
+  const where = it => (it.location || '').trim();
+  const html = INVENTORY_SECTIONS.map(section => {
+    const rows = entries.filter(({ it }) => inventorySectionOf(it) === section);
     if (!rows.length) return '';
-    const hidden = collapsedItemGroups.has(g.location);
-    const isContainer = g.location !== CARRIED;
-    const label = !isContainer ? 'Carried' : escapeHtml(g.location) + (g.onPerson ? ' <span class="item-group-stats">(on person)</span>' : '');
-    return `<tr class="item-group" data-group="${escapeHtml(g.location)}" data-container="${escapeHtml(g.location)}" title="${hidden ? 'Show' : 'Hide'} these items" onclick="toggleItemGroup(this.dataset.group)"><td colspan="8"><span class="item-group-toggle">${hidden ? '▸' : '▾'}</span>${label}${isContainer ? `<span class="group-move">${containerMoveButtons(char, g.location)}</span>` : ''}</td></tr>` +
-      (hidden ? '' : rows.map(({ it, idx }) => `<tr style="${it.masterwork ? 'font-style:italic' : ''}">
-        <td>${escapeHtml(it.name || '')}${inventoryAmmoWarning(char, it)}</td>
+    // within a section: Carried first, then the containers in their set order, then by name
+    const rank = it => where(it) ? 1 + containers.indexOf(where(it)) : 0;
+    rows.sort((a, b) => (rank(a.it) - rank(b.it)) || String(a.it.name || '').localeCompare(String(b.it.name || ''), undefined, { sensitivity: 'base' }));
+    const hidden = collapsedItemGroups.has(section);
+    const count = rows.length;
+    return `<tr class="item-group" data-group="${escapeHtml(section)}" title="${hidden ? 'Show' : 'Hide'} these items" onclick="toggleItemGroup(this.dataset.group)"><td colspan="9"><span class="item-group-toggle">${hidden ? '▸' : '▾'}</span>${escapeHtml(section)}<span class="item-group-stats">(${count})</span></td></tr>` +
+      (hidden ? '' : rows.map(({ it, idx }) => { const warn = inventoryAmmoWarning(char, it); return `<tr class="item-row" style="${it.masterwork ? 'font-style:italic' : ''}">
+        <td>${escapeHtml(it.name || '')}</td>
         <td class="item-kind">${escapeHtml(itemKindLabel(it))}</td>
+        <td class="item-kind">${where(it) ? escapeHtml(where(it)) : 'Carried'}</td>
         <td class="item-qty">${escapeHtml(it.qty || 1)}</td>
         <td style="text-align:center">${inUseCellHtml(char, it, idx)}</td>
         <td style="text-align:center">${it.masterwork || it.type === 'Magic Item' ? '✓' : ''}</td>
-        <td class="item-kind">${escapeHtml(it.notes || '')}</td>
+        <td class="item-kind">${warn || escapeHtml(it.notes || '')}</td>
         <td class="item-edit" title="Edit" onclick="openEditItemModal(${idx})">✎</td>
         <td class="item-del" title="Delete" onclick="removeItem(${idx})">✕</td>
-      </tr>` + itemModsLineHtml(char, it) + spellBookLinesHtml(char, it) + (itemCanHoldSpells(it) ? (it.spells || []).map((sp, j) => {
+      </tr>` + itemModsLineHtml(char, it) + (itemCanHoldSpells(it) ? (it.spells || []).map((sp, j) => {
         const left = itemSpellUsesLeft(sp, char);
         const rule = itemSpellRule(it);
-        return `<tr class="item-spell-row"><td colspan="8">✦ <a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener">${escapeHtml(sp.name)}</a> · Level ${sp.level} · <span style="${left > 0 ? '' : 'color:#c05050'}" title="${rule ? 'Used up as it is cast; does not come back' : sp.period === 'charges' ? 'Charges only come back with ↺' : characterClockSeconds(char) != null ? 'Comes back as the group clock passes into the next ' + escapeHtml(itemSpellPeriodLabel(sp.period).replace(/^per /, '')) + ', or with ↺' : 'Comes back with ↺ (or as the group clock passes, once this character is in a group)'}">${escapeHtml(itemSpellUsageText(sp, char, rule))}</span>
+        return `<tr class="item-spell-row"><td colspan="9">✦ <a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener">${escapeHtml(sp.name)}</a> · Level ${sp.level} · <span style="${left > 0 ? '' : 'color:#c05050'}" title="${rule ? 'Used up as it is cast; does not come back' : sp.period === 'charges' ? 'Charges only come back with ↺' : characterClockSeconds(char) != null ? 'Comes back as the group clock passes into the next ' + escapeHtml(itemSpellPeriodLabel(sp.period).replace(/^per /, '')) + ', or with ↺' : 'Comes back with ↺ (or as the group clock passes, once this character is in a group)'}">${escapeHtml(itemSpellUsageText(sp, char, rule))}</span>
           <button class="btn btn-gold item-spell-btn" ${left > 0 ? '' : 'disabled'} title="Cast ${escapeHtml(sp.name)} from this item" onclick="openItemCastModal(${idx},${j})">Cast</button>
           ${rule ? '' : `<button class="btn btn-dim item-spell-btn" title="Reset its uses" onclick="rechargeItemSpell(${idx},${j})">↺</button>`}</td></tr>`;
-      }).join('') : '')).join(''));
+      }).join('') : ''); }).join(''));
   }).join('');
-  return html || `<tr><td colspan="8" class="note">No items yet. Use <i>Add Item</i> below.</td></tr>`;
+  return html || `<tr><td colspan="9" class="note">No items yet. Use <i>Add Item</i> below.</td></tr>`;
 }
 
 function renderInventoryModule() {
@@ -428,16 +448,13 @@ function renderInventoryModule() {
 
   document.getElementById('main').innerHTML = `
   <div class="panel plain-font">
-    <div class="panel-header"><h2>Inventory — ${escapeHtml(char.name || '')}</h2>
-      <div class="computed-item" style="margin-left:auto"><span class="ci-label">Total Worth</span><span class="ci-value" style="font-size:16px">${totalWorth.toLocaleString()}</span></div>
+    <div class="panel-header inventory-header"><h2>Inventory</h2>
+      ${inventoryWeightGaugeHtml(char)}
+      <div class="computed-item inventory-worth"><span class="ci-label">Total Worth</span><span class="ci-value">${totalWorth.toLocaleString()}</span></div>
     </div>
     <div class="panel-body">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weight</div>
-      ${weightSummaryHtml(char)}
-      <hr class="divider">
-      <div class="note">Use ✎ to change an item.${infoTip(`Items are grouped by where they are. Carried items count toward Weight Carried above; items in a container don't, unless you tick its On Person box in Storage Locations below (a backpack you're wearing).`)}</div>
       <table class="item-table inventory-table">
-        <thead><tr><th>Item</th><th>Type</th><th>Qty</th><th title="Weapons and shields in hand, armor worn: these are what the Combat page counts">In Use</th><th>MW/Magic</th><th>Notes</th><th></th><th></th></tr></thead>
+        <thead><tr><th>Item</th><th>Type</th><th>Location</th><th>Qty</th><th title="Weapons and shields in hand, armor worn: these are what the Combat page counts">In Use</th><th>MW/Magic</th><th>Notes</th><th></th><th></th></tr></thead>
         <tbody>${inventoryGroupsHtml(char)}</tbody>
       </table>
       <button class="btn btn-gold" onclick="openAddItemModal()">Add Item</button>

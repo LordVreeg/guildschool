@@ -85,8 +85,8 @@ function renderAddItemModal(justAdded) {
     <div class="form-row">
       ${hasArmorStats ? field('AV', num('av'), 'sm') + field('PR', num('pr'), 'sm') : ''}
       ${field('Qty', num('qty', 'min="1"'), 'sm')}
-      ${field('Unit Weight', d.type === 'Spell Book' ? `<input class="w-full" type="number" value="${SPELL_BOOK_WEIGHT}" disabled title="A spell book always weighs ${SPELL_BOOK_WEIGHT}">` : num('weight'), 'sm')}
-      ${field('Unit Worth', num('worth'), 'sm')}
+      ${field('Unit Weight', d.type === 'Spell Book' ? `<input class="w-full" type="number" value="${SPELL_BOOK_WEIGHT}" disabled title="A spell book always weighs ${SPELL_BOOK_WEIGHT}">` : num('weight'), 'sm one-line-label')}
+      ${field('Unit Worth', num('worth'), 'sm one-line-label')}
       ${d.type === 'Magic Item' ? '' : `<div class="form-group" style="justify-content:flex-end">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
           <input type="checkbox" ${lock} ${d.masterwork ? 'checked' : ''} onchange="setAddItemField('masterwork',this.checked);renderAddItemModal()"> Masterwork / Magic
@@ -161,14 +161,19 @@ function itemSpellsSectionHtml(d) {
   // One selection row per draft, on a single line, ending with ✕
   const rows = itemSpellDrafts.map((s, i) => {
     const catalog = s.school ? SPELLS.filter(sp => sp.school === s.school).sort((a, b) => a.name.localeCompare(b.name)) : [];
-    const spellField = !s.school
+    // once a catalog spell is picked (found or chosen), the Find box goes and
+    // School and Spell are fixed; ✕ the row to pick another
+    const picked = !!s.name && catalog.some(sp => sp.name === s.name);
+    const spellField = picked
+      ? `<input class="w-md" value="${escapeHtml(s.name)}" readonly>`
+      : !s.school
       ? '<select class="w-md" disabled><option>— select —</option></select>'
       : catalog.length
         ? `<select class="w-md" onchange="setItemSpellDraft(${i},'name',this.value,true)">${opt('', '— select —', !s.name)}${catalog.map(sp => opt(sp.name, sp.name, s.name === sp.name)).join('')}</select>`
         : `<input class="w-md" value="${escapeHtml(s.name || '')}" placeholder="Type its name" oninput="setItemSpellDraft(${i},'name',this.value)">`;
     return `<div class="form-row item-spell-edit" style="align-items:flex-end;margin-top:6px">
-      <div class="form-group"><label>Find${i === 0 ? infoTip('Type part of a spell\'s name to search every school; picking one fills in School and Spell. Or choose them from the lists.') : ''}</label><input class="w-md" list="item-spell-search" placeholder="Search by name" onchange="pickItemSpellBySearch(${i}, this.value)"></div>
-      <div class="form-group"><label>School</label><select class="w-md" onchange="setItemSpellDraft(${i},'school',this.value,true)">${opt('', '— select —', !s.school)}${schools.map(sc => opt(sc, sc, s.school === sc)).join('')}</select></div>
+      ${picked ? '' : `<div class="form-group"><label>Find${i === 0 ? infoTip('Type part of a spell\'s name to search every school; picking one fills in School and Spell. Or choose them from the lists.') : ''}</label><input class="w-md" list="item-spell-search" placeholder="Search by name" onchange="pickItemSpellBySearch(${i}, this.value)"></div>`}
+      <div class="form-group"><label>School</label>${picked ? `<input class="w-md" value="${escapeHtml(s.school)}" readonly>` : `<select class="w-md" onchange="setItemSpellDraft(${i},'school',this.value,true)">${opt('', '— select —', !s.school)}${schools.map(sc => opt(sc, sc, s.school === sc)).join('')}</select>`}</div>
       <div class="form-group"><label>Spell</label>${spellField}</div>
       <div class="form-group"><label>Level</label><input type="number" min="1" class="w-sm" value="${escapeHtml(s.level)}" oninput="setItemSpellDraft(${i},'level',this.value)"></div>
       ${rule === 'scroll' ? '' : `<div class="form-group"><label>Uses</label><input type="number" min="1" class="w-sm" value="${escapeHtml(s.usesMax)}" oninput="setItemSpellDraft(${i},'usesMax',this.value)"></div>`}
@@ -337,7 +342,8 @@ function renderAddSpellBookModal() {
     <div class="form-row">
       <div class="form-group"><label>Name</label><input class="w-lg" value="${escapeHtml(d.name)}" placeholder="e.g. Travelling Book" oninput="spellBookDraft.name=this.value;document.getElementById('sb-add').disabled=!this.value.trim()"></div>
       <div class="form-group"><label>Kept</label><select class="w-md" onchange="spellBookDraft.location=this.value">${opt('', 'Carried', !d.location)}${itemLocations(char).map(l => opt(l, l, d.location === l)).join('')}</select></div>
-    </div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn btn-dim" onclick="spellBookDraft=null;closeModal()">Cancel</button>
       <button class="btn btn-gold" id="sb-add" ${String(d.name).trim() ? '' : 'disabled'} onclick="confirmAddSpellBook()">Add Spell Book</button>

@@ -75,7 +75,6 @@ body {
 .inventory-table .item-group-stats { color: var(--text-dim); text-transform: none; letter-spacing: normal; margin-left: 8px; }
 .inventory-table tr.item-group { cursor: pointer; user-select: none; }
 .inventory-table .item-group-toggle { display: inline-block; width: 14px; }
-.inventory-table .group-move { float: right; display: inline-flex; gap: 4px; }
 .inventory-table .container-move-cell { white-space: nowrap; width: 56px; }
 .inventory-table .container-move { padding: 0 6px; line-height: 16px; }
 .inventory-table .container-move:disabled { opacity: .35; cursor: default; }
@@ -205,7 +204,7 @@ td div.note, td.note, li.note { margin: 0; }
 #info-tip-box { display: none; position: fixed; z-index: 10001; max-width: 300px; padding: 6px 9px;
   background: var(--panel); color: var(--text); border: 1px solid var(--gold-dim); box-shadow: 0 2px 8px rgba(0,0,0,.35);
   font-family: 'IM Fell English', 'Georgia', serif; font-size: 12px; font-style: normal; line-height: 1.35;
-  text-transform: none; letter-spacing: normal; white-space: normal; pointer-events: none; }
+  text-transform: none; letter-spacing: normal; white-space: pre-line; pointer-events: none; }
 .note.placeholder { text-align: center; padding: 40px; }
 #sidebar > .note.placeholder { padding: 12px; }
 .expmod-breakdown { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
@@ -292,7 +291,7 @@ td div.note, td.note, li.note { margin: 0; }
 /* A skill (or group of skills) that doesn't match anything in the skill catalog */
 .skill-unknown, .sidebar-section.skill-unknown { color: #c05050 !important; }
 /* Inventory: a magic item's spells, under the item's row */
-.inventory-table tr.item-spell-row td { padding: 2px 8px 4px 28px; color: var(--text-dim); border-bottom: 1px solid rgba(179,154,102,.25); }
+.inventory-table tr.item-spell-row td { padding: 2px 8px 4px 38px; color: var(--text-dim); border-bottom: 1px solid rgba(179,154,102,.25); }
 .inventory-table .item-spell-btn { padding: 1px 8px; margin-left: 6px; }
 .inventory-table .item-spell-btn:disabled { opacity: .4; cursor: default; }
 /* Item popup: a spell's selection row stays on one line */
@@ -339,3 +338,20 @@ body.sidebar-resizing { cursor: col-resize; user-select: none; }
 .sched-chip { display: block; background: var(--gold); color: var(--panel); padding: 1px 4px; margin-bottom: 2px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sched-chip.cancelled { background: var(--text-dim); text-decoration: line-through; }
 @media (max-width: 700px) { .sched-cell { min-height: 56px; padding: 2px; } }
+/* Inventory title bar: title | Weight Carried + gauge (centre) | Total Worth */
+.inventory-header { display: grid; grid-template-columns: 1fr auto 1fr; }
+.inventory-header .inventory-worth { justify-self: end; align-items: flex-end; }
+.inventory-weight { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.inventory-weight .computed-item { align-items: center; }
+/* green to red across the full track, with 25% ticks; the dark part covers what isn't carried yet */
+.weight-gauge { position: relative; width: 140px; height: 6px; border: 1px solid rgba(233,198,74,.4);
+  background: repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), rgba(0,0,0,.55) calc(25% - 1px) 25%),
+              linear-gradient(90deg, #3f9a4a, #d8c03a 55%, #c83a3a); }
+.weight-gauge-rest { position: absolute; top: 0; right: 0; bottom: 0; background: rgba(20,14,10,.75); }
+.weight-gauge.over { box-shadow: 0 0 0 1px #e06a6a; }
+/* a section's items sit 10px in from its header */
+.inventory-table tr.item-row > td:first-child { padding-left: 18px; }
+/* a narrow field whose label stays on one line (Unit Weight); the field widens to fit it */
+.form-group.one-line-label { width: auto; min-width: var(--w-sm); }
+.form-group.one-line-label > label { white-space: nowrap; }
+.form-group.one-line-label > input { width: 0; min-width: 100%; }
