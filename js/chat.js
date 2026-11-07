@@ -723,12 +723,12 @@ const CHAT_HELP_HTML = `
   </table>
   <b>Game rolls</b>
   <table>
-    <tr><td>/prot <i>number</i></td><td>Armor protection roll: <code>/prot 40</code> rolls <code>(40-d10)/(2d6/2)</code></td></tr>
+    <tr><td>/prot <i>number</i></td><td>Armor protection roll: <code>/prot 40</code> rolls <code>(40-d10)/(2d6/2)</code>, rounded, never below 0</td></tr>
   </table>
   <b>Dice</b>
   <table>
     <tr><td>2d6 d20 d% 4dF (2+1)d6</td><td>Dice, percentile, fate (−1/0/+1), worked-out counts</td></tr>
-    <tr><td>+ − * / % ** ( ) floor() ceil() round() abs()</td><td>Maths</td></tr>
+    <tr><td>+ − * / % ** ( ) floor() ceil() round() abs() max(a,b) min(a,b)</td><td>Maths</td></tr>
     <tr><td>4d6kh3 4d6k3 · 2d20kl1 · 4d6d1 4d6dl1 · 2d20dh1</td><td>Keep highest / lowest, drop lowest / highest</td></tr>
     <tr><td>3d6! · 3d6!! · 3d6!p · 1d10!>8</td><td>Exploding, compounding, penetrating (optionally on a range)</td></tr>
     <tr><td>4d6r1 · 4d6r<2 · 4d6ro1</td><td>Reroll while matching, or reroll once</td></tr>
@@ -758,8 +758,9 @@ function chatTakeName(s) {
 // build() returns, so it's drawn (and can be whispered with /w) like any /roll.
 // Add new game rolls here and in the "Game rolls" table of CHAT_HELP_HTML.
 const CHAT_GAME_ROLLS = {
-  // Armor protection: (protection - d10) / (2d6 / 2)
-  prot: { usage: '/prot 40', build: arg => `(${chatNumberArg(arg, '/prot', 'a protection number, e.g. /prot 40')}-d10)/(2d6/2)` }
+  // Armor protection: (protection - d10) / (2d6 / 2), rounded, never below 0
+  // (the same rule as protectionRollRange in formulas.js).
+  prot: { usage: '/prot 40', build: arg => `max(0, round((${chatNumberArg(arg, '/prot', 'a protection number, e.g. /prot 40')}-d10)/(2d6/2)))` }
 };
 function chatNumberArg(arg, cmd, what) {
   const s = String(arg).trim();

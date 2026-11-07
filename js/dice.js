@@ -3,7 +3,7 @@
 // ============================================================
 // Supported:
 //   NdX, dX, d%, dF (fate: -1/0/+1), (expr)d(expr)
-//   + - * / % ** and parentheses; floor() ceil() round() abs()
+//   + - * / % ** and parentheses; floor() ceil() round() abs() max(a,b) min(a,b)
 //   [label] after any term (ignored in the maths)
 //   Dice modifiers (any order):
 //     r<cp> reroll while matching, ro<cp> reroll once
@@ -97,6 +97,15 @@ const DiceRoller = (() => {
         const a = expr();
         if (!eat(')')) err('Expected )');
         return { t: 'fn', name: fn[1].toLowerCase(), a };
+      }
+      // max(a, b, ...) and min(a, b, ...): the largest / smallest of the values.
+      const mm = /^(max|min)\s*\(/i.exec(src.slice(p));
+      if (mm) {
+        p += mm[0].length;
+        const args = [expr()];
+        while (eat(',')) args.push(expr());
+        if (!eat(')')) err('Expected )');
+        return { t: 'fnn', name: mm[1].toLowerCase(), args };
       }
       if (eat('(')) {
         const inner = expr();
@@ -200,6 +209,13 @@ const DiceRoller = (() => {
         const r = evaluate(node.a, ctx);
         const v = Math[node.name](r.v);
         return { v, parts: [{ s: node.name + '(' }, ...r.parts, { s: ')' }] };
+      }
+      case 'fnn': {
+        const rs = node.args.map(a => evaluate(a, ctx));
+        const parts = [{ s: node.name + '(' }];
+        rs.forEach((r, i) => { if (i) parts.push({ s: ', ' }); parts.push(...r.parts); });
+        parts.push({ s: ')' });
+        return { v: Math[node.name](...rs.map(r => r.v)), parts };
       }
       case 'bin': {
         const a = evaluate(node.a, ctx), b = evaluate(node.b, ctx);
