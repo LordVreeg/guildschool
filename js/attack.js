@@ -13,6 +13,11 @@
 // ============================================================
 
 let chatAttackAV = '';      // the last target AV typed, offered again next time
+let chatAttackDist = '';    // likewise the last distance, for shots and throws
+// How a line reads in the weapon choice and on the card.
+function attGripLabel(line) {
+  return { 'One-Handed': 'melee, one-handed', 'Two-Handed': 'melee, two-handed', Throw: 'thrown', Missile: 'fired' }[line.grip] || line.grip;
+}
 let chatPromptResolve = null;
 
 const ATT_ALWAYS_MISS = 93;  // d100 rolls of 93-100 always miss (wiki "Critical Hits")
@@ -144,7 +149,7 @@ async function chatAttackFlow() {
   for (const entry of combatWeaponEntries(char)) {
     const al = weaponAttackLines(char, entry);
     if (!al) continue;
-    al.lines.filter(l => l.v || l.missile).forEach(line => options.push({ it: al.it, w: al.w, line, label: `${al.it.name || 'Weapon'} — ${line.grip}` }));
+    al.lines.filter(l => l.v || l.missile).forEach(line => options.push({ it: al.it, w: al.w, line, label: `${al.it.name || 'Weapon'} — ${attGripLabel(line)}` }));
   }
   if (!options.length) throw new Error('No weapon in use. Tick In Use on a carried weapon on the Inventory page.');
   let pick = options[0];
@@ -153,13 +158,28 @@ async function chatAttackFlow() {
     if (i === null) return;
     pick = options[i];
   }
-  const { it, w, line } = pick;
+  const { it, w } = pick;
+  let line = pick.line;
   // A bow, sling or crossbow shoots loaded ammunition, whose damage adds to the
   // weapon's: without it (or with the wrong kind) there is nothing to shoot.
   if (line.missile && weaponTakesAmmo(it)) {
     const am = line.missile.ammoItem;
     if (!am || am.type !== 'Ammunition') throw new Error(`${it.name || 'That weapon'} has no ammunition loaded. Set it in the weapon's Missile Fire on the Combat page.`);
     if (!ammoFitsWeapon(am, it)) throw new Error(`${am.name || 'That ammunition'} isn't made for the ${it.name || 'weapon'}.`);
+  }
+  // A shot or throw loses to-hit with distance (the weapon's range), so ask how
+  // far; the sheet's Target Distance is left alone.
+  let rangeRow = null;
+  if (line.missile) {
+    const dAnswer = await chatAsk(`Distance to the target (blank for 0) — ${pick.label}`, null, chatAttackDist !== '' ? chatAttackDist : String(it.targetDistance || ''));
+    if (dAnswer === null) return;
+    chatAttackDist = String(dAnswer).trim();
+    const dist = Math.max(0, parseFloat(chatAttackDist) || 0);
+    const w2 = computeWeapon(char, Object.assign({}, it, { targetDistance: dist }));
+    if (!w2.missile) throw new Error(`${it.name || 'That weapon'} can't be shot or thrown.`);
+    line = Object.assign({}, line, { missile: w2.missile });
+    const m = w2.missile;
+    if (m.effectiveRange > 0) rangeRow = ['Range', `${dist} of ${Math.round(m.effectiveRange)}: to hit × ${Math.round(m.rangeMod * 100) / 100}${m.rangeMod === 0 ? ' (out of range)' : ''}`];
   }
   const stats = attStats(line);
 
@@ -179,7 +199,9 @@ async function chatAttackFlow() {
   const isThrow = line.grip === 'Throw';
   const noMulti = isThrow ? 'a thrown weapon leaves the hand' : /crossbow/i.test(it.weaponClass || '') ? 'crossbows have to be spanned between shots' : '';
   let attacks = 1;
-  const head = [['Weapon', `${it.name || 'Weapon'} — ${line.grip}`], ['To hit', `${Math.round(stats.hit)}${av ? ` + AV ${av}` : ''} = ${needed}; crit ≤ ${critAt}, fumble ≥ ${fumbleAt}`]];
+  const head = [['Weapon', `${it.name || 'Weapon'} — ${attGripLabel(line)}`]];
+  if (rangeRow) head.push(rangeRow);
+  head.push(['To hit', `${Math.round(stats.hit)}${av ? ` + AV ${av}` : ''} = ${needed}; crit ≤ ${critAt}, fumble ≥ ${fumbleAt}`]);
   if (noMulti) head.push(['Multiple Attack', `none (${noMulti}): 1 attack`]);
   else if (skill <= 0) head.push(['Multiple Attack', 'no skill: 1 attack']);
   else {
