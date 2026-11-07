@@ -154,6 +154,13 @@ async function chatAttackFlow() {
     pick = options[i];
   }
   const { it, w, line } = pick;
+  // A bow, sling or crossbow shoots loaded ammunition, whose damage adds to the
+  // weapon's: without it (or with the wrong kind) there is nothing to shoot.
+  if (line.missile && weaponTakesAmmo(it)) {
+    const am = line.missile.ammoItem;
+    if (!am || am.type !== 'Ammunition') throw new Error(`${it.name || 'That weapon'} has no ammunition loaded. Set it in the weapon's Missile Fire on the Combat page.`);
+    if (!ammoFitsWeapon(am, it)) throw new Error(`${am.name || 'That ammunition'} isn't made for the ${it.name || 'weapon'}.`);
+  }
   const stats = attStats(line);
 
   // the target's AV is added to the to-hit needed
