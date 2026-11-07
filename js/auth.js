@@ -274,6 +274,7 @@ async function handleSignedIn() {
   await loadState();
   await fetchMyGroups();
   startChatWatcher();
+  restoreChatFlyout();
   // The old "last exported" date lived in the browser; it's no longer used
   try { localStorage.removeItem('gs_last_export'); } catch (e) {}
   loadData().then(() => {

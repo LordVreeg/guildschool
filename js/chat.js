@@ -53,6 +53,8 @@ async function startChatWatcher() {
 }
 
 function stopChatWatcher() {
+  const fly = document.getElementById('chat-flyout');
+  if (fly) fly.classList.remove('open');
   if (chatChannel) sb.removeChannel(chatChannel);
   chatChannel = null;
   chatUnread = {};
@@ -89,8 +91,60 @@ function updateChatMenuBadge() {
   }
 }
 
+// The chat lives in its own panel on the right (the flyout), over whatever
+// page is showing, so you can keep a character sheet open while chatting.
+// Drag its left edge to change the width; both the width and whether it's
+// open are remembered in this browser.
+const CHAT_FLYOUT_DEFAULT_W = 380;
+const CHAT_FLYOUT_MIN_W = 280;
 function chatPageOpen() {
-  return state.activeView === 'chat' && !!document.getElementById('chat-messages');
+  const fly = document.getElementById('chat-flyout');
+  return !!(fly && fly.classList.contains('open') && document.getElementById('chat-messages'));
+}
+function chatFlyoutEl() {
+  let fly = document.getElementById('chat-flyout');
+  if (fly) return fly;
+  fly = document.createElement('div');
+  fly.id = 'chat-flyout';
+  fly.innerHTML = '<div id="chat-flyout-grip" title="Drag to resize; double-click for the default width"></div><div id="chat-flyout-body"></div>';
+  document.body.appendChild(fly);
+  let w = CHAT_FLYOUT_DEFAULT_W;
+  try { w = parseInt(localStorage.getItem('gs_chat_w')) || w; } catch (e) {}
+  setChatFlyoutWidth(w);
+  const grip = fly.querySelector('#chat-flyout-grip');
+  grip.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    grip.setPointerCapture(e.pointerId);
+    document.body.classList.add('chat-resizing');
+    const move = ev => setChatFlyoutWidth(window.innerWidth - ev.clientX);
+    const up = () => {
+      grip.removeEventListener('pointermove', move);
+      grip.removeEventListener('pointerup', up);
+      document.body.classList.remove('chat-resizing');
+      try { localStorage.setItem('gs_chat_w', String(fly.offsetWidth)); } catch (err) {}
+    };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', up);
+  });
+  grip.addEventListener('dblclick', () => { setChatFlyoutWidth(CHAT_FLYOUT_DEFAULT_W); try { localStorage.removeItem('gs_chat_w'); } catch (e) {} });
+  return fly;
+}
+function setChatFlyoutWidth(w) {
+  const fly = document.getElementById('chat-flyout');
+  if (!fly) return;
+  const max = Math.max(CHAT_FLYOUT_MIN_W, window.innerWidth - 40);
+  fly.style.width = Math.min(max, Math.max(CHAT_FLYOUT_MIN_W, w)) + 'px';
+}
+function closeChatFlyout() {
+  const fly = document.getElementById('chat-flyout');
+  if (fly) fly.classList.remove('open');
+  try { localStorage.removeItem('gs_chat_open'); } catch (e) {}
+}
+// After sign-in: open the chat again if it was open when the page was left.
+function restoreChatFlyout() {
+  let open = false;
+  try { open = localStorage.getItem('gs_chat_open') === '1'; } catch (e) {}
+  if (open) showChatModule();
 }
 
 function onChatChange(payload) {
@@ -117,15 +171,18 @@ function onChatChange(payload) {
   }
 }
 
+// Other -> Chat: opens the flyout, or closes it if it's already open.
 function showChatModule() {
-  state.activeSkillId = null;
-  state.activeView = 'chat';
-  renderSidebar();
+  const fly = chatFlyoutEl();
+  if (fly.classList.contains('open')) { closeChatFlyout(); return; }
+  fly.classList.add('open');
+  try { localStorage.setItem('gs_chat_open', '1'); } catch (e) {}
   renderChatModule();
 }
 
 async function renderChatModule() {
-  const main = document.getElementById('main');
+  const main = document.getElementById('chat-flyout-body');
+  if (!main) return;
   main.innerHTML = `<div class="panel"><div class="panel-body">Loading chat…</div></div>`;
   await fetchMyGroups();
   if (chatGroupId && !myGroups.find(g => g.id === chatGroupId)) chatGroupId = null;
@@ -135,7 +192,7 @@ async function renderChatModule() {
     chatGroupId = (unreadGroup || myGroups[0]).id;
   }
   if (!myGroups.length) {
-    main.innerHTML = `<div class="panel"><div class="panel-header"><h2>Chat</h2></div><div class="panel-body"><div class="note">You're not in any groups yet. Each group has its own chat — ask your GM to add one of your characters to a group.</div></div></div>`;
+    main.innerHTML = `<div class="panel chat-panel"><div class="panel-header"><h2>Chat</h2><div style="flex:1"></div><button class="btn btn-dim chat-close" title="Close the chat" onclick="closeChatFlyout()">✕</button></div><div class="panel-body"><div class="note">You're not in any groups yet. Each group has its own chat — ask your GM to add one of your characters to a group.</div></div></div>`;
     return;
   }
   main.innerHTML = `
@@ -144,6 +201,7 @@ async function renderChatModule() {
         <div style="flex:1"></div>
         <input id="chat-search-input" class="chat-search" type="search" placeholder="Search this chat…" onkeydown="if(event.key==='Enter')searchChat(this.value)">
         <button class="btn btn-dim" style="font-size:11px;padding:3px 8px" onclick="showChatHelp()" title="Commands and dice syntax">? Help</button>
+        <button class="btn btn-dim chat-close" title="Close the chat" onclick="closeChatFlyout()">✕</button>
       </div>
       <div class="panel-body">
         <div id="chat-group-tabs" class="chat-group-tabs"></div>
