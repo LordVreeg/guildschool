@@ -116,11 +116,19 @@ function attDamage(it, line, crit) {
 }
 
 // A critical's second roll and any rare-crit bonuses (wiki "Critical Hits").
+// With the target's AV known the second roll is resolved here; otherwise
+// (needed === null) it is only rolled, and the caller asks how it came out.
 function attCrit(first, needed, stats, sides) {
   const second = DiceRoller.roll('1d100');
-  const ok = second.total <= needed && second.total < ATT_ALWAYS_MISS;
-  const reduction = ok ? 2 + Math.floor((needed - second.total) / 25) : 0;
-  const rows = [['Second roll', `[[${second.expr}]] vs needed ${needed} → ${ok ? `hit: dividing die −${reduction}` : 'missed: no dividing die bonus'}`, [second]]];
+  const rows = [];
+  let reduction = 0;
+  if (needed === null) {
+    rows.push(['Second roll', `[[${second.expr}]] — the GM says whether it hit, and by how much`, [second]]);
+  } else {
+    const ok = second.total <= needed && second.total < ATT_ALWAYS_MISS;
+    reduction = ok ? 2 + Math.floor((needed - second.total) / 25) : 0;
+    rows.push(['Second roll', `[[${second.expr}]] vs needed ${needed} → ${ok ? `hit: dividing die −${reduction}` : 'missed: no dividing die bonus'}`, [second]]);
+  }
   let dieSides;
   // Only for a crit chance of 7+: a first roll of 4 or less drops the dividing die
   if (first <= 4 && stats.crit >= 7 && sides) {
@@ -128,7 +136,22 @@ function attCrit(first, needed, stats, sides) {
     rows.push(['Lucky crit', `Roll of ${first}: the dividing die drops to d${dieSides}`]);
   }
   if (first <= 1 && stats.crit >= 7) rows.push(['The chink', "Rolled 1: the target's armor protects only its minimum, (PR−10)÷6"]);
-  return { rows, reduction, dieSides };
+  return { rows, reduction, dieSides, second: second.total };
+}
+
+// Dividing-die reduction for a critical whose second roll the GM judged:
+// −2 for a hit, and one more for every full 25 points it came in under.
+async function attAskCritReduction(label, secondRoll) {
+  const hit = await chatPromptButtons(`${label}: critical — second roll`,
+    `Second to-hit roll: <b>${secondRoll}</b>. Ask the GM: did it hit?`,
+    [{ label: 'It hit', value: true, gold: true }, { label: 'It missed', value: false }]);
+  if (hit === null) return null;
+  if (!hit) return { reduction: 0, text: 'The second roll missed: no dividing die bonus.' };
+  const under = await chatAsk(`How many points under the needed roll did it land? (the GM tells you; 0 if not told) — ${label}`, null, '0');
+  if (under === null) return null;
+  const pts = Math.max(0, Math.floor(parseFloat(under) || 0));
+  const reduction = 2 + Math.floor(pts / 25);
+  return { reduction, text: `The second roll hit${pts ? `, ${pts} under` : ''}: dividing die −${reduction}.` };
 }
 
 async function chatAttackRun() {
@@ -183,12 +206,14 @@ async function chatAttackFlow() {
   }
   const stats = attStats(line);
 
-  // the target's AV is added to the to-hit needed
-  const avAnswer = await chatAsk(`Target's AV (blank for 0) — attacking with ${pick.label}`, null, chatAttackAV);
+  // The target's AV is added to the to-hit needed. A player usually doesn't
+  // know it, so blank means unknown: the roll is shown against nothing and the
+  // GM is asked about (Hit? and a critical's second roll) instead.
+  const avAnswer = await chatAsk(`Target's AV — leave blank if you don't know it (the GM tells you if it hit) — ${pick.label}`, null, chatAttackAV);
   if (avAnswer === null) return;
   chatAttackAV = String(avAnswer).trim();
-  const av = parseFloat(chatAttackAV) || 0;
-  const needed = Math.round(stats.hit + av);
+  const av = chatAttackAV === '' || isNaN(parseFloat(chatAttackAV)) ? null : parseFloat(chatAttackAV);
+  const needed = av === null ? null : Math.round(stats.hit + av);
   const critAt = Math.max(0, Math.floor(Math.round(stats.crit)));
   const fumbleAt = Math.min(100, Math.round(stats.fumble));
   const who = char.name || 'Attacker';
@@ -201,7 +226,7 @@ async function chatAttackFlow() {
   let attacks = 1;
   const head = [['Weapon', `${it.name || 'Weapon'} — ${attGripLabel(line)}`]];
   if (rangeRow) head.push(rangeRow);
-  head.push(['To hit', `${Math.round(stats.hit)}${av ? ` + AV ${av}` : ''} = ${needed}; crit ≤ ${critAt}, fumble ≥ ${fumbleAt}`]);
+  head.push(['To hit', `${Math.round(stats.hit)}${av === null ? ' (target AV not known)' : av ? ` + AV ${av} = ${needed}` : ''}; crit ≤ ${critAt}, fumble ≥ ${fumbleAt}`]);
   if (noMulti) head.push(['Multiple Attack', `none (${noMulti}): 1 attack`]);
   else if (skill <= 0) head.push(['Multiple Attack', 'no skill: 1 attack']);
   else {
@@ -218,14 +243,15 @@ async function chatAttackFlow() {
     const v = r.total;
     const fumble = v >= fumbleAt;
     const crit = !fumble && v <= critAt;
-    const roughHit = v <= needed && v < ATT_ALWAYS_MISS;
-    const rows = [['Roll', `[[${r.expr}]] vs needed ${needed}`, [r]]];
+    const roughHit = needed !== null && v <= needed && v < ATT_ALWAYS_MISS;
+    const rows = [['Roll', needed === null ? `[[${r.expr}]]` : `[[${r.expr}]] vs needed ${needed}`, [r]]];
 
     if (fumble) {
       rows.push(['Fumble!', 'The attack misses and the attacks left in this sequence are lost. Reflex roll −25: made → next initiative +3; missed → slipped and fell, next initiative +3 and another d8+3.']);
       if (v >= 97) {
         const again = DiceRoller.roll(`1d100cf>${fumbleAt}`);
         const out = again.total >= fumbleAt ? 'fumbled again: hits themselves for full damage (or 50/50 with a PC fighting close by)'
+          : needed === null ? 'the GM says if it hits (a miss throws the weapon)'
           : again.total <= needed && again.total < ATT_ALWAYS_MISS ? 'hits: the weapon is kept' : 'misses: the weapon is thrown';
         rows.push(['Roll of 97+', `Rolls to hit again: [[${again.expr}]] — ${out}`, [again]]);
       }
@@ -238,13 +264,22 @@ async function chatAttackFlow() {
     if (crit) {
       critInfo = attCrit(v, needed, { crit: Math.round(stats.crit) }, attDamageParts(it, line).sides);
       rows.push(['Critical!', 'A critical always hits, and gets a second to-hit roll.'], ...critInfo.rows);
+      if (needed === null) {
+        // AV unknown: the GM judges the second roll, so ask what they said
+        const judged = await attAskCritReduction(label, critInfo.second);
+        if (judged === null) return;
+        critInfo.reduction = judged.reduction;
+        rows.push(['Second roll result', judged.text]);
+      }
       if (!await chatAttackPost(`${label}: CRITICAL`, rows)) return;
     } else {
-      rows.push(['Looks like', roughHit ? 'a hit' : v >= ATT_ALWAYS_MISS ? 'a miss (93+ always misses)' : 'a miss']);
+      if (needed !== null) rows.push(['Looks like', roughHit ? 'a hit' : v >= ATT_ALWAYS_MISS ? 'a miss (93+ always misses)' : 'a miss']);
       if (!await chatAttackPost(label, rows)) return;
       const answer = await chatPromptButtons(`${label}: Hit?`,
-        `You rolled <b>${v}</b> against <b>${needed}</b> — ${roughHit ? 'that looks like a hit' : 'that looks like a miss'}. Did it hit?`,
-        [{ label: 'Hit', value: 'y', gold: roughHit }, { label: 'Miss', value: 'n', gold: !roughHit }, { label: 'Stop (target down)', value: 'stop' }]);
+        needed === null
+          ? `You rolled <b>${v}</b> (to hit ${Math.round(stats.hit)} before the target's AV). The GM knows the AV: did it hit?`
+          : `You rolled <b>${v}</b> against <b>${needed}</b> — ${roughHit ? 'that looks like a hit' : 'that looks like a miss'}. Did it hit?`,
+        [{ label: 'Hit', value: 'y', gold: roughHit }, { label: 'Miss', value: 'n', gold: needed !== null && !roughHit }, { label: 'Stop (target down)', value: 'stop' }]);
       if (answer === null || answer === 'stop') { if (answer === 'stop') await chatAttackPost(`${label}: stopped`, [['', 'The target is down; the rest of the sequence is lost.']]); return; }
       if (answer === 'n') {
         await chatAttackPost(`${label}: miss`, []);
