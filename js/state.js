@@ -39,6 +39,7 @@ window.addEventListener('pagehide', () => {
   try {
     localStorage.setItem(LAST_VIEW_KEY, JSON.stringify({
       char: state.activeChar, view: state.activeView, skillId: state.activeSkillId,
+      groupScope: typeof groupPickerScope !== 'undefined' ? groupPickerScope : 'all',
       groupId: typeof activeGroupId !== 'undefined' ? activeGroupId : null,
       encounterId: typeof activeEncounterId !== 'undefined' ? activeEncounterId : null
     }));
@@ -59,6 +60,7 @@ function restoreLastView() {
   else if (saved.view === 'bestiary') showBestiaryModule();
   else if ((saved.view === 'group' || saved.view === 'encounter') && saved.groupId) {
     activeGroupId = saved.groupId;
+    if (saved.groupScope) groupPickerScope = saved.groupScope;
     if (saved.view === 'encounter' && saved.encounterId) openEncounter(saved.encounterId); else showGroupModule();
   }
 }

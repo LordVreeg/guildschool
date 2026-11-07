@@ -123,7 +123,12 @@ let groupVolumesCache = [];
 let viewingVolumeId = null;
 let groupEncountersCache = [];
 
-function showGroupModule() {
+// Which groups the group page's picker offers. Opened from a character's
+// group link in the sidebar ('char'): only the character's group, plus any
+// group you GM. Opened from File → Groups ('all'): every group you're in.
+let groupPickerScope = 'all';
+function showGroupModule(scope) {
+  if (scope) groupPickerScope = scope;
   state.activeSkillId = null;
   state.activeView = 'group';
   renderSidebar();
@@ -146,9 +151,15 @@ async function renderGroupModule() {
   if (activeGroupId && !myGroups.find(g => g.id === activeGroupId)) activeGroupId = null;
   if (!activeGroupId && myGroups.length) activeGroupId = myGroups[0].id;
 
+  const char = state.characters[state.activeChar];
+  const charGroups = [char && char.playGroupId].filter(Boolean);
+  const shown = groupPickerScope === 'char' && charGroups.length
+    ? myGroups.filter(g => charGroups.includes(g.id) || g.myRole === 'gm' || g.id === activeGroupId)
+    : myGroups;
+  // ★ marks the selected character's group, when there's a choice of groups
   const picker = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-      ${myGroups.map(g => `<button class="btn ${g.id===activeGroupId?'btn-gold':'btn-dim'}" onclick="selectGroup('${g.id}')">${escapeHtml(g.name)}${g.myRole==='gm'?' ★':''}</button>`).join('')}
+      ${shown.map(g => `<button class="btn ${g.id===activeGroupId?'btn-gold':'btn-dim'}" onclick="selectGroup('${g.id}')">${escapeHtml(g.name)}${shown.length > 1 && charGroups.includes(g.id) ? ' ★' : ''}</button>`).join('')}
     </div>`;
 
   if (!activeGroupId) {

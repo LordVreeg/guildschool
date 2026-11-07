@@ -73,7 +73,7 @@ async function renderScheduleModule() {
   if (state.activeView !== 'schedule') return;
 
   const picker = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-    ${myGroups.map(g => `<button class="btn ${g.id === activeGroupId ? 'btn-gold' : 'btn-dim'}" onclick="selectScheduleGroup('${g.id}')">${escapeHtml(g.name)}${g.myRole === 'gm' ? ' ★' : ''}</button>`).join('')}
+    ${myGroups.map(g => `<button class="btn ${g.id === activeGroupId ? 'btn-gold' : 'btn-dim'}" onclick="selectScheduleGroup('${g.id}')">${escapeHtml(g.name)}${myGroups.length > 1 && g.id === ((state.characters[state.activeChar] || {}).playGroupId) ? ' ★' : ''}</button>`).join('')}
   </div>`;
   if (!activeGroupId) {
     main.innerHTML = `<div class="panel"><div class="panel-header"><h2>Game Schedule</h2></div><div class="panel-body"><div class="note">You're not in any groups yet. Once you join a group, its game schedule shows up here.</div></div></div>`;

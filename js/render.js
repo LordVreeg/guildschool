@@ -281,7 +281,7 @@ function sidebarGroupsHtml(char, view) {
 function openSidebarGroup(id) {
   activeGroupId = id;
   viewingVolumeId = null;
-  showGroupModule();
+  showGroupModule('char');
 }
 
 function renderMain() {
