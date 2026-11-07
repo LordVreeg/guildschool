@@ -37,6 +37,20 @@ function appConfirm(message, okLabel) {
   });
 }
 
+// Other → About: the wiki, the version running (the ?v= tag, see
+// ASSET_VERSION) and credits.
+function openAboutModal() {
+  openModal(`
+    <h3>About GuildSchool</h3>
+    <div class="about-rows">
+      <div><a class="wiki-link" href="https://celtricia.pbworks.com/" target="_blank" rel="noopener">Celtricia Wiki ↗</a></div>
+      <div>Version ${escapeHtml(ASSET_VERSION || 'unknown')}</div>
+      <div>Concept and Content by Lord Vreeg</div>
+      <div>UI Design by Critic at large</div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Close</button></div>`);
+}
+
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
 }

@@ -362,3 +362,5 @@ body.sidebar-resizing { cursor: col-resize; user-select: none; }
 #confirm-box .confirm-text { color: var(--text); line-height: 1.4; }
 /* Add Skill: one button per guild */
 .add-skill-guilds { display: flex; gap: 6px; flex-wrap: wrap; }
+/* Other → About */
+.about-rows { display: flex; flex-direction: column; gap: 6px; }
