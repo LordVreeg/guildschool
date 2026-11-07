@@ -364,3 +364,7 @@ body.sidebar-resizing { cursor: col-resize; user-select: none; }
 .add-skill-guilds { display: flex; gap: 6px; flex-wrap: wrap; }
 /* Other → About */
 .about-rows { display: flex; flex-direction: column; gap: 6px; }
+/* Combat page: a weapon's or armor's spells (and magic line) under its row */
+.combat-table tr.item-spell-row td { padding: 2px 8px 4px 24px; color: var(--text-dim); text-align: left; }
+.combat-table .item-spell-btn { padding: 1px 8px; margin-left: 6px; }
+.combat-table .item-spell-btn:disabled { opacity: .4; cursor: default; }

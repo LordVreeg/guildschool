@@ -430,15 +430,22 @@ function inventoryGroupsHtml(char) {
         <td class="item-kind">${warn || escapeHtml(it.notes || '')}</td>
         <td class="item-edit" title="Edit" onclick="openEditItemModal(${idx})">✎</td>
         <td class="item-del" title="Delete" onclick="removeItem(${idx})">✕</td>
-      </tr>` + itemModsLineHtml(char, it) + (itemCanHoldSpells(it) ? (it.spells || []).map((sp, j) => {
-        const left = itemSpellUsesLeft(sp, char);
-        const rule = itemSpellRule(it);
-        return `<tr class="item-spell-row"><td colspan="9">✦ <a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener">${escapeHtml(sp.name)}</a> · Level ${sp.level} · <span style="${left > 0 ? '' : 'color:#c05050'}" title="${rule ? 'Used up as it is cast; does not come back' : sp.period === 'charges' ? 'Charges only come back with ↺' : characterClockSeconds(char) != null ? 'Comes back as the group clock passes into the next ' + escapeHtml(itemSpellPeriodLabel(sp.period).replace(/^per /, '')) + ', or with ↺' : 'Comes back with ↺ (or as the group clock passes, once this character is in a group)'}">${escapeHtml(itemSpellUsageText(sp, char, rule))}</span>
-          <button class="btn btn-gold item-spell-btn" ${left > 0 ? '' : 'disabled'} title="Cast ${escapeHtml(sp.name)} from this item" onclick="openItemCastModal(${idx},${j})">Cast</button>
-          ${rule ? '' : `<button class="btn btn-dim item-spell-btn" title="Reset its uses" onclick="rechargeItemSpell(${idx},${j})">↺</button>`}</td></tr>`;
-      }).join('') : ''); }).join(''));
+      </tr>` + itemModsLineHtml(char, it) + itemSpellRowsHtml(char, it, idx, 9); }).join(''));
   }).join('');
   return html || `<tr><td colspan="9" class="note">No items yet. Use <i>Add Item</i> below.</td></tr>`;
+}
+
+// A row per spell on an item, with Cast (and ↺ where uses come back), under
+// the item's row on the Inventory page and the Combat page.
+function itemSpellRowsHtml(char, it, idx, colspan) {
+  if (!itemCanHoldSpells(it)) return '';
+  return (it.spells || []).map((sp, j) => {
+        const left = itemSpellUsesLeft(sp, char);
+        const rule = itemSpellRule(it);
+        return `<tr class="item-spell-row"><td colspan="${colspan}">✦ <a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener">${escapeHtml(sp.name)}</a> · Level ${sp.level} · <span style="${left > 0 ? '' : 'color:#c05050'}" title="${rule ? 'Used up as it is cast; does not come back' : sp.period === 'charges' ? 'Charges only come back with ↺' : characterClockSeconds(char) != null ? 'Comes back as the group clock passes into the next ' + escapeHtml(itemSpellPeriodLabel(sp.period).replace(/^per /, '')) + ', or with ↺' : 'Comes back with ↺ (or as the group clock passes, once this character is in a group)'}">${escapeHtml(itemSpellUsageText(sp, char, rule))}</span>
+          <button class="btn btn-gold item-spell-btn" ${left > 0 ? '' : 'disabled'} title="Cast ${escapeHtml(sp.name)} from this item" onclick="openItemCastModal(${idx},${j})">Cast</button>
+          ${rule ? '' : `<button class="btn btn-dim item-spell-btn" title="Reset its uses" onclick="rechargeItemSpell(${idx},${j})">↺</button>`}</td></tr>`;
+      }).join('');
 }
 
 function renderInventoryModule() {
@@ -613,8 +620,19 @@ function renderCombatModule() {
         : ln.v ? `<td>${Math.round(ln.v.hit)}</td><td>${fmtCrit(ln.v.critChance)}</td><td>${fmtFumble(ln.v.fumbleThreshold)}</td><td>${escapeHtml(damageRollText(it.damageDice, ln.v.dmgBeforeDivider, it.dividingDie, ln.v.dmgBonus))}</td>${initCell('d10', ln.v.speed, true)}`
         : '<td colspan="5" class="note">No stats</td>';
       return `<tr${i === 0 ? ' class="combat-weapon-first"' : ''}>${lead}<td>${ln.grip}${inUse}</td>${multi}${stats}${tail}</tr>`;
-    }).join('');
+    }).join('') + (entry.kind === 'item' ? itemSpellRowsHtml(char, it, entry.idx, 10) : '');
   }).join('');
+
+  // Equipped Armor: the armor worn and shields in hand (In Use on the
+  // Inventory page), with any spells on them
+  const armorWorn = (char.items || []).map((it, idx) => ({ it, idx })).filter(({ it }) => (it.type === 'Armor' || it.type === 'Shield') && itemInUse(char, it));
+  const armorRows = armorWorn.map(({ it, idx }) => `<tr class="combat-weapon-first">
+      <td>${escapeHtml(it.name || '(unnamed)')}</td>
+      <td class="note">${escapeHtml(itemKindLabel(it))}</td>
+      <td>${parseFloat(it.av) || 0}</td>
+      <td>${parseFloat(it.pr) || 0}</td>
+      <td class="note">${escapeHtml(it.notes || '')}</td>
+    </tr>` + itemModsLineHtml(char, it).replace('colspan="9"', 'colspan="5"') + itemSpellRowsHtml(char, it, idx, 5)).join('');
 
   document.getElementById('main').innerHTML = `
   <div class="panel plain-font">
@@ -646,6 +664,14 @@ function renderCombatModule() {
         <tbody>${weaponRows}</tbody>
       </table></div>
       <div class="note">Click a weapon's name for its stats, magic, missile, and other settings.</div>`}
+
+      <hr class="divider">
+      <div class="combat-section-head">Equipped Armor</div>
+      ${armorWorn.length === 0 ? '<div class="note">No armor or shield in use. Tick In Use on carried armor on the Inventory page.</div>' : `
+      <div class="combat-scroll"><table class="skill-table combat-table combat-armor">
+        <thead><tr><th>Item</th><th>Type</th><th>AV</th><th>PR${infoTip("A shield's listed PR; the Shield Use bonus on top of it is in Defense Details.")}</th><th>Notes</th></tr></thead>
+        <tbody>${armorRows}</tbody>
+      </table></div>`}
     </div>
   </div>`;
 

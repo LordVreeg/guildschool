@@ -300,7 +300,7 @@ function removeItemSpellFromDraft(i) {
 }
 
 // Casting a spell from an item (the Cast button under it on the Inventory
-// page): no spell points, always succeeds, uses one of the item's uses; a
+// and Combat pages): no spell points, always succeeds, uses one of the item's uses; a
 // character in a group then gets the usual "Mark duration?" step.
 let itemCastState = null;
 function openItemCastModal(itemIdx, spellIdx) {
@@ -346,7 +346,7 @@ function confirmItemCast() {
   }
   itemCastState = null;
   saveState();
-  renderInventoryModule();
+  renderItemSpellPage();
   if (char.playGroupId) {
     const def = SPELLS.find(x => x.name === sp.name && x.school === sp.school);
     hardcastState = { spellName: sp.name, duration: spellDurationText(def && def.duration, sp.level), fromItem: it.name || 'an item', level: sp.level };
@@ -361,7 +361,12 @@ function rechargeItemSpell(itemIdx, spellIdx) {
   sp.usesLeft = parseInt(sp.usesMax) || 0;
   sp.periodIndex = itemSpellPeriodIndex(sp.period, characterClockSeconds(char));
   saveState();
-  renderInventoryModule();
+  renderItemSpellPage();
+}
+// Item spells are cast from the Inventory page and the Combat page; redraw
+// whichever one is showing.
+function renderItemSpellPage() {
+  if (state.activeView === 'combat') renderCombatModule(); else renderInventoryModule();
 }
 
 // Storage Locations: containers are the keys of char.storageCapacities (a
