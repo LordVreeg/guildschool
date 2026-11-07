@@ -360,3 +360,5 @@ body.sidebar-resizing { cursor: col-resize; user-select: none; }
 #confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 10002; display: flex; align-items: center; justify-content: center; padding: 16px; }
 #confirm-box { background: var(--panel); border: 1px solid var(--gold-dim); padding: 18px 20px; min-width: 300px; max-width: 440px; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
 #confirm-box .confirm-text { color: var(--text); line-height: 1.4; }
+/* Add Skill: one button per guild */
+.add-skill-guilds { display: flex; gap: 6px; flex-wrap: wrap; }

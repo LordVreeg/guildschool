@@ -738,93 +738,96 @@ function createChar() {
   renderApp();
 }
 
-let addSkillModalMode = 'other';
-
+// Add Skill: which guild it's learned under (one button per guild the
+// character has), then a skill class (its type, in SKILL_TYPE_ORDER) and one
+// of that class's top-level skills, both dropdowns. Sub-skills aren't offered
+// (dropdown ones are filled in under their parent). The search box narrows
+// the Skill list: within the class if one is picked, else across all of them.
+// The class picked last is remembered while the page is open.
+let addSkillClass = '';
+let addSkillGuildKey = 'primary';
+let addSkillSearch = '';
+function addSkillGuilds(char) {
+  return [['primary', 'Primary', char.guild], ['secondary', 'Secondary', char.guild2], ['tertiary', 'Tertiary', char.guild3]]
+    .filter(g => g[2]).map(([key, label, name]) => ({ key, label, name }));
+}
+function addSkillGuildName(char) {
+  const g = addSkillGuilds(char).find(x => x.key === addSkillGuildKey);
+  return g ? g.name : (char.guild || '');
+}
+function addSkillClasses() {
+  const types = new Set(SKILLS.filter(s => !s.parent).map(s => s.type));
+  return SKILL_TYPE_ORDER.filter(t => types.has(t)).concat([...types].filter(t => !SKILL_TYPE_ORDER.includes(t)));
+}
 function openAddSkillModal() {
-  const char = state.characters[state.activeChar];
-  const guildTabs = [
-    char && char.guild ? { key: 'primary', label: `Primary Guild (${char.guild})` } : null,
-    char && char.guild2 ? { key: 'secondary', label: `Secondary Guild (${char.guild2})` } : null,
-    char && char.guild3 ? { key: 'tertiary', label: `Tertiary Guild (${char.guild3})` } : null,
-  ].filter(Boolean);
-
-  addSkillModalMode = guildTabs.length ? guildTabs[0].key : 'other';
-
-  openModal(`
-    <h3>Add Skill</h3>
-    <div class="form-group" style="margin-bottom:8px;display:flex;gap:6px;flex-wrap:wrap">
-      ${guildTabs.map(g => `<button class="btn btn-dim" id="skill-mode-${g.key}" onclick="setAddSkillMode('${g.key}')">${g.label}</button>`).join('')}
-      <button class="btn btn-dim" id="skill-mode-other" onclick="setAddSkillMode('other')">Other (All Skills)</button>
-    </div>
-    <div class="form-group" style="margin-bottom:8px"><label>Filter</label>
-      <input class="w-full" id="skill-filter"  placeholder="Type to search..." oninput="filterSkillList(this.value)">
-    </div>
-    <div id="skill-list" style="max-height:300px;overflow-y:auto;border:1px solid var(--border)"></div>
-    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button></div>`);
-
-  renderAddSkillList();
+  const char = state.characters[state.activeChar] || {};
+  const guilds = addSkillGuilds(char);
+  if (!guilds.some(g => g.key === addSkillGuildKey)) addSkillGuildKey = guilds.length ? guilds[0].key : 'primary';
+  if (!addSkillClasses().includes(addSkillClass)) addSkillClass = '';
+  addSkillSearch = '';
+  openModal(`<h3>Add Skill</h3><div id="add-skill-body"></div>`);
+  renderAddSkillForm();
 }
-
-function setAddSkillMode(mode) {
-  addSkillModalMode = mode;
-  const filterInput = document.getElementById('skill-filter');
-  if (filterInput) filterInput.value = '';
-  renderAddSkillList();
-}
-
-function renderAddSkillList() {
-  const char = state.characters[state.activeChar];
-  const typeOrder = SKILL_TYPE_ORDER;
-  const isGuildMode = addSkillModalMode === 'primary' || addSkillModalMode === 'secondary' || addSkillModalMode === 'tertiary';
-  const listEl = document.getElementById('skill-list');
-
-  if (isGuildMode) {
-    // Guild tables cover most of the skill list at varying bonus levels rather than
-    // a clean specialty/baseline split, so instead of hiding skills we surface the
-    // guild's best bonuses first — that's what actually cuts down the scrolling.
-    const guildName = addSkillModalMode === 'primary' ? char.guild : addSkillModalMode === 'secondary' ? char.guild2 : char.guild3;
-    const ranked = SKILLS
-      .map(s => ({ s, bonus: getGuildBase(guildName, s.name) }))
-      .filter(x => x.bonus > 0)
-      .sort((a, b) => b.bonus - a.bonus);
-
-    listEl.innerHTML = ranked.length ? ranked.map(({s, bonus}) => `
-      <div class="sidebar-item skill-opt" onclick="addSkill('${s.name.replace(/'/g,"\\'")}')" data-name="${s.name.toLowerCase()}" style="padding:5px 12px;border-bottom:1px solid rgba(179,154,102,.3);display:flex;justify-content:space-between;gap:8px">
-        <span>${s.name}</span>
-        <span style="display:flex;gap:8px;align-items:center;white-space:nowrap">
-          <span style="font-size:10px;color:var(--gold-dim)">${bonus.toFixed(3)}</span>
-          <span class="lv" style="font-size:10px">${s.parent ? '↳ '+s.parent : 'Base'}</span>
-        </span>
-      </div>`).join('') : '<div class="note">No skills found for this guild.</div>';
-  } else {
-    const byType = {};
-    for (const s of SKILLS) {
-      if (!byType[s.type]) byType[s.type] = [];
-      byType[s.type].push(s);
-    }
-    const sortedTypes = typeOrder.filter(t => byType[t]).concat(Object.keys(byType).filter(t => !typeOrder.includes(t)));
-
-    listEl.innerHTML = sortedTypes.length ? sortedTypes.map(type => `
-      <div style="padding:3px 8px;background:var(--header-bg);color:var(--header-text);font-size:10px;text-transform:uppercase">${type}</div>
-      ${(byType[type]||[]).map(s => `
-      <div class="sidebar-item skill-opt" onclick="addSkill('${s.name.replace(/'/g,"\\'")}')" data-name="${s.name.toLowerCase()}" style="padding:5px 12px;border-bottom:1px solid rgba(179,154,102,.3)">
-        <span>${s.name}</span>
-        <span class="lv" style="font-size:10px">${s.parent ? '↳ '+s.parent : 'Base'}</span>
-      </div>`).join('')}
-    `).join('') : '<div class="note">No skills found.</div>';
+function renderAddSkillForm(fromSearch) {
+  const body = document.getElementById('add-skill-body');
+  if (!body) return;
+  const char = state.characters[state.activeChar] || {};
+  const guilds = addSkillGuilds(char);
+  const guildName = addSkillGuildName(char);
+  const classes = addSkillClasses();
+  // a skill already on the sheet can't be added again, unless it's templated
+  // (a weapon skill bound to a different weapon class each time)
+  const have = new Set((char.skills || []).filter(si => !si.dropdownOnly).map(si => { const d = findSkillDef(si.skillName); return d ? d.name : si.skillName; }));
+  const q = addSkillSearch.trim().toLowerCase();
+  // what the search matches, by skill name or class name, in every class;
+  // the Class list keeps offering all the classes with matches even after
+  // one is picked, so you can switch between them
+  const allMatches = q ? SKILLS.filter(s => !s.parent && (s.name.toLowerCase().includes(q) || String(s.type).toLowerCase().includes(q))) : [];
+  const matchClasses = classes.filter(t => t === addSkillClass || allMatches.some(s => s.type === t));
+  const matches = addSkillClass ? allMatches.filter(s => s.type === addSkillClass) : allMatches;
+  const exact = matches.find(s => s.name.toLowerCase() === q);
+  const exactClass = !addSkillClass && classes.find(t => t.toLowerCase() === q);
+  // with no class picked, an exact name, or matches all in one class, settle
+  // the class; otherwise it's "multiple"
+  const shownClass = addSkillClass || (q ? (exact ? exact.type : exactClass ? exactClass : matchClasses.length === 1 ? matchClasses[0] : '') : '');
+  const classChoices = q ? matchClasses : classes;
+  const skills = (q ? matches.filter(s => !shownClass || s.type === shownClass) : SKILLS.filter(s => !s.parent && s.type === shownClass))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  // an exact name, or a single match, is picked for you
+  const pickedSkill = q ? (exact || (skills.length === 1 ? skills[0] : null)) : null;
+  const isTaken = s => have.has(s.name) && !s.templated;
+  const preselect = pickedSkill && !isTaken(pickedSkill) ? pickedSkill.name : '';
+  const opt = s => {
+    const taken = isTaken(s);
+    const bonus = guildName ? getGuildBase(guildName, s.name) : 0;
+    const extra = [shownClass ? '' : s.type, taken ? 'on sheet' : bonus > 0 ? bonus.toFixed(3) : ''].filter(Boolean).join(' · ');
+    return `<option value="${escapeHtml(s.name)}" ${taken ? 'disabled' : ''} ${s.name === preselect ? 'selected' : ''}>${escapeHtml(s.name)}${extra ? ' (' + escapeHtml(extra) + ')' : ''}</option>`;
+  };
+  const skillPrompt = !shownClass && !q ? '— pick a class or search —' : skills.length ? '— select —' : 'No matching skills';
+  const classPrompt = !q ? '— select —' : matchClasses.length > 1 ? '— multiple —' : matchClasses.length ? '— select —' : 'No matching skills';
+  body.innerHTML = `
+    ${guilds.length > 1 ? `<div class="form-group"><label>Learn Under</label><div class="add-skill-guilds">${guilds.map(g =>
+      `<button type="button" class="btn ${g.key === addSkillGuildKey ? 'btn-gold' : 'btn-dim'}" onclick="addSkillGuildKey='${g.key}';renderAddSkillForm()">${g.label} (${escapeHtml(g.name)})</button>`).join('')}</div></div>` : ''}
+    <div class="form-group"><label>Search</label>
+      <input class="w-full" id="add-skill-search" placeholder="Part of a skill or class name" value="${escapeHtml(addSkillSearch)}" oninput="addSkillSearch=this.value;renderAddSkillForm(true)">
+    </div>
+    <div class="form-group"><label>Skill Class</label>
+      <select class="w-full" onchange="addSkillClass=this.value;renderAddSkillForm()">
+        <option value="" ${shownClass ? '' : 'selected'}>${classPrompt}</option>
+        ${classChoices.map(t => `<option value="${escapeHtml(t)}" ${t === shownClass ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Skill${guildName ? infoTip('The number beside a skill is its ' + guildName + ' guild EXPMOD.') : ''}</label>
+      <select class="w-full" id="add-skill-pick" ${skills.length ? '' : 'disabled'} onchange="document.getElementById('add-skill-go').disabled = !this.value">
+        <option value="">${skillPrompt}</option>${skills.map(opt).join('')}
+      </select>
+    </div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" id="add-skill-go" ${preselect ? '' : 'disabled'} onclick="addSkill(document.getElementById('add-skill-pick').value)">Add</button></div>`;
+  // typing re-renders the form; keep the cursor in the search box
+  if (fromSearch) {
+    const box = document.getElementById('add-skill-search');
+    box.focus(); box.setSelectionRange(box.value.length, box.value.length);
   }
-
-  ['primary','secondary','tertiary','other'].forEach(m => {
-    const btn = document.getElementById('skill-mode-'+m);
-    if (btn) btn.classList.toggle('btn-gold', m === addSkillModalMode);
-  });
-}
-
-function filterSkillList(val) {
-  const v = val.toLowerCase();
-  document.querySelectorAll('.skill-opt').forEach(el => {
-    el.style.display = el.dataset.name.includes(v) ? '' : 'none';
-  });
 }
 
 function lookupRacialBonus(character, skillName) {
@@ -945,9 +948,8 @@ function addSkill(skillName) {
   if (!char.skills) char.skills = [];
   const def = findSkillDef(skillName);
   const id = 'sk_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
-  const guildForSkill = (addSkillModalMode === 'secondary' && char.guild2) ? char.guild2
-    : (addSkillModalMode === 'tertiary' && char.guild3) ? char.guild3
-    : char.guild || '';
+  // the guild picked in the Add Skill popup (the skill page can change it)
+  const guildForSkill = addSkillGuildName(char);
   char.skills.push({
     id, skillName,
     guildName: guildForSkill,
