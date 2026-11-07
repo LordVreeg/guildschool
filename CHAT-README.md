@@ -11,7 +11,10 @@ dice syntax, inline rolls, macros and roll queries.
 
 - **Post as:** pick which of your characters in this group is speaking. Only
   characters linked to the group (on their General Info page) are listed.
-  GMs can also post as **GM**. The choice is remembered for each group.
+  GMs can also post as the character selected at the top of the page, as the
+  group's NPCs and temp characters, and as **GM**. Posting as a name works
+  like `/as` and `/emas`. It starts on the selected character; after that
+  the choice is remembered for each group.
 - If none of your characters is in the group, you can read the chat but
   not post.
 - Your sender name always comes from the character, so nobody can post

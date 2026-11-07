@@ -20,7 +20,8 @@ let chatHasMore = false;
 let chatUnread = {};        // groupId -> count of unread messages from others
 let chatChannel = null;
 let chatSetupError = null;  // set when the table isn't there yet
-let chatRoster = [];        // group_roster rows (id, owner_id, name) for chatGroupId
+let chatRoster = [];        // group_roster rows (id, owner_id, name, is_npc) for chatGroupId
+let chatTempNames = [];     // the group's temp characters' names (GM only), for "Post as"
 let chatTalkToMyself = false;
 let chatHistory = [];       // what you've sent, newest last (up-arrow recall)
 let chatHistoryPos = -1;
@@ -171,9 +172,13 @@ async function selectChatGroup(groupId) {
 
 async function loadChatRoster() {
   const groupId = chatGroupId;
-  const { data, error } = await sb.from('group_roster').select('id, owner_id, name').eq('group_id', groupId);
+  const [{ data, error }, temps] = await Promise.all([
+    sb.from('group_roster').select('id, owner_id, name, is_npc').eq('group_id', groupId),
+    chatIsGM() ? sb.from('bestiary_entries').select('name').eq('group_id', groupId).eq('is_temp_pc', true) : Promise.resolve({ data: [] })
+  ]);
   if (groupId !== chatGroupId) return;
   chatRoster = error ? [] : (data || []);
+  chatTempNames = temps.error ? [] : (temps.data || []).map(t => t.name).filter(Boolean);
 }
 
 function renderChatGroupTabs() {
@@ -198,20 +203,41 @@ function chatMyCharacters(groupId) {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-// Who you can post as in this group: your characters linked to it, plus
-// "GM" if you're a GM of it. The choice is remembered per group.
+// Who you can post as in this group: your characters linked to it. A GM can
+// also post as the character selected at the top of the page (even if it
+// isn't in this group), as the group's NPCs and temp characters, and as
+// "GM". Speaking as a name (value "as:<name>") posts like /as and /emas.
+// The choice is remembered per group.
+const CHAT_AS_PREFIX = 'as:';
 function chatPostAsOptions(groupId) {
-  const opts = chatMyCharacters(groupId).map(c => ({ value: c.rowId, label: c.name }));
+  const mine = chatMyCharacters(groupId);
+  const opts = mine.map(c => ({ value: c.rowId, label: c.name }));
   const group = myGroups.find(g => g.id === groupId);
-  if (group && group.myRole === 'gm') opts.push({ value: '', label: 'GM' });
+  if (!group || group.myRole !== 'gm') return opts;
+  const taken = new Set(opts.map(o => o.label.toLowerCase()));
+  const named = (name, label, section) => {
+    if (!name || taken.has(name.toLowerCase())) return;
+    taken.add(name.toLowerCase());
+    opts.push({ value: CHAT_AS_PREFIX + name, label, section });
+  };
+  const current = state.characters[state.activeChar];
+  if (current && current.name) named(current.name, current.name);
+  chatRoster.filter(r => r.is_npc).map(r => r.name).sort((a, b) => a.localeCompare(b)).forEach(n => named(n, n, 'NPCs'));
+  chatTempNames.slice().sort((a, b) => a.localeCompare(b)).forEach(n => named(n, n, 'Temp characters'));
+  opts.push({ value: '', label: 'GM' });
   return opts;
 }
 
-// The character currently picked in "Post as" (null when posting as GM).
+// The character currently picked in "Post as" (null when posting as GM or
+// as an NPC): one of yours linked to the group, or the selected character.
 function chatPostAsChar() {
   const sel = document.getElementById('chat-post-as');
-  const rowId = sel ? sel.value : '';
-  const appId = Object.keys(charRowIds).find(k => charRowIds[k] === rowId);
+  const v = sel ? sel.value : '';
+  if (v.startsWith(CHAT_AS_PREFIX)) {
+    const current = state.characters[state.activeChar];
+    return current && current.name === v.slice(CHAT_AS_PREFIX.length) ? current : null;
+  }
+  const appId = Object.keys(charRowIds).find(k => charRowIds[k] === v);
   return appId ? state.characters[appId] : null;
 }
 
@@ -225,13 +251,20 @@ function renderChatComposer() {
   }
   let saved = null;
   try { saved = localStorage.getItem('gs_chat_as_' + chatGroupId); } catch (e) {}
-  const selected = opts.some(o => o.value === saved) ? saved : opts[0].value;
+  // the remembered choice, else the character selected at the top of the page
+  const current = state.characters[state.activeChar];
+  const currentOpt = current && opts.find(o => o.value === charRowIds[state.activeChar] || o.value === CHAT_AS_PREFIX + current.name);
+  const selected = opts.some(o => o.value === saved) ? saved : (currentOpt || opts[0]).value;
+  const optHtml = o => `<option value="${escapeHtml(o.value)}" ${o.value === selected ? 'selected' : ''}>${escapeHtml(o.label)}</option>`;
+  const sections = [...new Set(opts.filter(o => o.section).map(o => o.section))];
   el.innerHTML = `
     <div id="chat-macro-bar" class="chat-macro-bar"></div>
     <div class="chat-composer">
       <div class="form-group"><label>Post as</label>
         <select id="chat-post-as" onchange="try{localStorage.setItem('gs_chat_as_${chatGroupId}', this.value)}catch(e){};renderChatMacroBar()">
-          ${opts.map(o => `<option value="${o.value}" ${o.value === selected ? 'selected' : ''}>${escapeHtml(o.label)}</option>`).join('')}
+          ${opts.filter(o => !o.section && o.value).map(optHtml).join('')}
+          ${sections.map(sec => `<optgroup label="${escapeHtml(sec)}">${opts.filter(o => o.section === sec).map(optHtml).join('')}</optgroup>`).join('')}
+          ${opts.filter(o => !o.section && !o.value).map(optHtml).join('')}
         </select>
       </div>
       <textarea id="chat-input" rows="2" maxlength="4000" placeholder="Message, /roll 1d20+5, [[2d6]], /w Name … — /help for commands" onkeydown="chatInputKeydown(event)"></textarea>
@@ -750,6 +783,12 @@ async function sendChatMessage(textOverride) {
     }
     if (msg.whisper) payload.whisper = msg.whisper;
     msg.payload = Object.keys(payload).length ? payload : null;
+    // Post as a name (the selected character, an NPC): like /as and /emas
+    if (asSel.value.startsWith(CHAT_AS_PREFIX) && !msg.sender_name) {
+      msg.sender_name = asSel.value.slice(CHAT_AS_PREFIX.length);
+      if (msg.kind === 'message') msg.kind = 'as';
+      else if (msg.kind === 'emote') msg.kind = 'emas';
+    }
   } catch (e) {
     chatShowStatus(e.message);
     return;
@@ -765,7 +804,7 @@ async function sendChatMessage(textOverride) {
 
   const btn = document.getElementById('chat-send-btn');
   if (btn) btn.disabled = true;
-  const row = { group_id: chatGroupId, character_id: asSel.value || null, body: msg.body, kind: msg.kind, payload: msg.payload };
+  const row = { group_id: chatGroupId, character_id: asSel.value && !asSel.value.startsWith(CHAT_AS_PREFIX) ? asSel.value : null, body: msg.body, kind: msg.kind, payload: msg.payload };
   if (msg.sender_name) row.sender_name = msg.sender_name;
   const { data, error } = await sb.from('group_chat_messages').insert(row).select().single();
   if (btn) btn.disabled = false;
