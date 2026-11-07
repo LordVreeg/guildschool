@@ -1014,7 +1014,7 @@ async function createGroup() {
   activeGroupId = data.id;
   viewingVolumeId = null;
   closeModal();
-  renderGroupModule();
+  showGroupModule();
 }
 
 async function advanceGroupClock(groupId) {

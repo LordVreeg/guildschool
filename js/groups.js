@@ -149,11 +149,10 @@ async function renderGroupModule() {
   const picker = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
       ${myGroups.map(g => `<button class="btn ${g.id===activeGroupId?'btn-gold':'btn-dim'}" onclick="selectGroup('${g.id}')">${escapeHtml(g.name)}${g.myRole==='gm'?' ★':''}</button>`).join('')}
-      <button class="btn btn-dim" onclick="openCreateGroupModal()">New Group</button>
     </div>`;
 
   if (!activeGroupId) {
-    document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body">${picker}<div class="note">You're not in any groups yet. Create one, or ask your GM to invite you by email.</div></div></div>`;
+    document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body">${picker}<div class="note">You're not in any groups yet. Create one (File → New Group), or ask your GM to invite you by email.</div></div></div>`;
     return;
   }
   document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body">${picker}<div id="group-detail">Loading…</div></div></div>`;
@@ -162,6 +161,7 @@ async function renderGroupModule() {
 
 function selectGroup(groupId) {
   activeGroupId = groupId;
+  renderSidebar(); // its group link shows which group is open
   renderGroupModule();
 }
 

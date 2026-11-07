@@ -257,7 +257,31 @@ function renderSidebar() {
   }
   html += `<div class="sidebar-add"><button onclick="openAddSkillModal()">Add Skill</button></div>`;
   html += `<hr style="border-color:var(--border);margin:4px 0">`;
+  html += sidebarGroupsHtml(char, view);
   document.getElementById('sidebar').innerHTML = html;
+}
+
+// Under the skills: the group the character plays in (characters.group_id),
+// a link to that group's page. Its name comes from myGroups; if they haven't
+// been fetched yet, fetch them once and draw the sidebar again.
+let sidebarGroupsFetched = false;
+function sidebarGroupsHtml(char, view) {
+  const ids = [char.playGroupId].filter(Boolean);
+  if (!ids.length) return '';
+  if (ids.some(id => !myGroups.find(g => g.id === id)) && !sidebarGroupsFetched) {
+    sidebarGroupsFetched = true;
+    fetchMyGroups().then(() => renderSidebar());
+  }
+  return `<div class="sidebar-section">Group</div>` + ids.map(id => {
+    const g = myGroups.find(x => x.id === id);
+    const active = view === 'group' && activeGroupId === id ? 'active' : '';
+    return `<div class="sidebar-item sidebar-nav ${active}" data-group="${escapeHtml(id)}" onclick="openSidebarGroup(this.dataset.group)"><span class="nav-icon">👥</span><span>${escapeHtml(g ? g.name : 'Group')}</span></div>`;
+  }).join('');
+}
+function openSidebarGroup(id) {
+  activeGroupId = id;
+  viewingVolumeId = null;
+  showGroupModule();
 }
 
 function renderMain() {
