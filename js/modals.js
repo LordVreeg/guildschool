@@ -167,6 +167,7 @@ function itemSpellsSectionHtml(d) {
         ? `<select class="w-md" onchange="setItemSpellDraft(${i},'name',this.value,true)">${opt('', '— select —', !s.name)}${catalog.map(sp => opt(sp.name, sp.name, s.name === sp.name)).join('')}</select>`
         : `<input class="w-md" value="${escapeHtml(s.name || '')}" placeholder="Type its name" oninput="setItemSpellDraft(${i},'name',this.value)">`;
     return `<div class="form-row item-spell-edit" style="align-items:flex-end;margin-top:6px">
+      <div class="form-group"><label>Find${i === 0 ? infoTip('Type part of a spell\'s name to search every school; picking one fills in School and Spell. Or choose them from the lists.') : ''}</label><input class="w-md" list="item-spell-search" placeholder="Search by name" onchange="pickItemSpellBySearch(${i}, this.value)"></div>
       <div class="form-group"><label>School</label><select class="w-md" onchange="setItemSpellDraft(${i},'school',this.value,true)">${opt('', '— select —', !s.school)}${schools.map(sc => opt(sc, sc, s.school === sc)).join('')}</select></div>
       <div class="form-group"><label>Spell</label>${spellField}</div>
       <div class="form-group"><label>Level</label><input type="number" min="1" class="w-sm" value="${escapeHtml(s.level)}" oninput="setItemSpellDraft(${i},'level',this.value)"></div>
@@ -175,7 +176,10 @@ function itemSpellsSectionHtml(d) {
       <div class="form-group"><span class="item-del" style="cursor:pointer;color:var(--red-b);padding:6px 2px" title="Remove this spell" onclick="closeItemSpellRow(${i})">✕</span></div>
     </div>`;
   }).join('');
+  // one suggestion list for every row's Find box: "Spell name — School"
+  const search = rows ? `<datalist id="item-spell-search">${spellSearchOptions().map(o => `<option value="${escapeHtml(o)}">`).join('')}</datalist>` : '';
   return `
+    ${search}
     <hr class="divider">
     <div class="form-group"><label>Spells${infoTip((rule === 'potion' ? 'A potion holds exactly one spell. Each cast uses one of its uses; when they run out the potion is gone. ' : rule === 'scroll' ? 'A scroll holds one or more spells. Each can be cast once and is then gone; the scroll goes with its last spell. ' : '') + 'Spells are saved with the item. Each is cast at its fixed level, with no spell points, and always succeeds; a cast uses one of its uses.')}</label></div>
     ${list || (rows ? '' : '<div class="note">No spells on this item yet.</div>')}

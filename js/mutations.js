@@ -270,6 +270,25 @@ function setItemSpellDraft(i, field, value, rerender) {
   if (field === 'school') s.name = '';
   if (rerender) renderAddItemModal();
 }
+// The item popup's Find box: every catalog spell as "Name — School", and
+// picking one fills in that row's school and spell. A typed name that matches
+// exactly one spell (ignoring case) works too.
+const SPELL_SEARCH_SEP = ' — ';
+function spellSearchOptions() {
+  return SPELLS.map(sp => sp.name + SPELL_SEARCH_SEP + sp.school).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+}
+function pickItemSpellBySearch(i, text) {
+  const s = itemSpellDrafts[i];
+  const t = String(text || '').trim();
+  if (!s || !t) return;
+  const cut = t.lastIndexOf(SPELL_SEARCH_SEP);
+  let sp = cut > 0 ? SPELLS.find(x => x.name === t.slice(0, cut) && x.school === t.slice(cut + SPELL_SEARCH_SEP.length)) : null;
+  if (!sp) { const byName = SPELLS.filter(x => x.name.toLowerCase() === t.toLowerCase()); if (byName.length === 1) sp = byName[0]; }
+  if (!sp) return;
+  s.school = sp.school;
+  s.name = sp.name;
+  renderAddItemModal();
+}
 function removeItemSpellFromDraft(i) {
   if (!itemDraft || !itemDraft.spells) return;
   itemDraft.spells.splice(i, 1);
