@@ -436,20 +436,15 @@ body.sidebar-resizing { cursor: col-resize; user-select: none; }
 .combat-table tr.item-spell-row td { padding: 2px 8px 4px 24px; color: var(--text-dim); text-align: left; }
 .combat-table .item-spell-btn { padding: 1px 8px; margin-left: 6px; }
 .combat-table .item-spell-btn:disabled { opacity: .4; cursor: default; }
-/* The chat flyout (js/chat.js): its own panel on the right, below the top
-   bar and over the page; drag its left edge to resize */
-#chat-flyout { display: none; position: fixed; top: var(--topbar-h, 80px); right: 0; bottom: 0; z-index: 90; max-width: calc(100vw - 40px);
-  background: var(--bg); border-left: 2px solid var(--gold-dim); box-shadow: -4px 0 14px rgba(0,0,0,.3); }
-#chat-flyout.open { display: flex; }
-#chat-flyout-grip { width: 8px; flex-shrink: 0; cursor: col-resize; touch-action: none; }
-#chat-flyout-grip:hover { background: rgba(110,27,34,.12); }
-#chat-flyout-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-#chat-flyout .chat-panel { flex: 1; display: flex; flex-direction: column; margin: 0; min-height: 0; border: none; }
-#chat-flyout .chat-panel > .panel-body { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 8px 10px; }
-#chat-flyout .chat-panel > .panel-header { gap: 6px; padding: 6px 10px; }
-#chat-flyout .chat-close { font-size: 11px; padding: 2px 7px; }
-#chat-flyout .chat-composer .form-group { flex: 1 1 auto; order: 1; }
-#chat-flyout .chat-composer select { width: 100%; }
-#chat-flyout .chat-composer #chat-send-btn { order: 1; }
-body.chat-resizing { cursor: col-resize; user-select: none; }
-@media print { #chat-flyout { display: none !important; } }
+/* The chat window (index.html?view=chat, js/chat.js): only the chat, filling
+   the window */
+body.chat-window #topbar, body.chat-window #layout { display: none !important; }
+#chat-window-root { display: none; }
+body.chat-window #chat-window-root { display: flex; flex-direction: column; height: 100vh; }
+#chat-window-root .chat-panel { flex: 1; display: flex; flex-direction: column; margin: 0; min-height: 0; border: none; }
+#chat-window-root .chat-panel > .panel-body { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 8px 10px; }
+#chat-window-root .chat-panel > .panel-header { gap: 6px; padding: 6px 10px; }
+#chat-window-root .chat-close { font-size: 11px; padding: 2px 7px; }
+#chat-window-root .chat-composer .form-group { flex: 1 1 auto; order: 1; }
+#chat-window-root .chat-composer select { width: 100%; }
+#chat-window-root .chat-composer #chat-send-btn { order: 1; }

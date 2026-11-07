@@ -53,8 +53,6 @@ async function startChatWatcher() {
 }
 
 function stopChatWatcher() {
-  const fly = document.getElementById('chat-flyout');
-  if (fly) fly.classList.remove('open');
   if (chatChannel) sb.removeChannel(chatChannel);
   chatChannel = null;
   chatUnread = {};
@@ -91,61 +89,68 @@ function updateChatMenuBadge() {
   }
 }
 
-// The chat lives in its own panel on the right (the flyout), over whatever
-// page is showing, so you can keep a character sheet open while chatting.
-// Drag its left edge to change the width; both the width and whether it's
-// open are remembered in this browser.
-const CHAT_FLYOUT_DEFAULT_W = 380;
-const CHAT_FLYOUT_MIN_W = 280;
+// The chat opens in its own browser window (Other -> Chat): the same page
+// loaded with ?view=chat, which shows only the chat. It shares this
+// browser's sign-in, so it needs no login of its own. The main window keeps
+// counting unread messages; the chat window tells it (through localStorage)
+// when they've been read, and follows the character picked in the main
+// window for "Post as".
+const CHAT_WINDOW = new URLSearchParams(location.search).get('view') === 'chat';
+const CHAT_WINDOW_NAME = 'guildschool-chat';
+let chatWindowRef = null;
 function chatPageOpen() {
-  const fly = document.getElementById('chat-flyout');
-  return !!(fly && fly.classList.contains('open') && document.getElementById('chat-messages'));
+  return CHAT_WINDOW && !!document.getElementById('chat-messages');
 }
-function chatFlyoutEl() {
-  let fly = document.getElementById('chat-flyout');
-  if (fly) return fly;
-  fly = document.createElement('div');
-  fly.id = 'chat-flyout';
-  fly.innerHTML = '<div id="chat-flyout-grip" title="Drag to resize; double-click for the default width"></div><div id="chat-flyout-body"></div>';
-  document.body.appendChild(fly);
-  let w = CHAT_FLYOUT_DEFAULT_W;
-  try { w = parseInt(localStorage.getItem('gs_chat_w')) || w; } catch (e) {}
-  setChatFlyoutWidth(w);
-  const grip = fly.querySelector('#chat-flyout-grip');
-  grip.addEventListener('pointerdown', e => {
-    e.preventDefault();
-    grip.setPointerCapture(e.pointerId);
-    document.body.classList.add('chat-resizing');
-    const move = ev => setChatFlyoutWidth(window.innerWidth - ev.clientX);
-    const up = () => {
-      grip.removeEventListener('pointermove', move);
-      grip.removeEventListener('pointerup', up);
-      document.body.classList.remove('chat-resizing');
-      try { localStorage.setItem('gs_chat_w', String(fly.offsetWidth)); } catch (err) {}
-    };
-    grip.addEventListener('pointermove', move);
-    grip.addEventListener('pointerup', up);
-  });
-  grip.addEventListener('dblclick', () => { setChatFlyoutWidth(CHAT_FLYOUT_DEFAULT_W); try { localStorage.removeItem('gs_chat_w'); } catch (e) {} });
-  return fly;
+function chatContainer() {
+  return document.getElementById('chat-window-root');
 }
-function setChatFlyoutWidth(w) {
-  const fly = document.getElementById('chat-flyout');
-  if (!fly) return;
-  const max = Math.max(CHAT_FLYOUT_MIN_W, window.innerWidth - 40);
-  fly.style.width = Math.min(max, Math.max(CHAT_FLYOUT_MIN_W, w)) + 'px';
+// Other -> Chat: open the chat window, or bring it to the front.
+function showChatModule() {
+  if (CHAT_WINDOW) { window.focus(); return; }
+  if (chatWindowRef && !chatWindowRef.closed) { chatWindowRef.focus(); return; }
+  const w = 420, h = Math.min(760, (window.screen && window.screen.availHeight) || 760);
+  const left = Math.max(0, (window.screenX || 0) + (window.outerWidth || 1200) - w - 20);
+  const top = Math.max(0, (window.screenY || 0) + 60);
+  chatWindowRef = window.open(location.pathname + '?view=chat', CHAT_WINDOW_NAME, `popup=yes,width=${w},height=${h},left=${left},top=${top}`);
+  if (!chatWindowRef) {
+    openModal(`<h3>Chat</h3><div class="warn">The browser blocked the chat window. Allow pop-ups for this site, then choose Other → Chat again.</div><div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">OK</button></div>`);
+  }
 }
-function closeChatFlyout() {
-  const fly = document.getElementById('chat-flyout');
-  if (fly) fly.classList.remove('open');
-  try { localStorage.removeItem('gs_chat_open'); } catch (e) {}
+function closeChatWindow() { window.close(); }
+// In the chat window, after sign-in: show just the chat.
+function startChatWindow() {
+  if (!CHAT_WINDOW) return;
+  document.body.classList.add('chat-window');
+  document.title = 'Chat — GuildSchool';
+  if (!chatContainer()) {
+    const root = document.createElement('div');
+    root.id = 'chat-window-root';
+    document.body.appendChild(root);
+  }
+  renderChatModule();
 }
-// After sign-in: open the chat again if it was open when the page was left.
-function restoreChatFlyout() {
-  let open = false;
-  try { open = localStorage.getItem('gs_chat_open') === '1'; } catch (e) {}
-  if (open) showChatModule();
-}
+// Keep the two windows in step through localStorage.
+window.addEventListener('storage', e => {
+  if (!e.key || !currentUser) return;
+  if (CHAT_WINDOW && e.key === 'gs_active_char' && e.newValue && state.characters[e.newValue]) {
+    // the main window picked another character: "Post as" follows it
+    state.activeChar = e.newValue;
+    if (document.getElementById('chat-composer')) renderChatComposer();
+  } else if (!CHAT_WINDOW && e.key.startsWith('gs_chat_read_')) {
+    // the chat window read a group's messages
+    refreshChatUnread();
+  }
+});
+// The chat window reads characters for @{attributes} and macros: load them
+// again when it comes to the front, so edits made in the main window count.
+let chatWindowLastReload = 0;
+window.addEventListener('focus', async () => {
+  if (!CHAT_WINDOW || !currentUser || Date.now() - chatWindowLastReload < 10000) return;
+  chatWindowLastReload = Date.now();
+  const keep = state.activeChar;
+  await loadState();
+  if (keep && state.characters[keep]) state.activeChar = keep;
+});
 
 function onChatChange(payload) {
   const msg = payload.new;
@@ -171,17 +176,8 @@ function onChatChange(payload) {
   }
 }
 
-// Other -> Chat: opens the flyout, or closes it if it's already open.
-function showChatModule() {
-  const fly = chatFlyoutEl();
-  if (fly.classList.contains('open')) { closeChatFlyout(); return; }
-  fly.classList.add('open');
-  try { localStorage.setItem('gs_chat_open', '1'); } catch (e) {}
-  renderChatModule();
-}
-
 async function renderChatModule() {
-  const main = document.getElementById('chat-flyout-body');
+  const main = chatContainer();
   if (!main) return;
   main.innerHTML = `<div class="panel"><div class="panel-body">Loading chat…</div></div>`;
   await fetchMyGroups();
@@ -192,7 +188,7 @@ async function renderChatModule() {
     chatGroupId = (unreadGroup || myGroups[0]).id;
   }
   if (!myGroups.length) {
-    main.innerHTML = `<div class="panel chat-panel"><div class="panel-header"><h2>Chat</h2><div style="flex:1"></div><button class="btn btn-dim chat-close" title="Close the chat" onclick="closeChatFlyout()">✕</button></div><div class="panel-body"><div class="note">You're not in any groups yet. Each group has its own chat — ask your GM to add one of your characters to a group.</div></div></div>`;
+    main.innerHTML = `<div class="panel chat-panel"><div class="panel-header"><h2>Chat</h2><div style="flex:1"></div><button class="btn btn-dim chat-close" title="Close the chat window" onclick="closeChatWindow()">✕</button></div><div class="panel-body"><div class="note">You're not in any groups yet. Each group has its own chat — ask your GM to add one of your characters to a group.</div></div></div>`;
     return;
   }
   main.innerHTML = `
@@ -201,7 +197,7 @@ async function renderChatModule() {
         <div style="flex:1"></div>
         <input id="chat-search-input" class="chat-search" type="search" placeholder="Search this chat…" onkeydown="if(event.key==='Enter')searchChat(this.value)">
         <button class="btn btn-dim" style="font-size:11px;padding:3px 8px" onclick="showChatHelp()" title="Commands and dice syntax">? Help</button>
-        <button class="btn btn-dim chat-close" title="Close the chat" onclick="closeChatFlyout()">✕</button>
+        <button class="btn btn-dim chat-close" title="Close the chat window" onclick="closeChatWindow()">✕</button>
       </div>
       <div class="panel-body">
         <div id="chat-group-tabs" class="chat-group-tabs"></div>

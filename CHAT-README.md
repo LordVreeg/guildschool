@@ -1,11 +1,12 @@
 # GuildSchool Chat
 
-Each group has its own chat. **Other → 💬 Chat** opens it in a panel on the
-right, over whatever page you're on; the same menu item (or ✕) closes it.
-Drag the panel's left edge to make it wider or narrower (double-click the
-edge for the default width). The width, and whether it's open, are
-remembered in this browser. Use the buttons at the top to switch between
-your groups. Everyone in a group can read its chat.
+Each group has its own chat. **Other → 💬 Chat** opens it in its own
+browser window, which you can move and size like any other (or put on
+another screen); choosing it again brings that window to the front. It
+uses the same sign-in as the main window, and "Post as" follows the
+character you pick there. If nothing opens, allow pop-ups for the site.
+Use the buttons at the top to switch between your groups. Everyone in a
+group can read its chat.
 
 The chat works like Roll20's text chat: the same slash commands, the same
 dice syntax, inline rolls, macros and roll queries.
