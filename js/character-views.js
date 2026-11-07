@@ -508,6 +508,23 @@ function weaponGripsShown(char, it, w) {
   };
 }
 
+// One Combat-page weapon entry (see combatWeaponEntries) as its attack lines:
+// One-Handed / Two-Handed as the weapon is held (weaponGripsShown), plus
+// Missile (a weapon that fires ammunition) or Throw. Shared by the weapons
+// table and /att. Returns { it, w, lines } or null when there is no weapon.
+function weaponAttackLines(char, entry) {
+  const it = entry.kind === 'hand' ? handFootWeapon(char) : entry.it;
+  if (!it) return null;
+  const w = computeWeapon(char, it);
+  const lines = [];
+  const grips = entry.kind === 'item' ? weaponGripsShown(char, it, w) : { one: true, two: true };
+  if (w.oneHand && grips.one) lines.push({ grip: 'One-Handed', which: 'one', v: w.oneHand });
+  if (w.twoHand && grips.two) lines.push({ grip: 'Two-Handed', which: 'two', v: w.twoHand });
+  // a weapon that fires ammunition shoots (Missile); any other missile use is a throw
+  if (w.missile) lines.push({ grip: weaponTakesAmmo(it) ? 'Missile' : 'Throw', missile: w.missile });
+  return { it, w, lines };
+}
+
 // Marks the One-/Two-Handed row that applies to a wielded weapon (see computeWielding).
 function wieldTag(it, which) {
   const c = state.characters[state.activeChar];
@@ -602,15 +619,9 @@ function renderCombatModule() {
 
   // Weapons: a line per grip (and Missile), the weapon's name opens its popup
   const weaponRows = weaponEntries.map((entry, pos) => {
-    const it = entry.kind === 'hand' ? handFootWeapon(char) : entry.it;
-    if (!it) return '';
-    const w = computeWeapon(char, it);
-    const lines = [];
-    const grips = entry.kind === 'item' ? weaponGripsShown(char, it, w) : { one: true, two: true };
-    if (w.oneHand && grips.one) lines.push({ grip: 'One-Handed', which: 'one', v: w.oneHand });
-    if (w.twoHand && grips.two) lines.push({ grip: 'Two-Handed', which: 'two', v: w.twoHand });
-    // a weapon that fires ammunition shoots (Missile); any other missile use is a throw
-    if (w.missile) lines.push({ grip: weaponTakesAmmo(it) ? 'Missile' : 'Throw', missile: w.missile });
+    const al = weaponAttackLines(char, entry);
+    if (!al) return '';
+    const { it, w, lines } = al;
     if (!lines.length) lines.push({ grip: '—' });
     const n = lines.length;
     const open = entry.kind === 'hand' ? "openCombatDetail('hand')" : entry.kind === 'shield' ? `openCombatDetail('shield',${entry.idx})` : `openCombatDetail('weapon',${entry.idx})`;

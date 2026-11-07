@@ -723,6 +723,7 @@ const CHAT_HELP_HTML = `
   </table>
   <b>Game rolls</b>
   <table>
+    <tr><td>/att &nbsp;or&nbsp; /attack</td><td>Attack with the "Post as" character: picks the weapon in hand, rolls Multiple Attack, then each attack (crit and fumble), asks Hit? and rolls damage. Results go to you and the GM only.</td></tr>
     <tr><td>/prot <i>number</i></td><td>Armor protection roll: <code>/prot 40</code> rolls <code>(40-d10)/(2d6/2)</code>, rounded, never below 0</td></tr>
   </table>
   <b>Dice</b>
@@ -779,6 +780,7 @@ function chatParseCommand(text) {
   switch (name) {
     case 'r': case 'roll': needArg('a roll, e.g. /r 1d20+5'); return { kind: 'roll', body: arg.trim() };
     case 'gr': case 'gmroll': needArg('a roll, e.g. /gr 1d20'); return { kind: 'roll', body: arg.trim(), whisper: { characters: [], gm: true } };
+    case 'att': case 'attack': return { local: 'att' };
     case 'prot': return { kind: 'roll', body: CHAT_GAME_ROLLS.prot.build(arg) };
     case 'em': case 'me': needArg('an action'); return { kind: 'emote', body: arg.trim() };
     case 'ooc': needArg('a message'); return { kind: 'ooc', body: arg.trim() };
@@ -835,6 +837,7 @@ async function sendChatMessage(textOverride) {
     if (!text) return;
     msg = chatParseCommand(text);
     if (msg.local === 'help') { showChatHelp(); chatAfterSend(input, typed, textOverride); return; }
+    if (msg.local === 'att') { chatAfterSend(input, typed, textOverride); await chatAttackRun(); return; }
     if (msg.local) { chatLocalLine('system', msg.body); chatAfterSend(input, typed, textOverride); return; }
     const payload = {};
     if (msg.kind === 'roll') {
@@ -875,19 +878,28 @@ async function sendChatMessage(textOverride) {
     return;
   }
 
+  if (!await chatInsertMessage(msg)) return;
+  chatAfterSend(input, typed, textOverride);
+}
+
+// Saves one message (kind, body, payload, optional sender_name) to the
+// group's chat as the "Post as" choice and shows it. Returns false, with the
+// reason in the status line, when it couldn't be sent.
+async function chatInsertMessage(msg) {
+  const asSel = document.getElementById('chat-post-as');
   const btn = document.getElementById('chat-send-btn');
   if (btn) btn.disabled = true;
   const row = { group_id: chatGroupId, character_id: asSel.value && !asSel.value.startsWith(CHAT_AS_PREFIX) ? asSel.value : null, body: msg.body, kind: msg.kind, payload: msg.payload };
   if (msg.sender_name) row.sender_name = msg.sender_name;
   const { data, error } = await sb.from('group_chat_messages').insert(row).select().single();
   if (btn) btn.disabled = false;
-  if (error) { chatShowStatus('Failed to send: ' + error.message); return; }
-  chatAfterSend(input, typed, textOverride);
+  if (error) { chatShowStatus('Failed to send: ' + error.message); return false; }
   if (data && data.group_id === chatGroupId && !chatMessages.some(m => m.id === data.id)) {
     chatMessages.push(data);
     if (chatSearch) clearChatSearch(); else renderChatMessages('bottom');
   }
   chatMarkRead(chatGroupId);
+  return true;
 }
 
 function chatAfterSend(input, typed, fromMacroButton) {
