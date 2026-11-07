@@ -154,10 +154,13 @@ function computeWeight(character) {
   // Blank location = on the person. A named container also counts if the
   // player marked it "on person" (a backpack they're wearing) -- so they can
   // track its contents without losing the weight.
+  // A container ticked "Does not encumber" (a bag of holding) adds none of
+  // its contents' weight, on the person or not.
   const onPerson = character.storageOnPerson || {};
+  const noEncumber = character.storageNoEncumber || {};
   const carried = items.filter(it => {
     const loc = it.location ? it.location.trim() : '';
-    return !loc || onPerson[loc];
+    return !loc || (onPerson[loc] && !noEncumber[loc]);
   }).reduce((sum, it) => sum + ((parseFloat(it.weight) || 0) * (parseFloat(it.qty) || 1)), 0);
   return { possible, carried };
 }
@@ -223,6 +226,7 @@ function computeStorageSummary(character) {
     }
     g.over = g.remaining !== null && g.remaining < 0;
     g.onPerson = g.location === ON_PERSON_LOCATION || !!(character.storageOnPerson || {})[g.location];
+    g.noEncumber = g.location !== ON_PERSON_LOCATION && !!(character.storageNoEncumber || {})[g.location];
   }
   const order = orderedContainers(character, Object.keys(groups).filter(l => l !== ON_PERSON_LOCATION));
   return [groups[ON_PERSON_LOCATION], ...order.map(l => groups[l])];

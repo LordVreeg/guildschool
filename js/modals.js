@@ -235,7 +235,7 @@ function itemSpellsSectionHtml(d) {
 // "Add Container" and ✎ under Storage Locations: name, capacity (blank =
 // no limit) and whether it's on the person. Edits a draft; see confirmContainer.
 function openAddContainerModal() {
-  containerDraft = { name: '', capacity: '', onPerson: false };
+  containerDraft = { name: '', capacity: '', onPerson: false, noEncumber: false };
   editingContainerName = null;
   renderContainerModal();
 }
@@ -244,7 +244,7 @@ function openEditContainerModal(name) {
   const char = state.characters[state.activeChar];
   if (!char || name === ON_PERSON_LOCATION) return;
   const cap = (char.storageCapacities || {})[name];
-  containerDraft = { name, capacity: cap === undefined || cap === null ? '' : cap, onPerson: !!(char.storageOnPerson || {})[name] };
+  containerDraft = { name, capacity: cap === undefined || cap === null ? '' : cap, onPerson: !!(char.storageOnPerson || {})[name], noEncumber: !!(char.storageNoEncumber || {})[name] };
   editingContainerName = name;
   renderContainerModal();
 }
@@ -262,12 +262,15 @@ function renderContainerModal() {
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group w-sm"><label>Capacity${infoTip(`Capacity is the weight it can hold; leave it blank for no limit. Tick On Person for something you wear or carry (a backpack), so its contents count toward Weight Carried.${editing ? ' Renaming moves its items along with it.' : ''}`)}</label>
+      <div class="form-group w-sm"><label>Capacity${infoTip(`Capacity is the weight it can hold; leave it blank for no limit. Tick On Person for something you wear or carry (a backpack), so its contents count toward Weight Carried. Tick Does not encumber for one whose contents weigh nothing (a bag of holding).${editing ? ' Renaming moves its items along with it.' : ''}`)}</label>
         <input class="w-full" type="number" min="0"  value="${val(d.capacity)}" placeholder="no limit" oninput="containerDraft.capacity=this.value">
       </div>
       <div class="form-group" style="justify-content:flex-end">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
           <input type="checkbox" ${d.onPerson ? 'checked' : ''} onchange="containerDraft.onPerson=this.checked"> On Person
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
+          <input type="checkbox" ${d.noEncumber ? 'checked' : ''} onchange="containerDraft.noEncumber=this.checked"> Does not encumber
         </label>
       </div>
     </div>

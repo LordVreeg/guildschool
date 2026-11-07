@@ -372,7 +372,8 @@ function renderItemSpellPage() {
 // Storage Locations: containers are the keys of char.storageCapacities (a
 // capacity, or null for no limit) plus any location an item already names;
 // char.storageOnPerson marks the ones worn/carried, whose weight counts
-// toward Weight Carried. The Add/Edit Container popup edits containerDraft;
+// toward Weight Carried, unless char.storageNoEncumber marks them as adding
+// no weight (a bag of holding). The Add/Edit Container popup edits containerDraft;
 // editingContainerName is the container being edited, or null when adding.
 let containerDraft = null;
 let editingContainerName = null;
@@ -393,16 +394,19 @@ function confirmContainer() {
 
   if (!char.storageCapacities) char.storageCapacities = {};
   if (!char.storageOnPerson) char.storageOnPerson = {};
+  if (!char.storageNoEncumber) char.storageNoEncumber = {};
   const old = editingContainerName;
   if (old !== null && old !== name) {
     // Renaming: the items inside follow the container
     delete char.storageCapacities[old];
     if (char.storageOrder) char.storageOrder = char.storageOrder.map(n => n === old ? name : n);
     delete char.storageOnPerson[old];
+    delete char.storageNoEncumber[old];
     for (const it of char.items || []) if ((it.location || '').trim() === old) it.location = name;
   }
   char.storageCapacities[name] = capacity;
   if (d.onPerson) char.storageOnPerson[name] = true; else delete char.storageOnPerson[name];
+  if (d.noEncumber) char.storageNoEncumber[name] = true; else delete char.storageNoEncumber[name];
   containerDraft = null;
   editingContainerName = null;
   saveState();
@@ -418,6 +422,7 @@ function confirmDeleteContainer(name, moveTo) {
   for (const it of char.items || []) if ((it.location || '').trim() === name) it.location = moveTo || '';
   if (char.storageCapacities) delete char.storageCapacities[name];
   if (char.storageOnPerson) delete char.storageOnPerson[name];
+  if (char.storageNoEncumber) delete char.storageNoEncumber[name];
   if (char.storageOrder) char.storageOrder = char.storageOrder.filter(n => n !== name);
   collapsedItemGroups.delete(name);
   saveState();

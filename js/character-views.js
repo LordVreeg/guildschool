@@ -466,15 +466,15 @@ function renderInventoryModule() {
       </table>
       <button class="btn btn-gold" onclick="openAddItemModal()">Add Item</button>
 
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px">Storage Locations${infoTip(`Capacity is how much weight a container can hold (blank = no limit); On Person's is your Weight Possible. Tick On Person on a container you wear or carry so its contents count toward Weight Carried.`)}</div>
+      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px">Storage Locations${infoTip(`Capacity is how much weight a container can hold (blank = no limit); On Person's is your Weight Possible. Tick On Person on a container you wear or carry so its contents count toward Weight Carried; one marked Does not encumber adds no weight.`)}</div>
       <table class="item-table inventory-table">
-        <thead><tr><th>Container</th><th>On Person</th><th>Items</th><th>Weight</th><th>Capacity</th><th>Capacity Remaining</th><th>Worth</th><th></th><th></th><th></th></tr></thead>
+        <thead><tr><th>Container</th><th>On Person</th><th>Items</th><th>Weight</th><th>Capacity</th><th>Available Capacity</th><th>Worth</th><th></th><th></th><th></th></tr></thead>
         <tbody>
           ${computeStorageSummary(char).map(g => {
             const isPerson = g.location === ON_PERSON_LOCATION;
             const over = g.over ? 'color:#c05050' : '';
             return `<tr data-container="${escapeHtml(g.location)}">
-            <td>${isPerson ? 'On Person' : escapeHtml(g.location)}</td>
+            <td>${isPerson ? 'On Person' : escapeHtml(g.location)}${g.noEncumber ? ' <span class="item-group-stats">(does not encumber)</span>' : ''}</td>
             <td>${isPerson ? 'always' : (g.onPerson ? '✓' : '')}</td>
             <td>${g.count.toLocaleString()}</td>
             <td>${g.weight.toLocaleString()}</td>
