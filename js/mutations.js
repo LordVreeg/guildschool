@@ -226,7 +226,7 @@ function confirmAddItem() {
   if (!itemHasModKind(d, 'offense')) { delete d.magicDamageBeforeDivider; delete d.magicCritBonus; } // a weapon's older to-hit/damage fields stay
   if (itemHasModKind(d, 'void')) d.magicVoid = (d.magicVoid || []).filter(v => v && v.pool && parseFloat(v.amount));
   if (!itemHasModKind(d, 'void') || !(d.magicVoid || []).length) { delete d.magicVoid; delete d.magicVoidStacks; }
-  delete d._mod_defense; delete d._mod_void;
+  delete d._mod_offense; delete d._mod_defense; delete d._mod_void;
   if (!char.items) char.items = [];
   const editing = editingItemIdx !== null && char.items[editingItemIdx];
   if (editing) char.items[editingItemIdx] = d;
@@ -498,6 +498,28 @@ function selectArmorType(idx, armorName) {
   applyArmorType(char.items[idx], armorName);
   saveState();
   renderInventoryModule();
+}
+
+// The Combat page's Applied Spell Mods fields (see combatSpellMods)
+function updateSpellMod(field, value) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const extras = char.combatExtras || (char.combatExtras = {});
+  const m = extras.spellMods || (extras.spellMods = {});
+  if (field === 'damageRoll') m.damageRoll = String(value || '').trim(); else m[field] = value === '' ? '' : (parseFloat(value) || 0);
+  saveState();
+  renderCombatModule();
+}
+
+// The ↺ in Applied Spell Mods: clears all three rows
+function resetSpellMods() {
+  const char = state.characters[state.activeChar];
+  if (!char || !char.combatExtras || !char.combatExtras.spellMods) return;
+  const m = char.combatExtras.spellMods;
+  for (const f of SPELL_MOD_FIELDS) delete m[f];
+  delete m.damageRoll;
+  saveState();
+  renderCombatModule();
 }
 
 function updateCombatExtra(field, value) {

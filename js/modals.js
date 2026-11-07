@@ -89,7 +89,7 @@ function renderAddItemModal(justAdded) {
       ${field('Unit Worth', num('worth'), 'sm')}
       ${d.type === 'Magic Item' ? '' : `<div class="form-group" style="justify-content:flex-end">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
-          <input type="checkbox" ${lock} ${d.masterwork ? 'checked' : ''} onchange="setAddItemField('masterwork',this.checked);renderAddItemModal()"> ${d.type === 'Item' ? 'Masterwork' : 'Masterwork / Magic'}
+          <input type="checkbox" ${lock} ${d.masterwork ? 'checked' : ''} onchange="setAddItemField('masterwork',this.checked);renderAddItemModal()"> Masterwork / Magic
         </label>
       </div>`}
     </div>
@@ -116,10 +116,13 @@ function itemModsSectionHtml(d) {
   const k = itemModKinds(d);
   const val = x => escapeHtml(x === undefined || x === null ? '' : x);
   const num = (field, label) => `<div class="form-group"><label>${label}</label><input type="number" class="w-sm" value="${val(d[field])}" oninput="setAddItemField('${field}',this.value)"></div>`;
-  const head = (title, kind, help) => `<div style="font-size:12px;margin:8px 0 2px;color:var(--gold-dim)">${title}${help ? infoTip(help) : ''}${k.optional.includes(kind) ? ` <span class="item-del" style="cursor:pointer;color:var(--red-b)" title="Remove ${title.toLowerCase()}" onclick="removeItemModKind('${kind}')">✕</span>` : ''}</div>`;
+  // each kind folds: open if the player opened it, else if it has values or
+  // is what this item type is mostly about; help is the part's ⓘ
+  const isOpen = kind => kind in itemModFoldOpen ? itemModFoldOpen[kind] : (itemNaturalModKind(d) === kind || itemModKindHasValues(d, kind));
+  const head = (title, kind, body, help) => `<details class="fold item-mod-kind" ${isOpen(kind) ? 'open' : ''}><summary onclick="itemModFoldOpen['${kind}'] = !this.parentElement.open">${title}${help ? infoTip(help) : ''}${k.optional.includes(kind) ? ` <span class="item-del" style="cursor:pointer;color:var(--red-b)" title="Remove ${title.toLowerCase()}" onclick="event.preventDefault();event.stopPropagation();removeItemModKind('${kind}')">✕</span>` : ''}</summary>${body}</details>`;
   const parts = [];
-  if (itemHasModKind(d, 'offense')) parts.push(head('Offense', 'offense') + `<div class="form-row">${num('magicBonusToHit', 'To Hit')}${num('magicDamageBeforeDivider', 'Dmg Before Divider')}${num('magicDamageAfterDivider', 'Dmg After Divider')}${num('magicCritBonus', 'Crit %')}</div>`);
-  if (itemHasModKind(d, 'defense')) parts.push(head('Defense', 'defense', 'Bonuses: Avoidance lowers AV, Protection adds to PR.') + `<div class="form-row">${num('magicAvoidance', 'Avoidance')}${num('magicProtection', 'Protection')}</div>`);
+  if (itemHasModKind(d, 'defense')) parts.push(head('Defense', 'defense', `<div class="form-row">${num('magicAvoidance', 'Avoidance')}${num('magicProtection', 'Protection')}</div>`, 'Bonuses: Avoidance lowers AV, Protection adds to PR.'));
+  if (itemHasModKind(d, 'offense')) parts.push(head('Offense', 'offense', `<div class="form-row">${num('magicBonusToHit', 'To Hit')}${num('magicDamageBeforeDivider', 'Dmg Before Divider')}${num('magicDamageAfterDivider', 'Dmg After Divider')}${num('magicCritBonus', 'Crit %')}</div>`));
   if (itemHasModKind(d, 'void')) {
     if (!(d.magicVoid || []).length) d.magicVoid = [{ pool: '', amount: '' }]; // start with one row to fill in
     const pools = spellPoolNames();
@@ -129,19 +132,24 @@ function itemModsSectionHtml(d) {
       <div class="form-group"><label>Cost Reduction</label><input type="number" min="0" class="w-sm" value="${val(v.amount)}" oninput="setItemVoidRow(${i},'amount',this.value)"></div>
       <div class="form-group"><span class="item-del" style="cursor:pointer;color:var(--red-b);padding:6px 2px" title="Remove" onclick="removeItemVoidRow(${i})">✕</span></div>
     </div>`).join('');
-    parts.push(head('Void', 'void', 'Spell cost reduction per pool. Only the best single item counts, unless an item is marked as stacking.') + rows + `<div style="display:flex;align-items:center;gap:12px;margin-top:2px">
+    parts.push(head('Void', 'void', rows + `<div style="display:flex;align-items:center;gap:12px;margin-top:2px">
       <button type="button" class="btn btn-dim" onclick="addItemVoidRow()">Add pool</button>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${d.magicVoidStacks ? 'checked' : ''} onchange="setAddItemField('magicVoidStacks',this.checked)"> Stacks with other items' void bonuses</label>
-    </div>`);
+    </div>`, 'Spell cost reduction per pool. Only the best single item counts, unless an item is marked as stacking.'));
   }
   const adders = k.optional.filter(kind => !itemHasModKind(d, kind))
     .map(kind => `<button type="button" class="btn btn-dim" onclick="addItemModKind('${kind}')">Add ${kind}</button>`).join(' ');
   return `
     <hr class="divider">
-    <div class="form-group"><label>Magic Modifiers</label></div>
+    <details class="fold item-mods" ${itemModFoldOpen.all === false ? '' : 'open'}>
+    <summary onclick="itemModFoldOpen.all = !this.parentElement.open">Magic Modifiers</summary>
     ${parts.join('')}
-    ${adders ? `<div style="margin-top:6px;display:flex;gap:6px">${adders}</div>` : ''}`;
+    ${adders ? `<div style="margin-top:6px;display:flex;gap:6px">${adders}</div>` : ''}
+    </details>`;
 }
+// Which parts of the item popup's Magic Modifiers are folded: all (the whole
+// section) and each kind; false = closed. Kept while the page is open.
+const itemModFoldOpen = {};
 
 // The item popup's Spells section (magic items): the spells already on the
 // item, then a row to add another at a fixed level with a usage limit.

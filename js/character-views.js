@@ -533,16 +533,27 @@ function renderCombatModule() {
   // Defense: the totals, with and without the shield when one is in use; the
   // full breakdown is in the Details popup
   const hasShield = armor.shieldsComputed.length > 0;
-  const defCols = hasShield ? [['With Shield', armor.withShield], ['Shield Dropped', armor.withoutShield]] : [['Total', armor.withoutShield]];
+  // one column: the totals with the shield in use, if there is one
+  const defCols = [['Total', hasShield ? armor.withShield : armor.withoutShield]];
   const rollText = r => `${r.min} – ${r.max}`;
+  // Applied Spell Mods: typed in; see combatSpellMods
+  const sm = ((char.combatExtras || {}).spellMods) || {};
+  const smIn = (f, label, tip) => `<label class="spell-mod">${label}${tip ? infoTip(tip) : ''} <input type="number" class="w-xs" value="${escapeHtml(sm[f] === undefined ? '' : sm[f])}" placeholder="0" onchange="updateSpellMod('${f}', this.value)"></label>`;
+  const spellModsTable = `<table class="skill-table combat-table spell-mods-table">
+      <tbody>
+        <tr><th>Defense</th><td>${smIn('av', 'AV', 'Added to your AV as typed; lower is better for you, so a protective spell is usually negative.')}${smIn('pr', 'PR')}</td></tr>
+        <tr><th>Offense</th><td>${smIn('toHit', 'To Hit')}${smIn('dmgBefore', 'Dmg Before')}${smIn('dmgAfter', 'Dmg After')}${smIn('crit', 'Crit')}</td></tr>
+        <tr><th>Damage Roll</th><td><div class="spell-mod-roll"><input class="w-md" value="${escapeHtml(sm.damageRoll || '')}" placeholder="e.g. +2d6 fire" onchange="updateSpellMod('damageRoll', this.value)"> <button class="btn btn-dim combat-small-btn" title="Clear all the spell mods" onclick="resetSpellMods()">↺</button></div></td></tr>
+      </tbody>
+    </table>`;
   const defTable = `<table class="skill-table combat-table">
       <thead><tr><th></th>${defCols.map(([l]) => `<th>${l}</th>`).join('')}</tr></thead>
       <tbody>
         <tr><th>AV${infoTip("Lower is better for the defender: it's added directly to an attacker's hit chance.")}</th>${defCols.map(([, t]) => `<td>${Math.round(t.totalAV)}</td>`).join('')}</tr>
         <tr><th>PR</th>${defCols.map(([, t]) => `<td>${Math.round(t.totalPR)}</td>`).join('')}</tr>
-        <tr><th>Protection min-max${infoTip('A protection roll is (PR − 1d10) ÷ (2d6 ÷ 2), rounded. The range runs from a 10 and double sixes to a 1 and double ones.')}</th>${defCols.map(([, t]) => `<td>${rollText(t.roll)}</td>`).join('')}</tr>
+        <tr><th>PR min-max${infoTip('A protection roll is (PR − 1d10) ÷ (2d6 ÷ 2), rounded. The range runs from a 10 and double sixes to a 1 and double ones.')}</th>${defCols.map(([, t]) => `<td>${rollText(t.roll)}</td>`).join('')}</tr>
         ${armor.parryPointsTotal > 0 ? `<tr><th>PR vs missile / magic${infoTip(`${armor.parryPointsTotal} of the PR comes from Parry Used, which only stops melee attacks; these rows leave it out.`)}</th>${defCols.map(([, t]) => `<td>${Math.round(t.totalPRvsRangedOrMagic)}</td>`).join('')}</tr>
-        <tr><th>Protection min-max vs missile / magic</th>${defCols.map(([, t]) => `<td>${rollText(t.rollVsRangedOrMagic)}</td>`).join('')}</tr>` : ''}
+        <tr><th>PR min-max vs missile / magic</th>${defCols.map(([, t]) => `<td>${rollText(t.rollVsRangedOrMagic)}</td>`).join('')}</tr>` : ''}
       </tbody>
     </table>`;
 
@@ -554,7 +565,8 @@ function renderCombatModule() {
     const lines = [];
     if (w.oneHand) lines.push({ grip: 'One-Handed', which: 'one', v: w.oneHand });
     if (w.twoHand) lines.push({ grip: 'Two-Handed', which: 'two', v: w.twoHand });
-    if (w.missile) lines.push({ grip: 'Missile', missile: w.missile });
+    // a weapon that fires ammunition shoots (Missile); any other missile use is a throw
+    if (w.missile) lines.push({ grip: weaponTakesAmmo(it) ? 'Missile' : 'Throw', missile: w.missile });
     if (!lines.length) lines.push({ grip: '—' });
     const n = lines.length;
     const open = entry.kind === 'hand' ? "openCombatDetail('hand')" : entry.kind === 'shield' ? `openCombatDetail('shield',${entry.idx})` : `openCombatDetail('weapon',${entry.idx})`;
@@ -594,6 +606,10 @@ function renderCombatModule() {
       <div class="combat-section-head"><span>Defense${infoTip('From the armor, shield and weapons ticked In Use on the Inventory page.')}</span><a class="wiki-link" href="#" onclick="openCombatDetail('defense');return false">Details</a></div>
       ${defTable}
       </div>
+      <div class="combat-top-col">
+      <div class="combat-section-head"><span>Applied Spell Mods${infoTip('Spells cast onto you in combat. Defense adds to your armor (the Defense totals); offense adds to the weapons in hand. Damage Roll is a note for you to use if it applies; it changes nothing.')}</span></div>
+      ${spellModsTable}
+      </div>
       </div>
 
       <hr class="divider">
@@ -616,7 +632,7 @@ function renderCombatModule() {
 // Defense breakdown. They save as you edit, like the spell-pool popup; the
 // page and the popup are redrawn together.
 let openCombatDetailState = null;
-// Whether a weapon popup's Missile Fire section is open: what the player last
+// Whether a weapon popup's Missile Fire (or Throw) section is open: what the player last
 // chose for that weapon this session, otherwise open only for bows and crossbows.
 const combatMissileOpen = {};
 // Whether Defense Details' Weapon Protection & Other Bonuses section is open:
@@ -675,7 +691,7 @@ function renderCombatDetail() {
   if (st.kind === 'defense') {
     const armor = computeArmor(char);
     const hasShield = armor.shieldsComputed.length > 0;
-    const cols = hasShield ? [['With Shield', armor.withShield], ['Shield Dropped', armor.withoutShield]] : [['Total', armor.withoutShield]];
+    const cols = [['Total', hasShield ? armor.withShield : armor.withoutShield]];
     // one AV and one PR cell per column; '' leaves a cell empty
     const avpr = (av, pr) => cols.map(() => `<td>${av}</td><td>${pr}</td>`).join('');
     const signed = n => (n < 0 ? '−' : '+') + Math.abs(Math.round(n * 10) / 10);
@@ -729,14 +745,16 @@ function renderCombatDetail() {
     <hr class="divider">
     <div class="combat-section-head">Totals</div>
     <table class="skill-table">
-      <thead>${hasShield ? `<tr><th></th>${cols.map(([l]) => `<th colspan="2">${l}</th>`).join('')}</tr>` : ''}
+      <thead>
       <tr><th></th>${cols.map(() => '<th>AV</th><th>PR</th>').join('')}</tr></thead>
       <tbody>
-        <tr><td>Armor${hasShield ? ' + Shield' : ''}</td>${cols.map(([, t]) => `<td>${t.sumAV}</td><td>${t.sumPR.toFixed(1)}</td>`).join('')}</tr>
+        <tr><td>Armor</td>${avpr(armor.sumArmorAV, armor.sumArmorPR)}</tr>
+        ${hasShield ? `<tr><td>Shield</td>${avpr(armor.sumShieldAV, armor.sumShieldPR)}</tr>` : ''}
         <tr><td>Avoidance skill (subtracted)</td>${avpr(`−${armor.avoidanceSkval}`, '')}</tr>
         <tr><td>Protection skill ÷ 5 (added)</td>${avpr('', `+${(armor.protectionSkval/5).toFixed(1)}`)}</tr>
         <tr><td>Weapon Protection</td>${avpr('', `+${armor.weaponProtection}`)}</tr>
         <tr><td>Parry Points Committed</td>${avpr('', `+${armor.parryPointsTotal}`)}</tr>
+        ${armor.spellMods.av || armor.spellMods.pr ? `<tr><td>Spell mods</td>${avpr(signed(armor.spellMods.av), signed(armor.spellMods.pr))}</tr>` : ''}
         <tr><td>Other Bonuses</td>${cols.map(([, t]) => `<td>${signed(armor.sumOtherAV - t.magicAV)}</td><td>${signed(armor.sumOtherPR + t.magicPR)}</td>`).join('')}</tr>
         <tr style="border-top:1px solid var(--gold)"><td><strong>Total</strong></td>${cols.map(([, t]) => `<td><strong>${Math.round(t.totalAV)}</strong></td><td><strong>${Math.round(t.totalPR)}</strong></td>`).join('')}</tr>
         <tr><td>Protection min-max${infoTip('(PR − 1d10) ÷ (2d6 ÷ 2), rounded.')}</td>${cols.map(([, t]) => `<td></td><td>${t.roll.min} – ${t.roll.max}</td>`).join('')}</tr>
@@ -818,7 +836,7 @@ function renderCombatDetail() {
           ${w.missile ? `
           <hr class="divider">
           <details class="combat-fold" ${missileSectionOpen(it, idx) ? 'open' : ''}>
-          <summary class="combat-section-head" onclick="combatMissileOpen[${idx}] = !this.parentElement.open">Missile Fire</summary>
+          <summary class="combat-section-head" onclick="combatMissileOpen[${idx}] = !this.parentElement.open">${takesAmmo ? 'Missile Fire' : 'Throw'}</summary>
           <div class="form-row">
             <div class="form-group"><label>Range</label><input type="number" class="w-sm" value="${it.range||0}" onchange="updateWeaponField(${idx},'range',this.value)"></div>
             <div class="form-group"><label>Target Distance</label><input type="number" class="w-sm" value="${it.targetDistance||0}" onchange="updateWeaponField(${idx},'targetDistance',this.value)"></div>
@@ -832,7 +850,7 @@ function renderCombatDetail() {
           <div class="computed-row">
             ${it.weaponClass === 'Basic Spears' ? `<div class="computed-item"><span class="ci-label">Effective Range (ST + Spear Thrown)</span><span class="ci-value">${Math.round(w.missile.effectiveRange*10)/10}${w.missile.spearThrownRange ? ` <span class="note">(+${w.missile.spearThrownRange} from skill)</span>` : ''}</span></div>` : ''}
             <div class="computed-item"><span class="ci-label">Range Modifier</span><span class="ci-value">${Math.round(w.missile.rangeMod*100)}</span></div>
-            <div class="computed-item"><span class="ci-label">Missile To Hit${infoTip(`(1 − distance ÷ range) × base hit chance, using ${w.missile.usedGrip} stats${w.missile.usedGrip === '2H' ? ' (no 1H mode for this weapon)' : ''}. The weapon's and the ammunition's Magic Bonus to Hit add together. Total damage = the weapon's dice + the ammunition's dice (with its Magic Damage After Divider), if any.`)}</span><span class="ci-value skval">${Math.round(w.missile.finalHit)}</span></div>
+            <div class="computed-item"><span class="ci-label">${takesAmmo ? 'Missile' : 'Throw'} To Hit${infoTip(`(1 − distance ÷ range) × base hit chance, using ${w.missile.usedGrip} stats${w.missile.usedGrip === '2H' ? ' (no 1H mode for this weapon)' : ''}. The weapon's and the ammunition's Magic Bonus to Hit add together. Total damage = the weapon's dice + the ammunition's dice (with its Magic Damage After Divider), if any.`)}</span><span class="ci-value skval">${Math.round(w.missile.finalHit)}</span></div>
             <div class="computed-item"><span class="ci-label">Init Roll${infoTip(INIT_ROLL_HELP)}</span><span class="ci-value">d8+${Math.round(w.missile.speed)}</span></div>
             <div class="computed-item"><span class="ci-label">Crit</span><span class="ci-value">${fmtCrit(w.missile.critChance)}</span></div>
             ${w.missile.magicDmgBefore ? `<div class="computed-item"><span class="ci-label">Magic Dmg Before Divider</span><span class="ci-value">+${w.missile.magicDmgBefore}</span></div>` : ''}

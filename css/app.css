@@ -85,7 +85,7 @@ body {
 /* LAYOUT */
 #layout { display: flex; flex: 1; overflow: hidden; height: calc(100vh - var(--topbar-h, 80px)); }
 /* SIDEBAR */
-#sidebar { width: 220px; min-width: 220px; background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 8px 0; }
+#sidebar { width: var(--sidebar-w, 220px); min-width: 0; flex-shrink: 0; background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 8px 0; }
 .sidebar-section { padding: 6px 12px 2px; font-size: 11px; color: var(--gold-dim); text-transform: uppercase; letter-spacing: 1px; }
 .sidebar-item { padding: 5px 12px 5px 20px; cursor: pointer; color: var(--text-dim); font-size: 13px; display: flex; align-items: center; gap: 6px; }
 .sidebar-item:hover { background: rgba(110,27,34,.08); color: var(--text); }
@@ -297,3 +297,32 @@ td div.note, td.note, li.note { margin: 0; }
 .inventory-table .item-spell-btn:disabled { opacity: .4; cursor: default; }
 /* Item popup: a spell's selection row stays on one line */
 .item-spell-edit { flex-wrap: nowrap; gap: 8px; }
+
+/* A section that folds open and closed (<details class="fold">): its summary
+   is the heading, with ▸ / ▾ in front. Used by the item popup's Magic
+   Modifiers and its Offense / Defense / Void parts. */
+.fold > summary { cursor: pointer; list-style: none; color: var(--gold-dim); margin: 8px 0 4px; }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary::before { content: "▸ "; }
+.fold[open] > summary::before { content: "▾ "; }
+.item-mods > summary { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+.item-mod-kind { margin-left: 14px; }
+.item-mod-kind > summary { font-size: 12px; margin: 6px 0 2px; }
+
+/* Sidebar nav: icons in one column, the start of the text in another */
+.sidebar-nav .nav-icon { width: 1.4em; flex-shrink: 0; text-align: center; }
+/* The sidebar's grab bar: drag to resize, double-click to reset (js/init.js) */
+#sidebar-grip { width: 10px; flex-shrink: 0; cursor: col-resize; background: var(--panel); border-right: 1px solid var(--border);
+  position: relative; touch-action: none; }
+#sidebar-grip::after { content: ""; display: block; position: sticky; top: calc(50vh - 24px); margin: calc(50vh - 105px) 0 0 2px; height: 48px; width: 6px;
+  border-radius: 3px; background: repeating-linear-gradient(to bottom, var(--gold-dim) 0 2px, transparent 2px 5px); }
+#sidebar-grip:hover, #sidebar-grip.dragging { background: rgba(110,27,34,.12); }
+#sidebar-grip:hover::after, #sidebar-grip.dragging::after { background: repeating-linear-gradient(to bottom, var(--gold) 0 2px, transparent 2px 5px); }
+body.sidebar-resizing { cursor: col-resize; user-select: none; }
+@media print { #sidebar-grip { display: none !important; } }
+/* Combat page: Applied Spell Mods, a few labelled number boxes per row */
+.spell-mods-table td { white-space: nowrap; }
+.spell-mods-table .spell-mod { display: inline-flex; align-items: center; gap: 3px; margin-right: 10px; }
+.spell-mods-table .spell-mod:last-child { margin-right: 0; }
+/* the ↺ sits at the right end of the Damage Roll row, under the Crit box */
+.spell-mods-table .spell-mod-roll { display: flex; align-items: center; justify-content: space-between; gap: 6px; }

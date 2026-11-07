@@ -119,9 +119,8 @@ function itemSpellUsageText(sp, char, rule) {
 //   offense: magicBonusToHit, magicDamageBeforeDivider, magicDamageAfterDivider, magicCritBonus (%)
 //   void:    magicVoid [{ pool, amount }] spell cost reduction per pool,
 //            magicVoidStacks (adds to other items' void instead of best-only)
-// Which kinds an item has (base) and can add (optional) depends on its type;
-// only magical items get any (MW/Magic ticked, or a Magic Item that isn't a
-// potion or scroll).
+// Only magical items get any: a Magic Item that isn't a potion or scroll, or
+// anything else with Masterwork / Magic ticked.
 // Which ammunition a weapon takes, from data/ammunition.json's compatible_with:
 // a weapon category ("Bows", "Crossbow") or one weapon's name ("Sling"), or a
 // list of them. An ammunition item is matched to its catalog entry by the
@@ -165,15 +164,24 @@ const MAGIC_MOD_FIELDS = {
   defense: ['magicAvoidance', 'magicProtection'],
   offense: ['magicBonusToHit', 'magicDamageBeforeDivider', 'magicDamageAfterDivider', 'magicCritBonus'],
 };
+// Every magical item has all three, the same everywhere. (Ammunition's
+// offense adds to the missile weapon firing it, see computeWeapon.)
+const ALL_MOD_KINDS = { base: ['defense', 'offense', 'void'], optional: [] };
 function itemModKinds(it) {
   if (!it) return null;
-  if (it.type === 'Magic Item') return itemSpellRule(it) ? null : { base: ['void'], optional: ['defense'] };
-  if (!it.masterwork) return null;
-  if (it.type === 'Weapon') return { base: ['offense'], optional: ['defense', 'void'] };
-  if (it.type === 'Armor' || it.type === 'Shield') return { base: ['defense'], optional: ['void'] };
-  // Ammunition's offense adds to the missile weapon firing it (see computeWeapon)
-  if (it.type === 'Ammunition') return { base: ['offense'], optional: [] };
-  return null;
+  if (it.type === 'Magic Item') return itemSpellRule(it) ? null : ALL_MOD_KINDS;
+  return it.masterwork ? ALL_MOD_KINDS : null;
+}
+// The kind an item type is mostly about, whose part of the item popup starts
+// open: offense on weapons and ammunition, defense on armor and shields, void
+// on Magic Items.
+function itemNaturalModKind(it) {
+  return { Weapon: 'offense', Ammunition: 'offense', Armor: 'defense', Shield: 'defense', 'Magic Item': 'void' }[it && it.type] || null;
+}
+// Whether an item has any value set for a kind.
+function itemModKindHasValues(it, kind) {
+  if (kind === 'void') return (it.magicVoid || []).some(v => v && v.pool && parseFloat(v.amount));
+  return (MAGIC_MOD_FIELDS[kind] || []).some(f => parseFloat(it[f]));
 }
 // Has this kind: one of its base kinds, or an optional one that's been added
 // (any value set, or opened in the popup).

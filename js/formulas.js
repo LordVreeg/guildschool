@@ -284,10 +284,13 @@ function computeWeapon(character, item) {
   const magicBonusToHit = parseFloat(item.magicBonusToHit) || 0;
   // Magic offense: this weapon's own, plus any non-weapon item in use with offense
   const otherOffense = magicOffenseFromOthers(character);
-  const magicBonusToHitAll = magicBonusToHit + otherOffense.toHit;
-  const magicDamageAfterDivider = (parseFloat(item.magicDamageAfterDivider) || 0) + otherOffense.after;
-  const magicDamageBeforeDivider = (parseFloat(item.magicDamageBeforeDivider) || 0) + otherOffense.before;
-  const magicCritBonus = (parseFloat(item.magicCritBonus) || 0) + otherOffense.crit;
+  // Spells cast onto the character in combat add to the weapons in hand only
+  const inHand = item.shieldWeapon ? itemInUse(character, (character.items || [])[item.shieldIdx]) : itemInUse(character, item);
+  const spellMods = inHand ? combatSpellMods(character) : { toHit: 0, dmgBefore: 0, dmgAfter: 0, crit: 0 };
+  const magicBonusToHitAll = magicBonusToHit + otherOffense.toHit + spellMods.toHit;
+  const magicDamageAfterDivider = (parseFloat(item.magicDamageAfterDivider) || 0) + otherOffense.after + spellMods.dmgAfter;
+  const magicDamageBeforeDivider = (parseFloat(item.magicDamageBeforeDivider) || 0) + otherOffense.before + spellMods.dmgBefore;
+  const magicCritBonus = (parseFloat(item.magicCritBonus) || 0) + otherOffense.crit + spellMods.crit;
 
   const baseWeaponSkval = item.weaponClass ? getSkillSkval(character, item.weaponClass) : 0;
   const singleWeapSpec = (character.skills||[]).filter(s => s.skillName === 'Single weap spec' && s.binding === item.name)
@@ -646,6 +649,40 @@ function applyHPRecoveryRoll(character, rollResult) {
   }
 }
 
+// Spells cast onto the character in combat, typed in on the Combat page
+// (char.combatExtras.spellMods). Defense (av, pr) adds to the Defense totals;
+// offense (toHit, dmgBefore, dmgAfter, crit) adds to the weapons in hand
+// only. damageRoll is a note for the player and isn't applied.
+const SPELL_MOD_FIELDS = ['av', 'pr', 'toHit', 'dmgBefore', 'dmgAfter', 'crit'];
+// What's worn and what's in hand, as text: when it changes, the spell mods
+// typed in for the old gear no longer apply (see syncSpellModsToGear).
+function spellModGearKeys(character) {
+  const inUse = (character.items || []).filter(it => itemInUse(character, it));
+  const key = it => [it.type, it.name, it.weaponModel, it.armorType, it.shieldType, it.av, it.pr, it.location].join('|');
+  return {
+    def: inUse.filter(it => it.type === 'Armor' || it.type === 'Shield').map(key).join('\n'),
+    off: inUse.filter(it => it.type === 'Weapon' || it.type === 'Shield').map(key).join('\n')
+  };
+}
+// Run on every save: a change to the armor or shield in use clears the
+// Defense spell mods, a change to the weapons (or shield) in hand clears the
+// Offense ones. The Damage Roll note stays (the ↺ clears all three rows).
+function syncSpellModsToGear(character) {
+  const m = character && character.combatExtras && character.combatExtras.spellMods;
+  if (!m) return;
+  const now = spellModGearKeys(character);
+  if (m.defGear !== undefined && m.defGear !== now.def) { delete m.av; delete m.pr; }
+  if (m.offGear !== undefined && m.offGear !== now.off) { for (const f of ['toHit', 'dmgBefore', 'dmgAfter', 'crit']) delete m[f]; }
+  m.defGear = now.def;
+  m.offGear = now.off;
+}
+function combatSpellMods(character) {
+  const m = ((character && character.combatExtras) || {}).spellMods || {};
+  const out = { damageRoll: m.damageRoll || '' };
+  for (const f of SPELL_MOD_FIELDS) out[f] = parseFloat(m[f]) || 0;
+  return out;
+}
+
 // Whether a weapon, shield or armor is in use: carried on the person and
 // ticked "In Use" on the Inventory page (weapons and shields: it.wielded;
 // armor: it.worn, which counts as worn until it's unticked). Only these
@@ -792,13 +829,14 @@ function computeArmor(character) {
     + shieldWeaponItems(character).filter(sw => itemInUse(character, items[sw.shieldIdx])).reduce((sum, sw) => sum + computeWeapon(character, sw).parryPointsUsed, 0);
 
   const magicDefense = magicDefenseTotals(character);
+  const spellMods = combatSpellMods(character);
   function buildTotals(includeShield) {
     const sumAV = sumArmorAV + (includeShield ? sumShieldAV : 0);
     const sumPR = sumArmorPR + (includeShield ? sumShieldPR : 0);
     const magicAV = magicDefense.av + (includeShield ? magicDefense.shieldAv : 0);
     const magicPR = magicDefense.pr + (includeShield ? magicDefense.shieldPr : 0);
-    const totalAV = sumAV - avoidanceSkval + sumOtherAV - magicAV;
-    const totalPR = sumPR + (protectionSkval / 5) + weaponProtection + sumOtherPR + parryPointsTotal + magicPR;
+    const totalAV = sumAV - avoidanceSkval + sumOtherAV - magicAV + spellMods.av;
+    const totalPR = sumPR + (protectionSkval / 5) + weaponProtection + sumOtherPR + parryPointsTotal + magicPR + spellMods.pr;
     // Parry only defends against melee attacks -- it can't block a missile or a spell.
     const totalPRvsRangedOrMagic = totalPR - parryPointsTotal;
     return { sumAV, sumPR, totalAV, totalPR, totalPRvsRangedOrMagic, magicAV, magicPR,
@@ -812,7 +850,7 @@ function computeArmor(character) {
   const wield = computeWielding(character);
   const current = wield.shields ? withShield : withoutShield;
 
-  return { armorItems, shieldsComputed, shieldUseSkval, avoidanceSkval, protectionSkval,
+  return { spellMods, armorItems, shieldsComputed, shieldUseSkval, avoidanceSkval, protectionSkval,
            weaponProtection, weaponProtectionManual, weaponProtectionWielded, otherBonuses, sumOtherAV, sumOtherPR, parryPointsTotal,
            sumArmorAV, sumArmorPR, sumShieldAV, sumShieldPR,
            withShield, withoutShield, current, wield, shieldsCounted };

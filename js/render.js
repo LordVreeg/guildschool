@@ -216,12 +216,13 @@ function renderSidebar() {
   }
   for (const type in byType) byType[type] = sortSkillsForDisplay(type, byType[type]);
   const view = state.activeSkillId ? 'skill' : (state.activeView || 'overview');
-  const navItem = (key, onclick, label) => `<div class="sidebar-item ${view === key ? 'active' : ''}" onclick="${onclick}">${label}</div>`;
-  let html = navItem('overview', 'showOverview()', '📋 Overview');
-  html += navItem('general', 'showGeneralModule()', '👤 General Info');
-  html += navItem('combat', 'showCombatModule()', '⚔ Combat');
-  if (hasSpiritLevel(char)) html += navItem('spell', 'showSpellModule()', '✦ Spells');
-  html += navItem('inventory', 'showInventoryModule()', '🎒 Inventory');
+  // icon and text in their own columns, so the text lines up whatever the icon's width
+  const navItem = (key, onclick, icon, label) => `<div class="sidebar-item sidebar-nav ${view === key ? 'active' : ''}" onclick="${onclick}"><span class="nav-icon">${icon}</span><span>${label}</span></div>`;
+  let html = navItem('overview', 'showOverview()', '📋', 'Overview');
+  html += navItem('general', 'showGeneralModule()', '👤', 'General Info');
+  html += navItem('combat', 'showCombatModule()', '⚔', 'Combat');
+  if (hasSpiritLevel(char)) html += navItem('spell', 'showSpellModule()', '✦', 'Spells');
+  html += navItem('inventory', 'showInventoryModule()', '🎒', 'Inventory');
   html += `<hr style="border-color:var(--border);margin:4px 0">`;
   const typeOrder = SKILL_TYPE_ORDER;
   const sortedTypes = typeOrder.filter(t => byType[t]).concat(Object.keys(byType).filter(t => !typeOrder.includes(t)));

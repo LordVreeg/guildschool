@@ -33,6 +33,7 @@ async function loadState() {
 let saveStateTimer = null;
 function saveState() {
   if (state.activeChar) localStorage.setItem('gs_active_char', state.activeChar);
+  syncSpellModsToGear(state.characters[state.activeChar]);
   clearTimeout(saveStateTimer);
   saveStateTimer = setTimeout(async () => {
     saveStateTimer = null;
