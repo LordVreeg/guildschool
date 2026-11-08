@@ -307,9 +307,12 @@ async function renderGroupDetail(group) {
         if (isDead) nameStyle += ';text-decoration:line-through';
         const spSigil = spSigilByCharId[c.id] || '';
         const xpTag = xpByCharId[c.id] != null ? ` <span style="color:var(--text-dim)">(${xpByCharId[c.id].toLocaleString()} XP)</span>` : '';
+        // Your own characters open on click; someone else's sheet isn't loaded for you.
+        const canOpen = !!rosterAppId(c.id);
+        const nameTitle = [canOpen ? 'Open this character' : '', isDead ? 'Past the point of stabilizing -- can no longer make the Fortitude roll' : ''].filter(Boolean).join('. ');
         return `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
         <span style="color:var(--text-dim);width:1.5em;display:inline-block;text-align:right">${i+1}.</span>
-        <span style="${nameStyle}" ${isDead?'title="Past the point of stabilizing -- can no longer make the Fortitude roll"':''}>${escapeHtml(c.name || '(unnamed)')}</span>${c.is_npc ? ' <span style="font-size:calc(10px * var(--fs));color:var(--gold-dim)">(NPC)</span>' : ''}${hpTag}${xpTag}${spSigil}
+        <span class="${canOpen ? 'wiki-link' : ''}" style="${nameStyle}${canOpen ? ';cursor:pointer' : ''}" ${nameTitle ? `title="${nameTitle}"` : ''} ${canOpen ? `onclick="openRosterCharacter('${c.id}')"` : ''}>${escapeHtml(c.name || '(unnamed)')}</span>${c.is_npc ? ' <span style="font-size:calc(10px * var(--fs));color:var(--gold-dim)">(NPC)</span>' : ''}${hpTag}${xpTag}${spSigil}
         ${isGM ? `
         <button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px" ${i===0?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',-1)">▲</button>
         <button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px" ${i===groupRosterCache.length-1?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',1)">▼</button>
@@ -449,6 +452,18 @@ async function renderGroupDetail(group) {
       <thead><tr><th>When (in-game)</th><th>Note</th></tr></thead>
       <tbody>${notesHtml}</tbody>
     </table>`;
+}
+
+// The app id of one of your own loaded characters, from its database row id (a
+// roster entry's id); undefined for anyone else's character.
+function rosterAppId(rowId) {
+  const appId = Object.keys(charRowIds).find(k => charRowIds[k] === rowId);
+  return appId && state.characters[appId] ? appId : undefined;
+}
+// Clicking a name on the roster: go to that character's Overview.
+function openRosterCharacter(rowId) {
+  const appId = rosterAppId(rowId);
+  if (appId) selectChar(appId);
 }
 
 async function moveRosterMember(groupId, characterId, direction) {
