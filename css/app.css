@@ -451,3 +451,8 @@ body.chat-window #chat-window-root { display: flex; flex-direction: column; heig
 
 /* A checkbox with its label on one line (Combat page: Collegium System) */
 .check-row { display: flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 6px; }
+
+/* Result of the last Game Schedule save / email */
+.sched-notice { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; padding: 6px 10px; border: 1px solid var(--gold-dim); background: var(--bg); color: var(--text); }
+.sched-notice.bad { border-color: var(--red-b); color: var(--red-b); }
+.sched-notice button { background: none; border: none; cursor: pointer; color: inherit; font-size: 14px; }

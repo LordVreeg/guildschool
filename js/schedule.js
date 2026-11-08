@@ -148,7 +148,7 @@ async function renderScheduleModule() {
           ${isGM ? `<button class="btn btn-gold" onclick="openSessionForm(null)">+ Schedule a Game</button>` : ''}
         </div>
       </div>
-      ${scheduleNotice ? `<div class="note" style="margin-bottom:8px;color:var(--gold)">${escapeHtml(scheduleNotice)}</div>` : ''}
+      <div id="sched-notice-slot">${scheduleNoticeHtml()}</div>
       <div class="sched-dow">${SCHED_DOW.map(d => `<div>${d}</div>`).join('')}</div>
       <div class="sched-grid">${cells}</div>
       <div class="note" style="margin-top:6px">Times on the calendar are shown in your own time zone (${escapeHtml(schedBrowserTz())}).
@@ -159,10 +159,24 @@ async function renderScheduleModule() {
       <ul style="margin:0 0 0 16px;padding:0;font-size:13px">${upcomingHtml}</ul>
     </div>
   </div>`;
-  scheduleNotice = '';
 }
 
-function selectScheduleGroup(id) { activeGroupId = id; scheduleNotice = ''; renderScheduleModule(); }
+// The result of the last save / email, above the calendar. It stays until you
+// dismiss it or switch group, so a re-draw of the page doesn't lose it.
+let scheduleNoticeBad = false;
+function scheduleNoticeHtml() {
+  if (!scheduleNotice) return '';
+  return `<div class="sched-notice${scheduleNoticeBad ? ' bad' : ''}"><span>${escapeHtml(scheduleNotice)}</span><button title="Dismiss" onclick="dismissScheduleNotice()">✕</button></div>`;
+}
+function setScheduleNotice(text, bad) {
+  scheduleNotice = text || '';
+  scheduleNoticeBad = !!bad;
+  const slot = document.getElementById('sched-notice-slot');
+  if (slot) slot.innerHTML = scheduleNoticeHtml();
+}
+function dismissScheduleNotice() { setScheduleNotice('', false); }
+
+function selectScheduleGroup(id) { activeGroupId = id; scheduleNotice = ''; scheduleNoticeBad = false; renderScheduleModule(); }
 function scheduleStep(delta) {
   const d = new Date(scheduleMonth.y, scheduleMonth.m + delta, 1);
   scheduleMonth = { y: d.getFullYear(), m: d.getMonth() };
@@ -266,13 +280,15 @@ async function saveSession(id) {
   if (error) { btn.disabled = false; alert('Could not save the game: ' + error.message); return; }
   try { localStorage.setItem('gs_sched_tz', tz); localStorage.setItem('gs_sched_time', time); localStorage.setItem('gs_sched_hours', String(hours)); } catch (e) { /* private mode */ }
 
-  scheduleNotice = existing ? 'Game updated.' : 'Game scheduled.';
-  if (wantEmail) scheduleNotice += ' ' + await mailSession(saved.id, existing ? 'updated' : 'scheduled');
-  else scheduleNotice += ' No email sent.';
+  // The game is saved; the email goes out in the background so the form closes
+  // at once, and the line above the calendar is updated when it finishes.
+  const base = existing ? 'Game updated.' : 'Game scheduled.';
+  setScheduleNotice(wantEmail ? `${base} Emailing the group…` : `${base} No email sent.`, false);
   const d = new Date(saved.starts_at);
   scheduleMonth = { y: d.getFullYear(), m: d.getMonth() };
   closeModal();
   renderScheduleModule();
+  if (wantEmail) mailSession(saved.id, existing ? 'updated' : 'scheduled').then(r => setScheduleNotice(`${base} ${r.text}`, r.bad));
 }
 
 async function cancelSession(id) {
@@ -280,9 +296,10 @@ async function cancelSession(id) {
   if (!s || !await appConfirm(`Cancel "${s.title}" and email everyone in the group?`)) return;
   const { error } = await sb.from('game_sessions').update({ cancelled_at: new Date().toISOString() }).eq('id', id);
   if (error) { alert('Could not cancel the game: ' + error.message); return; }
-  scheduleNotice = 'Game cancelled. ' + await mailSession(id, 'cancelled');
+  setScheduleNotice('Game cancelled. Emailing the group…', false);
   closeModal();
   renderScheduleModule();
+  mailSession(id, 'cancelled').then(r => setScheduleNotice(`Game cancelled. ${r.text}`, r.bad));
 }
 
 async function deleteSession(id) {
@@ -290,24 +307,31 @@ async function deleteSession(id) {
   if (!s || !await appConfirm(`Delete "${s.title}" from the calendar? No email is sent. (Use "Cancel game & email" to tell the players.)`)) return;
   const { error } = await sb.from('game_sessions').delete().eq('id', id);
   if (error) { alert('Could not delete the game: ' + error.message); return; }
-  scheduleNotice = 'Game deleted.';
+  setScheduleNotice('Game deleted.', false);
   closeModal();
   renderScheduleModule();
 }
 
-// Asks the session-mail Edge Function to email the group; returns a sentence for the status line.
+// Asks the session-mail Edge Function to email the group. Resolves to
+// { text, bad } for the line above the calendar; never throws and never hangs
+// (it gives up after 40 seconds, e.g. a mail server that never answers).
 async function mailSession(sessionId, kind) {
-  try {
-    const { data, error } = await sb.functions.invoke('session-mail', { body: { session_id: sessionId, kind } });
-    if (error) {
-      let detail = error.message;
-      try { const j = await error.context.json(); if (j && j.error) detail = j.error; if (j && j.failures && j.failures.length) detail += ' — ' + j.failures[0]; } catch (e) { /* not JSON */ }
-      return `The change is saved, but the email did not go out (${detail}).`;
+  const fail = detail => ({ text: `The change is saved, but the email did not go out (${detail}).`, bad: true });
+  const call = (async () => {
+    try {
+      const { data, error } = await sb.functions.invoke('session-mail', { body: { session_id: sessionId, kind } });
+      if (error) {
+        let detail = error.message;
+        try { const j = await error.context.json(); if (j && j.error) detail = j.error; if (j && j.failures && j.failures.length) detail += ' — ' + j.failures[0]; } catch (e) { /* not JSON */ }
+        return fail(detail);
+      }
+      if (data.recipients === 0) return { text: 'No one else in the group has an email on file.', bad: false };
+      if (data.failures && data.failures.length) return { text: `Emailed ${data.sent} of ${data.recipients}; failed: ${data.failures.map(f => f.split(':')[0]).join(', ')}.`, bad: true };
+      return { text: `Emailed ${data.sent} ${data.sent === 1 ? 'person' : 'people'}.`, bad: false };
+    } catch (e) {
+      return fail(e.message);
     }
-    if (data.recipients === 0) return 'No one else in the group has an email on file.';
-    if (data.failures && data.failures.length) return `Emailed ${data.sent} of ${data.recipients}; failed: ${data.failures.map(f => f.split(':')[0]).join(', ')}.`;
-    return `Emailed ${data.sent} ${data.sent === 1 ? 'person' : 'people'}.`;
-  } catch (e) {
-    return `The change is saved, but the email did not go out (${e.message}).`;
-  }
+  })();
+  const timeout = new Promise(res => setTimeout(() => res(fail('no answer from the email function after 40 seconds. In Supabase, open Edge Functions → session-mail → Logs to see why')), 40000));
+  return Promise.race([call, timeout]);
 }

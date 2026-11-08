@@ -731,6 +731,7 @@ const CHAT_HELP_HTML = `
   <table>
     <tr><td>/att &nbsp;or&nbsp; /attack</td><td>Attack with the "Post as" character: picks the weapon in hand, rolls Multiple Attack, then each attack (crit and fumble). The GM is asked privately for the target's AV; the hit, a critical's second roll and the damage follow. The steps go to you and the GM, and the result ("hits for 9 damage" / "whiffs") goes to everyone.</td></tr>
     <tr><td>/prot <i>number</i></td><td>Armor protection roll: <code>/prot 40</code> rolls <code>(40-d10)/(2d6/2)</code>, rounded, never below 0</td></tr>
+    <tr><td>/prot</td><td>The same roll with the "Post as" character's current protection filled in (armor, shield in use, magic, spells, parry); you confirm or change the number first. A temp character takes it from its Bestiary entry.</td></tr>
   </table>
   <b>Dice</b>
   <table>
@@ -787,7 +788,9 @@ function chatParseCommand(text) {
     case 'r': case 'roll': needArg('a roll, e.g. /r 1d20+5'); return { kind: 'roll', body: arg.trim() };
     case 'gr': case 'gmroll': needArg('a roll, e.g. /gr 1d20'); return { kind: 'roll', body: arg.trim(), whisper: { characters: [], gm: true } };
     case 'att': case 'attack': return { local: 'att' };
-    case 'prot': return { kind: 'roll', body: CHAT_GAME_ROLLS.prot.build(arg) };
+    case 'prot':
+      if (!arg.trim()) return { local: 'prot' };   // no number: fill in the Post-as character's own protection (js/attack.js)
+      return { kind: 'roll', body: CHAT_GAME_ROLLS.prot.build(arg) };
     case 'em': case 'me': needArg('an action'); return { kind: 'emote', body: arg.trim() };
     case 'ooc': needArg('a message'); return { kind: 'ooc', body: arg.trim() };
     case 'desc': gmOnly(); needArg('some text'); return { kind: 'desc', body: arg.trim() };
@@ -844,6 +847,7 @@ async function sendChatMessage(textOverride) {
     msg = chatParseCommand(text);
     if (msg.local === 'help') { showChatHelp(); chatAfterSend(input, typed, textOverride); return; }
     if (msg.local === 'att') { chatAfterSend(input, typed, textOverride); await chatAttackRun(); return; }
+    if (msg.local === 'prot') { chatAfterSend(input, typed, textOverride); await chatProtRun(); return; }
     if (msg.local) { chatLocalLine('system', msg.body); chatAfterSend(input, typed, textOverride); return; }
     const payload = {};
     if (msg.kind === 'roll') {

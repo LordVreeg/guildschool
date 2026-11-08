@@ -334,6 +334,87 @@ function chatAttGMDone(which) {
   if (resolve) resolve(which === 'manual' ? { manual: true } : { av: isNaN(av) ? 0 : av });
 }
 
+// ---------- /prot with no number ----------
+// The "Post as" character's current protection (computeArmor: armor, the shield
+// when one is in use, protection skill, weapons, magic, spells and parry),
+// filled in for you to confirm or change, then the usual protection roll.
+// A temp character takes it from its Bestiary entry; anyone else types it.
+async function chatProtRun() {
+  try {
+    await chatProtFlow();
+  } catch (e) {
+    closeModal();
+    chatShowStatus(e.message || String(e));
+  }
+}
+
+async function chatProtFlow() {
+  let who = '', value = '', detail = '', alt = null;
+  let char = null;
+  try { char = await attSheetFor(); } catch (e) { char = null; }   // no sheet is fine here
+  if (char) {
+    who = char.name || 'Character';
+    const armor = computeArmor(char), cur = armor.current;
+    value = Math.round(cur.totalPR);
+    const parts = [['armor', armor.sumArmorPR], ['shield', armor.wield.shields ? armor.sumShieldPR : 0], ['protection skill', armor.protectionSkval / 5],
+      ['weapons', armor.weaponProtection], ['other', armor.sumOtherPR], ['magic', cur.magicPR], ['spells', armor.spellMods.pr], ['parry', armor.parryPointsTotal]]
+      .filter(p => Math.round(p[1] * 100) !== 0).map(p => `${p[0]} ${Math.round(p[1] * 100) / 100}`);
+    detail = `${armor.wield.shields ? 'Shield in use' : 'No shield in use'}: ${parts.join(' + ') || 'nothing worn'}.`;
+    if (armor.parryPointsTotal > 0) alt = Math.round(cur.totalPRvsRangedOrMagic);
+  } else {
+    const sel = document.getElementById('chat-post-as');
+    const v = sel ? sel.value : '';
+    if (v.startsWith(CHAT_AS_PREFIX) && chatIsGM()) {
+      who = v.slice(CHAT_AS_PREFIX.length).trim();
+      const { data } = await sb.from('bestiary_entries').select('name, protection, armor_name, shield_name').eq('group_id', chatGroupId).eq('name', who).limit(1);
+      const e = data && data[0];
+      if (e && e.protection !== null && e.protection !== undefined && e.protection !== '') {
+        value = Math.round(parseFloat(e.protection) || 0);
+        detail = `From ${who}'s Bestiary entry${e.armor_name ? ` (${e.armor_name}${e.shield_name ? ' and ' + e.shield_name : ''})` : ''}.`;
+      } else detail = `${who} has no protection on file. Type it.`;
+    } else {
+      who = 'Protection';
+      detail = 'No character picked under "Post as". Type the protection.';
+    }
+  }
+
+  const pr = await new Promise(resolve => {
+    chatProtPrompt.resolve = resolve;
+    openModal(`
+      <h3>${escapeHtml(who)} — protection roll</h3>
+      <div style="margin-bottom:8px">${escapeHtml(detail)}</div>
+      ${alt !== null ? `<div class="form-group"><label>Against</label><select id="prot-kind" class="w-full" onchange="document.getElementById('prot-pr').value=this.value">
+        <option value="${value}">A melee attack (parry counts)</option><option value="${alt}">A missile or a spell (parry doesn't count)</option></select></div>` : ''}
+      <div class="form-group"><label>Protection — is this right? Change it if not</label>
+        <input id="prot-pr" type="number" class="w-sm" value="${value}" onkeydown="if(event.key==='Enter')chatProtDone(true)"></div>
+      <div class="modal-actions"><button class="btn btn-dim" onclick="chatProtDone(false)">Cancel</button><button class="btn btn-gold" onclick="chatProtDone(true)">Roll protection</button></div>`);
+    const el = document.getElementById('prot-pr');
+    if (el) { el.focus(); el.select(); }
+    clearInterval(chatAttWatch);
+    chatAttWatch = setInterval(() => { if (!attModalOpen()) { clearInterval(chatAttWatch); if (chatProtPrompt.resolve === resolve) { chatProtPrompt.resolve = null; resolve(null); } } }, 400);
+  });
+  clearInterval(chatAttWatch);
+  if (pr === null) return;
+
+  const expr = CHAT_GAME_ROLLS.prot.build(String(pr));
+  const r = DiceRoller.roll(expr);
+  if (chatTalkToMyself) {
+    const c = chatPostAsChar();
+    chatLocalLine('roll', expr, { sender_name: c ? c.name : who, payload: { rolls: [r] } });
+    return;
+  }
+  await chatInsertMessage({ kind: 'roll', body: expr, payload: { rolls: [r] } });
+}
+const chatProtPrompt = { resolve: null };
+function chatProtDone(ok) {
+  const resolve = chatProtPrompt.resolve;
+  chatProtPrompt.resolve = null;
+  const el = document.getElementById('prot-pr');
+  const n = el ? parseFloat(el.value) : NaN;
+  closeModal();
+  if (resolve) resolve(ok && !isNaN(n) ? n : null);
+}
+
 async function chatAttackRun() {
   try {
     await chatAttackFlow();
