@@ -85,7 +85,7 @@ function openSettingsModal() {
 // size. A script in index.html's <head> applies them before the page draws.
 const THEMES = [{ key: 'default', label: 'Default' }, { key: 'light', label: 'Light' }, { key: 'dark', label: 'Dark' },
   { key: 'red', label: 'Red' }, { key: 'blue', label: 'Blue' }, { key: 'green', label: 'Green' }, { key: 'purple', label: 'Purple' }];
-const FONT_SCALE_MIN = 0.7, FONT_SCALE_MAX = 1.6, FONT_SCALE_STEP = 0.1;
+const FONT_SCALE_MIN = 0.7, FONT_SCALE_MAX = 1.6, FONT_SCALE_STEP = 0.05;
 function currentTheme() { return document.documentElement.dataset.theme || 'default'; }
 function fontScale() { return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fs')) || 1; }
 function applyTheme(key) {
@@ -102,7 +102,7 @@ function setTheme(key) {
   openSettingsModal();
 }
 function stepFontScale(dir) {
-  const f = Math.round(Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, fontScale() + dir * FONT_SCALE_STEP)) * 10) / 10;
+  const f = Math.round(Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, fontScale() + dir * FONT_SCALE_STEP)) * 100) / 100;
   applyFontScale(f);
   try { if (f === 1) localStorage.removeItem('gs_font_scale'); else localStorage.setItem('gs_font_scale', String(f)); } catch (e) {}
   openSettingsModal();
