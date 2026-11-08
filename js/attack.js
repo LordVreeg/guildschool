@@ -91,6 +91,32 @@ function attDamageParts(it, line) {
   return { dice: String(it.damageDice || '').trim(), before: Math.round(parseFloat(line.v.dmgBeforeDivider) || 0), sides: parseFloat(it.dividingDie) || 0, after: Math.round(parseFloat(line.v.dmgBonus) || 0) };
 }
 
+// Colour for the result line, from the damage dealt and the dividing die that
+// came up (eff = the die less any crit reduction; null with no dividing die).
+// A damage word and/or a divider word, each picked at random from its list.
+const ATT_FLAVOR = {
+  huge:     ['thunderous', 'mammoth', 'volcanic', 'cataclysmic', 'earth-shaking', 'titanic', 'colossal', 'monstrous', 'catastrophic', 'tectonic', 'skull-splitting', 'apocalyptic', 'meteoric', 'legendary'],   // over 30
+  strong:   ['exceptional', 'pounding', 'punishing', 'brutal', 'crushing', 'savage', 'devastating', 'hammering', 'bone-jarring', 'ferocious', 'mighty', 'merciless', 'heavy-handed', 'hefty'],           // over 20
+  mediocre: ['mediocre', 'average', 'pedestrian', 'middling', 'ordinary', 'unremarkable', 'run-of-the-mill', 'so-so', 'workmanlike', 'passable', 'nothing special', 'humdrum', 'serviceable', 'modest'],  // under 10
+  low:      ['sad', 'a nick', 'weak', 'weak sauce', 'pitiful', 'a scratch', 'feeble', 'a graze', 'puny', 'measly', 'paltry', 'a pinprick', 'anemic', 'limp', 'meager', 'trifling', 'underwhelming', 'barely a tickle'], // under 5
+  wasted:   ['a wasted hit', 'a bad effort', 'poorly struck', 'a sloppy blow', 'badly placed', 'a glancing blow', 'wasted effort', 'a clumsy swing', 'badly angled', 'half-hearted', 'poor form', 'a lazy strike'],  // divider 5 or more
+  skilled:  ['well struck', 'skillfully done', 'masterfully done', 'expertly placed', 'a clean strike', 'precisely landed', 'artfully delivered', 'textbook', 'flawlessly executed', 'beautifully struck', 'surgical', 'deftly delivered', 'with great finesse']  // divider under 2, crits included
+};
+const ATT_HIGH_DIVIDER = 5;
+function attFlavor(total, eff) {
+  const pick = list => list[Math.floor(Math.random() * list.length)];
+  const out = [];
+  if (total > 30) out.push(pick(ATT_FLAVOR.huge));
+  else if (total > 20) out.push(pick(ATT_FLAVOR.strong));
+  else if (total < 5) out.push(pick(ATT_FLAVOR.low));
+  else if (total < 10) out.push(pick(ATT_FLAVOR.mediocre));
+  if (eff !== null && eff !== undefined) {
+    if (eff < 2) out.push(pick(ATT_FLAVOR.skilled));
+    else if (eff >= ATT_HIGH_DIVIDER) out.push(pick(ATT_FLAVOR.wasted));
+  }
+  return out;
+}
+
 // Rolls the damage. crit = null, or { reduction, dieSides } (see attCrit).
 function attDamage(it, line, crit) {
   const p = attDamageParts(it, line);
@@ -100,10 +126,11 @@ function attDamage(it, line, crit) {
   rows.push(['Damage dice', `[[${top.expr}]]`, [top]]);
   let base = top.total;
   let note = '';
+  let eff = null;
   if (p.sides) {
     const sides = crit && crit.dieSides ? crit.dieSides : p.sides;
     const die = DiceRoller.roll(`1d${sides}`);
-    const eff = die.total - (crit ? crit.reduction : 0);
+    eff = die.total - (crit ? crit.reduction : 0);
     // the wiki's critical divider table: 2 = half, 1 = full, 0 = x2, -1 = x3 ...
     base = eff >= 1 ? top.total / eff : top.total * (2 - eff);
     const how = crit && crit.reduction
@@ -115,7 +142,7 @@ function attDamage(it, line, crit) {
   const raw = base + p.after;
   const total = Math.max(0, Math.round(raw));
   rows.push(['Damage', `**${total}**${Math.abs(raw - total) > 0.005 ? ` (${Math.round(raw * 100) / 100} before rounding)` : ''}${note}`]);
-  return { rows, total };
+  return { rows, total, eff };
 }
 
 // The GM's side of an attack roll: given the request and the target's AV,
@@ -457,6 +484,7 @@ async function chatAttackFlow() {
     const dmg = attDamage(it, line, critInfo ? { reduction: critInfo.reduction, dieSides: critInfo.dieSides } : null);
     rows.push(...dmg.rows);
     if (!await chatAttackPost(`${label}: ${crit ? 'critical hit' : 'hit'}`, rows)) return;
-    await chatAttackPublic(`${crit ? 'critically hits' : 'hits'} with the ${weaponName} for ${dmg.total} damage.`);
+    const flavor = attFlavor(dmg.total, dmg.eff);
+    await chatAttackPublic(`${crit ? 'critically hits' : 'hits'} with the ${weaponName} for ${dmg.total} damage${flavor.length ? ' — ' + flavor.join(', ') : ''}.`);
   }
 }
