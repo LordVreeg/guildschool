@@ -316,9 +316,27 @@ async function chatAttackRun() {
   }
 }
 
+// The sheet to attack from: the "Post as" character, or for a GM posting as an
+// NPC by name, that NPC's sheet. An NPC another account owns is read from the
+// database (a GM can read every character in their group); it is a read-only copy.
+async function attSheetFor() {
+  const mine = chatPostAsChar();
+  if (mine) return mine;
+  const sel = document.getElementById('chat-post-as');
+  const v = sel ? sel.value : '';
+  if (!v.startsWith(CHAT_AS_PREFIX)) return null;
+  const name = v.slice(CHAT_AS_PREFIX.length).trim();
+  if (!chatIsGM()) return null;
+  const row = chatRoster.find(r => (r.name || '').trim().toLowerCase() === name.toLowerCase());
+  if (!row) throw new Error(`${name} has no character sheet (a temp character or a Bestiary foe), so there is nothing for /att to attack from.`);
+  const { data, error } = await sb.from('characters').select('id, data').eq('id', row.id).single();
+  if (error || !data || !data.data) throw new Error(`Couldn't read ${name}'s sheet${error ? ': ' + error.message : ''}.`);
+  return data.data;
+}
+
 async function chatAttackFlow() {
-  const char = chatPostAsChar();
-  if (!char) throw new Error('/att attacks as a character with a sheet: one of yours under "Post as", or an NPC of yours posted as by name. (Bestiary foes and temp characters have no sheet to attack from.)');
+  const char = await attSheetFor();
+  if (!char) throw new Error('/att attacks as a character with a sheet: pick one of your characters under "Post as", or (as GM) an NPC.');
 
   // 1. the weapon: everything in hand, one choice per grip / throw
   const options = [];
@@ -327,7 +345,7 @@ async function chatAttackFlow() {
     if (!al) continue;
     al.lines.filter(l => l.v || l.missile).forEach(line => options.push({ it: al.it, w: al.w, line, label: `${al.it.name || 'Weapon'} — ${attGripLabel(line)}` }));
   }
-  if (!options.length) throw new Error('No weapon in use. Tick In Use on a carried weapon on the Inventory page.');
+  if (!options.length) throw new Error(`${char.name || 'That character'} has no weapon in use. Tick In Use on one of their carried weapons on the Inventory page.`);
   let pick = options[0];
   if (options.length > 1) {
     const i = await chatPromptButtons('Attack with which?', 'Weapons and grips in hand right now.', options.map((o, idx) => ({ label: o.label, value: idx })).concat([{ label: 'Cancel', value: null }]));
