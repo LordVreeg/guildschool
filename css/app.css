@@ -165,6 +165,9 @@ body {
 .inventory-table .item-group-stats { color: var(--text-dim); text-transform: none; letter-spacing: normal; margin-left: 8px; }
 .inventory-table tr.item-group { cursor: pointer; user-select: none; }
 .inventory-table .item-group-toggle { display: inline-block; width: 14px; }
+/* a subsection inside a section (Items > Custom): indented one step further */
+.inventory-table tr.item-subgroup td { background: rgba(var(--tint-rgb),.04); padding-left: 18px; }
+.inventory-table tr.item-row.item-sub-row > td:first-child { padding-left: 28px; }
 .inventory-table .container-move-cell { white-space: nowrap; width: 56px; }
 .inventory-table .container-move { padding: 0 6px; line-height: 16px; }
 .inventory-table .container-move:disabled { opacity: .35; cursor: default; }

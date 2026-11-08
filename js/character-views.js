@@ -324,7 +324,9 @@ function itemKindLabel(it) {
 }
 
 // The Inventory's sections, in order, and which one an item goes in.
-const INVENTORY_SECTIONS = ['Armor & Weapons', 'Scrolls', 'Potions', 'Magic Items', 'Items', 'Items, Custom', 'Money', 'Spell Books'];
+const INVENTORY_SECTIONS = ['Armor & Weapons', 'Scrolls', 'Potions', 'Magic Items', 'Items', 'Money', 'Spell Books'];
+// Subsections, shown inside their section (after its own items): key -> label
+const INVENTORY_SUBSECTIONS = { 'Items': [['Items, Custom', 'Custom']] };
 function inventorySectionOf(it) {
   if (['Weapon', 'Shield', 'Armor', 'Ammunition'].includes(it.type)) return 'Armor & Weapons';
   if (it.type === 'Spell Book') return 'Spell Books';
@@ -410,16 +412,27 @@ function inventoryGroupsHtml(char) {
   const entries = (char.items || []).map((it, idx) => ({ it, idx })).filter(({ it }) => !isBlankItem(it));
   const containers = itemLocations(char);
   const where = it => (it.location || '').trim();
+  // within a section: Carried first, then the containers in their set order, then by name
+  const rank = it => where(it) ? 1 + containers.indexOf(where(it)) : 0;
+  const rowsOf = key => entries.filter(({ it }) => inventorySectionOf(it) === key)
+    .sort((a, b) => (rank(a.it) - rank(b.it)) || String(a.it.name || '').localeCompare(String(b.it.name || ''), undefined, { sensitivity: 'base' }));
+  const header = (key, label, count, sub) => {
+    const hidden = collapsedItemGroups.has(key);
+    return `<tr class="item-group${sub ? ' item-subgroup' : ''}" data-group="${escapeHtml(key)}" title="${hidden ? 'Show' : 'Hide'} these items" onclick="toggleItemGroup(this.dataset.group)"><td colspan="9"><span class="item-group-toggle">${hidden ? '▸' : '▾'}</span>${escapeHtml(label)}<span class="item-group-stats">(${count})</span></td></tr>`;
+  };
   const html = INVENTORY_SECTIONS.map(section => {
-    const rows = entries.filter(({ it }) => inventorySectionOf(it) === section);
-    if (!rows.length) return '';
-    // within a section: Carried first, then the containers in their set order, then by name
-    const rank = it => where(it) ? 1 + containers.indexOf(where(it)) : 0;
-    rows.sort((a, b) => (rank(a.it) - rank(b.it)) || String(a.it.name || '').localeCompare(String(b.it.name || ''), undefined, { sensitivity: 'base' }));
-    const hidden = collapsedItemGroups.has(section);
-    const count = rows.length;
-    return `<tr class="item-group" data-group="${escapeHtml(section)}" title="${hidden ? 'Show' : 'Hide'} these items" onclick="toggleItemGroup(this.dataset.group)"><td colspan="9"><span class="item-group-toggle">${hidden ? '▸' : '▾'}</span>${escapeHtml(section)}<span class="item-group-stats">(${count})</span></td></tr>` +
-      (hidden ? '' : rows.map(({ it, idx }) => { const warn = inventoryAmmoWarning(char, it); return `<tr class="item-row" style="${it.masterwork ? 'font-style:italic' : ''}">
+    const rows = rowsOf(section);
+    const subs = (INVENTORY_SUBSECTIONS[section] || []).map(([key, label]) => ({ key, label, rows: rowsOf(key) })).filter(s => s.rows.length);
+    const count = rows.length + subs.reduce((n, s) => n + s.rows.length, 0);
+    if (!count) return '';
+    if (collapsedItemGroups.has(section)) return header(section, section, count);
+    return header(section, section, count) + itemRowsHtml(rows, false) +
+      subs.map(s => header(s.key, s.label, s.rows.length, true) + (collapsedItemGroups.has(s.key) ? '' : itemRowsHtml(s.rows, true))).join('');
+  }).join('');
+  return html || `<tr><td colspan="9" class="note">No items yet. Use <i>Add Item</i> below.</td></tr>`;
+
+  function itemRowsHtml(rows, sub) {
+    return rows.map(({ it, idx }) => { const warn = inventoryAmmoWarning(char, it); return `<tr class="item-row${sub ? ' item-sub-row' : ''}" style="${it.masterwork ? 'font-style:italic' : ''}">
         <td>${escapeHtml(it.name || '')}</td>
         <td class="item-kind">${escapeHtml(itemKindLabel(it))}</td>
         <td class="item-kind">${where(it) ? escapeHtml(where(it)) : 'Carried'}</td>
@@ -429,9 +442,8 @@ function inventoryGroupsHtml(char) {
         <td class="item-kind">${warn || escapeHtml(it.notes || '')}</td>
         <td class="item-edit" title="Edit" onclick="openEditItemModal(${idx})">✎</td>
         <td class="item-del" title="Delete" onclick="removeItem(${idx})">✕</td>
-      </tr>` + itemModsLineHtml(char, it) + itemSpellRowsHtml(char, it, idx, 9); }).join(''));
-  }).join('');
-  return html || `<tr><td colspan="9" class="note">No items yet. Use <i>Add Item</i> below.</td></tr>`;
+      </tr>` + itemModsLineHtml(char, it) + itemSpellRowsHtml(char, it, idx, 9); }).join('');
+  }
 }
 
 // A row per spell on an item, with Cast (and ↺ where uses come back), under
