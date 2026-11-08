@@ -98,7 +98,7 @@ function itemPickSteps(d, picks = itemPicks) {
     if (d.weaponClass) {
       const cats = weaponCategoriesForClass(d.weaponClass);
       const models = cats.length ? weaponModelsForClass(d.weaponClass, cats) : [];
-      steps.push({ key: 'weaponModel', label: 'Model', options: models.map(m => m.name), custom: true, apply: applyWeaponModel });
+      steps.push({ key: 'weaponModel', label: 'Model', options: sortCatalogNames(models.map(m => m.name)), labelOf: catalogNameLabel, custom: true, apply: applyWeaponModel });
     }
   } else if (d.type === 'Armor') {
     steps.push({ key: 'armorType', label: 'Armor Type', options: ARMOR.map(a => a.name), custom: true, apply: applyArmorType });
@@ -116,12 +116,30 @@ function itemPickSteps(d, picks = itemPicks) {
   } else if (d.type === 'Item') {
     steps.push({ key: 'itemClass', label: 'Item Class', options: [...new Set(BASIC_ITEMS.map(b => b.class))].sort(), custom: true });
     if (d.itemClass) {
-      steps.push({ key: 'basicItemName', label: 'Item', options: BASIC_ITEMS.filter(b => b.class === d.itemClass).map(b => b.name), custom: true, apply: applyBasicItem });
+      steps.push({ key: 'basicItemName', label: 'Item', options: sortCatalogNames(BASIC_ITEMS.filter(b => b.class === d.itemClass).map(b => b.name)), labelOf: catalogNameLabel, custom: true, apply: applyBasicItem });
     }
   } else if (d.type === 'Magic Item') {
     steps.push({ key: 'magicItemClass', label: 'Magic Item Class', options: MAGIC_ITEM_CLASSES, custom: true });
   }
   return steps;
+}
+
+// Catalog names come from the wiki in mixed case ("horn, signal", "Heavy
+// Composite bow"). The Model / Item dropdowns show them in title case (small
+// words like "of" and "in" stay lower case, mid-word capitals like
+// "CrankShaft" stay) and in alphabetical order. The saved pick keeps the
+// catalog's spelling, so it still matches the catalog.
+const CATALOG_SMALL_WORDS = new Set(['a', 'an', 'and', 'as', 'at', 'by', 'for', 'from', 'in', 'of', 'on', 'or', 'per', 'the', 'to', 'with']);
+function catalogNameLabel(name) {
+  let first = true;
+  return String(name || '').trim().replace(/\s+/g, ' ').replace(/[A-Za-z][^\s,()/]*/g, w => {
+    const keep = !first && CATALOG_SMALL_WORDS.has(w.toLowerCase());
+    first = false;
+    return keep ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1);
+  });
+}
+function sortCatalogNames(names) {
+  return [...names].sort((a, b) => catalogNameLabel(a).localeCompare(catalogNameLabel(b), undefined, { sensitivity: 'base' }));
 }
 
 // For editing: read back which dropdowns an existing item has chosen. A
@@ -171,6 +189,7 @@ function setItemPick(key, value) {
       if (v !== ITEM_PICK_CUSTOM) {
         s.apply(d, v);
         if (!String(d.name || '').trim()) d.name = v;
+        if (s.labelOf && d.name === v) d.name = s.labelOf(v); // the new item's name as the dropdown shows it
       }
     } else if (v !== ITEM_PICK_CUSTOM) d[s.key] = v;
   }

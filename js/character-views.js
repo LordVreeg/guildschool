@@ -317,7 +317,7 @@ function renderGeneralModule() {
 // ("Armor, Custom", "Basic Axe, Custom").
 function itemKindLabel(it) {
   const labels = Object.entries(itemPicksFromItem(it)).map(([key, v]) =>
-    v === ITEM_PICK_CUSTOM ? 'Custom' : key === 'type' ? itemTypeLabel(v) : v);
+    v === ITEM_PICK_CUSTOM ? 'Custom' : key === 'type' ? itemTypeLabel(v) : key === 'weaponModel' || key === 'basicItemName' ? catalogNameLabel(v) : v);
   if (!labels.length) return itemTypeLabel(it.type || 'Item');
   const last = labels[labels.length - 1];
   return last === 'Custom' && labels.length > 1 ? `${labels[labels.length - 2]}, Custom` : last;
