@@ -448,3 +448,6 @@ body.chat-window #chat-window-root { display: flex; flex-direction: column; heig
 #chat-window-root .chat-composer .form-group { flex: 1 1 auto; order: 1; }
 #chat-window-root .chat-composer select { width: 100%; }
 #chat-window-root .chat-composer #chat-send-btn { order: 1; }
+
+/* A checkbox with its label on one line (Combat page: Collegium System) */
+.check-row { display: flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 6px; }

@@ -156,6 +156,7 @@ function onChatChange(payload) {
   const msg = payload.new;
   if (!msg || !msg.id) return;
   if (payload.eventType === 'INSERT') {
+    if (typeof chatAttHandleIncoming === 'function') chatAttHandleIncoming(msg);   // /att: the GM's AV prompt, the attacker's answer
     if (chatPageOpen() && msg.group_id === chatGroupId) {
       if (!chatMessages.some(m => m.id === msg.id)) {
         const stick = chatNearBottom();
@@ -288,8 +289,11 @@ function chatPostAsChar() {
   const sel = document.getElementById('chat-post-as');
   const v = sel ? sel.value : '';
   if (v.startsWith(CHAT_AS_PREFIX)) {
+    const name = v.slice(CHAT_AS_PREFIX.length);
     const current = state.characters[state.activeChar];
-    return current && current.name === v.slice(CHAT_AS_PREFIX.length) ? current : null;
+    if (current && current.name === name) return current;
+    // An NPC with a sheet of its own (one of the GM's characters), posted as by name
+    return Object.values(state.characters).find(c => (c.name || '').trim().toLowerCase() === name.trim().toLowerCase()) || null;
   }
   const appId = Object.keys(charRowIds).find(k => charRowIds[k] === v);
   return appId ? state.characters[appId] : null;
@@ -392,6 +396,7 @@ async function loadChatMessages(older) {
     renderChatMessages('bottom');
     chatMarkRead(groupId);
     renderChatGroupTabs();
+    if (typeof chatAttScanHistory === 'function') chatAttScanHistory();   // /att requests waiting for this GM
   }
 }
 
@@ -513,6 +518,7 @@ function renderChatMessages(mode) {
   if (!list.length) html += `<div class="note" style="text-align:center;padding:20px">${chatSearch ? 'No messages match.' : 'No messages yet. Say hello! Type /help to see the commands.'}</div>`;
   let lastDay = null, prev = null;
   for (const m of list) {
+    if (m.payload && m.payload.att_reply) continue;   // the GM's private AV answer for /att (js/attack.js): never shown
     const d = new Date(m.created_at);
     const day = d.toDateString();
     if (day !== lastDay) { html += `<div class="chat-day"><span>${chatDayLabel(d)}</span></div>`; lastDay = day; prev = null; }
@@ -721,10 +727,15 @@ const CHAT_HELP_HTML = `
     <tr><td>**bold** *italic* ~~strike~~ [text](https://…)</td><td>Formatting and links</td></tr>
     <tr><td>↑ / ↓</td><td>Step through what you've sent</td></tr>
   </table>
+  <b>Game rolls</b>
+  <table>
+    <tr><td>/att &nbsp;or&nbsp; /attack</td><td>Attack with the "Post as" character: picks the weapon in hand, rolls Multiple Attack, then each attack (crit and fumble). The GM is asked privately for the target's AV; the hit, a critical's second roll and the damage follow. The steps go to you and the GM, and the result ("hits for 9 damage" / "whiffs") goes to everyone.</td></tr>
+    <tr><td>/prot <i>number</i></td><td>Armor protection roll: <code>/prot 40</code> rolls <code>(40-d10)/(2d6/2)</code>, rounded, never below 0</td></tr>
+  </table>
   <b>Dice</b>
   <table>
     <tr><td>2d6 d20 d% 4dF (2+1)d6</td><td>Dice, percentile, fate (−1/0/+1), worked-out counts</td></tr>
-    <tr><td>+ − * / % ** ( ) floor() ceil() round() abs()</td><td>Maths</td></tr>
+    <tr><td>+ − * / % ** ( ) floor() ceil() round() abs() max(a,b) min(a,b)</td><td>Maths</td></tr>
     <tr><td>4d6kh3 4d6k3 · 2d20kl1 · 4d6d1 4d6dl1 · 2d20dh1</td><td>Keep highest / lowest, drop lowest / highest</td></tr>
     <tr><td>3d6! · 3d6!! · 3d6!p · 1d10!>8</td><td>Exploding, compounding, penetrating (optionally on a range)</td></tr>
     <tr><td>4d6r1 · 4d6r<2 · 4d6ro1</td><td>Reroll while matching, or reroll once</td></tr>
@@ -750,6 +761,20 @@ function chatTakeName(s) {
   return w ? { name: w[1], rest: w[2] } : { name: '', rest: '' };
 }
 
+// Celtricia shortcuts: "/name args" becomes an ordinary roll of the expression
+// build() returns, so it's drawn (and can be whispered with /w) like any /roll.
+// Add new game rolls here and in the "Game rolls" table of CHAT_HELP_HTML.
+const CHAT_GAME_ROLLS = {
+  // Armor protection: (protection - d10) / (2d6 / 2), rounded, never below 0
+  // (the same rule as protectionRollRange in formulas.js).
+  prot: { usage: '/prot 40', build: arg => `max(0, round((${chatNumberArg(arg, '/prot', 'a protection number, e.g. /prot 40')}-d10)/(2d6/2)))` }
+};
+function chatNumberArg(arg, cmd, what) {
+  const s = String(arg).trim();
+  if (!/^-?\d+(\.\d+)?$/.test(s)) throw new Error(`${cmd} needs ${what}`);
+  return s;
+}
+
 // Works out what a typed line means. Returns the row to send (without
 // group/character), or { local } for something shown only to you.
 function chatParseCommand(text) {
@@ -761,6 +786,8 @@ function chatParseCommand(text) {
   switch (name) {
     case 'r': case 'roll': needArg('a roll, e.g. /r 1d20+5'); return { kind: 'roll', body: arg.trim() };
     case 'gr': case 'gmroll': needArg('a roll, e.g. /gr 1d20'); return { kind: 'roll', body: arg.trim(), whisper: { characters: [], gm: true } };
+    case 'att': case 'attack': return { local: 'att' };
+    case 'prot': return { kind: 'roll', body: CHAT_GAME_ROLLS.prot.build(arg) };
     case 'em': case 'me': needArg('an action'); return { kind: 'emote', body: arg.trim() };
     case 'ooc': needArg('a message'); return { kind: 'ooc', body: arg.trim() };
     case 'desc': gmOnly(); needArg('some text'); return { kind: 'desc', body: arg.trim() };
@@ -816,6 +843,7 @@ async function sendChatMessage(textOverride) {
     if (!text) return;
     msg = chatParseCommand(text);
     if (msg.local === 'help') { showChatHelp(); chatAfterSend(input, typed, textOverride); return; }
+    if (msg.local === 'att') { chatAfterSend(input, typed, textOverride); await chatAttackRun(); return; }
     if (msg.local) { chatLocalLine('system', msg.body); chatAfterSend(input, typed, textOverride); return; }
     const payload = {};
     if (msg.kind === 'roll') {
@@ -856,19 +884,35 @@ async function sendChatMessage(textOverride) {
     return;
   }
 
+  if (!await chatInsertMessage(msg)) return;
+  chatAfterSend(input, typed, textOverride);
+}
+
+// Saves one message (kind, body, payload, optional sender_name) to the
+// group's chat as the "Post as" choice and shows it. Returns false, with the
+// reason in the status line, when it couldn't be sent.
+async function chatInsertMessage(msg) {
+  const asSel = document.getElementById('chat-post-as');
   const btn = document.getElementById('chat-send-btn');
+  // Posting as an NPC (a name): the row carries that name, like /as and /emas
+  if (asSel.value.startsWith(CHAT_AS_PREFIX) && !msg.sender_name) {
+    msg = Object.assign({}, msg, { sender_name: asSel.value.slice(CHAT_AS_PREFIX.length) });
+    if (msg.kind === 'message') msg.kind = 'as';
+    else if (msg.kind === 'emote') msg.kind = 'emas';
+  }
   if (btn) btn.disabled = true;
   const row = { group_id: chatGroupId, character_id: asSel.value && !asSel.value.startsWith(CHAT_AS_PREFIX) ? asSel.value : null, body: msg.body, kind: msg.kind, payload: msg.payload };
   if (msg.sender_name) row.sender_name = msg.sender_name;
   const { data, error } = await sb.from('group_chat_messages').insert(row).select().single();
   if (btn) btn.disabled = false;
-  if (error) { chatShowStatus('Failed to send: ' + error.message); return; }
-  chatAfterSend(input, typed, textOverride);
+  if (error) { chatShowStatus('Failed to send: ' + error.message); return false; }
   if (data && data.group_id === chatGroupId && !chatMessages.some(m => m.id === data.id)) {
     chatMessages.push(data);
     if (chatSearch) clearChatSearch(); else renderChatMessages('bottom');
   }
   chatMarkRead(chatGroupId);
+  if (typeof chatAttHandleIncoming === 'function') chatAttHandleIncoming(data);   // your own /att request, if you are the GM
+  return true;
 }
 
 function chatAfterSend(input, typed, fromMacroButton) {
