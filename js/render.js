@@ -218,13 +218,15 @@ function renderSidebar() {
   const view = state.activeSkillId ? 'skill' : (state.activeView || 'overview');
   // icon and text in their own columns, so the text lines up whatever the icon's width
   const navItem = (key, onclick, icon, label) => `<div class="sidebar-item sidebar-nav ${view === key ? 'active' : ''}" onclick="${onclick}"><span class="nav-icon">${icon}</span><span>${label}</span></div>`;
-  let html = navItem('overview', 'showOverview()', '📋', 'Overview');
+  let html = char.hideOverview ? '' : navItem('overview', 'showOverview()', '📋', 'Overview');
   html += navItem('general', 'showGeneralModule()', '👤', 'General Info');
   html += navItem('combat', 'showCombatModule()', '⚔', 'Combat');
   if (hasSpiritLevel(char)) html += navItem('spell', 'showSpellModule()', '✦', 'Spells');
   html += navItem('inventory', 'showInventoryModule()', '🎒', 'Inventory');
   html += `<hr style="border-color:var(--border);margin:4px 0">`;
   if (!char.hideSidebarSkills) html += sidebarSkillsHtml(char, byType, skills);
+  // with both the skills and the Overview hidden, Add Skill still needs a home
+  else if (char.hideOverview) html += `<div class="sidebar-add"><button onclick="openAddSkillModal()">Add Skill</button></div><hr style="border-color:var(--border);margin:4px 0">`;
   html += sidebarGroupsHtml(char, view);
   document.getElementById('sidebar').innerHTML = html;
 }
@@ -293,7 +295,7 @@ function openSidebarGroup(id) {
 }
 
 function renderMain() {
-  if (!state.activeSkillId && state.activeView === 'overview') { renderOverview(); return; }
+  if (!state.activeSkillId && state.activeView === 'overview') { showOverview(); return; }
   if (state.activeView === 'general') { renderGeneralModule(); return; }
   if (state.activeView === 'combat') { renderCombatModule(); return; }
   if (state.activeView === 'inventory') { renderInventoryModule(); return; }
@@ -307,10 +309,14 @@ function renderMain() {
   if (state.activeView === 'bestiary') { renderBestiaryModule(); return; }
   if (state.activeView === 'encounter') { renderEncounterModule(); return; }
   if (state.activeSkillId) { renderSkillModule(state.activeSkillId); return; }
-  renderOverview();
+  showOverview();
 }
 
+// Other -> Settings can hide the Overview (char.hideOverview); General Info
+// is shown in its place.
 function showOverview() {
+  const char = state.characters[state.activeChar];
+  if (char && char.hideOverview) { showGeneralModule(); return; }
   state.activeSkillId = null;
   state.activeView = 'overview';
   renderSidebar();

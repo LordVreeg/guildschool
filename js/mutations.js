@@ -1111,6 +1111,11 @@ function setCharSetting(key, on) {
     saveState();
     if (state.activeView === 'combat') renderCombatModule();
   }
+  if (key === 'hideOverview') {
+    if (on) char.hideOverview = true; else delete char.hideOverview;
+    saveState();
+    if (on && state.activeView === 'overview' && !state.activeSkillId) showOverview(); else renderSidebar();
+  }
   if (key === 'hideSidebarSkills') {
     if (on) char.hideSidebarSkills = true; else delete char.hideSidebarSkills;
     saveState();
@@ -1327,11 +1332,8 @@ async function deleteSkill(skillId) {
     : `Remove ${si.skillName}?`;
   if (!await appConfirm(msg)) return;
   char.skills = skills.filter(s => s.id !== skillId && !subs.has(s.id));
-  state.activeSkillId = null;
-  state.activeView = 'overview';
   saveState();
-  renderSidebar();
-  renderOverview();
+  showOverview();
 }
 
 // Asks with appConfirm, then deletes the row in Supabase first, and only

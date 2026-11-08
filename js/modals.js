@@ -61,6 +61,7 @@ function openSettingsModal() {
     </div>
     <div class="settings-row">
       <label class="check-row"><input type="checkbox" ${char.hideSidebarSkills ? 'checked' : ''} onchange="setCharSetting('hideSidebarSkills', this.checked)"> Hide skills in the left-hand menu${infoTip('Skills stay on the Overview page, which has its own Add Skill button.')}</label>
+      <label class="check-row"><input type="checkbox" ${char.hideOverview ? 'checked' : ''} onchange="setCharSetting('hideOverview', this.checked)"> Hide Overview${infoTip('Removes Overview from the left-hand menu; picking a character opens General Info instead. If the skills are hidden too, Add Skill stays in the left-hand menu.')}</label>
     </div>`;
   openModal(`
     <h3>Settings${char ? ' — ' + escapeHtml(char.name || '') : ''}</h3>
