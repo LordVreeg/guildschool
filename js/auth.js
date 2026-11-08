@@ -397,8 +397,8 @@ function combatWeaponEntries(char) {
 
 function weaponMoveButtonsHtml(pos, total) {
   return `<span style="margin-left:auto;display:flex;gap:4px" onclick="event.stopPropagation()">
-    <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${pos === 0 ? 'disabled' : ''} onclick="moveWeapon(${pos},-1)" title="Move up">▲</button>
-    <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${pos === total - 1 ? 'disabled' : ''} onclick="moveWeapon(${pos},1)" title="Move down">▼</button>
+    <button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px" ${pos === 0 ? 'disabled' : ''} onclick="moveWeapon(${pos},-1)" title="Move up">▲</button>
+    <button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px" ${pos === total - 1 ? 'disabled' : ''} onclick="moveWeapon(${pos},1)" title="Move down">▼</button>
   </span>`;
 }
 
@@ -471,21 +471,21 @@ async function openAdminPanel() {
   content.innerHTML = profiles.map(p => {
     const myChars = charsByOwner[p.id] || [];
     const charList = myChars.length
-      ? '<ul style="margin:4px 0 0 16px;padding:0;font-size:12px;color:var(--text-dim);list-style:none">' +
+      ? '<ul style="margin:4px 0 0 16px;padding:0;font-size:calc(12px * var(--fs));color:var(--text-dim);list-style:none">' +
         myChars.map(c => `<li style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
           <span style="cursor:pointer;color:var(--gold-dim);text-decoration:underline" onclick="viewCharacterReadOnly('${c.id}')">${escapeHtml((c.data && c.data.name) || '(unnamed)')}</span>
-          <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="openAdminTransferModal('${c.id}', '${escapeHtml((c.data && c.data.name) || '(unnamed)').replace(/'/g,"\\'")}')">Transfer</button>
+          <button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px" onclick="openAdminTransferModal('${c.id}', '${escapeHtml((c.data && c.data.name) || '(unnamed)').replace(/'/g,"\\'")}')">Transfer</button>
         </li>`).join('') +
         '</ul>'
-      : '<div style="font-size:12px;color:var(--text-dim);margin-top:2px">No characters</div>';
+      : '<div style="font-size:calc(12px * var(--fs));color:var(--text-dim);margin-top:2px">No characters</div>';
     return `
       <div style="border-bottom:1px solid var(--border);padding:8px 0">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
           <div>
             <strong>${escapeHtml(p.email || p.id)}</strong>
-            ${p.is_admin ? ' <span style="font-size:10px;color:var(--gold-dim)">(admin)</span>' : ''}
+            ${p.is_admin ? ' <span style="font-size:calc(10px * var(--fs));color:var(--gold-dim)">(admin)</span>' : ''}
           </div>
-          <label style="font-size:12px;display:flex;align-items:center;gap:4px;white-space:nowrap">
+          <label style="font-size:calc(12px * var(--fs));display:flex;align-items:center;gap:4px;white-space:nowrap">
             <input type="checkbox" ${p.approved ? 'checked' : ''} onchange="toggleApproval('${p.id}', this.checked)">
             Approved
           </label>
@@ -505,7 +505,7 @@ function openAdminTransferModal(charRowId, charName) {
   openModal(`
     <h3>Transfer "${escapeHtml(charName)}"</h3>
     <div class="form-group" style="margin-bottom:8px"><label>New Owner's Email</label><input class="w-full" id="admin-transfer-email"  type="email"></div>
-    <div id="admin-transfer-status" style="font-size:12px;color:var(--red-b);margin-bottom:8px;display:none"></div>
+    <div id="admin-transfer-status" style="font-size:calc(12px * var(--fs));color:var(--red-b);margin-bottom:8px;display:none"></div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-red" onclick="confirmAdminTransfer('${charRowId}')">Transfer</button></div>`);
 }
 

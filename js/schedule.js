@@ -139,7 +139,7 @@ async function renderScheduleModule() {
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
         <div style="display:flex;align-items:center;gap:6px">
           <button class="btn btn-dim" onclick="scheduleStep(-1)">◀</button>
-          <div style="font-size:16px;font-weight:bold;min-width:9em;text-align:center">${SCHED_MONTHS[scheduleMonth.m]} ${scheduleMonth.y}</div>
+          <div style="font-size:calc(16px * var(--fs));font-weight:bold;min-width:9em;text-align:center">${SCHED_MONTHS[scheduleMonth.m]} ${scheduleMonth.y}</div>
           <button class="btn btn-dim" onclick="scheduleStep(1)">▶</button>
           <button class="btn btn-dim" onclick="scheduleToday()">Today</button>
         </div>
@@ -155,8 +155,8 @@ async function renderScheduleModule() {
         ${isGM ? 'Click a day to schedule a game.' : 'Only a GM can schedule games.'}
         Everyone in the group is emailed when a game is scheduled, changed or cancelled, and again at 9 AM the day before.</div>
       <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Coming up</div>
-      <ul style="margin:0 0 0 16px;padding:0;font-size:13px">${upcomingHtml}</ul>
+      <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Coming up</div>
+      <ul style="margin:0 0 0 16px;padding:0;font-size:calc(13px * var(--fs))">${upcomingHtml}</ul>
     </div>
   </div>`;
   scheduleNotice = '';
@@ -182,8 +182,8 @@ function openSessionModal(id) {
   const dayOpts = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
   const line = (tz) => `${schedTime(ms, tz)} – ${schedFmt(endMs, tz, { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}`;
   openModal(`
-    <h3 style="margin:0 0 8px">${escapeHtml(s.title)}${s.cancelled_at ? ' <span style="color:var(--red-b);font-size:13px">(cancelled)</span>' : ''}</h3>
-    <div style="font-size:14px;margin-bottom:6px"><b>${schedFmt(ms, mine, dayOpts)}</b><br>${line(mine)}</div>
+    <h3 style="margin:0 0 8px">${escapeHtml(s.title)}${s.cancelled_at ? ' <span style="color:var(--red-b);font-size:calc(13px * var(--fs))">(cancelled)</span>' : ''}</h3>
+    <div style="font-size:calc(14px * var(--fs));margin-bottom:6px"><b>${schedFmt(ms, mine, dayOpts)}</b><br>${line(mine)}</div>
     ${s.tz !== mine ? `<div class="note" style="margin-bottom:6px">Scheduled as ${escapeHtml(line(s.tz))} (${escapeHtml(s.tz)})</div>` : ''}
     ${s.location ? `<div style="margin-bottom:6px"><b>Where:</b> ${escapeHtml(s.location)}</div>` : ''}
     ${s.notes ? `<div style="margin-bottom:6px;white-space:pre-wrap"><b>Notes:</b> ${escapeHtml(s.notes)}</div>` : ''}
@@ -210,7 +210,7 @@ function openSessionForm(id, dayKey) {
   }
   const group = myGroups.find(g => g.id === (existing ? existing.group_id : activeGroupId));
   openModal(`
-    <h3 style="margin:0 0 4px">${existing ? 'Edit game' : 'Schedule a game'} <span style="font-size:12px;color:var(--text-dim)">— ${escapeHtml(group ? group.name : '')}</span></h3>
+    <h3 style="margin:0 0 4px">${existing ? 'Edit game' : 'Schedule a game'} <span style="font-size:calc(12px * var(--fs));color:var(--text-dim)">— ${escapeHtml(group ? group.name : '')}</span></h3>
     <div class="form-row">
       <div class="form-group" style="flex:1"><label>Title</label><input id="sch-title" class="w-full" value="${escapeHtml(title)}"></div>
     </div>

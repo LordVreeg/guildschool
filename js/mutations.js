@@ -328,8 +328,8 @@ function openItemCastModal(itemIdx, spellIdx) {
     <div class="note">From ${escapeHtml(it.name || 'this item')}. Cast at level ${sp.level}, with no spell points, and it always succeeds.</div>
     <div class="form-row">
       <div class="computed-item"><span class="ci-label">Level</span><span class="ci-value">${sp.level}</span></div>
-      <div class="computed-item"><span class="ci-label">Duration</span><span class="ci-value" style="font-size:13px">${escapeHtml(spellDurationText(def && def.duration, sp.level))}</span></div>
-      <div class="computed-item"><span class="ci-label">Uses</span><span class="ci-value" style="font-size:13px">${escapeHtml(itemSpellUsageText(sp, char, itemSpellRule(it)))}${left > 0 && itemSpellRule(it) !== 'scroll' ? ` → ${left - 1} after this` : ''}</span></div>
+      <div class="computed-item"><span class="ci-label">Duration</span><span class="ci-value" style="font-size:calc(13px * var(--fs))">${escapeHtml(spellDurationText(def && def.duration, sp.level))}</span></div>
+      <div class="computed-item"><span class="ci-label">Uses</span><span class="ci-value" style="font-size:calc(13px * var(--fs))">${escapeHtml(itemSpellUsageText(sp, char, itemSpellRule(it)))}${left > 0 && itemSpellRule(it) !== 'scroll' ? ` → ${left - 1} after this` : ''}</span></div>
     </div>
     ${left > 0 ? '' : '<div class="warn">No uses left. Reset its uses (↺) when they come back.</div>'}
     ${itemSpellRule(it) === 'scroll' ? `<div class="warn">Casting uses this spell up${(it.spells || []).length === 1 ? ', and with it the scroll' : ''}.</div>` : itemSpellRule(it) === 'potion' && left === 1 ? `<div class="warn">This is its last use: the potion${(parseInt(it.qty) || 1) > 1 ? ' (one of ' + it.qty + ')' : ''} will be used up.</div>` : ''}
@@ -772,7 +772,7 @@ function renderHardcastModal() {
     </div>
 
     ${mode === 'hardcast' ? `
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Substitute with Spirit?</div>
+    <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Substitute with Spirit?</div>
     ${Object.entries(hs.baseCosts).filter(([s])=>s!=='Spirit').map(([school, amount]) => {
       const poolName = COST_KEY_TO_POOL[school] || `${school} SP`;
       const info = poolByName[poolName];
@@ -784,7 +784,7 @@ function renderHardcastModal() {
     }).join('') || '<div class="note">No non-Spirit components to substitute.</div>'}
 
     <hr class="divider">
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Add Points to Increase Success (+1% each)</div>
+    <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Add Points to Increase Success (+1% each)</div>
     <div class="form-row">
       <div class="form-group"><label>Extra Spirit</label><input type="number" class="w-sm" value="${hs.overcastSpirit}" onchange="updateHardcastOvercast('overcastSpirit',this.value)"></div>
       ${hs.majorPool && hs.majorPool !== 'Spirit SP' ? `<div class="form-group"><label>Extra ${hs.school}</label><input type="number" class="w-sm" value="${hs.overcastMajor}" onchange="updateHardcastOvercast('overcastMajor',this.value)"></div>` : ''}
@@ -794,7 +794,7 @@ function renderHardcastModal() {
     ${eligibilityIssues.length ? `<hr class="divider"><div class="warn">${eligibilityIssues.join('<br>')}</div>` : ''}
 
     <hr class="divider">
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Final Cost & Success</div>
+    <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Final Cost & Success</div>
     <table class="skill-table" style="margin-bottom:8px">
       <thead><tr><th>Pool</th><th>SP Needed</th><th>Current SP</th><th></th></tr></thead>
       <tbody>
@@ -805,7 +805,7 @@ function renderHardcastModal() {
         }).join('')}
       </tbody>
     </table>
-    <div class="computed-item" style="margin-bottom:8px"><span class="ci-label">Success Chance (before the GM's d50)${infoTip(`Base ${hs.spellSuccessBase} + Spirit Success [${spiritSuccessSkval}] + ${hs.school} Success [${majorSuccessSkval}] + Magic Bonus [${successBonus}]${mode==='hardcast' ? ` + Overcast [${overcastBonus}]` : ''}`)}</span><span class="ci-value skval" style="font-size:20px">${totalSuccess}</span></div>
+    <div class="computed-item" style="margin-bottom:8px"><span class="ci-label">Success Chance (before the GM's d50)${infoTip(`Base ${hs.spellSuccessBase} + Spirit Success [${spiritSuccessSkval}] + ${hs.school} Success [${majorSuccessSkval}] + Magic Bonus [${successBonus}]${mode==='hardcast' ? ` + Overcast [${overcastBonus}]` : ''}`)}</span><span class="ci-value skval" style="font-size:calc(20px * var(--fs))">${totalSuccess}</span></div>
 
     <div class="modal-actions">
       <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
@@ -851,14 +851,14 @@ function openSpellResolveModal() {
   openModal(`
     <h3>Resolve: ${escapeHtml(hs.spellName)}${infoTip(`Success chance ${hs.totalSuccess}% plus the GM's d50 roll sets the target. Then the caster rolls d100 and must roll at or under the target to succeed.`)}</h3>
 
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">1. GM roll (d50)</div>
+    <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">1. GM roll (d50)</div>
     <div class="form-row" style="align-items:flex-end;margin-bottom:6px">
       <div class="form-group"><label>d50</label><input type="number" id="spell-gm-roll" class="w-sm" min="1" max="50" oninput="updateSpellResolve()"></div>
       <div class="form-group"><button class="btn btn-dim" onclick="rollSpellDie('spell-gm-roll',50)">Roll d50</button></div>
     </div>
-    <div class="computed-item" style="margin-bottom:12px"><span class="ci-label">Target</span><span class="ci-value skval" id="spell-target" style="font-size:20px">—</span></div>
+    <div class="computed-item" style="margin-bottom:12px"><span class="ci-label">Target</span><span class="ci-value skval" id="spell-target" style="font-size:calc(20px * var(--fs))">—</span></div>
 
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">2. Caster roll (d100)</div>
+    <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">2. Caster roll (d100)</div>
     <div class="form-row" style="align-items:flex-end;margin-bottom:6px">
       <div class="form-group"><label>d100</label><input type="number" id="spell-cast-roll" class="w-sm" min="1" max="100" oninput="updateSpellResolve()"></div>
       <div class="form-group"><button class="btn btn-dim" onclick="rollSpellDie('spell-cast-roll',100)">Roll d100</button></div>
@@ -1376,7 +1376,7 @@ function openTransferOwnershipModal() {
     <h3>Transfer Ownership</h3>
     <div class="warn">You will lose access to "${escapeHtml(char.name || 'this character')}" once transferred — the new owner gets full control, and you won't be able to see or edit it anymore (unless you're an admin).</div>
     <div class="form-group" style="margin-bottom:8px"><label>New Owner's Email</label><input class="w-full" id="transfer-email"  type="email"></div>
-    <div id="transfer-status" style="font-size:12px;color:var(--red-b);margin-bottom:8px;display:none"></div>
+    <div id="transfer-status" style="font-size:calc(12px * var(--fs));color:var(--red-b);margin-bottom:8px;display:none"></div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-red" onclick="confirmTransferOwnership()">Transfer</button></div>`);
 }
 

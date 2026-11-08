@@ -4,38 +4,42 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GuildSchool Character System</title>
+<script>/* theme and font size from Other -> Settings (js/modals.js), applied before the page draws */
+try { var gsT = localStorage.getItem('gs_theme'), gsF = parseFloat(localStorage.getItem('gs_font_scale'));
+  if (gsT) document.documentElement.dataset.theme = gsT;
+  if (gsF) document.documentElement.style.setProperty('--fs', String(gsF)); } catch (e) {}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600;1,700&family=Cinzel:wght@500;600;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=2026-11-08.5">
+<link rel="stylesheet" href="css/app.css?v=2026-11-08.6">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
 
 <div id="auth-gate" style="position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;">
   <div style="background:var(--panel);border:1px solid var(--border);padding:24px 28px;width:320px;max-width:90vw;">
-    <h2 style="font-size:16px;margin-bottom:16px;color:var(--text-bright);text-transform:uppercase;letter-spacing:1px;">GuildSchool</h2>
-    <div id="auth-error" style="color:var(--red-b);font-size:12px;margin-bottom:8px;display:none"></div>
-    <label style="display:block;font-size:11px;color:var(--text-dim);margin-bottom:2px">Email</label>
+    <h2 style="font-size:calc(16px * var(--fs));margin-bottom:16px;color:var(--text-bright);text-transform:uppercase;letter-spacing:1px;">GuildSchool</h2>
+    <div id="auth-error" style="color:var(--red-b);font-size:calc(12px * var(--fs));margin-bottom:8px;display:none"></div>
+    <label style="display:block;font-size:calc(11px * var(--fs));color:var(--text-dim);margin-bottom:2px">Email</label>
     <input class="w-full" id="auth-email" type="email" style="padding:6px 8px;margin-bottom:10px;background:var(--input-bg);border:1px solid var(--border);font-family:inherit;color:var(--text)" autocomplete="username">
-    <label style="display:block;font-size:11px;color:var(--text-dim);margin-bottom:2px">Password</label>
+    <label style="display:block;font-size:calc(11px * var(--fs));color:var(--text-dim);margin-bottom:2px">Password</label>
     <input class="w-full" id="auth-password" type="password" style="padding:6px 8px;margin-bottom:14px;background:var(--input-bg);border:1px solid var(--border);font-family:inherit;color:var(--text)" autocomplete="current-password">
     <div style="display:flex;gap:8px">
       <button onclick="handleSignIn()" style="flex:1;padding:6px;background:var(--panel);border:1px solid var(--border);cursor:pointer">Sign In</button>
       <button onclick="handleSignUp()" style="flex:1;padding:6px;background:var(--panel);border:1px solid var(--border);cursor:pointer">Sign Up</button>
     </div>
-    <div style="margin-top:10px;font-size:11px;text-align:right"><a href="#" onclick="handleForgotPassword();return false" style="color:var(--text-dim)">Forgot password?</a></div>
-    <div id="auth-status" style="font-size:11px;color:var(--text-dim);margin-top:10px"></div>
+    <div style="margin-top:10px;font-size:calc(11px * var(--fs));text-align:right"><a href="#" onclick="handleForgotPassword();return false" style="color:var(--text-dim)">Forgot password?</a></div>
+    <div id="auth-status" style="font-size:calc(11px * var(--fs));color:var(--text-dim);margin-top:10px"></div>
   </div>
 </div>
 
 <div id="reset-gate" style="position:fixed;inset:0;background:var(--bg);z-index:10000;display:none;align-items:center;justify-content:center;">
   <div style="background:var(--panel);border:1px solid var(--border);padding:24px 28px;width:320px;max-width:90vw;">
-    <h2 style="font-size:16px;margin-bottom:16px;color:var(--text-bright);text-transform:uppercase;letter-spacing:1px;">Set a New Password</h2>
-    <div id="reset-error" style="color:var(--red-b);font-size:12px;margin-bottom:8px;display:none"></div>
-    <label style="display:block;font-size:11px;color:var(--text-dim);margin-bottom:2px">New password</label>
+    <h2 style="font-size:calc(16px * var(--fs));margin-bottom:16px;color:var(--text-bright);text-transform:uppercase;letter-spacing:1px;">Set a New Password</h2>
+    <div id="reset-error" style="color:var(--red-b);font-size:calc(12px * var(--fs));margin-bottom:8px;display:none"></div>
+    <label style="display:block;font-size:calc(11px * var(--fs));color:var(--text-dim);margin-bottom:2px">New password</label>
     <input class="w-full" id="reset-password" type="password" style="padding:6px 8px;margin-bottom:10px;background:var(--input-bg);border:1px solid var(--border);font-family:inherit;color:var(--text)" autocomplete="new-password">
-    <label style="display:block;font-size:11px;color:var(--text-dim);margin-bottom:2px">Confirm new password</label>
+    <label style="display:block;font-size:calc(11px * var(--fs));color:var(--text-dim);margin-bottom:2px">Confirm new password</label>
     <input class="w-full" id="reset-password-confirm" type="password" style="padding:6px 8px;margin-bottom:14px;background:var(--input-bg);border:1px solid var(--border);font-family:inherit;color:var(--text)" autocomplete="new-password" onkeydown="if(event.key==='Enter')handleSetNewPassword()">
     <div style="display:flex;gap:8px">
       <button onclick="handleSetNewPassword()" style="flex:1;padding:6px;background:var(--panel);border:1px solid var(--border);cursor:pointer">Set Password</button>
@@ -46,8 +50,8 @@
 
 <div id="pending-gate" style="position:fixed;inset:0;background:var(--bg);z-index:9998;display:none;align-items:center;justify-content:center;">
   <div style="background:var(--panel);border:1px solid var(--border);padding:24px 28px;width:340px;max-width:90vw;text-align:center">
-    <h2 style="font-size:16px;margin-bottom:12px;color:var(--text-bright);text-transform:uppercase;letter-spacing:1px;">Pending Approval</h2>
-    <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px">Your account has been created but hasn't been approved yet. Check back once the GM/admin has approved your access.</p>
+    <h2 style="font-size:calc(16px * var(--fs));margin-bottom:12px;color:var(--text-bright);text-transform:uppercase;letter-spacing:1px;">Pending Approval</h2>
+    <p style="font-size:calc(13px * var(--fs));color:var(--text-dim);margin-bottom:16px">Your account has been created but hasn't been approved yet. Check back once the GM/admin has approved your access.</p>
     <button onclick="handleSignOut()">Sign Out</button>
   </div>
 </div>
@@ -57,7 +61,7 @@
     <img class="banner-logo" src="assets/img/logo.png" alt="Celtricia">
     <h1>GuildSchool</h1>
     <div class="sep"></div>
-    <span id="auth-user-label" style="font-size:11px;color:var(--header-text)"></span>
+    <span id="auth-user-label" style="font-size:calc(11px * var(--fs));color:var(--header-text)"></span>
     <button onclick="handleSignOut()">Sign Out</button>
   </div>
   <div class="topbar-row topbar-menus">
@@ -97,7 +101,7 @@
     </div>
     <div class="sep"></div>
     <select id="char-select" onchange="selectChar(this.value)"><option value="">— select character —</option></select>
-    <select id="char-sort" onchange="state.charSortMode=this.value;saveState();renderCharSelect()" style="font-size:11px">
+    <select id="char-sort" onchange="state.charSortMode=this.value;saveState();renderCharSelect()" style="font-size:calc(11px * var(--fs))">
       <option value="name">Sort: Name</option>
       <option value="group">Sort: Group</option>
       <option value="locale">Sort: Locale</option>
@@ -121,24 +125,24 @@
      Whenever anything in css/, js/ or data/ changes, bump ?v= on the
      stylesheet link and on every script tag below, all to the same new
      value, so browsers fetch the new files instead of cached copies. -->
-<script src="js/auth.js?v=2026-11-08.5"></script>
-<script src="js/data.js?v=2026-11-08.5"></script>
-<script src="js/state.js?v=2026-11-08.5"></script>
-<script src="js/formulas.js?v=2026-11-08.5"></script>
-<script src="js/render.js?v=2026-11-08.5"></script>
-<script src="js/bestiary.js?v=2026-11-08.5"></script>
-<script src="js/groups.js?v=2026-11-08.5"></script>
-<script src="js/schedule.js?v=2026-11-08.5"></script>
-<script src="js/combat.js?v=2026-11-08.5"></script>
-<script src="js/goesi.js?v=2026-11-08.5"></script>
-<script src="js/group-add-member.js?v=2026-11-08.5"></script>
-<script src="js/dice.js?v=2026-11-08.5"></script>
-<script src="js/chat.js?v=2026-11-08.5"></script>
-<script src="js/attack.js?v=2026-11-08.5"></script>
-<script src="js/character-views.js?v=2026-11-08.5"></script>
-<script src="js/modals.js?v=2026-11-08.5"></script>
-<script src="js/mutations.js?v=2026-11-08.5"></script>
-<script src="js/import-export.js?v=2026-11-08.5"></script>
-<script src="js/init.js?v=2026-11-08.5"></script>
+<script src="js/auth.js?v=2026-11-08.6"></script>
+<script src="js/data.js?v=2026-11-08.6"></script>
+<script src="js/state.js?v=2026-11-08.6"></script>
+<script src="js/formulas.js?v=2026-11-08.6"></script>
+<script src="js/render.js?v=2026-11-08.6"></script>
+<script src="js/bestiary.js?v=2026-11-08.6"></script>
+<script src="js/groups.js?v=2026-11-08.6"></script>
+<script src="js/schedule.js?v=2026-11-08.6"></script>
+<script src="js/combat.js?v=2026-11-08.6"></script>
+<script src="js/goesi.js?v=2026-11-08.6"></script>
+<script src="js/group-add-member.js?v=2026-11-08.6"></script>
+<script src="js/dice.js?v=2026-11-08.6"></script>
+<script src="js/chat.js?v=2026-11-08.6"></script>
+<script src="js/attack.js?v=2026-11-08.6"></script>
+<script src="js/character-views.js?v=2026-11-08.6"></script>
+<script src="js/modals.js?v=2026-11-08.6"></script>
+<script src="js/mutations.js?v=2026-11-08.6"></script>
+<script src="js/import-export.js?v=2026-11-08.6"></script>
+<script src="js/init.js?v=2026-11-08.6"></script>
 </body>
 </html>

@@ -197,7 +197,7 @@ async function renderChatModule() {
       <div class="panel-header"><h2>Chat</h2>
         <div style="flex:1"></div>
         <input id="chat-search-input" class="chat-search" type="search" placeholder="Search this chat…" onkeydown="if(event.key==='Enter')searchChat(this.value)">
-        <button class="btn btn-dim" style="font-size:11px;padding:3px 8px" onclick="showChatHelp()" title="Commands and dice syntax">? Help</button>
+        <button class="btn btn-dim" style="font-size:calc(11px * var(--fs));padding:3px 8px" onclick="showChatHelp()" title="Commands and dice syntax">? Help</button>
         <button class="btn btn-dim chat-close" title="Close the chat window" onclick="closeChatWindow()">✕</button>
       </div>
       <div class="panel-body">
@@ -429,7 +429,7 @@ function renderChatSearchBar() {
   const el = document.getElementById('chat-search-bar');
   if (!el) return;
   el.innerHTML = chatSearch
-    ? `<div class="chat-search-bar">${chatSearch.results.length}${chatSearch.results.length === 200 ? '+' : ''} message${chatSearch.results.length === 1 ? '' : 's'} matching “${escapeHtml(chatSearch.term)}” <button class="btn btn-dim" style="font-size:11px;padding:2px 8px" onclick="clearChatSearch()">Back to chat</button></div>`
+    ? `<div class="chat-search-bar">${chatSearch.results.length}${chatSearch.results.length === 200 ? '+' : ''} message${chatSearch.results.length === 1 ? '' : 's'} matching “${escapeHtml(chatSearch.term)}” <button class="btn btn-dim" style="font-size:calc(11px * var(--fs));padding:2px 8px" onclick="clearChatSearch()">Back to chat</button></div>`
     : '';
 }
 
@@ -514,7 +514,7 @@ function renderChatMessages(mode) {
   const prevHeight = box.scrollHeight, prevTop = box.scrollTop;
   const isGM = chatIsGM();
   const list = chatSearch ? chatSearch.results : chatMessages;
-  let html = !chatSearch && chatHasMore ? `<div style="text-align:center;margin-bottom:8px"><button class="btn btn-dim" style="font-size:11px" onclick="loadChatMessages(true)">Load older messages</button></div>` : '';
+  let html = !chatSearch && chatHasMore ? `<div style="text-align:center;margin-bottom:8px"><button class="btn btn-dim" style="font-size:calc(11px * var(--fs))" onclick="loadChatMessages(true)">Load older messages</button></div>` : '';
   if (!list.length) html += `<div class="note" style="text-align:center;padding:20px">${chatSearch ? 'No messages match.' : 'No messages yet. Say hello! Type /help to see the commands.'}</div>`;
   let lastDay = null, prev = null;
   for (const m of list) {
@@ -953,8 +953,8 @@ function openChatMacros(editIndex) {
     <div class="note" style="margin-bottom:8px">Saved with this character. Click one in the bar above the chat box, or type #name. A macro is one chat line: anything you could type, e.g. <code>/r 1d20+@{Avoidance}</code> or <code>/em swings: [[1d8+@{ST}]]</code>.</div>
     <table class="skill-table" style="margin-bottom:10px"><tbody>
       ${macros.length ? macros.map((m, i) => `<tr><td style="white-space:nowrap"><b>#${escapeHtml(m.name)}</b></td><td><code>${escapeHtml(m.body)}</code></td>
-        <td style="white-space:nowrap"><button class="btn btn-dim" style="font-size:11px;padding:2px 6px" onclick="openChatMacros(${i})">Edit</button>
-        <button class="btn btn-dim" style="font-size:11px;padding:2px 6px" onclick="deleteChatMacro(${i})">Delete</button></td></tr>`).join('')
+        <td style="white-space:nowrap"><button class="btn btn-dim" style="font-size:calc(11px * var(--fs));padding:2px 6px" onclick="openChatMacros(${i})">Edit</button>
+        <button class="btn btn-dim" style="font-size:calc(11px * var(--fs));padding:2px 6px" onclick="deleteChatMacro(${i})">Delete</button></td></tr>`).join('')
         : '<tr><td class="note">No macros yet.</td></tr>'}
     </tbody></table>
     <div class="form-group" style="margin-bottom:6px"><label>${editing ? 'Edit macro' : 'New macro'} — name (letters, numbers, - and _)</label><input id="chat-macro-name" class="w-full" value="${editing ? escapeHtml(editing.name) : ''}"></div>

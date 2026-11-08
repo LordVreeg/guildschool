@@ -66,12 +66,12 @@ function paintFileMenuCombats() {
   if (!box) return;
   if (!fileMenuCombats.length) { box.innerHTML = ''; return; }
   const statusColor = { active: '#4a9460', paused: '#c9a227' };
-  box.innerHTML = '<hr><div style="font-size:10px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;padding:2px 8px">Active Combats</div>' +
+  box.innerHTML = '<hr><div style="font-size:calc(10px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;padding:2px 8px">Active Combats</div>' +
     fileMenuCombats.map(e => {
       const g = myGroups.find(x => x.id === e.group_id);
       return `<button onclick="closeTopMenus();openEncounterFromMenu('${e.id}')">⚔ ${escapeHtml(e.name)}` +
-        `<span style="font-size:10px;margin-left:6px;color:${statusColor[e.status] || 'inherit'}">${e.status}, seg ${e.current_segment}</span>` +
-        (g ? `<span style="font-size:10px;margin-left:6px;color:var(--text-dim)">${escapeHtml(g.name)}</span>` : '') + '</button>';
+        `<span style="font-size:calc(10px * var(--fs));margin-left:6px;color:${statusColor[e.status] || 'inherit'}">${e.status}, seg ${e.current_segment}</span>` +
+        (g ? `<span style="font-size:calc(10px * var(--fs));margin-left:6px;color:var(--text-dim)">${escapeHtml(g.name)}</span>` : '') + '</button>';
     }).join('');
 }
 async function refreshFileMenuCombats() {
@@ -244,7 +244,7 @@ function sidebarSkillsHtml(char, byType, skills) {
     const isCollapsed = collapsedSections[type] === undefined ? true : collapsedSections[type];
     const arrow = isCollapsed ? '▶' : '▼';
     html += `<div class="sidebar-section${type === UNKNOWN_SKILL_TYPE ? ' skill-unknown' : ''}" style="cursor:pointer;display:flex;align-items:center;gap:5px" ${type === UNKNOWN_SKILL_TYPE ? 'title="These skills don\'t match any skill in the catalog, so their values can\'t be calculated"' : ''} onclick="toggleSection('${type}')">
-      <span style="font-size:9px">${arrow}</span>${SIDEBAR_TYPE_LABELS[type] || type} <span style="color:var(--text-dim);font-weight:normal">(${byType[type].length})</span>
+      <span style="font-size:calc(9px * var(--fs))">${arrow}</span>${SIDEBAR_TYPE_LABELS[type] || type} <span style="color:var(--text-dim);font-weight:normal">(${byType[type].length})</span>
     </div>`;
     if (isCollapsed) continue;
     const children = skillChildrenMap(byType[type], skills);
@@ -365,7 +365,7 @@ function showPageIntroOnce(key, title, bodyHtml) {
   try { localStorage.setItem('gs_intro_' + key, '1'); } catch (e) {}
   openModal(`
     <h3>${title}</h3>
-    <div style="font-size:13px;line-height:1.5">${bodyHtml}</div>
+    <div style="font-size:calc(13px * var(--fs));line-height:1.5">${bodyHtml}</div>
     <div class="modal-actions"><button class="btn btn-gold" onclick="closeModal()">Got it</button></div>`, { wide: true });
 }
 

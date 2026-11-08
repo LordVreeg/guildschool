@@ -58,6 +58,16 @@ commit.
   dropdown. A wiki sync that brings in a new or misspelled type (e.g.
   "Mind>", "Thieve's Tree") puts its skills in a stray group at the end.
   Fix the typo in the data, or add a genuinely new type to the list.
+- **Themes and font size.** Other → Settings offers Default, Light and Dark
+  themes and a font-size A−/A+, saved in the browser and applied to
+  `<html>` (`data-theme`, `--fs`). So that new styles follow them:
+  - Colours come from the tokens on `:root` in `css/app.css` (`--bg`,
+    `--panel`, `--text`, `--gold`, ...); a see-through accent tint is
+    `rgba(var(--tint-rgb), .1)`. A new token needs a value in each theme.
+  - Fonts are `var(--font-body)`, `var(--font-head)` or
+    `var(--font-display)`, not a font name.
+  - Font sizes in px are written `calc(12px * var(--fs))`, in CSS and in
+    inline styles alike, so A−/A+ scales them.
 - **Help text.** Text that explains a page follows one rule, so pages stay
   compact and consistent:
   - **Warnings** stay on the page: `<div class="warn">`. Use them only when

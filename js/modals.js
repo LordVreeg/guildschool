@@ -63,11 +63,55 @@ function openSettingsModal() {
       <label class="check-row"><input type="checkbox" ${char.hideSidebarSkills ? 'checked' : ''} onchange="setCharSetting('hideSidebarSkills', this.checked)"> Hide skills in the left-hand menu${infoTip('Skills stay on the Overview page, which has its own Add Skill button.')}</label>
       <label class="check-row"><input type="checkbox" ${char.hideOverview ? 'checked' : ''} onchange="setCharSetting('hideOverview', this.checked)"> Hide Overview${infoTip('Removes Overview from the left-hand menu; picking a character opens General Info instead. If the skills are hidden too, Add Skill stays in the left-hand menu.')}</label>
     </div>`;
+  const theme = currentTheme();
+  const themeBtn = (key, label) => `<button type="button" class="btn btn-dim ${theme === key ? 'active' : ''}" onclick="setTheme('${key}')">${label}</button>`;
   openModal(`
-    <h3>Settings${char ? ' — ' + escapeHtml(char.name || '') : ''}</h3>
+    <h3>Settings</h3>
+    <div class="settings-section">Display${infoTip('Theme and font size are saved in this browser, for every character.')}</div>
+    <div class="settings-row">
+      <div class="theme-choices">${THEMES.map(t => themeBtn(t.key, t.label)).join('')}</div>
+      <span class="font-size-ctl">Font size
+        <button type="button" class="btn btn-dim" title="Smaller" onclick="stepFontScale(-1)" ${fontScale() <= FONT_SCALE_MIN ? 'disabled' : ''}>A−</button>
+        <span class="fs-readout">${Math.round(fontScale() * 100)}%</span>
+        <button type="button" class="btn btn-dim" title="Larger" onclick="stepFontScale(1)" ${fontScale() >= FONT_SCALE_MAX ? 'disabled' : ''}>A+</button>
+      </span>
+    </div>
+    <div class="settings-section">Character${char ? ' — ' + escapeHtml(char.name || '') : ''}</div>
     ${body}
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Close</button></div>`);
 }
+
+// Display settings, kept in this browser (localStorage) and applied to <html>:
+// data-theme picks a theme's tokens in css/app.css, and --fs scales every font
+// size. A script in index.html's <head> applies them before the page draws.
+const THEMES = [{ key: 'default', label: 'Default' }, { key: 'light', label: 'Light' }, { key: 'dark', label: 'Dark' }];
+const FONT_SCALE_MIN = 0.7, FONT_SCALE_MAX = 1.6, FONT_SCALE_STEP = 0.1;
+function currentTheme() { return document.documentElement.dataset.theme || 'default'; }
+function fontScale() { return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fs')) || 1; }
+function applyTheme(key) {
+  if (key && key !== 'default') document.documentElement.dataset.theme = key;
+  else delete document.documentElement.dataset.theme;
+}
+function applyFontScale(f) {
+  if (f && f !== 1) document.documentElement.style.setProperty('--fs', String(f));
+  else document.documentElement.style.removeProperty('--fs');
+}
+function setTheme(key) {
+  applyTheme(key);
+  try { if (key === 'default') localStorage.removeItem('gs_theme'); else localStorage.setItem('gs_theme', key); } catch (e) {}
+  openSettingsModal();
+}
+function stepFontScale(dir) {
+  const f = Math.round(Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, fontScale() + dir * FONT_SCALE_STEP)) * 10) / 10;
+  applyFontScale(f);
+  try { if (f === 1) localStorage.removeItem('gs_font_scale'); else localStorage.setItem('gs_font_scale', String(f)); } catch (e) {}
+  openSettingsModal();
+}
+// The chat window (and other tabs) follow a change made in another window.
+window.addEventListener('storage', e => {
+  if (e.key === 'gs_theme') applyTheme(e.newValue);
+  else if (e.key === 'gs_font_scale') applyFontScale(parseFloat(e.newValue) || 1);
+});
 
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
@@ -157,7 +201,7 @@ function renderAddItemModal(justAdded) {
     ${ready && itemModKinds(d) ? itemModsSectionHtml(d) : ''}
     ${ready && itemCanHoldSpells(d) ? itemSpellsSectionHtml(d) : ''}
     ${ready ? '' : '<div class="note">Choose from every list above to fill in the rest of the item.</div>'}
-    <div id="ai-error" style="color:var(--red-b);font-size:12px;margin-top:8px;display:none"></div>
+    <div id="ai-error" style="color:var(--red-b);font-size:calc(12px * var(--fs));margin-top:8px;display:none"></div>
     <div class="modal-actions" style="align-items:center">
       ${editing ? '' : `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-right:auto">
         <input type="checkbox" ${addNextItem ? 'checked' : ''} onchange="addNextItem=this.checked"> Add next item
@@ -292,7 +336,7 @@ function renderContainerModal() {
         </label>
       </div>
     </div>
-    <div id="ct-error" style="color:var(--red-b);font-size:12px;margin-top:8px;display:none"></div>
+    <div id="ct-error" style="color:var(--red-b);font-size:calc(12px * var(--fs));margin-top:8px;display:none"></div>
     <div class="modal-actions">
       <button class="btn btn-dim" onclick="containerDraft=null;editingContainerName=null;closeModal()">Cancel</button>
       <button class="btn btn-gold" onclick="confirmContainer()">${editing ? 'Save' : 'Add Container'}</button>
@@ -371,8 +415,8 @@ function renderAddSpellModal(justAdded) {
     ${d.book ? '' : `<div class="warn">No spell book has room for this spell (cost ${cost} of ${SPELL_BOOK_CAPACITY}). Add a spell book first.</div>`}
     <div class="form-row">
       <div class="computed-item"><span class="ci-label">Level</span><span class="ci-value">${d.school ? level : '—'}</span></div>
-      <div class="computed-item"><span class="ci-label">Cost</span><span class="ci-value" style="font-size:13px">${escapeHtml(breakdown)}</span></div>
-      <div class="computed-item"><span class="ci-label">Duration</span><span class="ci-value" style="font-size:13px">${escapeHtml(spellDurationText(def && def.duration, level))}</span></div>
+      <div class="computed-item"><span class="ci-label">Cost</span><span class="ci-value" style="font-size:calc(13px * var(--fs))">${escapeHtml(breakdown)}</span></div>
+      <div class="computed-item"><span class="ci-label">Duration</span><span class="ci-value" style="font-size:calc(13px * var(--fs))">${escapeHtml(spellDurationText(def && def.duration, level))}</span></div>
       <div class="computed-item"><span class="ci-label">Total Cost</span><span class="ci-value">${d.cost || 0}</span></div>
     </div>
     <div class="modal-actions" style="align-items:center">
@@ -471,7 +515,7 @@ function openCharTutorial(formPreset) {
   charTutorialReturnState = formPreset || null;
   openModal(`
     <h3>GuildSchool — Quick Tutorial</h3>
-    <div style="font-size:13px;line-height:1.5">
+    <div style="font-size:calc(13px * var(--fs));line-height:1.5">
     <p>This is the GuildSchool Character Tool. It can be used to transfer a character from another format, to create a new one with a GM, or to totally randomize all the beginning dice rolls.</p>
     <hr class="divider">
     <p><strong>Playing the game</strong></p>

@@ -103,15 +103,15 @@ function renderGoesiMonthView(groupId, isGM) {
     const label = cell.isLithe ? 'Lithe' : cell.day;
     const dayArg = cell.day != null ? cell.day : 'null';
     return `<td style="cursor:pointer;vertical-align:top;padding:4px" onclick="openGoesiDay('${groupId}',${goesiViewMonth},${dayArg},${cell.isLithe})">
-      <div style="font-size:11px;color:var(--text-dim)">${label}</div>
-      <div style="font-size:12px">${badges}</div>
+      <div style="font-size:calc(11px * var(--fs));color:var(--text-dim)">${label}</div>
+      <div style="font-size:calc(12px * var(--fs))">${badges}</div>
     </td>`;
   };
 
   openModal(`
     <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:4px">
       <button class="btn btn-dim" onclick="goesiNavMonth('${groupId}',-1)" title="Previous Goesi">◀</button>
-      <h3 style="margin:0;font-family:'Cormorant Garamond','Georgia',serif;font-style:italic;font-weight:bold;font-size:22px;color:var(--gold);text-align:center">${monthDef.key}<br><span style="font-size:14px;color:var(--gold-dim);font-family:inherit">${monthDef.season} — ${goesiViewYear} RON</span></h3>
+      <h3 style="margin:0;font-family:var(--font-display);font-style:italic;font-weight:bold;font-size:calc(22px * var(--fs));color:var(--gold);text-align:center">${monthDef.key}<br><span style="font-size:calc(14px * var(--fs));color:var(--gold-dim);font-family:inherit">${monthDef.season} — ${goesiViewYear} RON</span></h3>
       <button class="btn btn-dim" onclick="goesiNavMonth('${groupId}',1)" title="Next Goesi">▶</button>
     </div>
     <div class="form-row" style="margin-bottom:10px;align-items:center;justify-content:center">
@@ -122,7 +122,7 @@ function renderGoesiMonthView(groupId, isGM) {
       </div>
     </div>
     <table class="skill-table" style="table-layout:fixed">
-      <thead><tr>${RON_WEEKDAYS.map(w=>`<th style="font-size:10px">${w}</th>`).join('')}</tr></thead>
+      <thead><tr>${RON_WEEKDAYS.map(w=>`<th style="font-size:calc(10px * var(--fs))">${w}</th>`).join('')}</tr></thead>
       <tbody>
         ${rows.map(row => `<tr>${row.map(cellHtml).join('')}</tr>`).join('')}
       </tbody>
@@ -144,21 +144,21 @@ function renderGoesiDayDetail(groupId, isGM) {
   const holidaysHtml = dayHolidays.length ? dayHolidays.map(h => `
     <div style="margin-bottom:6px">
       <b>🎉 ${escapeHtml(h.name)}</b>${h.notes ? `<div class="note">${escapeHtml(h.notes)}</div>` : ''}
-      ${isGM ? `<button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="deleteHoliday('${groupId}','${h.id}')">Remove</button>` : ''}
+      ${isGM ? `<button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px" onclick="deleteHoliday('${groupId}','${h.id}')">Remove</button>` : ''}
     </div>`).join('') : '<div class="note">No holidays.</div>';
 
   const effectsHtml = dayEffects.length ? `<table class="skill-table"><thead><tr><th>Character</th><th>Spell</th><th>Ends</th><th></th></tr></thead><tbody>
     ${dayEffects.map(e => {
       const canRemove = isGM || myCharIds.has(e.character_id);
       const charName = (groupRosterCache.find(c => c.id === e.character_id) || {}).name || '(unknown)';
-      return `<tr><td>${escapeHtml(charName)}</td><td>${escapeHtml(e.spell_name)}</td><td>${ronDateLabel(ronFromSeconds(e.expires_at_seconds))}</td><td>${canRemove ? `<button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="deleteSpellEffect('${groupId}','${e.id}')">Remove</button>` : ''}</td></tr>`;
+      return `<tr><td>${escapeHtml(charName)}</td><td>${escapeHtml(e.spell_name)}</td><td>${ronDateLabel(ronFromSeconds(e.expires_at_seconds))}</td><td>${canRemove ? `<button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px" onclick="deleteSpellEffect('${groupId}','${e.id}')">Remove</button>` : ''}</td></tr>`;
     }).join('')}
   </tbody></table>` : '<div class="note">No spell effects ending this day.</div>';
 
   const notesListHtml = dayNotes.length ? dayNotes.map(n => `
     <div style="margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)">
       <div>${escapeHtml(n.note)}</div>
-      <span style="font-size:10px;color:${n.visible_to_all?'var(--text-dim)':'var(--gold-dim)'}">${n.visible_to_all ? 'Visible to all' : 'Private (author + GM)'}</span>
+      <span style="font-size:calc(10px * var(--fs));color:${n.visible_to_all?'var(--text-dim)':'var(--gold-dim)'}">${n.visible_to_all ? 'Visible to all' : 'Private (author + GM)'}</span>
     </div>`).join('') : '<div class="note">No notes.</div>';
 
   const addHolidayForm = isGM ? `
@@ -168,19 +168,19 @@ function renderGoesiDayDetail(groupId, isGM) {
     </div>` : '';
 
   openModal(`
-    <h3 style="margin-bottom:4px;font-family:'Cormorant Garamond','Georgia',serif;font-style:italic;font-weight:bold;font-size:20px;color:var(--gold)">${escapeHtml(dayLabel)}</h3>
+    <h3 style="margin-bottom:4px;font-family:var(--font-display);font-style:italic;font-weight:bold;font-size:calc(20px * var(--fs));color:var(--gold)">${escapeHtml(dayLabel)}</h3>
     <button class="btn btn-dim" style="margin-bottom:10px" onclick="backToGoesiMonth('${groupId}')">◀ Back to ${RON_MONTHS[month].key}</button>
 
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Holidays</div>
+    <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Holidays</div>
     ${holidaysHtml}
     ${addHolidayForm}
 
     <hr class="divider">
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Spell Effects Ending</div>
+    <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Spell Effects Ending</div>
     ${effectsHtml}
 
     <hr class="divider">
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Notes</div>
+    <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Notes</div>
     ${notesListHtml}
     <div class="form-group" style="margin-bottom:6px"><textarea class="w-full" id="goesi-note-text" rows="2"  placeholder="Add a note for this day..."></textarea></div>
     <div class="form-row">

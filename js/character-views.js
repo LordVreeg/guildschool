@@ -27,7 +27,7 @@ function renderOverview() {
   // Each section is { key, header, body }; they render in the character's
   // saved order, each collapsible and movable (see overviewSectionsHtml).
   const sections = [];
-  sections.push({ key: 'summary', header: `<h2 style="font-family:'Cormorant Garamond','Georgia',serif;font-style:italic;font-weight:bold">${char.name}</h2>${char.nickname ? `<span class="type-badge" style="font-style:italic">"${char.nickname}"</span>` : ''}${char.isNPC ? '<span class="type-badge" style="color:var(--gold)">NPC</span>' : ''}<span class="type-badge">${char.race || ''} ${char.subrace || ''}</span><span class="type-badge">${char.guild || ''}</span>`, body: `
+  sections.push({ key: 'summary', header: `<h2 style="font-family:var(--font-display);font-style:italic;font-weight:bold">${char.name}</h2>${char.nickname ? `<span class="type-badge" style="font-style:italic">"${char.nickname}"</span>` : ''}${char.isNPC ? '<span class="type-badge" style="color:var(--gold)">NPC</span>' : ''}<span class="type-badge">${char.race || ''} ${char.subrace || ''}</span><span class="type-badge">${char.guild || ''}</span>`, body: `
       ${mainGuildBannerHtml(char, false)}
       <div class="form-row" style="margin-bottom:4px">
         ${['ST','IN','WI','CD','HE','CH','AP'].map(a=>`<div class="computed-item"><span class="ci-label">${a}</span><span class="ci-value">${(char.attrs||{})[a]||'—'}</span></div>`).join('')}
@@ -44,7 +44,7 @@ function renderOverview() {
       const def = findSkillDef(si.skillName);
       const subOf = def && def.templated ? (si.binding || '—') : (def && def.parent ? def.parent : 'None');
       html += `<tr class="${rowCls}" onclick="showSkillModule('${si.id}')">
-        <td>${si.skillName}${si.binding ? ` <span style="color:var(--text-dim)">(${si.binding})</span>` : ''}${si.dropdownOnly ? ' <span style="font-size:10px;color:#7a7acf">[D]</span>' : ''}</td>
+        <td>${si.skillName}${si.binding ? ` <span style="color:var(--text-dim)">(${si.binding})</span>` : ''}${si.dropdownOnly ? ' <span style="font-size:calc(10px * var(--fs));color:#7a7acf">[D]</span>' : ''}</td>
         <td style="color:var(--text-dim)">${subOf}</td>
         <td>${si.guildName || '—'}</td>
         <td>${vals.expmod.toFixed(3)}</td>
@@ -143,9 +143,9 @@ function renderGeneralModule() {
 
   document.getElementById('main').innerHTML = `
   <div class="panel">
-    <div class="panel-header"><h2 style="font-family:'Cormorant Garamond','Georgia',serif;font-style:italic;font-weight:bold">General Information — ${char.name}</h2>
-      <div class="computed-item" style="margin-left:auto"><span class="ci-label">Total Raw XP</span><span class="ci-value" style="font-size:16px">${totalXP.toLocaleString()}</span></div>
-      ${char.unspentInitialExp > 0 ? `<div class="computed-item"><span class="ci-label">Unspent Initial Raw XP</span><span class="ci-value" style="font-size:16px">${char.unspentInitialExp.toLocaleString()}</span></div>` : ''}
+    <div class="panel-header"><h2 style="font-family:var(--font-display);font-style:italic;font-weight:bold">General Information — ${char.name}</h2>
+      <div class="computed-item" style="margin-left:auto"><span class="ci-label">Total Raw XP</span><span class="ci-value" style="font-size:calc(16px * var(--fs))">${totalXP.toLocaleString()}</span></div>
+      ${char.unspentInitialExp > 0 ? `<div class="computed-item"><span class="ci-label">Unspent Initial Raw XP</span><span class="ci-value" style="font-size:calc(16px * var(--fs))">${char.unspentInitialExp.toLocaleString()}</span></div>` : ''}
     </div>
     <div class="panel-body">
       ${mainGuildBannerHtml(char, true)}
@@ -204,7 +204,7 @@ function renderGeneralModule() {
       </div>
 
       <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Attributes</div>
+      <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Attributes</div>
       <div class="attr-grid">
         ${['ST','IN','WI','CD','HE','CH','AP'].map(attr=>`
         <div class="attr-cell">
@@ -213,7 +213,7 @@ function renderGeneralModule() {
         </div>`).join('')}
       </div>
       <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Guilds</div>
+      <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Guilds</div>
       <div class="form-row">
         <div class="form-group w-lg"><label>Primary Guild</label>
           ${guildPickerButton(char.guild, "v => { updateChar('guild', v); renderGeneralModule(); }")}
@@ -226,8 +226,8 @@ function renderGeneralModule() {
         </div>
       </div>
       <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Circumstance Checks
-        <button class="btn btn-dim" style="margin-left:12px;font-size:10px;padding:2px 8px" onclick="setAllCCBonus()">Set All (e.g. Luckstone)</button>
+      <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Circumstance Checks
+        <button class="btn btn-dim" style="margin-left:12px;font-size:calc(10px * var(--fs));padding:2px 8px" onclick="setAllCCBonus()">Set All (e.g. Luckstone)</button>
       </div>
       <div class="cc-grid">
         ${(() => {
@@ -243,7 +243,7 @@ function renderGeneralModule() {
       </div>
 
       <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Hit Points</div>
+      <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Hit Points</div>
       ${(() => {
         const hp = computeHP(char);
         if (hp.system === 'collegium') {
@@ -260,11 +260,11 @@ function renderGeneralModule() {
       })()}
 
       <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weight</div>
+      <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Weight</div>
       ${weightSummaryHtml(char)}
 
       <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Movement</div>
+      <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Movement</div>
       ${(() => {
         const sp = computeSpeed(char);
         return `
@@ -279,7 +279,7 @@ function renderGeneralModule() {
       })()}
 
       <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Notes</div>
+      <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Notes</div>
       <div class="form-group" style="margin-bottom:10px"><label>History</label>
         <textarea class="w-full" rows="4" style="resize:vertical" onchange="updateChar('historyNotes',this.value)">${char.historyNotes||''}</textarea>
       </div>
@@ -300,7 +300,7 @@ function renderGeneralModule() {
     saveState();
     openModal(`
       <h3>Welcome, ${escapeHtml(char.name || 'traveler')}!</h3>
-      <div style="font-size:13px;line-height:1.5">
+      <div style="font-size:calc(13px * var(--fs));line-height:1.5">
       <p>Great, this character now exists. Before you start: the whole game is skill based. Everything your character can do is a skill. On top of that, the world of Celtricia has hundreds of guilds and factions, and they determine which skills you are good at and how you deal with everyone else socially. Here is how to get going.</p>
       <ol style="margin:6px 0 6px 18px;padding:0">
         <li><b>Pick your main Guild/School first</b>, before anything else. On General Info, set your Primary Guild. Your guild decides what you are better and worse at: it adjusts how fast you learn every skill (the EXP modifier), so what your guild favors comes quickly and what it doesn't comes slowly. It is also where your history comes from and your link to the world of Celtricia.</li>
@@ -465,7 +465,7 @@ function renderInventoryModule() {
       </table>
       <button class="btn btn-gold" onclick="openAddItemModal()">Add Item</button>
 
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px">Storage Locations${infoTip(`Capacity is how much weight a container can hold (blank = no limit); On Person's is your Weight Possible. Tick On Person on a container you wear or carry so its contents count toward Weight Carried; one marked Does not encumber adds no weight.`)}</div>
+      <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px">Storage Locations${infoTip(`Capacity is how much weight a container can hold (blank = no limit); On Person's is your Weight Possible. Tick On Person on a container you wear or carry so its contents count toward Weight Carried; one marked Does not encumber adds no weight.`)}</div>
       <table class="item-table inventory-table">
         <thead><tr><th>Container</th><th>On Person</th><th>Items</th><th>Weight</th><th>Capacity</th><th>Available Capacity</th><th>Worth</th><th></th><th></th><th></th></tr></thead>
         <tbody>
@@ -993,7 +993,7 @@ function renderSpellModule() {
     <div class="panel-header"><h2>Spells — ${char.name}</h2></div>
     <div class="panel-body">
 
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Spell Points${infoTip(`Every spell costs Spirit SP plus whichever other schools it draws on. Short on a school's points? Spirit can cover the gap at the shown conversion ratio — better ratio the more trained (Familiar → Specialized → Devoted) you are in that school relative to your Spirit level. Effective Spell Level (used for duration/range formulas with "plev") gets a bonus once Specialized or Devoted.`)}</div>
+      <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Spell Points${infoTip(`Every spell costs Spirit SP plus whichever other schools it draws on. Short on a school's points? Spirit can cover the gap at the shown conversion ratio — better ratio the more trained (Familiar → Specialized → Devoted) you are in that school relative to your Spirit level. Effective Spell Level (used for duration/range formulas with "plev") gets a bonus once Specialized or Devoted.`)}</div>
       ${pools.length === 0 ? '<div class="note">No spell point pools trained. Add a pool (e.g. Spirit SP, House of Fire SP) as a skill first.</div>' : ''}
       ${pools.length ? `
       <table class="skill-table spell-pool-table">
@@ -1008,7 +1008,7 @@ function renderSpellModule() {
       <div class="note">Click a pool's name for its details, recovery and Magic Enhancers.</div>` : ''}
 
       <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Spellbook</div>
+      <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Spellbook</div>
       ${Object.keys(schoolBreakdown).length ? `
       <table class="skill-table" style="margin-bottom:12px">
         <thead><tr><th>School</th><th># Spells</th><th>Total SP Cost</th></tr></thead>
@@ -1038,7 +1038,7 @@ function renderSpellModule() {
             <td class="note">${breakdown}</td>
             <td>${escapeHtml(spellDurationText(catalogEntry && catalogEntry.duration, level))}</td>
             <td><input value="${sp.notes||''}" onchange="updateSpell(${idx},'notes',this.value)"></td>
-            <td>${catalogEntry && catalogEntry.costs ? `<button class="btn btn-gold" style="font-size:11px;padding:3px 8px" onclick="openHardcastModal(${idx})">Cast</button>` : ''}</td>
+            <td>${catalogEntry && catalogEntry.costs ? `<button class="btn btn-gold" style="font-size:calc(11px * var(--fs));padding:3px 8px" onclick="openHardcastModal(${idx})">Cast</button>` : ''}</td>
             <td class="item-del" onclick="removeSpell(${idx})">✕</td>
           </tr>`;
           }).join('') || '<tr><td colspan="7" class="note">No spells in this book yet.</td></tr>');
@@ -1093,7 +1093,7 @@ function renderSpellPoolModal() {
       <div class="computed-item"><span class="ci-label">Recovery (Sleeping)</span><span class="ci-value skval">${p.recoverSleep} SP/hr</span></div>
     </div>
     <hr class="divider">
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Magic Enhancers (manual — enter the net result of whichever item you're currently bonded to)</div>
+    <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Magic Enhancers (manual — enter the net result of whichever item you're currently bonded to)</div>
     <div class="form-row">
       <div class="form-group"><label>SP Cost Reduction${p.spReductionItems ? ` (+${p.spReductionItems} from items)` : ''}</label><input type="number" class="w-sm" value="${p.spReductionManual}" onchange="updateSpellEnhancer('${p.name}','spReduction',this.value)"></div>
       <div class="form-group"><label>Reclamation Rate Bonus</label><input type="number" class="w-sm" value="${p.reclamationBonus}" onchange="updateSpellEnhancer('${p.name}','reclamationBonus',this.value)"></div>
@@ -1111,7 +1111,7 @@ function renderUtilitiesModule() {
     <div class="panel-header"><h2>Utilities${infoTip(`Quick patches for the master skill/guild data — for when a character needs a skill or guild EXPMOD that doesn't exist yet, without waiting for a full data re-extraction. These are stored separately from character data — see "Export Custom Data" below to back them up.`)}</h2></div>
     <div class="panel-body">
 
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Add New Skill</div>
+      <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Add New Skill</div>
       <div class="form-row">
         <div class="form-group"><label>Type</label>
           <select id="ns-type">${typeOrder.map(t=>`<option>${t}</option>`).join('')}</select>
@@ -1131,7 +1131,7 @@ function renderUtilitiesModule() {
       <button class="btn btn-gold" onclick="addCustomSkill()">Add Skill to Master List</button>
 
       <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Add Guild EXPMOD (bxp)</div>
+      <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Add Guild EXPMOD (bxp)</div>
       <div class="form-row">
         <div class="form-group w-lg"><label>Guild</label>
           <input type="hidden" id="ge-guild" value="">
@@ -1149,7 +1149,7 @@ function renderUtilitiesModule() {
       <button class="btn btn-gold" onclick="addCustomGuildBonus()">Set Guild EXPMOD</button>
 
       <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Custom Additions So Far</div>
+      <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Custom Additions So Far</div>
       <div class="warn">These are stored in this browser only, separately from character data. If you switch browsers or clear site data, they won't transfer with a character JSON export — use "Export Custom Data" below to back them up separately.</div>
       <table class="skill-table">
         <thead><tr><th>Type</th><th>Detail</th><th></th></tr></thead>
@@ -1254,7 +1254,7 @@ function renderSkillModule(skillId) {
         <div class="form-group"><label>Racial EXPMOD Bonus</label>
           <div style="display:flex;gap:4px">
             <input type="number" step="0.001" class="w-sm" value="${si.racialExpmod||0}" onchange="updateSkill('${skillId}','racialExpmod',this.value)">
-            <button class="btn btn-dim" style="padding:5px 8px;font-size:11px" onclick="updateSkill('${skillId}','racialExpmod',lookupRacialBonus(state.characters[state.activeChar],'${si.skillName.replace(/'/g,"\\'")}'))" title="Look up from race/subrace table">↻</button>
+            <button class="btn btn-dim" style="padding:5px 8px;font-size:calc(11px * var(--fs))" onclick="updateSkill('${skillId}','racialExpmod',lookupRacialBonus(state.characters[state.activeChar],'${si.skillName.replace(/'/g,"\\'")}'))" title="Look up from race/subrace table">↻</button>
           </div>
         </div>
       </div>
@@ -1268,17 +1268,17 @@ function renderSkillModule(skillId) {
         <div class="form-group"><label>Raw XP</label>
           <input type="number" class="w-sm" value="${si.rawXP||0}" onchange="updateSkill('${skillId}','rawXP',this.value)">
         </div>
-        <div class="computed-item" style="margin-bottom:2px"><span class="ci-label">→ Adj XP</span><span class="ci-value" style="font-size:14px">${Math.round(vals.adjXP).toLocaleString()}</span></div>
-        <div class="computed-item" style="margin-bottom:2px"><span class="ci-label">→ Level</span><span class="ci-value" style="font-size:14px;color:#4a9460">${vals.level}</span></div>
-        ${!si.dropdownOnly ? `<div class="computed-item" style="margin-bottom:2px"><span class="ci-label">Next Level at Adj XP</span><span class="ci-value" style="font-size:12px;color:var(--text-dim)">${nextLevelThreshold(vals.level)}</span></div>` : ''}
-        ${!si.dropdownOnly ? `<div class="computed-item" style="margin-bottom:2px"><span class="ci-label">Next Level at Raw XP</span><span class="ci-value" style="font-size:12px;color:var(--text-dim)">${nextLevelThresholdRaw(vals.level, vals.expmod)}</span></div>` : ''}
+        <div class="computed-item" style="margin-bottom:2px"><span class="ci-label">→ Adj XP</span><span class="ci-value" style="font-size:calc(14px * var(--fs))">${Math.round(vals.adjXP).toLocaleString()}</span></div>
+        <div class="computed-item" style="margin-bottom:2px"><span class="ci-label">→ Level</span><span class="ci-value" style="font-size:calc(14px * var(--fs));color:#4a9460">${vals.level}</span></div>
+        ${!si.dropdownOnly ? `<div class="computed-item" style="margin-bottom:2px"><span class="ci-label">Next Level at Adj XP</span><span class="ci-value" style="font-size:calc(12px * var(--fs));color:var(--text-dim)">${nextLevelThreshold(vals.level)}</span></div>` : ''}
+        ${!si.dropdownOnly ? `<div class="computed-item" style="margin-bottom:2px"><span class="ci-label">Next Level at Raw XP</span><span class="ci-value" style="font-size:calc(12px * var(--fs));color:var(--text-dim)">${nextLevelThresholdRaw(vals.level, vals.expmod)}</span></div>` : ''}
       </div>
 
       <!-- LEVEL ROLLS -->
       ${!si.dropdownOnly ? `
       <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
-        <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px">Level Rolls (${def ? def.per_level : '?'} per level)</div>
-        ${def && def.per_level ? `<button type="button" class="btn btn-dim" style="font-size:11px;padding:2px 8px" onclick="rollAllEmptyLevels('${skillId}')" title="Rolls ${def.per_level} for every empty level up to the skill's current level (${vals.level})">🎲 Roll Skill Levels</button>` : ''}
+        <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px">Level Rolls (${def ? def.per_level : '?'} per level)</div>
+        ${def && def.per_level ? `<button type="button" class="btn btn-dim" style="font-size:calc(11px * var(--fs));padding:2px 8px" onclick="rollAllEmptyLevels('${skillId}')" title="Rolls ${def.per_level} for every empty level up to the skill's current level (${vals.level})">🎲 Roll Skill Levels</button>` : ''}
       </div>
       <div class="rolls-grid">
         ${Array.from({length:20}, (_,i) => {
@@ -1286,7 +1286,7 @@ function renderSkillModule(skillId) {
           return `<div style="display:flex;gap:2px">
             <input type="number" min="0" value="${v}" placeholder="${i+1}" class="${v?'has-val':''}" style="flex:1;min-width:0"
               onchange="updateRoll('${skillId}',${i},this.value);this.className=this.value?'has-val':''">
-            ${def && def.per_level ? `<button type="button" class="btn btn-dim" style="padding:2px 5px;font-size:10px" title="Roll ${def.per_level} for level ${i+1}" onclick="rollLevelSlot('${skillId}',${i})">🎲</button>` : ''}
+            ${def && def.per_level ? `<button type="button" class="btn btn-dim" style="padding:2px 5px;font-size:calc(10px * var(--fs))" title="Roll ${def.per_level} for level ${i+1}" onclick="rollLevelSlot('${skillId}',${i})">🎲</button>` : ''}
           </div>`;
         }).join('')}
       </div>
@@ -1296,7 +1296,7 @@ function renderSkillModule(skillId) {
       <hr class="divider">
 
       <!-- BONUSES -->
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Bonus Amounts (flat additions to skval)</div>
+      <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Bonus Amounts (flat additions to skval)</div>
       <div class="form-row">
         ${['Item','Race','Magic','Other'].map(t=>`
         <div class="form-group"><label>${t}</label>

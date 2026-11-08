@@ -39,15 +39,15 @@ function enterOrStartCombat(groupId) {
   const resumableHtml = resumable.length
     ? resumable.map(e => `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
         <span style="cursor:pointer;color:var(--gold)" onclick="closeModal();openEncounter('${e.id}')">${escapeHtml(e.name)}</span>
-        <span style="font-size:10px;color:${encStatusColor[e.status]}">(${e.status}, segment ${e.current_segment})</span>
+        <span style="font-size:calc(10px * var(--fs));color:${encStatusColor[e.status]}">(${e.status}, segment ${e.current_segment})</span>
       </li>`).join('')
     : '<li class="note">No combats currently in progress.</li>';
   openModal(`
     <h3>Enter Combat</h3>
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Resume</div>
-    <ul style="margin:0 0 12px 16px;padding:0;font-size:13px">${resumableHtml}</ul>
+    <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Resume</div>
+    <ul style="margin:0 0 12px 16px;padding:0;font-size:calc(13px * var(--fs))">${resumableHtml}</ul>
     <hr class="divider">
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:8px 0 6px">Start New</div>
+    <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:8px 0 6px">Start New</div>
     <div class="form-group" style="margin-bottom:8px"><label>Name</label><input class="w-full" id="sc-name"  placeholder="e.g. Ambush on the Old Road"></div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="createEncounter('${groupId}')">Start</button></div>`);
 }
@@ -181,7 +181,7 @@ async function renderEncounterModule(opts) {
 function foeTypeTag(c) {
   const t = combatFoeType[c.id];
   if (!t || t.toLowerCase() === String(c.display_name || '').trim().toLowerCase()) return '';
-  return `<span style="font-size:11px;color:var(--text-dim)" title="Creature type">(${escapeHtml(t)})</span>`;
+  return `<span style="font-size:calc(11px * var(--fs));color:var(--text-dim)" title="Creature type">(${escapeHtml(t)})</span>`;
 }
 
 // A foe's whole stat block without leaving the Combat page: hover the Stats
@@ -200,7 +200,7 @@ function foeStatsSummary(c, e) {
 function foeStatsBtn(c) {
   const e = combatFoeEntry[c.id];
   if (!e) return '';
-  return `<button class="btn btn-dim" style="font-size:10px;padding:0 6px" title="${escapeHtml(foeStatsSummary(c, e))}" onclick="event.stopPropagation();openFoeStatsModal('${c.id}')">Stats</button>`;
+  return `<button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:0 6px" title="${escapeHtml(foeStatsSummary(c, e))}" onclick="event.stopPropagation();openFoeStatsModal('${c.id}')">Stats</button>`;
 }
 
 function openFoeStatsModal(combatantId) {
@@ -208,8 +208,8 @@ function openFoeStatsModal(combatantId) {
   const e = combatFoeEntry[combatantId];
   if (!c || !e) return;
   const val = v => (v === null || v === undefined || v === '') ? '—' : escapeHtml(String(v));
-  const stat = (label, v) => `<div style="min-width:70px"><div class="note" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-style:normal">${label}</div><div style="font-size:15px;font-weight:bold">${val(v)}</div></div>`;
-  const heading = t => `<div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:12px 0 4px">${t}</div>`;
+  const stat = (label, v) => `<div style="min-width:70px"><div class="note" style="font-size:calc(10px * var(--fs));text-transform:uppercase;letter-spacing:1px;font-style:normal">${label}</div><div style="font-size:calc(15px * var(--fs));font-weight:bold">${val(v)}</div></div>`;
+  const heading = t => `<div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:12px 0 4px">${t}</div>`;
   const attacks = e.attacks || [];
   const attackRows = attacks.map(a => {
     const cf = bestiaryCritFumble(a.toHit, e.crit_bonus);
@@ -217,7 +217,7 @@ function openFoeStatsModal(combatantId) {
   }).join('');
   const abilityGroups = [['Bonus', e.bonus_abilities], ['Special', e.special_abilities], ['Exceptional', e.exceptional_abilities]]
     .filter(([, list]) => (list || []).length)
-    .map(([label, list]) => `<div style="font-size:12px;margin-bottom:2px"><b>${label}:</b> ${list.map(escapeHtml).join(', ')}</div>`).join('');
+    .map(([label, list]) => `<div style="font-size:calc(12px * var(--fs));margin-bottom:2px"><b>${label}:</b> ${list.map(escapeHtml).join(', ')}</div>`).join('');
   const items = (e.items || []).filter(it => it && (it.name || '').trim());
   const hasCc = [e.cc_fortitude, e.cc_reflex, e.cc_will, e.cc_surprise, e.cc_social].some(v => v);
   openModal(`
@@ -228,14 +228,14 @@ function openFoeStatsModal(combatantId) {
       ${stat('Avoidance', e.avoidance || 0)}${stat('Protection', e.protection || 0)}${stat('Bmod', e.bmod || 0)}
       ${stat('Multi', e.multi || 0)}${stat('Crit bonus', e.crit_bonus || 0)}${stat('Avg dmg', e.avg_damage || 0)}
     </div>
-    ${e.armor_name || e.shield_name ? `<div style="font-size:12px;margin-top:6px"><b>Armor:</b> ${val(e.armor_name)} · <b>Shield:</b> ${val(e.shield_name)}</div>` : ''}
+    ${e.armor_name || e.shield_name ? `<div style="font-size:calc(12px * var(--fs));margin-top:6px"><b>Armor:</b> ${val(e.armor_name)} · <b>Shield:</b> ${val(e.shield_name)}</div>` : ''}
     ${hasCc ? heading('CCs') + `<div style="display:flex;gap:14px;flex-wrap:wrap">${stat('Fortitude', e.cc_fortitude)}${stat('Reflex', e.cc_reflex)}${stat('Will', e.cc_will)}${stat('Surprise', e.cc_surprise)}${stat('Social', e.cc_social)}</div>` : ''}
     ${heading('Attacks')}
     ${attacks.length ? `<table class="skill-table"><thead><tr><th>Name</th><th>Weapon</th><th>To-hit</th><th>Crit %</th><th>Fumble %</th><th>Damage</th><th>Speed</th></tr></thead><tbody>${attackRows}</tbody></table>` : '<div class="note">No attacks listed.</div>'}
     ${abilityGroups ? heading('Abilities') + abilityGroups : ''}
-    ${(e.spells || []).length ? heading('Spells known') + `<div style="font-size:12px">${e.spells.map(escapeHtml).join(', ')}</div>` : ''}
-    ${items.length ? heading('Items carried') + `<div style="font-size:12px">${items.map(it => escapeHtml(it.name) + ((parseFloat(it.qty) || 1) > 1 ? ' ×' + it.qty : '')).join(', ')}</div>` : ''}
-    ${e.notes ? heading('Notes') + `<div style="font-size:12px;white-space:pre-wrap">${escapeHtml(e.notes)}</div>` : ''}
+    ${(e.spells || []).length ? heading('Spells known') + `<div style="font-size:calc(12px * var(--fs))">${e.spells.map(escapeHtml).join(', ')}</div>` : ''}
+    ${items.length ? heading('Items carried') + `<div style="font-size:calc(12px * var(--fs))">${items.map(it => escapeHtml(it.name) + ((parseFloat(it.qty) || 1) > 1 ? ' ×' + it.qty : '')).join(', ')}</div>` : ''}
+    ${e.notes ? heading('Notes') + `<div style="font-size:calc(12px * var(--fs));white-space:pre-wrap">${escapeHtml(e.notes)}</div>` : ''}
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Close</button></div>`, { wide: true });
 }
 
@@ -317,22 +317,22 @@ function renderEncounterHtml(enc, isGM) {
       return `<div style="margin:3px 0">
         ${canEdit ? `
         <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
-          <button class="btn btn-dim" style="font-size:14px;padding:1px 9px;font-weight:bold" onclick="nudgeActionTrack('${t.id}',-1)" title="-1 segment">−</button>
-          <input type="number" step="any" class="w-sm" style="font-size:16px;font-weight:bold;text-align:center;color:var(--gold)" value="${t.next_segment != null ? t.next_segment : ''}" placeholder="—" onchange="updateActionTrack('${t.id}','next_segment',this.value===''?null:parseFloat(this.value))">
-          <button class="btn btn-dim" style="font-size:14px;padding:1px 9px;font-weight:bold" onclick="nudgeActionTrack('${t.id}',1)" title="+1 segment">+</button>
-          ${t.next_segment == null ? `<button class="btn btn-gold" style="font-size:10px;padding:2px 6px" onclick="updateActionTrack('${t.id}','next_segment',${dueSegment})">Join Now (seg ${dueSegment})</button>` : ''}
-          ${due && t.next_segment != null ? `<button class="btn btn-gold" style="font-size:10px;padding:2px 6px" onclick="resolveActionTrack('${t.id}')">Resolve</button>` : ''}
-          <select style="font-size:11px" onchange="updateActionTrack('${t.id}','action_category',this.value||null)">
+          <button class="btn btn-dim" style="font-size:calc(14px * var(--fs));padding:1px 9px;font-weight:bold" onclick="nudgeActionTrack('${t.id}',-1)" title="-1 segment">−</button>
+          <input type="number" step="any" class="w-sm" style="font-size:calc(16px * var(--fs));font-weight:bold;text-align:center;color:var(--gold)" value="${t.next_segment != null ? t.next_segment : ''}" placeholder="—" onchange="updateActionTrack('${t.id}','next_segment',this.value===''?null:parseFloat(this.value))">
+          <button class="btn btn-dim" style="font-size:calc(14px * var(--fs));padding:1px 9px;font-weight:bold" onclick="nudgeActionTrack('${t.id}',1)" title="+1 segment">+</button>
+          ${t.next_segment == null ? `<button class="btn btn-gold" style="font-size:calc(10px * var(--fs));padding:2px 6px" onclick="updateActionTrack('${t.id}','next_segment',${dueSegment})">Join Now (seg ${dueSegment})</button>` : ''}
+          ${due && t.next_segment != null ? `<button class="btn btn-gold" style="font-size:calc(10px * var(--fs));padding:2px 6px" onclick="resolveActionTrack('${t.id}')">Resolve</button>` : ''}
+          <select style="font-size:calc(11px * var(--fs))" onchange="updateActionTrack('${t.id}','action_category',this.value||null)">
             <option value="">(category)</option>
             ${Object.keys(COMBAT_CATEGORY_RANK).map(k => `<option value="${k}" ${t.action_category===k?'selected':''}>${COMBAT_CATEGORY_LABELS[k]}</option>`).join('')}
           </select>
-          <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="deleteActionTrack('${t.id}')">✕</button>
+          <button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px" onclick="deleteActionTrack('${t.id}')">✕</button>
         </div>
-        <input class="w-full" value="${escapeHtml(t.label||'')}" placeholder="Intended action (e.g. biting Bastardo, casting Source charge)" style="font-size:13px;margin-top:3px" onchange="updateActionTrack('${t.id}','label',this.value)">` :
+        <input class="w-full" value="${escapeHtml(t.label||'')}" placeholder="Intended action (e.g. biting Bastardo, casting Source charge)" style="font-size:calc(13px * var(--fs));margin-top:3px" onchange="updateActionTrack('${t.id}','label',this.value)">` :
         `<div>
-          <span style="font-size:15px;font-weight:bold;color:var(--gold)">${t.next_segment!=null?'@ '+t.next_segment:'(standing by)'}</span>
-          ${t.action_category ? `<span style="font-size:11px;color:var(--text-dim)"> ${COMBAT_CATEGORY_LABELS[t.action_category]}</span>` : ''}
-          ${t.label ? `<div style="font-size:13px">${escapeHtml(t.label)}</div>` : ''}
+          <span style="font-size:calc(15px * var(--fs));font-weight:bold;color:var(--gold)">${t.next_segment!=null?'@ '+t.next_segment:'(standing by)'}</span>
+          ${t.action_category ? `<span style="font-size:calc(11px * var(--fs));color:var(--text-dim)"> ${COMBAT_CATEGORY_LABELS[t.action_category]}</span>` : ''}
+          ${t.label ? `<div style="font-size:calc(13px * var(--fs))">${escapeHtml(t.label)}</div>` : ''}
         </div>`}
       </div>`;
     }).join('');
@@ -340,33 +340,33 @@ function renderEncounterHtml(enc, isGM) {
     const effectsHtml = effects.map((eff, ei) => {
       const expired = eff.expires_at_segment != null && eff.expires_at_segment <= dueSegment;
       const endsTag = eff.expires_at_segment != null ? ` (${expired ? 'ended' : 'ends'} @ ${eff.expires_at_segment})` : '';
-      return `<span style="font-size:11px;color:var(--gold-dim);margin-right:8px;${expired?'text-decoration:line-through':''}" title="Expires at segment ${eff.expires_at_segment}">${escapeHtml(eff.label)}${endsTag}${canEdit?` <a href="#" onclick="removeEffect('${c.id}',${ei});return false" style="color:var(--red-b)">✕</a>`:''}</span>`;
+      return `<span style="font-size:calc(11px * var(--fs));color:var(--gold-dim);margin-right:8px;${expired?'text-decoration:line-through':''}" title="Expires at segment ${eff.expires_at_segment}">${escapeHtml(eff.label)}${endsTag}${canEdit?` <a href="#" onclick="removeEffect('${c.id}',${ei});return false" style="color:var(--red-b)">✕</a>`:''}</span>`;
     }).join('');
     return `<div id="cc-card-${c.id}" style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin-bottom:6px;transition:box-shadow .3s">
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <span style="${nameStyle}">${escapeHtml(c.display_name)}</span>
-        ${foeTypeTag(c)}${foeStatsBtn(c)}${combatFoeXp[c.id] != null ? `<span style="font-size:11px;color:var(--gold-dim)" title="Experience value of this foe (Beastiary formula)">XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
-        ${canEdit ? `<input value="${escapeHtml(c.team||'')}" placeholder="Team" class="w-sm" style="font-size:11px" onchange="updateCombatantField('${c.id}','team',this.value)">`
-          : `<span style="font-size:10px;color:var(--text-dim)">${escapeHtml(c.team||'')}</span>`}
+        ${foeTypeTag(c)}${foeStatsBtn(c)}${combatFoeXp[c.id] != null ? `<span style="font-size:calc(11px * var(--fs));color:var(--gold-dim)" title="Experience value of this foe (Beastiary formula)">XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
+        ${canEdit ? `<input value="${escapeHtml(c.team||'')}" placeholder="Team" class="w-sm" style="font-size:calc(11px * var(--fs))" onchange="updateCombatantField('${c.id}','team',this.value)">`
+          : `<span style="font-size:calc(10px * var(--fs));color:var(--text-dim)">${escapeHtml(c.team||'')}</span>`}
         ${combatantHpBadge(c, isGM)}
         ${canEdit ? (c.hp_system === 'collegium' ? `
-        <span style="font-size:10px;color:var(--text-dim)">Phys</span>
-        <input type="number" class="w-sm" style="font-size:11px" value="${c.physical_current!=null?c.physical_current:''}" title="Physical Current" onchange="updateCollegiumHp('${c.id}','physical_current',this.value)">
-        / <input type="number" class="w-sm" style="font-size:11px" value="${c.physical_max!=null?c.physical_max:''}" title="Physical Max" onchange="updateCollegiumHp('${c.id}','physical_max',this.value)">
-        <span style="font-size:10px;color:var(--text-dim)">End</span>
-        <input type="number" class="w-sm" style="font-size:11px" value="${c.endurance_current!=null?c.endurance_current:''}" title="Endurance Current" onchange="updateCollegiumHp('${c.id}','endurance_current',this.value)">
-        / <input type="number" class="w-sm" style="font-size:11px" value="${c.endurance_max!=null?c.endurance_max:''}" title="Endurance Max" onchange="updateCollegiumHp('${c.id}','endurance_max',this.value)">` : `
-        <input type="number" class="w-sm" style="font-size:11px" value="${c.current_hp!=null?c.current_hp:''}" title="Current HP" onchange="updateCombatantField('${c.id}','current_hp',this.value===''?null:parseFloat(this.value))">
-        / <input type="number" class="w-sm" style="font-size:11px" value="${c.max_hp!=null?c.max_hp:''}" title="Max HP" onchange="updateCombatantField('${c.id}','max_hp',this.value===''?null:parseFloat(this.value))">`) : ''}
-        <select style="font-size:11px" onchange="updateCombatantField('${c.id}','target_combatant_id',this.value||null)">${targetOptionsHtml(c.id, c.target_combatant_id)}</select>
-        <select style="font-size:11px" onchange="updateCombatantField('${c.id}','status',this.value)" title="Status -- drives Turn Order placement and name styling">
+        <span style="font-size:calc(10px * var(--fs));color:var(--text-dim)">Phys</span>
+        <input type="number" class="w-sm" style="font-size:calc(11px * var(--fs))" value="${c.physical_current!=null?c.physical_current:''}" title="Physical Current" onchange="updateCollegiumHp('${c.id}','physical_current',this.value)">
+        / <input type="number" class="w-sm" style="font-size:calc(11px * var(--fs))" value="${c.physical_max!=null?c.physical_max:''}" title="Physical Max" onchange="updateCollegiumHp('${c.id}','physical_max',this.value)">
+        <span style="font-size:calc(10px * var(--fs));color:var(--text-dim)">End</span>
+        <input type="number" class="w-sm" style="font-size:calc(11px * var(--fs))" value="${c.endurance_current!=null?c.endurance_current:''}" title="Endurance Current" onchange="updateCollegiumHp('${c.id}','endurance_current',this.value)">
+        / <input type="number" class="w-sm" style="font-size:calc(11px * var(--fs))" value="${c.endurance_max!=null?c.endurance_max:''}" title="Endurance Max" onchange="updateCollegiumHp('${c.id}','endurance_max',this.value)">` : `
+        <input type="number" class="w-sm" style="font-size:calc(11px * var(--fs))" value="${c.current_hp!=null?c.current_hp:''}" title="Current HP" onchange="updateCombatantField('${c.id}','current_hp',this.value===''?null:parseFloat(this.value))">
+        / <input type="number" class="w-sm" style="font-size:calc(11px * var(--fs))" value="${c.max_hp!=null?c.max_hp:''}" title="Max HP" onchange="updateCombatantField('${c.id}','max_hp',this.value===''?null:parseFloat(this.value))">`) : ''}
+        <select style="font-size:calc(11px * var(--fs))" onchange="updateCombatantField('${c.id}','target_combatant_id',this.value||null)">${targetOptionsHtml(c.id, c.target_combatant_id)}</select>
+        <select style="font-size:calc(11px * var(--fs))" onchange="updateCombatantField('${c.id}','status',this.value)" title="Status -- drives Turn Order placement and name styling">
           ${['active','waiting','incapacitated','killed'].map(s => `<option value="${s}" ${status===s?'selected':''}>${s[0].toUpperCase()+s.slice(1)}</option>`).join('')}
         </select>
-        ${isGM ? `<button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="removeCombatant('${c.id}')">Remove</button>` : ''}
+        ${isGM ? `<button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px" onclick="removeCombatant('${c.id}')">Remove</button>` : ''}
       </div>
       <div style="margin-top:4px">${tracksHtml}</div>
-      ${canEdit ? `<button class="btn btn-dim" style="font-size:10px;padding:1px 6px;margin-top:2px" onclick="addActionTrack('${c.id}')">Track</button>
-      <button class="btn btn-dim" style="font-size:10px;padding:1px 6px;margin-top:2px" onclick="openAddEffectModal('${c.id}')">Effect</button>` : ''}
+      ${canEdit ? `<button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px;margin-top:2px" onclick="addActionTrack('${c.id}')">Track</button>
+      <button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px;margin-top:2px" onclick="openAddEffectModal('${c.id}')">Effect</button>` : ''}
       <div style="margin-top:2px">${effectsHtml}</div>
     </div>`;
   }).join('') : '<div class="note">No combatants yet.</div>';
@@ -379,7 +379,7 @@ function renderEncounterHtml(enc, isGM) {
       if (l.damage_dealt != null) dmgParts.push(`${l.damage_dealt} dealt`);
       if (l.damage_taken != null) dmgParts.push(`${l.damage_taken} taken`);
       if (l.damage_prevented != null) dmgParts.push(`${l.damage_prevented} prevented`);
-      return `<tr><td>${l.segment}</td><td>${escapeHtml(actor?actor.display_name:'—')}</td><td>${escapeHtml(target?target.display_name:'—')}</td><td>${escapeHtml(l.action_summary)}</td><td style="font-size:11px">${dmgParts.join(', ')}</td></tr>`;
+      return `<tr><td>${l.segment}</td><td>${escapeHtml(actor?actor.display_name:'—')}</td><td>${escapeHtml(target?target.display_name:'—')}</td><td>${escapeHtml(l.action_summary)}</td><td style="font-size:calc(11px * var(--fs))">${dmgParts.join(', ')}</td></tr>`;
     }).join('')}
   </tbody></table>` : '<div class="note">No log entries yet.</div>';
 
@@ -444,18 +444,18 @@ function renderEncounterHtml(enc, isGM) {
     const tieIdx = tieGroup ? tieGroup.findIndex(x => x.id === t.id) : -1;
     const tieControlsHtml = (isGM && tieGroup && tieGroup.length > 1) ? `
       <span style="display:flex;flex-direction:column;flex-shrink:0">
-        <button class="btn btn-dim" style="font-size:9px;line-height:1;padding:1px 5px" ${tieIdx===0?'disabled':''} onclick="moveTrackWithinTie('${t.id}',-1)" title="Move up within this tied segment">▲</button>
-        <button class="btn btn-dim" style="font-size:9px;line-height:1;padding:1px 5px" ${tieIdx===tieGroup.length-1?'disabled':''} onclick="moveTrackWithinTie('${t.id}',1)" title="Move down within this tied segment">▼</button>
+        <button class="btn btn-dim" style="font-size:calc(9px * var(--fs));line-height:1;padding:1px 5px" ${tieIdx===0?'disabled':''} onclick="moveTrackWithinTie('${t.id}',-1)" title="Move up within this tied segment">▲</button>
+        <button class="btn btn-dim" style="font-size:calc(9px * var(--fs));line-height:1;padding:1px 5px" ${tieIdx===tieGroup.length-1?'disabled':''} onclick="moveTrackWithinTie('${t.id}',1)" title="Move down within this tied segment">▼</button>
       </span>` : '';
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border)${due?';background:rgba(74,148,96,.22)':''}">
       ${tieControlsHtml}
       <span style="flex:1;min-width:0">
-        <span style="font-size:17px;font-weight:bold;cursor:pointer;${nameStyle}" title="Show on the right" onclick="focusCombatantCard('${c.id}')">${escapeHtml(c.display_name)}</span>
-        ${foeTypeTag(c)}${foeStatsBtn(c)}${combatFoeXp[c.id] != null ? `<span style="font-size:11px;color:var(--gold-dim)"> XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
-        ${t.label ? `<span style="font-size:12px;color:var(--text-dim)"> ${escapeHtml(t.label)}</span>` : ''}
-        ${t.action_category ? `<span style="display:block;font-size:11px;color:var(--text-dim)">${COMBAT_CATEGORY_LABELS[t.action_category]}</span>` : ''}
+        <span style="font-size:calc(17px * var(--fs));font-weight:bold;cursor:pointer;${nameStyle}" title="Show on the right" onclick="focusCombatantCard('${c.id}')">${escapeHtml(c.display_name)}</span>
+        ${foeTypeTag(c)}${foeStatsBtn(c)}${combatFoeXp[c.id] != null ? `<span style="font-size:calc(11px * var(--fs));color:var(--gold-dim)"> XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
+        ${t.label ? `<span style="font-size:calc(12px * var(--fs));color:var(--text-dim)"> ${escapeHtml(t.label)}</span>` : ''}
+        ${t.action_category ? `<span style="display:block;font-size:calc(11px * var(--fs));color:var(--text-dim)">${COMBAT_CATEGORY_LABELS[t.action_category]}</span>` : ''}
       </span>
-      <span style="font-size:32px;font-weight:bold;line-height:1;color:${t.next_segment!=null?'var(--gold)':'var(--text-dim)'};flex-shrink:0">${t.next_segment!=null?t.next_segment:'—'}</span>
+      <span style="font-size:calc(32px * var(--fs));font-weight:bold;line-height:1;color:${t.next_segment!=null?'var(--gold)':'var(--text-dim)'};flex-shrink:0">${t.next_segment!=null?t.next_segment:'—'}</span>
     </div>`;
   };
   // A timed effect (Blessings, a buff, a debuff) gets its own row in the
@@ -485,10 +485,10 @@ function renderEncounterHtml(enc, isGM) {
     const clearCall = shared ? `removeEffectEverywhere('${eff.effect_id}')` : `removeEffect('${combatants[0].id}',${ei})`;
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);font-style:italic;background:${ended?'rgba(201,162,39,.25)':'rgba(120,100,60,.08)'}">
       <span style="flex:1;min-width:0">
-        <span style="font-size:15px;font-weight:bold">✦ ${escapeHtml(eff.label)}</span>
-        <span style="display:block;font-size:11px;color:var(--text-dim)">on ${names} -- ${ended ? 'ended' : left + ' seg left'} <a href="#" onclick="${clearCall};return false" style="color:var(--red-b)">✕ clear${shared && combatants.length > 1 ? ' all' : ''}</a></span>
+        <span style="font-size:calc(15px * var(--fs));font-weight:bold">✦ ${escapeHtml(eff.label)}</span>
+        <span style="display:block;font-size:calc(11px * var(--fs));color:var(--text-dim)">on ${names} -- ${ended ? 'ended' : left + ' seg left'} <a href="#" onclick="${clearCall};return false" style="color:var(--red-b)">✕ clear${shared && combatants.length > 1 ? ' all' : ''}</a></span>
       </span>
-      <span style="font-size:26px;font-weight:bold;line-height:1;color:var(--text-dim);flex-shrink:0">${eff.expires_at_segment}</span>
+      <span style="font-size:calc(26px * var(--fs));font-weight:bold;line-height:1;color:var(--text-dim);flex-shrink:0">${eff.expires_at_segment}</span>
     </div>`;
   };
   const timeline = visibleOrderedTracks.filter(t => t.next_segment != null).map(t => ({ seg: t.next_segment, html: renderTrackRow(t) }))
@@ -501,11 +501,11 @@ function renderEncounterHtml(enc, isGM) {
     const killed = status === 'killed';
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);opacity:.75">
       <span style="flex:1;min-width:0">
-        <span style="font-size:17px;font-weight:bold;cursor:pointer;text-decoration:${killed?'line-through':'none'};color:${killed?'#a03030':'inherit'}" title="Show on the right" onclick="focusCombatantCard('${c.id}')">${escapeHtml(c.display_name)}</span>
-        ${foeTypeTag(c)}${foeStatsBtn(c)}${combatFoeXp[c.id] != null ? `<span style="font-size:11px;color:var(--gold-dim)"> XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
-        <span style="display:block;font-size:11px;color:var(--text-dim)">${killed?'Killed':'Waiting'}</span>
+        <span style="font-size:calc(17px * var(--fs));font-weight:bold;cursor:pointer;text-decoration:${killed?'line-through':'none'};color:${killed?'#a03030':'inherit'}" title="Show on the right" onclick="focusCombatantCard('${c.id}')">${escapeHtml(c.display_name)}</span>
+        ${foeTypeTag(c)}${foeStatsBtn(c)}${combatFoeXp[c.id] != null ? `<span style="font-size:calc(11px * var(--fs));color:var(--gold-dim)"> XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
+        <span style="display:block;font-size:calc(11px * var(--fs));color:var(--text-dim)">${killed?'Killed':'Waiting'}</span>
       </span>
-      <span style="font-size:24px;font-weight:bold;line-height:1;color:${killed?'#a03030':'var(--text-dim)'};flex-shrink:0">${killed?'KIA':'W'}</span>
+      <span style="font-size:calc(24px * var(--fs));font-weight:bold;line-height:1;color:${killed?'#a03030':'var(--text-dim)'};flex-shrink:0">${killed?'KIA':'W'}</span>
     </div>`;
   }).join('');
   // GM-only: what the foes in this fight are worth, and how much of that is
@@ -525,7 +525,7 @@ function renderEncounterHtml(enc, isGM) {
       <div style="display:flex;align-items:center;gap:10px">
         <button class="btn btn-dim" onclick="closeEncounter()">← Back to Group</button>
         <h2 style="margin:0">${escapeHtml(enc.name)}</h2>
-        <span style="font-size:11px;color:var(--text-dim)">(${enc.status})</span>
+        <span style="font-size:calc(11px * var(--fs));color:var(--text-dim)">(${enc.status})</span>
       </div>
       ${isGM ? `
       <div style="display:flex;gap:6px;align-items:center">
@@ -545,8 +545,8 @@ function renderEncounterHtml(enc, isGM) {
     <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
       <div style="width:300px;flex-shrink:0;border:2px solid var(--gold-dim);border-radius:4px;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:baseline;background:var(--header-bg);padding:8px 12px">
-          <span style="font-size:14px;font-weight:bold;color:var(--header-text);text-transform:uppercase;letter-spacing:1px">Turn Order</span>${infoTip(`Default order within a tied segment: Spell → Non-Combat → Missile → Melee. Use the ▲▼ on a tied row in the Turn Order to put whoever you like first. Click a name there to jump to their card. Everything here is an editable suggestion -- adjust freely.`)}
-          <span style="font-size:11px;color:var(--header-text);opacity:.7">Count: ${visibleOrderedTracks.length + visibleSidelined.length}</span>
+          <span style="font-size:calc(14px * var(--fs));font-weight:bold;color:var(--header-text);text-transform:uppercase;letter-spacing:1px">Turn Order</span>${infoTip(`Default order within a tied segment: Spell → Non-Combat → Missile → Melee. Use the ▲▼ on a tied row in the Turn Order to put whoever you like first. Click a name there to jump to their card. Everything here is an editable suggestion -- adjust freely.`)}
+          <span style="font-size:calc(11px * var(--fs));color:var(--header-text);opacity:.7">Count: ${visibleOrderedTracks.length + visibleSidelined.length}</span>
         </div>
         ${upcomingHtml}
       </div>
@@ -554,7 +554,7 @@ function renderEncounterHtml(enc, isGM) {
       <div style="flex:1;min-width:280px">
         ${combatantsHtml}
         <hr class="divider">
-        <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Log an Action</div>
+        <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Log an Action</div>
         <div class="form-row">
           <div class="form-group"><label>Combatant</label><select id="log-combatant">${combatantsCache.map(c=>`<option value="${c.id}" ${c.id===currentTurnCombatantId?'selected':''}>${escapeHtml(c.display_name)}</option>`).join('')}</select></div>
           <div class="form-group"><label>Target</label><select id="log-target"><option value="">(none)</option>${combatantsCache.map(c=>`<option value="${c.id}">${escapeHtml(c.display_name)}</option>`).join('')}</select></div>
@@ -567,7 +567,7 @@ function renderEncounterHtml(enc, isGM) {
           <div class="form-group" style="justify-content:flex-end"><button class="btn btn-gold" onclick="addLogEntry('${enc.id}')">Add to Log</button></div>
         </div>
         <hr class="divider">
-        <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Recent Log</div>
+        <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Recent Log</div>
         ${logHtml}
       </div>
     </div>
@@ -785,10 +785,10 @@ function openAddEffectModal(combatantId) {
   // own character (that's all the database lets them write to).
   const editable = combatantsCache.filter(c => encounterIsGM || !!(c.character_id && combatOwnerByCharId[c.character_id] === currentUser.id));
   const teams = [...new Set(editable.map(c => (c.team || '').trim()).filter(Boolean))];
-  const targetsHtml = editable.map(c => `<label style="display:flex;align-items:baseline;gap:6px;cursor:pointer;font-size:13px">
+  const targetsHtml = editable.map(c => `<label style="display:flex;align-items:baseline;gap:6px;cursor:pointer;font-size:calc(13px * var(--fs))">
       <input type="checkbox" class="eff-target-cb" data-id="${c.id}" data-team="${escapeHtml((c.team || '').trim())}" ${c.id === combatantId ? 'checked' : ''}>
       <span>${escapeHtml(c.display_name)}${c.team ? ` <span style="color:var(--text-dim)">(${escapeHtml(c.team)})</span>` : ''}</span></label>`).join('');
-  const quickBtn = (label, key) => `<button type="button" class="btn btn-dim" style="font-size:10px;padding:1px 7px" data-team="${escapeHtml(key)}" onclick="setEffectTargets(this.dataset.team)">${escapeHtml(label)}</button>`;
+  const quickBtn = (label, key) => `<button type="button" class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 7px" data-team="${escapeHtml(key)}" onclick="setEffectTargets(this.dataset.team)">${escapeHtml(label)}</button>`;
   openModal(`
     <h3>Add Effect</h3>
     <div class="form-group" style="margin-bottom:8px"><label>Label</label><input class="w-full" id="eff-label"  placeholder="e.g. Blessings, Shaken (-10 to hit)"></div>
@@ -912,9 +912,9 @@ async function openAddCombatantModal() {
     <h3>Add Combatants</h3>
     <div class="note">Tick as many as you like, then Add Selected.</div>
     <div class="form-row" style="align-items:flex-start">
-      <div class="form-group" style="flex:1"><label>Player Characters</label><ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${rosterHtml}</ul></div>
-      <div class="form-group" style="flex:1"><label>Temp Characters</label><ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${tempHtml}</ul></div>
-      <div class="form-group" style="flex:1"><label>Foes (Beastiary)</label><ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${foesHtml}</ul></div>
+      <div class="form-group" style="flex:1"><label>Player Characters</label><ul style="margin:4px 0 0 16px;padding:0;font-size:calc(13px * var(--fs))">${rosterHtml}</ul></div>
+      <div class="form-group" style="flex:1"><label>Temp Characters</label><ul style="margin:4px 0 0 16px;padding:0;font-size:calc(13px * var(--fs))">${tempHtml}</ul></div>
+      <div class="form-group" style="flex:1"><label>Foes (Beastiary)</label><ul style="margin:4px 0 0 16px;padding:0;font-size:calc(13px * var(--fs))">${foesHtml}</ul></div>
     </div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" id="add-combatants-btn" disabled onclick="addSelectedCombatants()">Add Selected (0)</button></div>`, { wide: true });
 }
@@ -1106,7 +1106,7 @@ async function maybePromptResting(groupId, nextSeconds, elapsedSeconds) {
     <div style="margin-bottom:10px"><button class="btn btn-gold" onclick="restAllFurthestDown()" title="Marks everyone resting and sends their sleep recovery to whichever pools are furthest below max">Recover all furthest down</button></div>
     ${restingPromptRoster.map(r => {
       const pools = computeSpellPools(r.data);
-      const poolBoxes = pools.map(p => `<label style="display:inline-flex;align-items:center;gap:4px;margin-right:10px;font-size:12px"><input type="checkbox" class="rest-pool" data-char="${r.id}" value="${escapeHtml(p.name)}"> ${escapeHtml(p.name)}</label>`).join('');
+      const poolBoxes = pools.map(p => `<label style="display:inline-flex;align-items:center;gap:4px;margin-right:10px;font-size:calc(12px * var(--fs))"><input type="checkbox" class="rest-pool" data-char="${r.id}" value="${escapeHtml(p.name)}"> ${escapeHtml(p.name)}</label>`).join('');
       const down = pools.filter(p => p.currentSP < p.maxSP).sort((a, b) => (b.maxSP - b.currentSP) - (a.maxSP - a.currentSP)).slice(0, 3)
         .map(p => `${escapeHtml(p.name)} -${Math.round((p.maxSP - p.currentSP) * 10) / 10}`).join(', ');
       return `<div style="margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">

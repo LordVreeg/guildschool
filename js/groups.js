@@ -279,7 +279,7 @@ async function renderGroupDetail(group) {
   }
 
   const orderToggleHtml = Object.entries(ROSTER_ORDER_MODES).map(([key, m]) =>
-    `<button class="btn ${rosterOrderMode===key?'btn-gold':'btn-dim'}" style="font-size:11px;padding:3px 8px" onclick="setRosterOrderMode('${key}')">${m.label}</button>`
+    `<button class="btn ${rosterOrderMode===key?'btn-gold':'btn-dim'}" style="font-size:calc(11px * var(--fs));padding:3px 8px" onclick="setRosterOrderMode('${key}')">${m.label}</button>`
   ).join('');
 
   const rosterHtml = groupRosterCache.length
@@ -309,11 +309,11 @@ async function renderGroupDetail(group) {
         const xpTag = xpByCharId[c.id] != null ? ` <span style="color:var(--text-dim)">(${xpByCharId[c.id].toLocaleString()} XP)</span>` : '';
         return `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
         <span style="color:var(--text-dim);width:1.5em;display:inline-block;text-align:right">${i+1}.</span>
-        <span style="${nameStyle}" ${isDead?'title="Past the point of stabilizing -- can no longer make the Fortitude roll"':''}>${escapeHtml(c.name || '(unnamed)')}</span>${c.is_npc ? ' <span style="font-size:10px;color:var(--gold-dim)">(NPC)</span>' : ''}${hpTag}${xpTag}${spSigil}
+        <span style="${nameStyle}" ${isDead?'title="Past the point of stabilizing -- can no longer make the Fortitude roll"':''}>${escapeHtml(c.name || '(unnamed)')}</span>${c.is_npc ? ' <span style="font-size:calc(10px * var(--fs));color:var(--gold-dim)">(NPC)</span>' : ''}${hpTag}${xpTag}${spSigil}
         ${isGM ? `
-        <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===0?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',-1)">▲</button>
-        <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" ${i===groupRosterCache.length-1?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',1)">▼</button>
-        <button class="btn btn-dim" style="font-size:10px;padding:1px 6px;color:var(--red-b)" title="Remove from group" onclick="removeRosterMember('${c.id}')">✕</button>` : ''}
+        <button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px" ${i===0?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',-1)">▲</button>
+        <button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px" ${i===groupRosterCache.length-1?'disabled':''} onclick="moveRosterMember('${group.id}','${c.id}',1)">▼</button>
+        <button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px;color:var(--red-b)" title="Remove from group" onclick="removeRosterMember('${c.id}')">✕</button>` : ''}
       </li>`;
       }).join('')
     : '<li class="note">No characters linked to this group yet.</li>';
@@ -322,15 +322,15 @@ async function renderGroupDetail(group) {
     ? groupNotesCache.map(n => {
         const canToggle = isGM || n.author_id === currentUser.id;
         const badge = n.visible_to_all
-          ? '<span style="font-size:10px;color:var(--text-dim)">Visible to all</span>'
-          : '<span style="font-size:10px;color:var(--gold-dim)">Private (author + GM)</span>';
+          ? '<span style="font-size:calc(10px * var(--fs));color:var(--text-dim)">Visible to all</span>'
+          : '<span style="font-size:calc(10px * var(--fs));color:var(--gold-dim)">Private (author + GM)</span>';
         const toggle = canToggle
-          ? `<button class="btn btn-dim" style="font-size:10px;padding:2px 6px" onclick="toggleNoteVisibility('${n.id}','${group.id}')">${n.visible_to_all ? 'Make Private' : 'Make Visible to All'}</button>`
+          ? `<button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:2px 6px" onclick="toggleNoteVisibility('${n.id}','${group.id}')">${n.visible_to_all ? 'Make Private' : 'Make Visible to All'}</button>`
           : '';
         const editBtn = canToggle
-          ? `<button class="btn btn-dim" style="font-size:10px;padding:2px 6px" onclick="openEditNoteModal('${n.id}','${group.id}')">Edit</button>`
+          ? `<button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:2px 6px" onclick="openEditNoteModal('${n.id}','${group.id}')">Edit</button>`
           : '';
-        return `<tr><td style="white-space:nowrap;font-size:11px;color:var(--text-dim)">${ronDateLabel(ronFromSeconds(n.game_seconds))}</td><td>${escapeHtml(n.note)}<div style="margin-top:4px;display:flex;align-items:center;gap:8px">${badge}${toggle}${editBtn}</div></td></tr>`;
+        return `<tr><td style="white-space:nowrap;font-size:calc(11px * var(--fs));color:var(--text-dim)">${ronDateLabel(ronFromSeconds(n.game_seconds))}</td><td>${escapeHtml(n.note)}<div style="margin-top:4px;display:flex;align-items:center;gap:8px">${badge}${toggle}${editBtn}</div></td></tr>`;
       }).join('')
     : '<tr><td colspan="2" class="note">No notes yet.</td></tr>';
 
@@ -341,8 +341,8 @@ async function renderGroupDetail(group) {
         return `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
         <span>${escapeHtml(t.name)}</span> <span style="color:var(--text-dim)">(${hp}/${maxHp} HP)</span>
         ${isGM ? `
-        <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="openEditTempCharacter('${t.id}')">Edit</button>
-        <button class="btn btn-dim" style="font-size:10px;padding:1px 6px" onclick="deleteTempCharacter('${t.id}','${group.id}')">Delete</button>` : ''}
+        <button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px" onclick="openEditTempCharacter('${t.id}')">Edit</button>
+        <button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px" onclick="deleteTempCharacter('${t.id}','${group.id}')">Delete</button>` : ''}
       </li>`;
       }).join('')
     : '<li class="note">No temp characters yet.</li>';
@@ -351,7 +351,7 @@ async function renderGroupDetail(group) {
   const encountersHtml = groupEncountersCache.length
     ? groupEncountersCache.map(e => `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
         <span style="cursor:pointer;color:var(--gold)" onclick="openEncounter('${e.id}')">${escapeHtml(e.name)}</span>
-        <span style="font-size:10px;color:${encStatusColor[e.status]||'var(--text-dim)'}">(${e.status}, segment ${e.current_segment})</span>
+        <span style="font-size:calc(10px * var(--fs));color:${encStatusColor[e.status]||'var(--text-dim)'}">(${e.status}, segment ${e.current_segment})</span>
       </li>`).join('')
     : '<li class="note">No combats yet.</li>';
 
@@ -361,9 +361,9 @@ async function renderGroupDetail(group) {
   const activeEncounter = groupEncountersCache.find(e => e.status === 'active');
   const pausedEncounter = !activeEncounter ? groupEncountersCache.find(e => e.status === 'paused') : null;
   const combatFlagHtml = activeEncounter
-    ? `<span style="cursor:pointer;background:rgba(179,58,30,.15);color:var(--red-b);border:1px solid var(--red-b);padding:2px 10px;font-size:12px;font-weight:bold;letter-spacing:.5px" onclick="openEncounter('${activeEncounter.id}')" title="${escapeHtml(activeEncounter.name)}">⚔ Combat in Progress</span>`
+    ? `<span style="cursor:pointer;background:rgba(179,58,30,.15);color:var(--red-b);border:1px solid var(--red-b);padding:2px 10px;font-size:calc(12px * var(--fs));font-weight:bold;letter-spacing:.5px" onclick="openEncounter('${activeEncounter.id}')" title="${escapeHtml(activeEncounter.name)}">⚔ Combat in Progress</span>`
     : pausedEncounter
-      ? `<span style="cursor:pointer;background:rgba(138,106,47,.15);color:var(--gold-dim);border:1px solid var(--gold-dim);padding:2px 10px;font-size:12px" onclick="openEncounter('${pausedEncounter.id}')" title="${escapeHtml(pausedEncounter.name)}">⏸ Combat Paused</span>`
+      ? `<span style="cursor:pointer;background:rgba(138,106,47,.15);color:var(--gold-dim);border:1px solid var(--gold-dim);padding:2px 10px;font-size:calc(12px * var(--fs))" onclick="openEncounter('${pausedEncounter.id}')" title="${escapeHtml(pausedEncounter.name)}">⏸ Combat Paused</span>`
       : '';
 
   const groupClock = ronFromSeconds(group.clock_seconds);
@@ -380,10 +380,10 @@ async function renderGroupDetail(group) {
     </div>
     <div class="form-group" style="margin-top:8px"><label>Roster (PCs &amp; NPCs)</label>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0">${orderToggleHtml}</div>
-      <ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${rosterHtml}</ul>
+      <ul style="margin:4px 0 0 16px;padding:0;font-size:calc(13px * var(--fs))">${rosterHtml}</ul>
       <div style="margin-top:6px">
         ${isGM
-          ? `<textarea class="w-full" rows="2" style="font-size:12px" placeholder="Note for ${ROSTER_ORDER_MODES[rosterOrderMode].label} (e.g. who's where, and why)" onchange="updateRosterOrderNote('${group.id}','${rosterOrderMode}',this.value)">${escapeHtml((group.roster_order_notes||{})[rosterOrderMode]||'')}</textarea>`
+          ? `<textarea class="w-full" rows="2" style="font-size:calc(12px * var(--fs))" placeholder="Note for ${ROSTER_ORDER_MODES[rosterOrderMode].label} (e.g. who's where, and why)" onchange="updateRosterOrderNote('${group.id}','${rosterOrderMode}',this.value)">${escapeHtml((group.roster_order_notes||{})[rosterOrderMode]||'')}</textarea>`
           : ((group.roster_order_notes||{})[rosterOrderMode] ? `<div class="note" style="white-space:pre-wrap">${escapeHtml(group.roster_order_notes[rosterOrderMode])}</div>` : '')}
       </div>
     </div>
@@ -391,20 +391,20 @@ async function renderGroupDetail(group) {
     <div class="form-group" style="margin-top:8px">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <label style="margin:0">Temp Characters${infoTip(`Quick stat blocks for players without a full character sheet yet -- used by the combat module.`)}</label>
-        <button class="btn btn-dim" style="font-size:11px;padding:3px 8px" onclick="openNewTempCharacter('${group.id}')">Add Temp Character</button>
+        <button class="btn btn-dim" style="font-size:calc(11px * var(--fs));padding:3px 8px" onclick="openNewTempCharacter('${group.id}')">Add Temp Character</button>
       </div>
-      <ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${tempCharsHtml}</ul>
+      <ul style="margin:4px 0 0 16px;padding:0;font-size:calc(13px * var(--fs))">${tempCharsHtml}</ul>
     </div>` : ''}
     <div class="form-group" style="margin-top:8px">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <label style="margin:0">Combat</label>
-        ${isGM ? `<button class="btn btn-gold" style="font-size:11px;padding:3px 8px" onclick="enterOrStartCombat('${group.id}')">⚔ Enter/Re-enter Combat</button>` : ''}
+        ${isGM ? `<button class="btn btn-gold" style="font-size:calc(11px * var(--fs));padding:3px 8px" onclick="enterOrStartCombat('${group.id}')">⚔ Enter/Re-enter Combat</button>` : ''}
       </div>
-      <ul style="margin:4px 0 0 16px;padding:0;font-size:13px">${encountersHtml}</ul>
+      <ul style="margin:4px 0 0 16px;padding:0;font-size:calc(13px * var(--fs))">${encountersHtml}</ul>
     </div>
     <hr class="divider">
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Time — Reckoning of Nebler</div>
-    <div class="computed-item" style="margin-bottom:8px"><span class="ci-value" style="font-size:16px;cursor:pointer;text-decoration:underline dotted" onclick="openGoesiModal('${group.id}')" title="Open the Goesi (month) calendar">${ronDateLabel(groupClock)}</span></div>
+    <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Time — Reckoning of Nebler</div>
+    <div class="computed-item" style="margin-bottom:8px"><span class="ci-value" style="font-size:calc(16px * var(--fs));cursor:pointer;text-decoration:underline dotted" onclick="openGoesiModal('${group.id}')" title="Open the Goesi (month) calendar">${ronDateLabel(groupClock)}</span></div>
     ${isGM ? `
     <div class="form-row" style="margin-bottom:6px">
       <button class="btn btn-dim" onclick="quickAdvance('${group.id}', 60)">+1 min</button>
@@ -426,7 +426,7 @@ async function renderGroupDetail(group) {
     </div>` : '<div class="note">Only the GM can advance time.</div>'}
     <hr class="divider">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px">Log</div>
+      <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px">Log</div>
       ${isGM ? `<button class="btn btn-dim" onclick="startNewLogVolume('${group.id}')" title="Closes the current log at this moment and starts a fresh one -- old entries stay archived and browsable">Start New Log</button>` : ''}
     </div>
     <div class="form-row" style="margin-bottom:6px">

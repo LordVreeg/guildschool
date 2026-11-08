@@ -15,7 +15,7 @@ async function openAddToGroupModal(groupId) {
 
   openModal(`
     <h3>Add to Group</h3>
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Add a Character</div>
+    <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Add a Character</div>
     <div class="form-group" style="margin-bottom:8px"><label>Player</label>
       <select id="atg-player" class="w-lg" onchange="renderAtgCharacterOptions()">
         <option value="">— select a player —</option>
@@ -25,10 +25,10 @@ async function openAddToGroupModal(groupId) {
     <div class="form-group" style="margin-bottom:8px"><label>Character</label>
       <select id="atg-character" class="w-lg"><option value="">— pick a player first —</option></select>
     </div>
-    <div id="atg-status" style="font-size:12px;color:var(--red-b);margin-bottom:8px;display:none"></div>
+    <div id="atg-status" style="font-size:calc(12px * var(--fs));color:var(--red-b);margin-bottom:8px;display:none"></div>
     <div class="modal-actions" style="margin-bottom:16px"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="submitAddCharacter('${groupId}')">Add to Group</button></div>
     <hr class="divider">
-    <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Add a Co-GM${infoTip(`For someone running the game alongside you, who doesn't need a character added.`)}</div>
+    <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Add a Co-GM${infoTip(`For someone running the game alongside you, who doesn't need a character added.`)}</div>
     <div class="form-group" style="margin-bottom:8px"><label>Email</label><input class="w-full" id="atg-gm-email"  type="email"></div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="submitAddGm('${groupId}')">Add as GM</button></div>`);
 }
