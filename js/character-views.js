@@ -529,7 +529,7 @@ function renderCompanionsModule() {
     <div class="panel-header"><h2>Companions</h2></div>
     <div class="panel-body">
       <table class="item-table inventory-table">
-        <thead><tr><th>Name</th><th>Description</th><th>Resistance Add</th><th>HP</th><th>HP Add</th><th>Notes</th><th></th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Description</th><th>Resistance Add</th><th>HP</th><th>HP Add${infoTip("Added to the character's Hit Points. Each companion's magic modifiers count for the character too, as an item in use does.")}</th><th>Notes</th><th></th><th></th></tr></thead>
         <tbody>
           ${list.map((c, i) => `<tr class="item-row">
             <td>${escapeHtml(c.name || '')}</td>
@@ -825,7 +825,7 @@ function renderCombatDetail() {
     // Other bonuses: the items in use whose defense modifiers aren't zero, plus
     // any bonus typed in by hand on an older version of this popup
     const counted = shieldsCountedItems(char);
-    const bonusItems = (char.items || []).filter(it => itemHasModKind(it, 'defense') && itemModsInUse(char, it, counted)
+    const bonusItems = magicModSources(char).filter(it => itemHasModKind(it, 'defense') && itemModsInUse(char, it, counted)
       && ((parseFloat(it.magicAvoidance) || 0) || (parseFloat(it.magicProtection) || 0)));
     const handBonuses = (armor.otherBonuses || []).map((b, i) => ({ b: b || {}, i })).filter(({ b }) => (parseFloat(b.av) || 0) || (parseFloat(b.pr) || 0));
     const otherOpen = combatDefenseOtherOpen !== null ? combatDefenseOtherOpen
@@ -851,7 +851,7 @@ function renderCombatDetail() {
       </div>
     </div>
     ${bonusItems.length || handBonuses.length ? `<table class="skill-table">
-      <thead><tr><th>Other Bonus${infoTip('Items in use (worn, wielded or carried) with Avoidance or Protection modifiers. Add them on the Inventory page: an item\'s Defense modifiers.')}</th><th>AV</th><th>PR</th><th></th></tr></thead>
+      <thead><tr><th>Other Bonus${infoTip('Items in use (worn, wielded or carried) and companions with Avoidance or Protection modifiers. Add them on the Inventory or Companions page: Defense modifiers.')}</th><th>AV</th><th>PR</th><th></th></tr></thead>
       <tbody>
         ${bonusItems.map(it => `<tr><td>${escapeHtml(it.name || '(unnamed)')}</td><td>${signed(-(parseFloat(it.magicAvoidance) || 0))}</td><td>${signed(parseFloat(it.magicProtection) || 0)}</td><td></td></tr>`).join('')}
         ${handBonuses.map(({ b, i }) => `<tr><td>${escapeHtml(b.label || 'Bonus')} <span class="note">(entered by hand)</span>${infoTip('Typed in on an older version of this popup. It still counts; to change it, add the item to the Inventory with Defense modifiers and remove this.')}</td><td>${signed(parseFloat(b.av) || 0)}</td><td>${signed(parseFloat(b.pr) || 0)}</td><td class="item-del" title="Remove" onclick="updateOtherBonus(${i},'av',0);updateOtherBonus(${i},'pr',0)">✕</td></tr>`).join('')}

@@ -516,8 +516,12 @@ function spellHealthSigilHtml(character) {
   return ` <svg title="${label}" width="11" height="14" viewBox="0 0 11 14" style="vertical-align:middle" xmlns="http://www.w3.org/2000/svg"><polygon points="6.5,0 0,8 4.5,8 3,14 11,5 6,5" fill="${color}"/></svg>`;
 }
 
+// HP Add on each companion (Companions page) adds to the character's HP.
+function companionHpAdd(character) {
+  return (character.companions || []).reduce((s, c) => s + (parseFloat(c.hpAdd) || 0), 0);
+}
 function computeHP(character) {
-  const totalHP = getSkillSkval(character, 'Hit Points');
+  const totalHP = getSkillSkval(character, 'Hit Points') + companionHpAdd(character);
   const hpState = character.hpState || {};
   const system = hpState.system || 'standard';
 
@@ -760,6 +764,7 @@ function itemOnPerson(character, it) {
   return !loc || !!(character.storageOnPerson || {})[loc];
 }
 function itemModsInUse(character, it, countedShields) {
+  if (it.type === 'Companion') return true; // a companion's magic always counts
   if (it.type === 'Armor' || it.type === 'Weapon') return itemInUse(character, it);
   if (it.type === 'Ammunition') {
     const idx = (character.items || []).indexOf(it);
@@ -769,6 +774,10 @@ function itemModsInUse(character, it, countedShields) {
   if (magicItemHasInUse(it)) return itemInUse(character, it);
   return itemOnPerson(character, it);
 }
+// Everything whose magic modifiers can count: the items, then the companions.
+function magicModSources(character) {
+  return [...(character.items || []), ...(character.companions || [])];
+}
 function shieldsCountedItems(character) {
   return (character.items || []).filter(it => it.type === 'Shield' && itemInUse(character, it));
 }
@@ -777,7 +786,7 @@ function shieldsCountedItems(character) {
 function magicDefenseTotals(character) {
   const counted = shieldsCountedItems(character);
   const t = { av: 0, pr: 0, shieldAv: 0, shieldPr: 0 };
-  for (const it of character.items || []) {
+  for (const it of magicModSources(character)) {
     if (!itemHasModKind(it, 'defense') || !itemModsInUse(character, it, counted)) continue;
     const av = parseFloat(it.magicAvoidance) || 0, pr = parseFloat(it.magicProtection) || 0;
     if (it.type === 'Shield') { t.shieldAv += av; t.shieldPr += pr; } else { t.av += av; t.pr += pr; }
@@ -787,7 +796,7 @@ function magicDefenseTotals(character) {
 // Offense from non-weapon items in use; a weapon adds its own on top.
 function magicOffenseFromOthers(character) {
   const t = { toHit: 0, before: 0, after: 0, crit: 0 };
-  for (const it of character.items || []) {
+  for (const it of magicModSources(character)) {
     if (it.type === 'Weapon' || it.type === 'Ammunition' || !itemHasModKind(it, 'offense') || !itemModsInUse(character, it)) continue;
     t.toHit += parseFloat(it.magicBonusToHit) || 0; t.before += parseFloat(it.magicDamageBeforeDivider) || 0;
     t.after += parseFloat(it.magicDamageAfterDivider) || 0; t.crit += parseFloat(it.magicCritBonus) || 0;
@@ -799,7 +808,7 @@ function magicOffenseFromOthers(character) {
 function magicVoidReduction(character, poolName) {
   const counted = shieldsCountedItems(character);
   let best = 0, stacked = 0;
-  for (const it of character.items || []) {
+  for (const it of magicModSources(character)) {
     if (!itemHasModKind(it, 'void') || !itemModsInUse(character, it, counted)) continue;
     const amt = (it.magicVoid || []).filter(v => v && v.pool === poolName).reduce((s, v) => s + (parseFloat(v.amount) || 0), 0);
     if (!amt) continue;
