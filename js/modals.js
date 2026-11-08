@@ -64,12 +64,11 @@ function openSettingsModal() {
       <label class="check-row"><input type="checkbox" ${char.hideOverview ? 'checked' : ''} onchange="setCharSetting('hideOverview', this.checked)"> Hide Overview${infoTip('Removes Overview from the left-hand menu; picking a character opens General Info instead. If the skills are hidden too, Add Skill stays in the left-hand menu.')}</label>
     </div>`;
   const theme = currentTheme();
-  const themeBtn = (key, label) => `<button type="button" class="btn btn-dim ${theme === key ? 'active' : ''}" onclick="setTheme('${key}')">${label}</button>`;
   openModal(`
     <h3>Settings</h3>
     <div class="settings-section">Display${infoTip('Theme and font size are saved in this browser, for every character.')}</div>
     <div class="settings-row">
-      <div class="theme-choices">${THEMES.map(t => themeBtn(t.key, t.label)).join('')}</div>
+      <label class="theme-choice">Theme <select onchange="setTheme(this.value)">${THEMES.map(t => `<option value="${t.key}" ${theme === t.key ? 'selected' : ''}>${t.label}</option>`).join('')}</select></label>
       <span class="font-size-ctl">Font size
         <button type="button" class="btn btn-dim" title="Smaller" onclick="stepFontScale(-1)" ${fontScale() <= FONT_SCALE_MIN ? 'disabled' : ''}>A−</button>
         <span class="fs-readout">${Math.round(fontScale() * 100)}%</span>
@@ -84,7 +83,8 @@ function openSettingsModal() {
 // Display settings, kept in this browser (localStorage) and applied to <html>:
 // data-theme picks a theme's tokens in css/app.css, and --fs scales every font
 // size. A script in index.html's <head> applies them before the page draws.
-const THEMES = [{ key: 'default', label: 'Default' }, { key: 'light', label: 'Light' }, { key: 'dark', label: 'Dark' }];
+const THEMES = [{ key: 'default', label: 'Default' }, { key: 'light', label: 'Light' }, { key: 'dark', label: 'Dark' },
+  { key: 'red', label: 'Red' }, { key: 'blue', label: 'Blue' }, { key: 'green', label: 'Green' }, { key: 'purple', label: 'Purple' }];
 const FONT_SCALE_MIN = 0.7, FONT_SCALE_MAX = 1.6, FONT_SCALE_STEP = 0.1;
 function currentTheme() { return document.documentElement.dataset.theme || 'default'; }
 function fontScale() { return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fs')) || 1; }

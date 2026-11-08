@@ -47,6 +47,35 @@
   --font-head:    'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-display: 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
+/* Red, Blue, Green and Purple: the Default look and fonts in another colour */
+:root[data-theme="red"] {
+  --bg: #F3E1DE; --panel: #FFF7F5; --border: #D9A9A2;
+  --gold: #9B1C1C; --gold-dim: #A0524A;
+  --text: #2B1414; --text-dim: #6E4A46; --text-bright: #1A0B0B;
+  --input-bg: #FBEAE7; --header-bg: #6B0F14; --header-text: #FCE9E6;
+  --tint-rgb: 155,28,28;
+}
+:root[data-theme="blue"] {
+  --bg: #DCE6F2; --panel: #F6F9FD; --border: #A3B7D1;
+  --gold: #1C4E8A; --gold-dim: #4F6B8F;
+  --text: #14202E; --text-dim: #4A5B70; --text-bright: #0A121C;
+  --input-bg: #E8EFF8; --header-bg: #12345E; --header-text: #E9F0FA;
+  --tint-rgb: 28,78,138;
+}
+:root[data-theme="green"] {
+  --bg: #DDE9DC; --panel: #F6FAF4; --border: #A6C2A2;
+  --gold: #1F5E33; --gold-dim: #5C7A4A;
+  --text: #15241A; --text-dim: #4B5E4E; --text-bright: #0B160E;
+  --input-bg: #E7F1E5; --header-bg: #163D24; --header-text: #E8F3E6;
+  --tint-rgb: 31,94,51;
+}
+:root[data-theme="purple"] {
+  --bg: #E6DEEE; --panel: #FAF7FD; --border: #BBA8D0;
+  --gold: #5A2A82; --gold-dim: #7A5F96;
+  --text: #22162E; --text-dim: #5E4E6E; --text-bright: #140B1C;
+  --input-bg: #EFE8F6; --header-bg: #3A1A56; --header-text: #F1E9F8;
+  --tint-rgb: 90,42,130;
+}
 :root[data-theme="dark"] {
   --bg:        #1B1D22;
   --panel:     #25282F;
@@ -508,15 +537,15 @@ body.chat-window #chat-window-root { display: flex; flex-direction: column; heig
 .check-row { display: flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 6px; }
 .settings-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; margin: 4px 0 8px; }
 .overview-actions { display: flex; justify-content: flex-start; margin: 0 0 8px; }
-/* Light and Dark have a plain background instead of the parchment */
-:root[data-theme="light"] body, :root[data-theme="dark"] body { background-image: none; }
+/* Themes other than Default have a plain background instead of the parchment */
+:root[data-theme] body { background-image: none; }
 :root[data-theme="dark"] .dice-roll, :root[data-theme="dark"] .chat-template { background: rgba(255,255,255,.05); }
 :root[data-theme="dark"] .chat-body code, :root[data-theme="dark"] .chat-help code { background: rgba(255,255,255,.08); }
 /* Settings popup */
 .settings-section { font-size: calc(11px * var(--fs)); color: var(--gold-dim); text-transform: uppercase; letter-spacing: 1px; margin: 10px 0 6px; }
 .settings-section:first-of-type { margin-top: 0; }
-.theme-choices { display: flex; gap: 6px; flex-wrap: wrap; }
-.theme-choices .btn.active { background: rgba(var(--tint-rgb),.2); color: var(--gold); border-color: var(--gold); }
+.theme-choice { display: inline-flex; align-items: center; gap: 6px; }
+.theme-choice select { font-family: inherit; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); padding: 3px 6px; }
 .font-size-ctl { display: inline-flex; align-items: center; gap: 6px; }
 .font-size-ctl .btn { padding: 3px 10px; }
 .font-size-ctl .fs-readout { min-width: 3.5em; text-align: center; color: var(--text-dim); }
