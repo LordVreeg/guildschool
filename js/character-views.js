@@ -1099,13 +1099,13 @@ function renderSpellModule() {
       </table>
       ` : ''}
       <table class="item-table spellbook-table">
-        <thead><tr><th>Spell Name</th><th>Level</th><th>Cost</th><th>Duration</th><th>Notes</th><th></th><th></th></tr></thead>
+        <thead><tr><th>Spell Name</th><th>Level</th><th>Cost</th><th>Duration</th><th>Notes</th><th></th><th></th><th></th></tr></thead>
         <tbody>
           ${spellBooks(char).map(book => {
             const inBook = shownSpells.filter(({ sp }) => sp.book === book.bookId);
             const used = spellBookUsed(char, book.bookId);
             const hidden = collapsedSpellBooks.has(book.bookId);
-            const head = `<tr class="item-group" data-book="${escapeHtml(book.bookId)}" title="${hidden ? 'Show' : 'Hide'} this book's spells" onclick="toggleSpellBook(this.dataset.book)"><td colspan="7"><span class="item-group-toggle">${hidden ? '▸' : '▾'}</span>${escapeHtml(book.name || '(unnamed book)')} <span class="item-group-stats">(${escapeHtml(book.location || 'Carried')} · ${inBook.length} spell${inBook.length === 1 ? '' : 's'} · ${used} / ${SPELL_BOOK_CAPACITY})</span>${used > SPELL_BOOK_CAPACITY ? ' <span class="warn">⚠ over capacity</span>' : ''}</td></tr>`;
+            const head = `<tr class="item-group" data-book="${escapeHtml(book.bookId)}" title="${hidden ? 'Show' : 'Hide'} this book's spells" onclick="toggleSpellBook(this.dataset.book)"><td colspan="8"><span class="item-group-toggle">${hidden ? '▸' : '▾'}</span>${escapeHtml(book.name || '(unnamed book)')} <span class="item-group-stats">(${escapeHtml(book.location || 'Carried')} · ${inBook.length} spell${inBook.length === 1 ? '' : 's'} · ${used} / ${SPELL_BOOK_CAPACITY})</span>${used > SPELL_BOOK_CAPACITY ? ' <span class="warn">⚠ over capacity</span>' : ''}</td></tr>`;
             if (hidden) return head;
             return head + (inBook.map(({ sp, idx }) => {
             const catalogEntry = SPELLS.find(s => s.name === sp.name && s.school === sp.school);
@@ -1119,9 +1119,10 @@ function renderSpellModule() {
             <td>${escapeHtml(spellDurationText(catalogEntry && catalogEntry.duration, level))}</td>
             <td><input value="${sp.notes||''}" onchange="updateSpell(${idx},'notes',this.value)"></td>
             <td>${catalogEntry && catalogEntry.costs ? `<button class="btn btn-gold" style="font-size:calc(11px * var(--fs));padding:3px 8px" onclick="openHardcastModal(${idx})">Cast</button>` : ''}</td>
-            <td class="item-del" onclick="removeSpell(${idx})">✕</td>
+            <td class="item-edit" title="Edit" onclick="openEditSpellModal(${idx})">✎</td>
+            <td class="item-del" title="Delete" onclick="removeSpell(${idx})">✕</td>
           </tr>`;
-          }).join('') || '<tr><td colspan="7" class="note">No spells in this book yet.</td></tr>');
+          }).join('') || '<tr><td colspan="8" class="note">No spells in this book yet.</td></tr>');
           }).join('')}
         </tbody>
       </table>

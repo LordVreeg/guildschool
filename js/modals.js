@@ -415,8 +415,19 @@ function openAddSpellModal(opts) {
   opts = opts || {};
   if (ensureSpellBooks(state.characters[state.activeChar])) saveState();
   spellDraft = { school: '', name: '', cost: 0, notes: '', book: '' };
+  editingSpellIdx = null;
   if (!opts.keepAddNext) addNextSpell = false;
   renderAddSpellModal(opts.justAdded);
+}
+// ✎ on a spell in the spell list: the same popup, filled in from that spell.
+function openEditSpellModal(idx) {
+  const char = state.characters[state.activeChar];
+  const sp = char && (char.spellbook || [])[idx];
+  if (!sp) return;
+  spellDraft = { school: sp.school || '', name: sp.name || '', cost: sp.cost || 0, notes: sp.notes || '', book: sp.book || '' };
+  editingSpellIdx = idx;
+  addNextSpell = false;
+  renderAddSpellModal();
 }
 
 function renderAddSpellModal(justAdded) {
@@ -433,10 +444,11 @@ function renderAddSpellModal(justAdded) {
   // picked; the default is a carried book with room (see defaultSpellBook).
   const books = spellBooks(char);
   const cost = parseFloat(d.cost) || 0;
+  const editing = editingSpellIdx !== null;
   const chosen = books.find(b => b.bookId === d.book);
-  if (!chosen || spellBookRoom(char, chosen) < cost) { const def = defaultSpellBook(char, cost); d.book = def ? def.bookId : ''; }
+  if (!chosen || spellDraftRoom(char, chosen) < cost) { const def = books.find(b => spellDraftRoom(char, b) >= cost && itemOnPerson(char, b)) || books.find(b => spellDraftRoom(char, b) >= cost); d.book = def ? def.bookId : ''; }
   const bookField = `<select class="w-lg" onchange="setSpellDraftBook(this.value)">${opt('', '— select —', !d.book)}${books.map(b => {
-      const room = spellBookRoom(char, b);
+      const room = spellDraftRoom(char, b);
       return `<option value="${escapeHtml(b.bookId)}" ${d.book === b.bookId ? 'selected' : ''} ${room < cost ? 'disabled' : ''}>${escapeHtml(b.name || '(unnamed)')} (${escapeHtml(b.location || 'Carried')}) · ${SPELL_BOOK_CAPACITY - room} / ${SPELL_BOOK_CAPACITY}${room < cost ? ' · full' : ''}</option>`;
     }).join('')}</select>`;
   const spellField = !d.school
@@ -445,7 +457,7 @@ function renderAddSpellModal(justAdded) {
       ? `<select class="w-lg" onchange="setSpellDraftName(this.value)">${opt('', '— select —', !d.name)}${catalog.map(sp => opt(sp.name, sp.name, d.name === sp.name)).join('')}</select>`
       : `<input class="w-lg" value="${escapeHtml(d.name)}" placeholder="Not in the catalog: type its name" oninput="setSpellDraftName(this.value, true)">`;
   openModal(`
-    <h3>Add Spell</h3>
+    <h3>${editing ? 'Edit Spell' : 'Add Spell'}</h3>
     ${justAdded ? `<div class="note">Added “${escapeHtml(justAdded)}”. Next spell:</div>` : ''}
     <div class="form-row">
       <div class="form-group"><label>School</label>
@@ -461,12 +473,13 @@ function renderAddSpellModal(justAdded) {
       <div class="computed-item"><span class="ci-label">Duration</span><span class="ci-value" style="font-size:calc(13px * var(--fs))">${escapeHtml(spellDurationText(def && def.duration, level))}</span></div>
       <div class="computed-item"><span class="ci-label">Total Cost</span><span class="ci-value">${d.cost || 0}</span></div>
     </div>
+    <div class="form-group"><label>Notes</label><input class="w-full" value="${escapeHtml(d.notes || '')}" oninput="spellDraft.notes=this.value"></div>
     <div class="modal-actions" style="align-items:center">
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-right:auto">
+      ${editing ? '' : `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-right:auto">
         <input type="checkbox" ${addNextSpell ? 'checked' : ''} onchange="addNextSpell=this.checked"> Add another spell
-      </label>
-      <button class="btn btn-dim" onclick="spellDraft=null;addNextSpell=false;closeModal()">Cancel</button>
-      <button class="btn btn-gold" id="as-add" ${d.school && String(d.name).trim() && d.book ? '' : 'disabled'} onclick="confirmAddSpell()">Add Spell</button>
+      </label>`}
+      <button class="btn btn-dim" onclick="spellDraft=null;editingSpellIdx=null;addNextSpell=false;closeModal()">Cancel</button>
+      <button class="btn btn-gold" id="as-add" ${d.school && String(d.name).trim() && d.book ? '' : 'disabled'} onclick="confirmAddSpell()">${editing ? 'Save' : 'Add Spell'}</button>
     </div>`, { wide: true, width: 'min(560px, 92vw)' });
 }
 

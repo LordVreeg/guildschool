@@ -1213,9 +1213,17 @@ function confirmAddSpellBook() {
 // with no catalog entries takes a typed name instead (cost 0).
 let spellDraft = null;
 let addNextSpell = false;
+// The spell being edited (its index in char.spellbook), or null when adding.
+let editingSpellIdx = null;
+// Room in a book for the spell in the popup: an edited spell's own cost
+// doesn't count against the book it is already in.
+function spellDraftRoom(char, book) {
+  const own = editingSpellIdx !== null && (char.spellbook || [])[editingSpellIdx];
+  return spellBookRoom(char, book) + (own && own.book === book.bookId ? parseFloat(own.cost) || 0 : 0);
+}
 function setSpellDraftSchool(school) {
   if (!spellDraft) return;
-  spellDraft = { school, name: '', cost: 0, notes: '', book: spellDraft.book || '' };
+  spellDraft = { school, name: '', cost: 0, notes: spellDraft.notes || '', book: spellDraft.book || '' };
   renderAddSpellModal();
 }
 function setSpellDraftName(name, typed) {
@@ -1237,13 +1245,17 @@ function confirmAddSpell() {
   if (!char || !d || !d.school || !String(d.name || '').trim()) return;
   // it has to go in a spell book with room for it
   const book = spellBooks(char).find(b => b.bookId === d.book);
-  if (!book || spellBookRoom(char, book) < (parseFloat(d.cost) || 0)) return;
+  if (!book || spellDraftRoom(char, book) < (parseFloat(d.cost) || 0)) return;
   if (!char.spellbook) char.spellbook = [];
-  char.spellbook.push({ school: d.school, name: String(d.name).trim(), cost: d.cost || 0, notes: '', book: book.bookId });
+  const entry = { school: d.school, name: String(d.name).trim(), cost: d.cost || 0, notes: d.notes || '', book: book.bookId };
+  const editing = editingSpellIdx !== null && char.spellbook[editingSpellIdx];
+  if (editing) Object.assign(char.spellbook[editingSpellIdx], entry);
+  else char.spellbook.push(entry);
   spellDraft = null;
+  editingSpellIdx = null;
   saveState();
   renderSpellModule();
-  if (addNextSpell) { openAddSpellModal({ keepAddNext: true, justAdded: d.name }); return; }
+  if (!editing && addNextSpell) { openAddSpellModal({ keepAddNext: true, justAdded: d.name }); return; }
   closeModal();
 }
 
