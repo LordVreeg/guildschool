@@ -160,6 +160,45 @@ A character that belongs to a group (or sits in an encounter) may be refused
 because other tables still point to it. If that's the cause, the fix is in
 Supabase (cascade, or remove it from the group first).
 
+### Deleting a character that is in a combat encounter
+
+Confirmed 2026-11-07. Deleting a character that is (or was) a combatant
+fails with: `new row for relation "combat_combatants" violates check
+constraint "combat_combatants_one_source"`. The link from
+`combat_combatants.character_id` to `characters` is probably
+`ON DELETE SET NULL`, so the delete clears `character_id` on the combatant
+row. That leaves the row with no source, which `combat_combatants_one_source`
+forbids, and Postgres rolls the whole delete back. Deleting a bestiary entry
+(NPC or temp character) that is in an encounter likely fails the same way
+through `bestiary_entry_id`.
+
+Needed in the Supabase dashboard (SQL Editor). Check the current rules first:
+
+```sql
+select conname, pg_get_constraintdef(oid)
+from pg_constraint
+where conrelid = 'public.combat_combatants'::regclass;
+```
+
+Then either:
+
+- **Cascade** (recommended): the combatant is deleted with the character.
+  ```sql
+  alter table public.combat_combatants
+    drop constraint combat_combatants_character_id_fkey,
+    add constraint combat_combatants_character_id_fkey
+      foreign key (character_id) references public.characters(id) on delete cascade;
+  ```
+  Do the same for `bestiary_entry_id`. Make sure `combat_action_tracks`
+  also cascades when its combatant is deleted, or that will fail next.
+- **Keep the combatant as a name only:** relax the check to allow no source,
+  e.g. `check (num_nonnulls(character_id, bestiary_entry_id) <= 1)`.
+  Past encounters keep their history, but the combatant no longer links to
+  a sheet.
+
+Until then: remove the character from its encounters on the Combat page
+(the GM can do this), then delete it.
+
 ## Local development
 
 - **Opening `index.html` straight from disk doesn't work.** The app fetches
