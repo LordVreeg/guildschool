@@ -1153,6 +1153,7 @@ function setItemInUse(idx, checked) {
   const it = char && char.items && char.items[idx];
   if (!it) return;
   if (it.type === 'Armor') it.worn = !!checked;
+  else if (it.type === 'Magic Item') { if (checked) delete it.inUse; else it.inUse = false; }
   else {
     if (checked) {
       const inHand = char.items.filter(o => o !== it && (o.type === 'Weapon' || o.type === 'Shield') && itemInUse(char, o)).concat([it]);

@@ -711,7 +711,12 @@ function itemInUse(character, it) {
   if (!it || !itemOnPerson(character, it)) return false;
   if (it.type === 'Armor') return it.worn !== false;
   if (it.type === 'Weapon' || it.type === 'Shield') return !!it.wielded;
+  // a magic item (not a potion or scroll) is in use unless its In Use is unticked
+  if (magicItemHasInUse(it)) return it.inUse !== false;
   return false;
+}
+function magicItemHasInUse(it) {
+  return !!it && it.type === 'Magic Item' && !itemSpellRule(it);
 }
 function weaponOneHanded(it) {
   return (parseFloat(it.stn1h) || 0) !== 0 || (parseFloat(it.cdn1h) || 0) !== 0;
@@ -761,6 +766,7 @@ function itemModsInUse(character, it, countedShields) {
     return (character.items || []).some(w => w.type === 'Weapon' && w.ammunitionItemIdx !== undefined && w.ammunitionItemIdx !== '' && String(w.ammunitionItemIdx) === String(idx));
   }
   if (it.type === 'Shield') return itemInUse(character, it);
+  if (magicItemHasInUse(it)) return itemInUse(character, it);
   return itemOnPerson(character, it);
 }
 function shieldsCountedItems(character) {

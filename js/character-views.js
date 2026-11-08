@@ -324,7 +324,7 @@ function itemKindLabel(it) {
 }
 
 // The Inventory's sections, in order, and which one an item goes in.
-const INVENTORY_SECTIONS = ['Armor & Weapons', 'Scrolls', 'Potions', 'Magic Items', 'Items', 'Money', 'Spell Books'];
+const INVENTORY_SECTIONS = ['Armor & Weapons', 'Scrolls', 'Potions', 'Magic Items', 'Items', 'Items, Custom', 'Money', 'Spell Books'];
 function inventorySectionOf(it) {
   if (['Weapon', 'Shield', 'Armor', 'Ammunition'].includes(it.type)) return 'Armor & Weapons';
   if (it.type === 'Spell Book') return 'Spell Books';
@@ -333,6 +333,8 @@ function inventorySectionOf(it) {
   if (rule === 'scroll') return 'Scrolls';
   if (rule === 'potion') return 'Potions';
   if (it.type === 'Magic Item') return 'Magic Items';
+  // an Item whose class is custom (not from the catalog) has its own section
+  if (it.type === 'Item' && itemPicksFromItem(it).itemClass === ITEM_PICK_CUSTOM) return 'Items, Custom';
   return 'Items';
 }
 
@@ -356,7 +358,7 @@ function itemModsLineHtml(char, it) {
   }
   if (!bits.length) return '';
   const inUse = itemModsInUse(char, it, shieldsCountedItems(char));
-  const why = it.type === 'Ammunition' ? "pick it as a missile weapon's ammunition on the Combat page" : (it.type === 'Weapon' || it.type === 'Shield' || it.type === 'Armor') ? 'carry it and tick In Use' : 'carry it on your person';
+  const why = it.type === 'Ammunition' ? "pick it as a missile weapon's ammunition on the Combat page" : (it.type === 'Weapon' || it.type === 'Shield' || it.type === 'Armor' || magicItemHasInUse(it)) ? 'carry it and tick In Use' : 'carry it on your person';
   return `<tr class="item-spell-row"><td colspan="9">◈ ${escapeHtml(bits.join(' · '))}${inUse ? '' : ` <span style="color:#c05050" title="Not counting right now: ${why}">(not in use)</span>`}</td></tr>`;
 }
 
@@ -377,8 +379,6 @@ function containerMoveButtons(char, name) {
   return b(-1, '▲', i <= 0) + b(1, '▼', i < 0 || i >= list.length - 1);
 }
 
-// The Inventory's In Use tick, for weapons, shields and armor carried on the
-// person (an item in a container that isn't on the person can't be in use).
 // Inventory warnings that pair ammunition with weapons (see ammoFitsWeapon):
 // ammunition no weapon owned can fire, and a weapon that takes ammunition
 // with none of it owned. Wherever the items are kept.
@@ -395,10 +395,13 @@ function inventoryAmmoWarning(char, it) {
   return '';
 }
 
+// The Inventory's In Use tick, for weapons, shields, armor and magic items
+// (not potions or scrolls) carried on the person (an item in a container
+// that isn't on the person can't be in use).
 function inUseCellHtml(char, it, idx) {
-  if (it.type !== 'Weapon' && it.type !== 'Shield' && it.type !== 'Armor') return '';
+  if (it.type !== 'Weapon' && it.type !== 'Shield' && it.type !== 'Armor' && !magicItemHasInUse(it)) return '';
   if (!itemOnPerson(char, it)) return '<span class="note" title="Not on the person: in a container">—</span>';
-  return `<input type="checkbox" ${itemInUse(char, it) ? 'checked' : ''} title="${it.type === 'Armor' ? 'Worn' : 'In hand. One two-handed weapon, two one-handed weapons, or a one-handed weapon and a shield.'}" onchange="setItemInUse(${idx}, this.checked)">`;
+  return `<input type="checkbox" ${itemInUse(char, it) ? 'checked' : ''} title="${it.type === 'Armor' ? 'Worn' : it.type === 'Magic Item' ? 'Worn or in use: its magic counts' : 'In hand. One two-handed weapon, two one-handed weapons, or a one-handed weapon and a shield.'}" onchange="setItemInUse(${idx}, this.checked)">`;
 }
 
 // Read-only inventory rows, grouped into folding sections by kind
@@ -459,7 +462,7 @@ function renderInventoryModule() {
     </div>
     <div class="panel-body">
       <table class="item-table inventory-table">
-        <thead><tr><th>Item</th><th>Type</th><th>Location</th><th>Qty</th><th title="Weapons and shields in hand, armor worn: these are what the Combat page counts">In Use</th><th>MW/Magic</th><th>Notes</th><th></th><th></th></tr></thead>
+        <thead><tr><th>Item</th><th>Type</th><th>Location</th><th>Qty</th><th title="Weapons and shields in hand, armor worn, magic items in use: these are what the Combat page counts">In Use</th><th>MW/Magic</th><th>Notes</th><th></th><th></th></tr></thead>
         <tbody>${inventoryGroupsHtml(char)}</tbody>
       </table>
       <button class="btn btn-gold" onclick="openAddItemModal()">Add Item</button>
