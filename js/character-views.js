@@ -1052,7 +1052,11 @@ function renderSpellModule() {
   const char = state.characters[state.activeChar];
   if (!char) return;
   if (ensureSpellBooks(char)) saveState();
-  const pools = spellPoolsInOrder(char);
+  const allPools = spellPoolsInOrder(char);
+  // Columns hidden from the pool table (Hide column in a pool's popup).
+  const hiddenPools = allPools.filter(p => (char.hiddenSpellPools || []).includes(p.name));
+  const tablePools = allPools.filter(p => !hiddenPools.includes(p));
+  const pools = allPools;
   // Spellbook entries with nothing in them (left by the old "Add Spell") are hidden
   const spellbook = char.spellbook || [];
   const shownSpells = spellbook.map((sp, idx) => ({ sp, idx })).filter(({ sp }) => !isBlankSpell(sp))
@@ -1073,18 +1077,19 @@ function renderSpellModule() {
 
       <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Spell Points${infoTip(`Every spell costs Spirit SP plus whichever other schools it draws on. Short on a school's points? Spirit can cover the gap at the shown conversion ratio — better ratio the more trained (Familiar → Specialized → Devoted) you are in that school relative to your Spirit level. Effective Spell Level (used for duration/range formulas with "plev") gets a bonus once Specialized or Devoted.`)}</div>
       ${pools.length === 0 ? '<div class="note">No spell point pools trained. Add a pool (e.g. Spirit SP, House of Fire SP) as a skill first.</div>' : ''}
-      ${pools.length ? `
+      ${tablePools.length ? `
       <table class="skill-table spell-pool-table">
-        <thead><tr><th></th>${pools.map(p => `<th class="spell-pool-head" title="Open ${escapeHtml(p.name)}" data-pool="${escapeHtml(p.name)}" onclick="openSpellPoolModal(this.dataset.pool)">${escapeHtml(p.name)}</th>`).join('')}</tr></thead>
+        <thead><tr><th></th>${tablePools.map(p => `<th class="spell-pool-head" title="Open ${escapeHtml(p.name)}" data-pool="${escapeHtml(p.name)}" onclick="openSpellPoolModal(this.dataset.pool)">${escapeHtml(p.name)}</th>`).join('')}</tr></thead>
         <tbody>
-          <tr><th>Max</th>${pools.map(p => `<td>${p.maxSP}</td>`).join('')}</tr>
-          <tr><th>Current</th>${pools.map(p => `<td><input type="number" step="1" class="w-sm" value="${p.currentSP}" data-pool="${escapeHtml(p.name)}" onchange="updateSpellState(this.dataset.pool,'current',this.value)"></td>`).join('')}</tr>
-          <tr><th>Used</th>${pools.map(p => `<td>${p.usedSP}</td>`).join('')}</tr>
-          <tr class="spell-click-row" title="What familiarity means, and how far each pool is from the next tier" onclick="openFamiliarityModal()"><th>Familiarity ▸</th>${pools.map(p => `<td>${escapeHtml(p.familiarity)}</td>`).join('')}</tr>
-          <tr class="spell-click-row" title="Choose which items and companions reduce spell costs" onclick="openVoidSourcesModal()"><th>SP Reduction ▸</th>${pools.map(p => `<td>${p.spReduction ? '−' + p.spReduction : '0'}</td>`).join('')}</tr>
+          <tr><th>Max</th>${tablePools.map(p => `<td>${p.maxSP}</td>`).join('')}</tr>
+          <tr><th>Current</th>${tablePools.map(p => `<td><input type="number" step="1" class="w-sm" value="${p.currentSP}" data-pool="${escapeHtml(p.name)}" onchange="updateSpellState(this.dataset.pool,'current',this.value)"></td>`).join('')}</tr>
+          <tr><th>Used</th>${tablePools.map(p => `<td>${p.usedSP}</td>`).join('')}</tr>
+          <tr class="spell-click-row" title="What familiarity means, and how far each pool is from the next tier" onclick="openFamiliarityModal()"><th>Familiarity ▸</th>${tablePools.map(p => `<td>${escapeHtml(p.familiarity)}</td>`).join('')}</tr>
+          <tr class="spell-click-row" title="Choose which items and companions reduce spell costs" onclick="openVoidSourcesModal()"><th>SP Reduction ▸</th>${tablePools.map(p => `<td>${p.spReduction ? '−' + p.spReduction : '0'}</td>`).join('')}</tr>
         </tbody>
       </table>
       <div class="note">Click a pool's name, Familiarity or SP Reduction for more.</div>` : ''}
+      ${hiddenPools.length ? `<div class="note">Hidden: ${hiddenPools.map(p => escapeHtml(p.name)).join(', ')} <button class="btn btn-dim btn-xs" onclick="showAllSpellPoolColumns()">Show all</button></div>` : ''}
       <div class="form-group" style="margin-top:10px"><label>Spell Success Modifier${infoTip('Added to the success chance of every spell this character casts. Use a negative number for a penalty.')}</label>
         <input type="number" step="any" class="w-sm" value="${escapeHtml(char.spellSuccessMod ?? '')}" placeholder="0" onchange="updateChar('spellSuccessMod', this.value.trim() === '' ? '' : (parseFloat(this.value) || 0))"></div>
 
@@ -1181,7 +1186,7 @@ function renderSpellPoolModal() {
       <div class="form-group"><label>Reclamation Rate Bonus</label><input type="number" class="w-sm" value="${p.reclamationBonus}" onchange="updateSpellEnhancer('${p.name}','reclamationBonus',this.value)"></div>
       <div class="form-group"><label>Spell Success Bonus</label><input type="number" class="w-sm" value="${p.successBonus}" onchange="updateSpellEnhancer('${p.name}','successBonus',this.value)"></div>
     </div>
-    <div class="modal-actions"><button class="btn btn-gold" onclick="openSpellPool=null;closeModal()">Close</button></div>`, { wide: true });
+    <div class="modal-actions"><button class="btn btn-dim" data-pool="${escapeHtml(p.name)}" onclick="hideSpellPoolColumn(this.dataset.pool)" title="Hide this pool's column in the Spell Points table">Hide column</button><button class="btn btn-gold" onclick="openSpellPool=null;closeModal()">Close</button></div>`, { wide: true });
 }
 
 // The Familiarity popup (from the Familiarity row on the Spells page): the

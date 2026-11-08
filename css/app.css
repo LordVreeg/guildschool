@@ -347,6 +347,7 @@ td div.note, td.note, li.note { margin: 0; }
 .spell-pool-table { width: auto; }
 .spell-pool-table .spell-pool-head { cursor: pointer; text-decoration: underline dotted; }
 .spell-pool-table .spell-pool-head:hover { color: #E9C64A; }
+.btn-xs { font-size: calc(11px * var(--fs)); padding: 2px 8px; }
 .spell-pool-table .spell-click-row { cursor: pointer; }
 .spell-pool-table .spell-click-row:hover td, .spell-pool-table .spell-click-row:hover th { background: rgba(var(--tint-rgb), .1); }
 .void-sources-table .void-off td { color: var(--text-dim); }

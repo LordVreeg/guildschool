@@ -778,6 +778,26 @@ function setVoidSourceActive(key, checked) {
   renderVoidSourcesModal();
 }
 
+// Hides a pool's column in the Spells page's Spell Points table (the pool
+// itself is unchanged). "Show all" under the table brings them back.
+function hideSpellPoolColumn(poolName) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const hidden = char.hiddenSpellPools || (char.hiddenSpellPools = []);
+  if (!hidden.includes(poolName)) hidden.push(poolName);
+  openSpellPool = null;
+  closeModal();
+  saveState();
+  renderSpellModule();
+}
+function showAllSpellPoolColumns() {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  delete char.hiddenSpellPools;
+  saveState();
+  renderSpellModule();
+}
+
 function updateSpellEnhancer(poolName, field, value) {
   const char = state.characters[state.activeChar];
   if (!char) return;
