@@ -91,7 +91,7 @@ function itemSpellRule(it) {
 // A scroll or a plaque: one use per spell, gone with its last spell.
 function itemSpellOneUse(rule) { return rule === 'scroll' || rule === 'plaque'; }
 function itemCanHoldSpells(it) {
-  return !!it && (it.type === 'Magic Item' || (!!it.masterwork && ['Weapon', 'Armor', 'Shield', 'Ammunition'].includes(it.type)));
+  return !!it && (it.type === 'Magic Item' || it.type === 'Companion' || (!!it.masterwork && ['Weapon', 'Armor', 'Shield', 'Ammunition'].includes(it.type)));
 }
 // Uses come back as the character's group clock moves into the next period
 // (Reckoning of Nebler: 22-hour days, 8-day Hawaaks, Goesi of 60 days + the
@@ -176,6 +176,7 @@ const ALL_MOD_KINDS = { base: ['defense', 'offense', 'void'], optional: [] };
 function itemModKinds(it) {
   if (!it) return null;
   if (it.type === 'Magic Item') return itemSpellRule(it) ? null : ALL_MOD_KINDS;
+  if (it.type === 'Companion') return ALL_MOD_KINDS;
   return it.masterwork ? ALL_MOD_KINDS : null;
 }
 // The kind an item type is mostly about, whose part of the item popup starts

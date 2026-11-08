@@ -150,6 +150,7 @@ function renderAddItemModal(justAdded) {
   const char = state.characters[state.activeChar];
   const d = itemDraft;
   if (!char || !d) return;
+  if (d.type === 'Companion') { renderCompanionModal(); return; }
   const val = x => escapeHtml(x === undefined || x === null ? '' : x);
   const opt = (value, label, selected) => `<option value="${val(value)}" ${selected ? 'selected' : ''}>${escapeHtml(label)}</option>`;
   // tier: 'sm' | 'md' | 'lg' | 'full' (the field-width tiers), or 'fill' to take the rest of the row
@@ -207,6 +208,46 @@ function renderAddItemModal(justAdded) {
       </label>`}
       <button class="btn btn-dim" onclick="itemDraft=null;editingItemIdx=null;addNextItem=false;closeModal()">Cancel</button>
       <button class="btn btn-gold" ${lock} onclick="confirmAddItem()">${editing ? 'Save' : 'Add Item'}</button>
+    </div>`, { wide: true, width: 'min(760px, 94vw)', className: 'plain-font' });
+}
+
+// Add Companion / ✎ on the Companions page. The companion is edited in
+// itemDraft (type 'Companion'), so the item popup's Magic Modifiers and Spells
+// sections work on it unchanged; see confirmCompanion.
+function openAddCompanionModal() {
+  itemDraft = { type: 'Companion', name: '', description: '', resistanceAdd: '', hp: '', hpAdd: '', notes: '' };
+  editingCompanionIdx = null;
+  resetItemSpellDraft();
+  renderCompanionModal();
+}
+function openEditCompanionModal(idx) {
+  const char = state.characters[state.activeChar];
+  const c = char && (char.companions || [])[idx];
+  if (!c) return;
+  itemDraft = JSON.parse(JSON.stringify(c));
+  itemDraft.type = 'Companion';
+  editingCompanionIdx = idx;
+  resetItemSpellDraft();
+  renderCompanionModal();
+}
+function renderCompanionModal() {
+  const d = itemDraft;
+  if (!d) return;
+  const val = x => escapeHtml(x === undefined || x === null ? '' : x);
+  const editing = editingCompanionIdx !== null;
+  const num = (field, label) => `<div class="form-group"><label>${label}</label><input type="number" class="w-sm" value="${val(d[field])}" oninput="setAddItemField('${field}',this.value)"></div>`;
+  openModal(`
+    <h3>${editing ? 'Edit Companion' : 'Add Companion'}</h3>
+    <div class="form-group"><label>Name</label><input class="w-full" value="${val(d.name)}" oninput="setAddItemField('name',this.value)"></div>
+    <div class="form-group"><label>Description</label><textarea class="w-full" rows="2" style="resize:vertical" oninput="setAddItemField('description',this.value)">${val(d.description)}</textarea></div>
+    <div class="form-row">${num('resistanceAdd', 'Resistance Add')}${num('hp', 'HP')}${num('hpAdd', 'HP Add')}</div>
+    <div class="form-group"><label>Notes</label><textarea class="w-full" rows="2" style="resize:vertical" oninput="setAddItemField('notes',this.value)">${val(d.notes)}</textarea></div>
+    ${itemModsSectionHtml(d)}
+    ${itemSpellsSectionHtml(d)}
+    <div id="ai-error" class="warn" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn btn-dim" onclick="itemDraft=null;editingCompanionIdx=null;closeModal()">Cancel</button>
+      <button class="btn btn-gold" onclick="confirmCompanion()">${editing ? 'Save' : 'Add Companion'}</button>
     </div>`, { wide: true, width: 'min(760px, 94vw)', className: 'plain-font' });
 }
 

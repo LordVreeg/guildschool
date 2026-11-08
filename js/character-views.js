@@ -360,7 +360,7 @@ function itemModsLineHtml(char, it) {
     if (v.length) bits.push('Void: ' + v.join(', ') + (it.magicVoidStacks ? ' (stacks)' : ''));
   }
   if (!bits.length) return '';
-  const inUse = itemModsInUse(char, it, shieldsCountedItems(char));
+  const inUse = it.type === 'Companion' || itemModsInUse(char, it, shieldsCountedItems(char));
   const why = it.type === 'Ammunition' ? "pick it as a missile weapon's ammunition on the Combat page" : (it.type === 'Weapon' || it.type === 'Shield' || it.type === 'Armor' || magicItemHasInUse(it)) ? 'carry it and tick In Use' : 'carry it on your person';
   return `<tr class="item-spell-row"><td colspan="9">◈ ${escapeHtml(bits.join(' · '))}${inUse ? '' : ` <span style="color:#c05050" title="Not counting right now: ${why}">(not in use)</span>`}</td></tr>`;
 }
@@ -455,6 +455,7 @@ function inventoryGroupsHtml(char) {
 // the item's row on the Inventory page and the Combat page.
 function itemSpellRowsHtml(char, it, idx, colspan) {
   if (!itemCanHoldSpells(it)) return '';
+  if (typeof idx === 'string') idx = `'${idx}'`; // a companion ('c0', see spellHolderOf)
   return (it.spells || []).map((sp, j) => {
         const left = itemSpellUsesLeft(sp, char);
         const rule = itemSpellRule(it);
@@ -511,6 +512,38 @@ function renderInventoryModule() {
       <div class="form-group"><label>Item Notes</label>
         <textarea class="w-full" rows="3" style="resize:vertical" onchange="updateChar('itemNotes',this.value)">${char.itemNotes||''}</textarea>
       </div>
+    </div>
+  </div>`;
+}
+
+// The Companions page: one row per companion (char.companions), with its
+// magic modifiers and spells under it, as on the Inventory page. Add / ✎
+// open the companion popup (see openAddCompanionModal).
+function renderCompanionsModule() {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const list = char.companions || [];
+  const num = v => v === undefined || v === null || v === '' ? '' : escapeHtml(v);
+  document.getElementById('main').innerHTML = `
+  <div class="panel plain-font">
+    <div class="panel-header"><h2>Companions</h2></div>
+    <div class="panel-body">
+      <table class="item-table inventory-table">
+        <thead><tr><th>Name</th><th>Description</th><th>Resistance Add</th><th>HP</th><th>HP Add</th><th>Notes</th><th></th><th></th></tr></thead>
+        <tbody>
+          ${list.map((c, i) => `<tr class="item-row">
+            <td>${escapeHtml(c.name || '')}</td>
+            <td class="item-kind" style="white-space:pre-wrap">${escapeHtml(c.description || '')}</td>
+            <td class="item-qty">${num(c.resistanceAdd)}</td>
+            <td class="item-qty">${num(c.hp)}</td>
+            <td class="item-qty">${num(c.hpAdd)}</td>
+            <td class="item-kind" style="white-space:pre-wrap">${escapeHtml(c.notes || '')}</td>
+            <td class="item-edit" title="Edit" onclick="openEditCompanionModal(${i})">✎</td>
+            <td class="item-del" title="Delete" onclick="removeCompanion(${i})">✕</td>
+          </tr>` + itemModsLineHtml(char, c) + itemSpellRowsHtml(char, c, 'c' + i, 8)).join('') || '<tr><td colspan="8" class="note">No companions yet.</td></tr>'}
+        </tbody>
+      </table>
+      <button class="btn btn-gold" onclick="openAddCompanionModal()">Add Companion</button>
     </div>
   </div>`;
 }

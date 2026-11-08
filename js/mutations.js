@@ -225,26 +225,39 @@ function confirmAddItem() {
     err.style.display = 'block';
     return;
   }
-  // Spell rows under Spells are saved with the item. A row that's been
-  // started but isn't complete stops the save rather than being dropped.
+  const problem = finishItemSpellsAndMods(d);
+  if (problem) {
+    const err = document.getElementById('ai-error');
+    err.textContent = problem;
+    err.style.display = 'block';
+    return;
+  }
+  if (!char.items) char.items = [];
+  const editing = editingItemIdx !== null && char.items[editingItemIdx];
+  if (d.type === 'Spell Book') { d.bookId = (editing && editing.bookId) || d.bookId || newBookId(); d.weight = SPELL_BOOK_WEIGHT; } else delete d.bookId;
+  if (editing) char.items[editingItemIdx] = d;
+  else char.items.push(d);
+  itemDraft = null;
+  editingItemIdx = null;
+  saveState();
+  renderInventoryModule();
+  if (!editing && addNextItem) { openAddItemModal({ keepAddNext: true, justAdded: d.name }); return; }
+  closeModal();
+}
+
+// Saving the item (or companion) popup: adds the finished rows under Spells
+// to d.spells and keeps only the magic modifier kinds it has. Returns what
+// stops the save ('' = fine). A spell row that's been started but isn't
+// complete stops it rather than being dropped.
+function finishItemSpellsAndMods(d) {
   if (itemCanHoldSpells(d)) {
     const started = itemSpellDrafts.filter(sp => sp.school || String(sp.name || '').trim());
-    if (started.some(sp => !itemSpellReady(sp))) {
-      const err = document.getElementById('ai-error');
-      err.textContent = 'Finish each spell under Spells (school, spell, level and uses), or remove it with ✕.';
-      err.style.display = 'block';
-      return;
-    }
+    if (started.some(sp => !itemSpellReady(sp))) return 'Finish each spell under Spells (school, spell, level and uses), or remove it with ✕.';
     const rule = itemSpellRule(d);
     const total = (d.spells || []).length + started.length;
     const ruleError = rule === 'potion' && total !== 1 ? 'A potion holds exactly one spell.'
       : itemSpellOneUse(rule) && total < 1 ? `A ${rule} needs at least one spell.` : '';
-    if (ruleError) {
-      const err = document.getElementById('ai-error');
-      err.textContent = ruleError;
-      err.style.display = 'block';
-      return;
-    }
+    if (ruleError) return ruleError;
     for (const sp of started) {
       if (!rule && sp.period === 'permanent') { (d.spells = d.spells || []).push({ school: sp.school, name: String(sp.name).trim(), level: parseInt(sp.level), period: 'permanent' }); continue; }
       const usesMax = itemSpellOneUse(rule) ? 1 : parseInt(sp.usesMax);
@@ -262,17 +275,44 @@ function confirmAddItem() {
   if (itemHasModKind(d, 'void')) d.magicVoid = (d.magicVoid || []).filter(v => v && v.pool && parseFloat(v.amount));
   if (!itemHasModKind(d, 'void') || !(d.magicVoid || []).length) { delete d.magicVoid; delete d.magicVoidStacks; }
   delete d._mod_offense; delete d._mod_defense; delete d._mod_void;
-  if (!char.items) char.items = [];
-  const editing = editingItemIdx !== null && char.items[editingItemIdx];
-  if (d.type === 'Spell Book') { d.bookId = (editing && editing.bookId) || d.bookId || newBookId(); d.weight = SPELL_BOOK_WEIGHT; } else delete d.bookId;
-  if (editing) char.items[editingItemIdx] = d;
-  else char.items.push(d);
+  return '';
+}
+
+// Companions (char.companions): name (required), description, resistanceAdd,
+// hp, hpAdd, notes, magic modifiers and spells. Edited in itemDraft by the
+// companion popup; editingCompanionIdx is the one being edited, or null.
+let editingCompanionIdx = null;
+function confirmCompanion() {
+  const char = state.characters[state.activeChar];
+  const d = itemDraft;
+  if (!char || !d) return;
+  const err = msg => { const el = document.getElementById('ai-error'); el.textContent = msg; el.style.display = 'block'; };
+  d.name = String(d.name || '').trim();
+  if (!d.name) return err('Give the companion a name.');
+  const problem = finishItemSpellsAndMods(d);
+  if (problem) return err(problem);
+  if (!char.companions) char.companions = [];
+  if (editingCompanionIdx !== null && char.companions[editingCompanionIdx]) char.companions[editingCompanionIdx] = d;
+  else char.companions.push(d);
   itemDraft = null;
-  editingItemIdx = null;
+  editingCompanionIdx = null;
   saveState();
-  renderInventoryModule();
-  if (!editing && addNextItem) { openAddItemModal({ keepAddNext: true, justAdded: d.name }); return; }
   closeModal();
+  renderCompanionsModule();
+}
+function removeCompanion(idx) {
+  const char = state.characters[state.activeChar];
+  const c = char && (char.companions || [])[idx];
+  if (!c || !confirm('Remove ' + (c.name || 'this companion') + '?')) return;
+  char.companions.splice(idx, 1);
+  saveState();
+  renderCompanionsModule();
+}
+// What holds a spell cast from the Inventory, Combat or Companions page: an
+// item by its index, or a companion (stored with type 'Companion') as 'c' + its index.
+function spellHolderOf(char, ref) {
+  if (typeof ref === 'string' && ref[0] === 'c') return (char.companions || [])[parseInt(ref.slice(1))];
+  return (char.items || [])[ref];
 }
 
 // The item popup's Magic Modifiers section: optional kinds (e.g. defense on a
@@ -337,7 +377,7 @@ function removeItemSpellFromDraft(i) {
 let itemCastState = null;
 function openItemCastModal(itemIdx, spellIdx) {
   const char = state.characters[state.activeChar];
-  const it = char && (char.items || [])[itemIdx];
+  const it = char && spellHolderOf(char, itemIdx);
   const sp = it && (it.spells || [])[spellIdx];
   if (!sp) return;
   const def = SPELLS.find(x => x.name === sp.name && x.school === sp.school);
@@ -369,7 +409,7 @@ function openItemCastModal(itemIdx, spellIdx) {
 function confirmItemCast() {
   const char = state.characters[state.activeChar];
   const c = itemCastState;
-  const it = char && c && (char.items || [])[c.itemIdx];
+  const it = char && c && spellHolderOf(char, c.itemIdx);
   const sp = it && (it.spells || [])[c.spellIdx];
   if (!sp || sp.period === 'permanent' || itemSpellUsesLeft(sp, char) <= 0) return;
   sp.usesLeft = itemSpellUsesLeft(sp, char) - 1;
@@ -402,8 +442,9 @@ function useUpItemSpell(char, itemIdx, spellIdx) {
 // ↺: the uses come back (a new day, a recharge...).
 function rechargeItemSpell(itemIdx, spellIdx) {
   const char = state.characters[state.activeChar];
-  const sp = char && ((char.items || [])[itemIdx] || {}).spells && char.items[itemIdx].spells[spellIdx];
-  if (!sp || itemSpellRule(char.items[itemIdx]) || sp.period === 'permanent') return; // potions, scrolls and plaques don't come back; permanent spells have no uses
+  const holder = char && spellHolderOf(char, itemIdx);
+  const sp = holder && (holder.spells || [])[spellIdx];
+  if (!sp || itemSpellRule(holder) || sp.period === 'permanent') return; // potions, scrolls and plaques don't come back; permanent spells have no uses
   sp.usesLeft = parseInt(sp.usesMax) || 0;
   sp.periodIndex = itemSpellPeriodIndex(sp.period, characterClockSeconds(char));
   saveState();
@@ -412,7 +453,9 @@ function rechargeItemSpell(itemIdx, spellIdx) {
 // Item spells are cast from the Inventory page and the Combat page; redraw
 // whichever one is showing.
 function renderItemSpellPage() {
-  if (state.activeView === 'combat') renderCombatModule(); else renderInventoryModule();
+  if (state.activeView === 'combat') renderCombatModule();
+  else if (state.activeView === 'companions') renderCompanionsModule();
+  else renderInventoryModule();
 }
 
 // Storage Locations: containers are the keys of char.storageCapacities (a

@@ -52,7 +52,7 @@ function restoreLastView() {
   const char = state.characters[state.activeChar];
   // a character's own pages only come back for that same character
   if (saved && char && saved.char === state.activeChar) {
-    if (['overview', 'general', 'combat', 'inventory', 'spell'].includes(saved.view)) state.activeView = saved.view;
+    if (['overview', 'general', 'combat', 'inventory', 'companions', 'spell'].includes(saved.view)) state.activeView = saved.view;
     else if (saved.view === 'skill' && (char.skills || []).some(s => s.id === saved.skillId)) { state.activeView = 'skill'; state.activeSkillId = saved.skillId; }
   }
   renderApp();

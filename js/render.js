@@ -223,6 +223,7 @@ function renderSidebar() {
   html += navItem('combat', 'showCombatModule()', '⚔', 'Combat');
   if (hasSpiritLevel(char)) html += navItem('spell', 'showSpellModule()', '✦', 'Spells');
   html += navItem('inventory', 'showInventoryModule()', '🎒', 'Inventory');
+  html += navItem('companions', 'showCompanionsModule()', '🐾', 'Companions');
   html += `<hr style="border-color:var(--border);margin:4px 0">`;
   if (!char.hideSidebarSkills) html += sidebarSkillsHtml(char, byType, skills);
   // with both the skills and the Overview hidden, Add Skill still needs a home
@@ -299,6 +300,7 @@ function renderMain() {
   if (state.activeView === 'general') { renderGeneralModule(); return; }
   if (state.activeView === 'combat') { renderCombatModule(); return; }
   if (state.activeView === 'inventory') { renderInventoryModule(); return; }
+  if (state.activeView === 'companions') { renderCompanionsModule(); return; }
   if (state.activeView === 'spell') {
     if (!hasSpiritLevel(state.characters[state.activeChar])) { showOverview(); return; }
     renderSpellModule(); return;
@@ -328,6 +330,13 @@ function showGeneralModule() {
   state.activeView = 'general';
   renderSidebar();
   renderGeneralModule();
+}
+
+function showCompanionsModule() {
+  state.activeSkillId = null;
+  state.activeView = 'companions';
+  renderSidebar();
+  renderCompanionsModule();
 }
 
 function showInventoryModule() {
