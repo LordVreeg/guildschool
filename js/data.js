@@ -78,14 +78,18 @@ const ITEM_SPELL_PERIODS = [
   ['hawaak', 'per Hawaak (8 days)'], ['goesi', 'per Goesi (60 days)'], ['permanent', 'permanent'],
 ];
 function itemSpellPeriodLabel(period) { const p = ITEM_SPELL_PERIODS.find(x => x[0] === period); return p ? p[1] : period; }
-// Potions and Scrolls (Magic Item classes) work differently: a potion holds
-// exactly one spell with a number of uses and is used up when they run out;
-// a scroll holds one or more spells, each cast once (then gone), and is used
-// up with its last spell. Neither comes back with ↺ or the clock.
+// Potions, Scrolls and Plaques (Magic Item classes) work differently: a
+// potion holds exactly one spell with a number of uses and is used up when
+// they run out; a scroll or a plaque holds one or more spells, each cast once
+// (then gone), and is used up with its last spell. None comes back with ↺ or
+// the clock. A scroll's or plaque's spell is cast through the spell Cast popup
+// in Scrollcast or Plaque mode (see openItemCastModal).
 function itemSpellRule(it) {
   if (!it || it.type !== 'Magic Item') return null;
-  return it.magicItemClass === 'Potions' ? 'potion' : it.magicItemClass === 'Scrolls' ? 'scroll' : null;
+  return it.magicItemClass === 'Potions' ? 'potion' : it.magicItemClass === 'Scrolls' ? 'scroll' : it.magicItemClass === 'Plaques' ? 'plaque' : null;
 }
+// A scroll or a plaque: one use per spell, gone with its last spell.
+function itemSpellOneUse(rule) { return rule === 'scroll' || rule === 'plaque'; }
 function itemCanHoldSpells(it) {
   return !!it && (it.type === 'Magic Item' || (!!it.masterwork && ['Weapon', 'Armor', 'Shield', 'Ammunition'].includes(it.type)));
 }
@@ -111,7 +115,7 @@ function itemSpellUsesLeft(sp, char) {
 }
 function itemSpellUsageText(sp, char, rule) {
   const left = itemSpellUsesLeft(sp, char), max = parseInt(sp.usesMax) || 0;
-  if (rule === 'scroll') return 'one use';
+  if (itemSpellOneUse(rule)) return 'one use';
   if (rule === 'potion') return `${left}/${max} use${max === 1 ? '' : 's'}`;
   if (sp.period === 'permanent') return 'permanent';
   return sp.period === 'charges' ? `${left}/${max} charges` : `${left}/${max} ${itemSpellPeriodLabel(sp.period)}`;
@@ -121,7 +125,7 @@ function itemSpellUsageText(sp, char, rule) {
 //   offense: magicBonusToHit, magicDamageBeforeDivider, magicDamageAfterDivider, magicCritBonus (%)
 //   void:    magicVoid [{ pool, amount }] spell cost reduction per pool,
 //            magicVoidStacks (adds to other items' void instead of best-only)
-// Only magical items get any: a Magic Item that isn't a potion or scroll, or
+// Only magical items get any: a Magic Item that isn't a potion, scroll or plaque, or
 // anything else with Masterwork / Magic ticked.
 // Which ammunition a weapon takes, from data/ammunition.json's compatible_with:
 // a weapon category ("Bows", "Crossbow") or one weapon's name ("Sling"), or a
@@ -199,7 +203,7 @@ function itemHasModKind(it, kind) {
 // The spell-point pools a void reduction can name (Spirit SP, House of Fire SP, ...).
 function spellPoolNames() { return SKILLS.filter(s => s.type === 'Spell' && !s.parent).map(s => s.name).sort(); }
 // The "Magic Item Class" choices for a Magic Item.
-const MAGIC_ITEM_CLASSES = ['Books', 'Clothing', 'Jewelry', 'Misc', 'Potions', 'Scrolls'];
+const MAGIC_ITEM_CLASSES = ['Books', 'Clothing', 'Jewelry', 'Misc', 'Plaques', 'Potions', 'Scrolls'];
 
 // Base-creature stat templates transcribed from the wiki's Bestiary section.
 // Picking one of these in the Bestiary editor pre-fills the stat fields below, same

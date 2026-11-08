@@ -324,7 +324,7 @@ function itemKindLabel(it) {
 }
 
 // The Inventory's sections, in order, and which one an item goes in.
-const INVENTORY_SECTIONS = ['Armor & Weapons', 'Scrolls', 'Potions', 'Magic Items', 'Items', 'Money', 'Spell Books'];
+const INVENTORY_SECTIONS = ['Armor & Weapons', 'Scrolls', 'Plaques', 'Potions', 'Magic Items', 'Items', 'Money', 'Spell Books'];
 // Subsections, shown inside their section (after its own items): key -> label
 const INVENTORY_SUBSECTIONS = { 'Items': [['Items, Custom', 'Custom']] };
 function inventorySectionOf(it) {
@@ -333,6 +333,7 @@ function inventorySectionOf(it) {
   if (it.type === 'Coin') return 'Money';
   const rule = itemSpellRule(it);
   if (rule === 'scroll') return 'Scrolls';
+  if (rule === 'plaque') return 'Plaques';
   if (rule === 'potion') return 'Potions';
   if (it.type === 'Magic Item') return 'Magic Items';
   // an Item whose class is custom (not from the catalog) has its own section
@@ -398,7 +399,7 @@ function inventoryAmmoWarning(char, it) {
 }
 
 // The Inventory's In Use tick, for weapons, shields, armor and magic items
-// (not potions or scrolls) carried on the person (an item in a container
+// (not potions, scrolls or plaques) carried on the person (an item in a container
 // that isn't on the person can't be in use).
 function inUseCellHtml(char, it, idx) {
   if (it.type !== 'Weapon' && it.type !== 'Shield' && it.type !== 'Armor' && !magicItemHasInUse(it)) return '';

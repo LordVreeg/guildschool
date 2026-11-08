@@ -257,7 +257,7 @@ function itemSpellsSectionHtml(d) {
   const opt = (value, label, selected) => `<option value="${escapeHtml(value)}" ${selected ? 'selected' : ''}>${escapeHtml(label)}</option>`;
   const schools = Object.keys(SPELL_SCHOOL_TO_POOL).sort();
   const rule = itemSpellRule(d);
-  const list = (d.spells || []).map((sp, i) => `<div style="display:flex;align-items:center;gap:8px;padding:2px 0">✦ ${escapeHtml(sp.name)} (${escapeHtml(sp.school)}) · Level ${sp.level} · ${escapeHtml(rule === 'scroll' ? 'one use' : rule === 'potion' ? sp.usesMax + ' use' + (sp.usesMax == 1 ? '' : 's') : sp.period === 'permanent' ? 'permanent' : sp.usesMax + ' ' + itemSpellPeriodLabel(sp.period))}<span class="item-del" style="cursor:pointer;color:var(--red-b)" title="Remove" onclick="removeItemSpellFromDraft(${i})">✕</span></div>`).join('');
+  const list = (d.spells || []).map((sp, i) => `<div style="display:flex;align-items:center;gap:8px;padding:2px 0">✦ ${escapeHtml(sp.name)} (${escapeHtml(sp.school)}) · Level ${sp.level} · ${escapeHtml(itemSpellOneUse(rule) ? 'one use' : rule === 'potion' ? sp.usesMax + ' use' + (sp.usesMax == 1 ? '' : 's') : sp.period === 'permanent' ? 'permanent' : sp.usesMax + ' ' + itemSpellPeriodLabel(sp.period))}<span class="item-del" style="cursor:pointer;color:var(--red-b)" title="Remove" onclick="removeItemSpellFromDraft(${i})">✕</span></div>`).join('');
   // One selection row per draft, on a single line, ending with ✕
   const rows = itemSpellDrafts.map((s, i) => {
     const catalog = s.school ? SPELLS.filter(sp => sp.school === s.school).sort((a, b) => a.name.localeCompare(b.name)) : [];
@@ -276,7 +276,7 @@ function itemSpellsSectionHtml(d) {
       <div class="form-group"><label>School</label>${picked ? `<input class="w-md" value="${escapeHtml(s.school)}" readonly>` : `<select class="w-md" onchange="setItemSpellDraft(${i},'school',this.value,true)">${opt('', '— select —', !s.school)}${schools.map(sc => opt(sc, sc, s.school === sc)).join('')}</select>`}</div>
       <div class="form-group"><label>Spell</label>${spellField}</div>
       <div class="form-group"><label>Level</label><input type="number" min="1" class="w-sm" value="${escapeHtml(s.level)}" oninput="setItemSpellDraft(${i},'level',this.value)"></div>
-      ${rule === 'scroll' || (!rule && s.period === 'permanent') ? '' : `<div class="form-group"><label>Uses</label><input type="number" min="1" class="w-sm" value="${escapeHtml(s.usesMax)}" oninput="setItemSpellDraft(${i},'usesMax',this.value)"></div>`}
+      ${itemSpellOneUse(rule) || (!rule && s.period === 'permanent') ? '' : `<div class="form-group"><label>Uses</label><input type="number" min="1" class="w-sm" value="${escapeHtml(s.usesMax)}" oninput="setItemSpellDraft(${i},'usesMax',this.value)"></div>`}
       ${rule ? '' : `<div class="form-group"><label>Per</label><select class="w-md" onchange="setItemSpellDraft(${i},'period',this.value,true)">${ITEM_SPELL_PERIODS.map(([v, l]) => opt(v, l, s.period === v)).join('')}</select></div>`}
       <div class="form-group"><span class="item-del" style="cursor:pointer;color:var(--red-b);padding:6px 2px" title="Remove this spell" onclick="closeItemSpellRow(${i})">✕</span></div>
     </div>`;
@@ -286,7 +286,7 @@ function itemSpellsSectionHtml(d) {
   return `
     ${search}
     <hr class="divider">
-    <div class="form-group"><label>Spells${infoTip((rule === 'potion' ? 'A potion holds exactly one spell. Each cast uses one of its uses; when they run out the potion is gone. ' : rule === 'scroll' ? 'A scroll holds one or more spells. Each can be cast once and is then gone; the scroll goes with its last spell. ' : '') + 'Spells are saved with the item. Each is cast at its fixed level, with no spell points, and always succeeds; a cast uses one of its uses.')}</label></div>
+    <div class="form-group"><label>Spells${infoTip(itemSpellOneUse(rule) ? `A ${rule} holds one or more spells. Each can be cast once and is then gone; the ${rule} goes with its last spell. Casting one opens the spell Cast popup in ${rule === 'scroll' ? 'Scrollcast' : 'Plaque'} mode: it costs spell points and needs a success roll.` : (rule === 'potion' ? 'A potion holds exactly one spell. Each cast uses one of its uses; when they run out the potion is gone. ' : '') + 'Spells are saved with the item. Each is cast at its fixed level, with no spell points, and always succeeds; a cast uses one of its uses.')}</label></div>
     ${list || (rows ? '' : '<div class="note">No spells on this item yet.</div>')}
     ${rows}
     ${rule === 'potion' && (d.spells || []).length + itemSpellDrafts.length >= 1 ? '' : '<div style="margin-top:6px"><button type="button" class="btn btn-dim" onclick="openItemSpellRow()">Add spell</button></div>'}

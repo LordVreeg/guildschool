@@ -383,7 +383,7 @@ const SPELL_PAGE_INTRO_HTML = `
   <ul style="margin:6px 0 6px 18px;padding:0">
     <li><b>The whole library is open to you.</b> Add a line to your spellbook, choose a school, then pick the spell from the full list for that school; its cost fills in.</li>
     <li><b>Spell points:</b> your pools come from the spell skills you have trained (Spirit SP plus each school). Short in a school? Spirit can cover the gap at a conversion ratio.</li>
-    <li><b>Casting:</b> press <i>Cast</i> on a spell and choose Hardcast, Plaque or Scrollcast. It works out the cost and your success chance, spends the points, then rolls (or lets you enter) the GM's d50 and your d100.</li>
+    <li><b>Casting:</b> press <i>Cast</i> on a spell to hardcast it; <i>Cast</i> on a scroll or plaque in the inventory scrollcasts or plaque-casts it. It works out the cost and your success chance, spends the points, then rolls (or lets you enter) the GM's d50 and your d100.</li>
     <li><b>Recovery:</b> if your character is linked to a group, spell points come back as the group's clock moves forward.</li>
   </ul>`;
 

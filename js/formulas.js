@@ -711,7 +711,7 @@ function itemInUse(character, it) {
   if (!it || !itemOnPerson(character, it)) return false;
   if (it.type === 'Armor') return it.worn !== false;
   if (it.type === 'Weapon' || it.type === 'Shield') return !!it.wielded;
-  // a magic item (not a potion or scroll) is in use unless its In Use is unticked
+  // a magic item (not a potion, scroll or plaque) is in use unless its In Use is unticked
   if (magicItemHasInUse(it)) return it.inUse !== false;
   return false;
 }

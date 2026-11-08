@@ -238,7 +238,7 @@ function confirmAddItem() {
     const rule = itemSpellRule(d);
     const total = (d.spells || []).length + started.length;
     const ruleError = rule === 'potion' && total !== 1 ? 'A potion holds exactly one spell.'
-      : rule === 'scroll' && total < 1 ? 'A scroll needs at least one spell.' : '';
+      : itemSpellOneUse(rule) && total < 1 ? `A ${rule} needs at least one spell.` : '';
     if (ruleError) {
       const err = document.getElementById('ai-error');
       err.textContent = ruleError;
@@ -247,11 +247,11 @@ function confirmAddItem() {
     }
     for (const sp of started) {
       if (!rule && sp.period === 'permanent') { (d.spells = d.spells || []).push({ school: sp.school, name: String(sp.name).trim(), level: parseInt(sp.level), period: 'permanent' }); continue; }
-      const usesMax = rule === 'scroll' ? 1 : parseInt(sp.usesMax);
+      const usesMax = itemSpellOneUse(rule) ? 1 : parseInt(sp.usesMax);
       (d.spells = d.spells || []).push({ school: sp.school, name: String(sp.name).trim(), level: parseInt(sp.level), usesMax, period: sp.period, usesLeft: usesMax });
     }
-    // Potion and scroll spells are counted down, never refilled
-    if (rule) for (const sp of d.spells || []) { sp.period = 'charges'; if (rule === 'scroll') sp.usesMax = sp.usesLeft = 1; }
+    // Potion, scroll and plaque spells are counted down, never refilled
+    if (rule) for (const sp of d.spells || []) { sp.period = 'charges'; if (itemSpellOneUse(rule)) sp.usesMax = sp.usesLeft = 1; }
     resetItemSpellDraft();
   }
   delete d.coin;
@@ -340,8 +340,16 @@ function openItemCastModal(itemIdx, spellIdx) {
   const it = char && (char.items || [])[itemIdx];
   const sp = it && (it.spells || [])[spellIdx];
   if (!sp) return;
-  itemCastState = { itemIdx, spellIdx };
   const def = SPELLS.find(x => x.name === sp.name && x.school === sp.school);
+  // A scroll's or plaque's spell is cast in Scrollcast / Plaque mode (spell
+  // points and a success roll); the item cast below is only for one the
+  // catalog has no costs for.
+  const oneUse = itemSpellRule(it);
+  if (itemSpellOneUse(oneUse) && def && def.costs) {
+    openSpellCastModal(def, oneUse, { itemIdx, spellIdx, itemName: it.name || oneUse });
+    return;
+  }
+  itemCastState = { itemIdx, spellIdx };
   const left = itemSpellUsesLeft(sp, char);
   openModal(`
     <h3>Cast: ${escapeHtml(sp.name)}</h3>
@@ -349,10 +357,10 @@ function openItemCastModal(itemIdx, spellIdx) {
     <div class="form-row">
       <div class="computed-item"><span class="ci-label">Level</span><span class="ci-value">${sp.level}</span></div>
       <div class="computed-item"><span class="ci-label">Duration</span><span class="ci-value" style="font-size:calc(13px * var(--fs))">${escapeHtml(spellDurationText(def && def.duration, sp.level))}</span></div>
-      <div class="computed-item"><span class="ci-label">Uses</span><span class="ci-value" style="font-size:calc(13px * var(--fs))">${escapeHtml(itemSpellUsageText(sp, char, itemSpellRule(it)))}${left > 0 && itemSpellRule(it) !== 'scroll' ? ` → ${left - 1} after this` : ''}</span></div>
+      <div class="computed-item"><span class="ci-label">Uses</span><span class="ci-value" style="font-size:calc(13px * var(--fs))">${escapeHtml(itemSpellUsageText(sp, char, itemSpellRule(it)))}${left > 0 && !itemSpellOneUse(itemSpellRule(it)) ? ` → ${left - 1} after this` : ''}</span></div>
     </div>
     ${left > 0 ? '' : '<div class="warn">No uses left. Reset its uses (↺) when they come back.</div>'}
-    ${itemSpellRule(it) === 'scroll' ? `<div class="warn">Casting uses this spell up${(it.spells || []).length === 1 ? ', and with it the scroll' : ''}.</div>` : itemSpellRule(it) === 'potion' && left === 1 ? `<div class="warn">This is its last use: the potion${(parseInt(it.qty) || 1) > 1 ? ' (one of ' + it.qty + ')' : ''} will be used up.</div>` : ''}
+    ${itemSpellOneUse(itemSpellRule(it)) ? `<div class="warn">Casting uses this spell up${(it.spells || []).length === 1 ? ', and with it the ' + itemSpellRule(it) : ''}.</div>` : itemSpellRule(it) === 'potion' && left === 1 ? `<div class="warn">This is its last use: the potion${(parseInt(it.qty) || 1) > 1 ? ' (one of ' + it.qty + ')' : ''} will be used up.</div>` : ''}
     <div class="modal-actions">
       <button class="btn btn-dim" onclick="itemCastState=null;closeModal()">Cancel</button>
       <button class="btn btn-gold" ${left > 0 ? '' : 'disabled'} onclick="confirmItemCast()">Cast</button>
@@ -367,9 +375,8 @@ function confirmItemCast() {
   sp.usesLeft = itemSpellUsesLeft(sp, char) - 1;
   sp.periodIndex = itemSpellPeriodIndex(sp.period, characterClockSeconds(char)); // which period this use counts against
   const rule = itemSpellRule(it);
-  if (rule === 'scroll') {
-    it.spells.splice(c.spellIdx, 1);
-    if (!it.spells.length) char.items.splice(c.itemIdx, 1); // the scroll is used up
+  if (itemSpellOneUse(rule)) {
+    useUpItemSpell(char, c.itemIdx, c.spellIdx);
   } else if (rule === 'potion' && sp.usesLeft <= 0) {
     // used up: the next potion on this line starts full, or the line goes
     const qty = parseInt(it.qty) || 1;
@@ -385,11 +392,18 @@ function confirmItemCast() {
     openMarkDurationModal();
   } else closeModal();
 }
+// A scroll's or plaque's spell is gone once cast; the item goes with its last spell.
+function useUpItemSpell(char, itemIdx, spellIdx) {
+  const it = (char.items || [])[itemIdx];
+  if (!it || !it.spells) return;
+  it.spells.splice(spellIdx, 1);
+  if (!it.spells.length) char.items.splice(itemIdx, 1);
+}
 // ↺: the uses come back (a new day, a recharge...).
 function rechargeItemSpell(itemIdx, spellIdx) {
   const char = state.characters[state.activeChar];
   const sp = char && ((char.items || [])[itemIdx] || {}).spells && char.items[itemIdx].spells[spellIdx];
-  if (!sp || itemSpellRule(char.items[itemIdx]) || sp.period === 'permanent') return; // potions and scrolls don't come back; permanent spells have no uses
+  if (!sp || itemSpellRule(char.items[itemIdx]) || sp.period === 'permanent') return; // potions, scrolls and plaques don't come back; permanent spells have no uses
   sp.usesLeft = parseInt(sp.usesMax) || 0;
   sp.periodIndex = itemSpellPeriodIndex(sp.period, characterClockSeconds(char));
   saveState();
@@ -661,20 +675,23 @@ function openHardcastModal(spellbookIdx) {
   if (!sp) return;
   const catalogEntry = SPELLS.find(s => s.name === sp.name && s.school === sp.school);
   if (!catalogEntry || !catalogEntry.costs) return;
-  const majorPool = SPELL_SCHOOL_TO_POOL[sp.school];
+  openSpellCastModal(catalogEntry, 'hardcast');
+}
+
+// The spell Cast popup, in one mode, set by where the spell is cast from:
+// Hardcast from the Spells page, Scrollcast from a scroll and Plaque from a
+// plaque in the inventory (fromItem = { itemIdx, spellIdx, itemName }; that
+// spell is used up when the cast goes ahead).
+function openSpellCastModal(catalogEntry, castMode, fromItem) {
   hardcastState = {
-    spellbookIdx, spellName: sp.name, school: sp.school, baseCosts: {...catalogEntry.costs},
-    majorPool, spellSuccessBase: parseFloat(catalogEntry.spellSuccess) || 0,
+    spellName: catalogEntry.name, school: catalogEntry.school, baseCosts: {...catalogEntry.costs},
+    majorPool: SPELL_SCHOOL_TO_POOL[catalogEntry.school], spellSuccessBase: parseFloat(catalogEntry.spellSuccess) || 0,
     duration: catalogEntry.duration || '',
-    castMode: 'hardcast',
+    castMode,
+    castItem: fromItem || null,
     substitute: {}, // { 'Death SP': true/false } — hardcast only
     overcastSpirit: 0, overcastMajor: 0, // hardcast only
   };
-  renderHardcastModal();
-}
-
-function setCastMode(mode) {
-  hardcastState.castMode = mode;
   renderHardcastModal();
 }
 
@@ -741,8 +758,8 @@ function checkCastEligibility(hs, poolByName) {
     for (const [school, amount] of Object.entries(hs.baseCosts)) {
       const poolName = COST_KEY_TO_POOL[school] || `${school} SP`;
       const poolInfo = poolByName[poolName];
-      if (!poolInfo) {
-        issues.push(`No training at all in ${poolName} — ${mode === 'scroll' ? 'scrolls' : 'plaques'} require every power source the spell needs (no Spirit substitution).`);
+      if (!poolInfo || !(poolInfo.maxSP >= 1)) {
+        issues.push(`No points in ${poolName}: ${mode === 'scroll' ? 'a scroll needs' : 'plaques need'} at least one point in every spell point pool the spell uses (no Spirit substitution).`);
         continue;
       }
       if (mode === 'plaque' && poolInfo.maxSP < amount) {
@@ -793,17 +810,19 @@ function renderHardcastModal() {
   const modeHelp = {
     hardcast: 'Full SP cost from your own pools. Spirit substitution and overcasting for extra success are both available.',
     plaque: 'Half SP cost, but only for a spell you could already hardcast: no substitution, must have every power source type trained, and no overcasting.',
-    scroll: '1/10 SP cost, and can exceed your own ability (up to 2× your max in any pool), but requires every power source type trained, no substitution, no overcasting.'
+    scroll: '1/10 SP cost, and can exceed your own ability (up to 2× your max in any pool), but needs at least one point in every spell point pool the spell uses, no substitution, no overcasting.'
   };
-  const modeBtn = (m, label) => `<button class="btn ${mode===m?'btn-gold':'btn-dim'}" onclick="setCastMode('${m}')">${label}</button>${infoTip(modeHelp[m])}`;
+  const modeLabel = { hardcast: 'Hardcast', plaque: 'Plaque', scroll: 'Scrollcast' }[mode];
+  const castItem = hs.castItem && (char.items || [])[hs.castItem.itemIdx];
 
   openModal(`
     <h3>Cast: ${hs.spellName}</h3>
-    <div class="note">${hs.school} — base cost ${Object.entries(hs.baseCosts).map(([s,v])=>`${s} ${v}`).join(', ')}${hs.duration ? ` — duration ${escapeHtml(hs.duration)}` : ''}</div>
+    <div class="note">${hs.castItem ? `From ${escapeHtml(hs.castItem.itemName)} — ` : ''}${hs.school} — base cost ${Object.entries(hs.baseCosts).map(([s,v])=>`${s} ${v}`).join(', ')}${hs.duration ? ` — duration ${escapeHtml(hs.duration)}` : ''}</div>
 
     <div style="display:flex;gap:8px;margin-bottom:12px">
-      ${modeBtn('hardcast','Hardcast')} ${modeBtn('plaque','Plaque')} ${modeBtn('scroll','Scrollcast')}
+      <span class="btn btn-gold" style="cursor:default">${modeLabel}</span>${infoTip(modeHelp[mode])}
     </div>
+    ${hs.castItem ? `<div class="warn">Casting uses this spell up${castItem && (castItem.spells || []).length === 1 ? ', and with it the ' + (mode === 'scroll' ? 'scroll' : 'plaque') : ''}, whether it succeeds or not.</div>` : ''}
 
     ${mode === 'hardcast' ? `
     <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Substitute with Spirit?</div>
@@ -867,6 +886,7 @@ function confirmHardcast() {
     // Spend from the true value so a partial point of recovery progress is kept.
     setPoolTrueSP(char, poolName, (info ? info.trueSP : 0) - needed, info ? info.maxSP : 0);
   }
+  if (hs.castItem) useUpItemSpell(char, hs.castItem.itemIdx, hs.castItem.spellIdx);
   saveState();
   // SP is spent either way -- hardcastState stays alive through resolving
   // success and (if successful) marking a duration, closed out at the end
@@ -937,7 +957,7 @@ function updateSpellResolve() {
 function skipSpellResolve() {
   hardcastState = null;
   closeModal();
-  renderSpellModule();
+  renderMain();
 }
 
 function confirmSpellResolve() {
@@ -952,7 +972,7 @@ function confirmSpellResolve() {
   } else {
     hardcastState = null;
     closeModal();
-    renderSpellModule();
+    renderMain();
   }
 }
 
