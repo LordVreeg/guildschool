@@ -150,8 +150,9 @@ function itemPicksComplete(d) {
 }
 
 // Changing any dropdown starts the item over: it keeps the choices above that
-// dropdown, clears everything below it and every field, then refills the
-// fields from the catalog pick.
+// dropdown, clears everything below it and the catalog fields, then refills
+// them from the catalog pick. Notes, magic modifiers and spells are kept,
+// and so is the name when editing an item.
 function setItemPick(key, value) {
   if (!itemDraft) return;
   const keys = itemPickSteps(itemDraft).map(s => s.key);
@@ -174,6 +175,17 @@ function setItemPick(key, value) {
     } else if (v !== ITEM_PICK_CUSTOM) d[s.key] = v;
   }
   if (d.type === 'Spell Book') d.weight = SPELL_BOOK_WEIGHT;
+  // What the player wrote stays: notes, masterwork, magic modifiers and
+  // spells. (Saving drops spells and modifiers the new type can't have.)
+  const old = itemDraft;
+  // When editing, the item's name stays too (a new item takes the catalog's).
+  if (editingItemIdx !== null && String(old.name || '').trim()) d.name = old.name;
+  if (String(old.notes || '').trim()) d.notes = old.notes;
+  if (old.masterwork && ['Weapon', 'Armor', 'Shield', 'Ammunition'].includes(d.type)) d.masterwork = true;
+  if ((old.spells || []).length) d.spells = old.spells;
+  for (const f of [...MAGIC_MOD_FIELDS.defense, ...MAGIC_MOD_FIELDS.offense, 'magicVoid', 'magicVoidStacks', '_mod_offense', '_mod_defense', '_mod_void']) {
+    if (old[f] !== undefined && old[f] !== '' && d[f] === undefined) d[f] = old[f];
+  }
   itemDraft = d;
   renderAddItemModal();
 }
