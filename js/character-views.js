@@ -150,42 +150,42 @@ function renderGeneralModule() {
     <div class="panel-body">
       ${mainGuildBannerHtml(char, true)}
       <div class="form-row">
-        <div class="form-group id-field"><label>Name</label><input class="w-lg" value="${char.name||''}" onchange="updateChar('name',this.value)"></div>
-        <div class="form-group id-field"><label>Nickname / Title</label><input class="w-lg" value="${char.nickname||''}" onchange="updateChar('nickname',this.value)"></div>
-        <div class="form-group id-field"><label>Race</label>
+        <div class="form-group"><label>Name</label><input class="w-lg" value="${char.name||''}" onchange="updateChar('name',this.value)"></div>
+        <div class="form-group"><label>Nickname / Title</label><input class="w-lg" value="${char.nickname||''}" onchange="updateChar('nickname',this.value)"></div>
+        <div class="form-group"><label>Race</label>
           <input class="w-md" list="race-datalist" value="${char.race||''}" placeholder="e.g. Kobold" onchange="updateChar('race',this.value);renderGeneralModule()">
           <datalist id="race-datalist">${races.map(r=>`<option value="${r}">`).join('')}</datalist>
         </div>
-        <div class="form-group id-field"><label>Subrace</label>
+        <div class="form-group"><label>Subrace</label>
           <input class="w-lg" list="subrace-datalist" value="${char.subrace||''}" onchange="updateChar('subrace',this.value)">
           <datalist id="subrace-datalist">${(subraces[char.race] || []).map(sr=>`<option value="${sr}">`).join('')}</datalist>
         </div>
-        <div class="form-group id-field"><label>Age</label><input class="w-sm" value="${char.age||''}" onchange="updateChar('age',this.value)"></div>
-        <div class="form-group id-field"><label>Max Age</label><input class="w-sm" value="${char.maxAge||''}" onchange="updateChar('maxAge',this.value)"></div>
-        <div class="form-group id-field"><label>Height</label><input class="w-sm" value="${char.height||''}" onchange="updateChar('height',this.value)"></div>
-        <div class="form-group id-field"><label>Gender</label>
+        <div class="form-group"><label>Age</label><input class="w-sm" value="${char.age||''}" onchange="updateChar('age',this.value)"></div>
+        <div class="form-group"><label>Max Age</label><input class="w-sm" value="${char.maxAge||''}" onchange="updateChar('maxAge',this.value)"></div>
+        <div class="form-group"><label>Height</label><input class="w-sm" value="${char.height||''}" onchange="updateChar('height',this.value)"></div>
+        <div class="form-group"><label>Gender</label>
           <select class="w-md" onchange="updateChar('gender',this.value)">
             <option value="">— select —</option>
             ${['Male','Female','Other'].map(g=>`<option ${char.gender===g?'selected':''}>${g}</option>`).join('')}
           </select>
         </div>
-        <div class="form-group id-field"><label>Weight</label><input class="w-sm" value="${char.bodyWeight||''}" onchange="updateChar('bodyWeight',this.value)"></div>
-        <div class="form-group id-field"><label>Darksight</label><input class="w-sm" value="${char.darksight||''}" onchange="updateChar('darksight',this.value)"></div>
-        <div class="form-group id-field"><label>Locale</label>
+        <div class="form-group"><label>Weight</label><input class="w-sm" value="${char.bodyWeight||''}" onchange="updateChar('bodyWeight',this.value)"></div>
+        <div class="form-group"><label>Darksight</label><input class="w-sm" value="${char.darksight||''}" onchange="updateChar('darksight',this.value)"></div>
+        <div class="form-group"><label>Locale</label>
           <select class="w-md" onchange="handleChoiceSelect(this,state.characters[state.activeChar],'locale','locales')">
             <option value="">— select —</option>
             ${(customChoices.locales||[]).map(l=>`<option ${char.locale===l?'selected':''}>${l}</option>`).join('')}
             <option value="__addnew__">Add New...</option>
           </select>
         </div>
-        <div class="form-group id-field"><label>Group</label>
+        <div class="form-group"><label>Group</label>
           <select class="w-md" onchange="linkCharacterToGroup(this.value)">
             <option value="">— none —</option>
             ${myGroups.map(g=>`<option value="${g.id}" ${char.playGroupId===g.id?'selected':''}>${escapeHtml(g.name)}</option>`).join('')}
           </select>
         </div>
-        <div class="form-group id-field"><label>Starting Social Tier</label><input type="number" class="w-sm" value="${char.socialNumber!==undefined?char.socialNumber:''}" onchange="updateChar('socialNumber',this.value)"></div>
-        <div class="form-group id-field"><label>Current Social Tier</label><input type="number" class="w-sm" value="${char.currentSocialNumber!==undefined&&char.currentSocialNumber!==null?char.currentSocialNumber:''}" onchange="updateChar('currentSocialNumber',this.value)"></div>
+        <div class="form-group"><label>Starting Social Tier</label><input type="number" class="w-sm" value="${char.socialNumber!==undefined?char.socialNumber:''}" onchange="updateChar('socialNumber',this.value)"></div>
+        <div class="form-group"><label>Current Social Tier</label><input type="number" class="w-sm" value="${char.currentSocialNumber!==undefined&&char.currentSocialNumber!==null?char.currentSocialNumber:''}" onchange="updateChar('currentSocialNumber',this.value)"></div>
         <div class="form-group" style="justify-content:flex-end">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
             <input type="checkbox" ${char.isNPC?'checked':''} onchange="updateChar('isNPC',this.checked)">

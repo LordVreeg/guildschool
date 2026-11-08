@@ -139,7 +139,7 @@ function showGuildBlurb(name) {
 }
 
 function guildPickerButton(currentValue, onSelectExpr) {
-  return `<button type="button" class="btn btn-dim" style="width:100%;text-align:left" ${currentValue ? `title="${escapeHtml(guildBlurbOrPlaceholder(currentValue))}"` : ''} onclick="openGuildPickerModal('${escapeHtml((currentValue||'').replace(/'/g,"\\'"))}', ${onSelectExpr})">${currentValue ? escapeHtml(currentValue) : '— none —'}</button>`;
+  return `<button type="button" class="field-btn" ${currentValue ? `title="${escapeHtml(guildBlurbOrPlaceholder(currentValue))}"` : ''} onclick="openGuildPickerModal('${escapeHtml((currentValue||'').replace(/'/g,"\\'"))}', ${onSelectExpr})">${currentValue ? escapeHtml(currentValue) : '— none —'}</button>`;
 }
 
 let guildPickerCallback = null;
