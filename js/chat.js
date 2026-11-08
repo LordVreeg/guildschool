@@ -156,6 +156,7 @@ function onChatChange(payload) {
   const msg = payload.new;
   if (!msg || !msg.id) return;
   if (payload.eventType === 'INSERT') {
+    if (typeof chatAttHandleIncoming === 'function') chatAttHandleIncoming(msg);   // /att: the GM's AV prompt, the attacker's answer
     if (chatPageOpen() && msg.group_id === chatGroupId) {
       if (!chatMessages.some(m => m.id === msg.id)) {
         const stick = chatNearBottom();
@@ -392,6 +393,7 @@ async function loadChatMessages(older) {
     renderChatMessages('bottom');
     chatMarkRead(groupId);
     renderChatGroupTabs();
+    if (typeof chatAttScanHistory === 'function') chatAttScanHistory();   // /att requests waiting for this GM
   }
 }
 
@@ -513,6 +515,7 @@ function renderChatMessages(mode) {
   if (!list.length) html += `<div class="note" style="text-align:center;padding:20px">${chatSearch ? 'No messages match.' : 'No messages yet. Say hello! Type /help to see the commands.'}</div>`;
   let lastDay = null, prev = null;
   for (const m of list) {
+    if (m.payload && m.payload.att_reply) continue;   // the GM's private AV answer for /att (js/attack.js): never shown
     const d = new Date(m.created_at);
     const day = d.toDateString();
     if (day !== lastDay) { html += `<div class="chat-day"><span>${chatDayLabel(d)}</span></div>`; lastDay = day; prev = null; }
@@ -723,7 +726,7 @@ const CHAT_HELP_HTML = `
   </table>
   <b>Game rolls</b>
   <table>
-    <tr><td>/att &nbsp;or&nbsp; /attack</td><td>Attack with the "Post as" character: picks the weapon in hand, rolls Multiple Attack, then each attack (crit and fumble), asks Hit? and rolls damage. Results go to you and the GM only.</td></tr>
+    <tr><td>/att &nbsp;or&nbsp; /attack</td><td>Attack with the "Post as" character: picks the weapon in hand, rolls Multiple Attack, then each attack (crit and fumble). The GM is asked privately for the target's AV; the hit, a critical's second roll and the damage follow. The steps go to you and the GM, and the result ("hits for 9 damage" / "whiffs") goes to everyone.</td></tr>
     <tr><td>/prot <i>number</i></td><td>Armor protection roll: <code>/prot 40</code> rolls <code>(40-d10)/(2d6/2)</code>, rounded, never below 0</td></tr>
   </table>
   <b>Dice</b>
@@ -899,6 +902,7 @@ async function chatInsertMessage(msg) {
     if (chatSearch) clearChatSearch(); else renderChatMessages('bottom');
   }
   chatMarkRead(chatGroupId);
+  if (typeof chatAttHandleIncoming === 'function') chatAttHandleIncoming(data);   // your own /att request, if you are the GM
   return true;
 }
 

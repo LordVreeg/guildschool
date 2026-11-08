@@ -2,18 +2,20 @@
 // /att -- an attack from the chat, for the "Post as" character.
 //   1. pick the weapon (and grip / throw) when more than one is in hand
 //   2. roll Multiple Attack (wiki "Multiple attacks") to get the attack count
-//   3. each attack: a d100 against the crit and fumble numbers, with the
-//      needed to-hit (the sheet's To Hit + the target's AV); a critical gets
-//      its second to-hit roll (wiki "Critical Hits"); anything else asks Hit?
+//   3. each attack: a d100 against the crit and fumble numbers. Then the GM is
+//      asked, privately, for the target's modified AV (they adjudicate cover,
+//      advanced combat strategies, magic...). The GM's browser works out hit or
+//      miss, and a critical's second roll (wiki "Critical Hits"), and sends back
+//      only the outcome, so the players never see the AV.
 //   4. on a hit, roll the damage: dice over the dividing die, plus the bonus,
 //      with the critical's divider reduction and the divider table applied
-// The questions are shown only to you. Every step is posted to the chat as a
-// whisper to the GM (you and the GM see it); the end result of each attack
-// ("hits for 14 damage" / "whiffs") is posted for the whole group.
+// The steps are posted to the chat as whispers to the GM (you and the GM see
+// them); the end result of each attack ("hits for 14 damage" / "whiffs") is
+// posted for the whole group. If no GM answers, "Decide at the table" falls
+// back to asking you Hit? yourself.
 // ============================================================
 
-let chatAttackAV = '';      // the last target AV typed, offered again next time
-let chatAttackDist = '';    // likewise the last distance, for shots and throws
+let chatAttackDist = '';    // the last distance typed, offered again next time
 // How a line reads in the weapon choice and on the card.
 function attGripLabel(line) {
   return { 'One-Handed': 'melee, one-handed', 'Two-Handed': 'melee, two-handed', Throw: 'thrown', Missile: 'fired' }[line.grip] || line.grip;
@@ -43,6 +45,7 @@ function chatPromptDone(i) {
   closeModal();
   if (resolve) resolve(b ? b.value : null);
 }
+const attModalOpen = () => document.getElementById('modal-overlay').classList.contains('open');
 
 // ---------- posting ----------
 // One template card: rows are [label, text, rolls?]. Each [[...]] in a row's
@@ -115,19 +118,29 @@ function attDamage(it, line, crit) {
   return { rows, total };
 }
 
-// A critical's second roll and any rare-crit bonuses (wiki "Critical Hits").
-// With the target's AV known the second roll is resolved here; otherwise
-// (needed === null) it is only rolled, and the caller asks how it came out.
-function attCrit(first, needed, stats, sides) {
+// The GM's side of an attack roll: given the request and the target's AV,
+// is it a hit, and for a critical how did the second roll go (wiki "Critical
+// Hits": −2 on the dividing die for a hit, one more per full 25 under).
+function attGMResolve(rq, av) {
+  const needed = Math.round(rq.hit + av);
+  const hits = n => n <= needed && n < ATT_ALWAYS_MISS;
+  if (!rq.crit) return { needed, hit: hits(rq.roll) };
   const second = DiceRoller.roll('1d100');
+  const secondHit = hits(second.total);
+  return { needed, hit: true, second, secondHit, reduction: secondHit ? 2 + Math.floor((needed - second.total) / 25) : 0 };
+}
+
+// A critical's second roll (from the GM's answer, or rolled here when the GM
+// is leaving it to the table) and any rare-crit bonuses (wiki "Critical Hits").
+function attCrit(first, stats, sides, gm) {
+  const second = gm ? gm.second : DiceRoller.roll('1d100');
   const rows = [];
   let reduction = 0;
-  if (needed === null) {
-    rows.push(['Second roll', `[[${second.expr}]] — the GM says whether it hit, and by how much`, [second]]);
+  if (gm) {
+    reduction = gm.reduction;
+    rows.push(['Second roll', `[[${second.expr}]] → ${gm.secondHit ? `hit: dividing die −${reduction}` : 'missed: no dividing die bonus'}`, [second]]);
   } else {
-    const ok = second.total <= needed && second.total < ATT_ALWAYS_MISS;
-    reduction = ok ? 2 + Math.floor((needed - second.total) / 25) : 0;
-    rows.push(['Second roll', `[[${second.expr}]] vs needed ${needed} → ${ok ? `hit: dividing die −${reduction}` : 'missed: no dividing die bonus'}`, [second]]);
+    rows.push(['Second roll', `[[${second.expr}]] — the GM says whether it hit, and by how much`, [second]]);
   }
   let dieSides;
   // Only for a crit chance of 7+: a first roll of 4 or less drops the dividing die
@@ -139,8 +152,8 @@ function attCrit(first, needed, stats, sides) {
   return { rows, reduction, dieSides, second: second.total };
 }
 
-// Dividing-die reduction for a critical whose second roll the GM judged:
-// −2 for a hit, and one more for every full 25 points it came in under.
+// Fallback when the GM leaves it to the table: the dividing-die reduction for
+// a critical whose second roll the GM judges aloud.
 async function attAskCritReduction(label, secondRoll) {
   const hit = await chatPromptButtons(`${label}: critical — second roll`,
     `Second to-hit roll: <b>${secondRoll}</b>. Ask the GM: did it hit?`,
@@ -152,6 +165,130 @@ async function attAskCritReduction(label, secondRoll) {
   const pts = Math.max(0, Math.floor(parseFloat(under) || 0));
   const reduction = 2 + Math.floor(pts / 25);
   return { reduction, text: `The second roll hit${pts ? `, ${pts} under` : ''}: dividing die −${reduction}.` };
+}
+
+// ---------- asking the GM for the AV ----------
+// The attacker's browser posts a whispered request (payload.att_req); the GM's
+// chat window shows a private prompt and answers with a whisper back to the
+// attacker (payload.att_reply) that the chat never displays. The reply holds
+// only the outcome, never the AV.
+const chatAttPending = {};       // request id -> resolve(reply), on the attacker's side
+const chatAttSeen = new Set();   // request ids already shown to this GM
+const chatAttGMQueue = [];
+let chatAttGMBusy = false;
+let chatAttGMLastAV = '';
+const chatAttGMPrompt = { resolve: null };   // the open GM prompt's resolver
+let chatAttWatch = null;         // interval noticing a modal closed without an answer
+
+// Resolves to the GM's outcome, { manual: true } (decide at the table) or
+// null (cancel the attack).
+async function attAskGM(rq) {
+  if (chatTalkToMyself) return { manual: true };
+  const id = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now()) + Math.random();
+  const answered = new Promise(res => { chatAttPending[id] = res; });
+  const body = `⚔ ${rq.who} rolled ${rq.roll} to hit (${rq.hit}) with the ${rq.weapon}${rq.crit ? ' — a critical' : ''}. Waiting for the GM's AV.`;
+  const ok = await chatInsertMessage({ kind: 'message', body, payload: { att_req: Object.assign({ id }, rq), whisper: { characters: [], gm: true } } });
+  if (!ok) { delete chatAttPending[id]; return null; }
+  const choice = new Promise(res => {
+    if (chatPromptResolve) chatPromptResolve(null);
+    chatPromptResolve = null;
+    openModal(`
+      <h3>${escapeHtml(rq.label)}: waiting for the GM</h3>
+      <div style="margin-bottom:10px">You rolled <b>${rq.roll}</b>. The GM is working out the target's AV and will be asked in their chat window.</div>
+      <div class="modal-actions"><button class="btn btn-dim" onclick="chatAttWaitDone('cancel')">Cancel the attack</button><button class="btn btn-dim" onclick="chatAttWaitDone('manual')">Decide at the table instead</button></div>`);
+    chatAttWaitDone.resolve = res;
+    clearInterval(chatAttWatch);
+    chatAttWatch = setInterval(() => { if (!attModalOpen()) { clearInterval(chatAttWatch); if (chatAttWaitDone.resolve === res) { chatAttWaitDone.resolve = null; res('cancel'); } } }, 400);
+  });
+  const r = await Promise.race([answered, choice]);
+  delete chatAttPending[id];
+  clearInterval(chatAttWatch);
+  chatAttWaitDone.resolve = null;
+  if (r && typeof r === 'object') { if (attModalOpen()) closeModal(); return r.manual ? { manual: true } : r; }
+  return r === 'manual' ? { manual: true } : null;
+}
+function chatAttWaitDone(which) {
+  const res = chatAttWaitDone.resolve;
+  chatAttWaitDone.resolve = null;
+  closeModal();
+  if (res) res(which);
+}
+
+// Called for every chat row that arrives (and for your own posts).
+function chatAttHandleIncoming(msg) {
+  const p = msg && msg.payload;
+  if (!p) return;
+  if (p.att_reply) {
+    const res = chatAttPending[p.att_reply.req];
+    if (res) res(p.att_reply);
+    return;
+  }
+  // Only the chat window prompts, so a GM with both windows open is asked once.
+  if (p.att_req && CHAT_WINDOW && msg.group_id === chatGroupId && chatIsGM() && !chatAttSeen.has(p.att_req.id)) {
+    chatAttSeen.add(p.att_req.id);
+    chatAttGMQueue.push(msg);
+    chatAttGMDrain();
+  }
+}
+// Requests posted while the GM's chat window was closed (last 15 minutes).
+function chatAttScanHistory() {
+  const cutoff = Date.now() - 15 * 60 * 1000;
+  for (const m of chatMessages) {
+    const rq = m.payload && m.payload.att_req;
+    if (!rq || chatAttSeen.has(rq.id) || new Date(m.created_at).getTime() < cutoff) continue;
+    if (chatMessages.some(x => x.payload && x.payload.att_reply && x.payload.att_reply.req === rq.id)) continue;
+    chatAttHandleIncoming(m);
+  }
+}
+
+async function chatAttGMDrain() {
+  if (chatAttGMBusy) return;
+  chatAttGMBusy = true;
+  try {
+    while (chatAttGMQueue.length) await chatAttGMAnswer(chatAttGMQueue.shift());
+  } finally {
+    chatAttGMBusy = false;
+  }
+}
+
+async function chatAttGMAnswer(msg) {
+  const rq = msg.payload.att_req;
+  while (attModalOpen()) await new Promise(r => setTimeout(r, 500));   // don't cut in on another popup
+  const answer = await new Promise(resolve => {
+    chatAttGMPrompt.resolve = resolve;
+    openModal(`
+      <h3>⚔ ${escapeHtml(rq.who)} attacks — the target's AV</h3>
+      <div style="margin-bottom:8px">${escapeHtml(rq.weapon)} · ${escapeHtml(rq.label)}<br>
+        Rolled <b>${rq.roll}</b> to hit. To hit is <b>${rq.hit}</b> before the target's AV; crit on ${rq.critAt} or less.${rq.crit ? ' <b>A critical:</b> its second roll is made for you.' : ''}</div>
+      <div class="form-group"><label>Target's AV with everything that applies (the players never see it)</label>
+        <input id="att-gm-av" type="number" class="w-sm" value="${escapeHtml(chatAttGMLastAV)}" onkeydown="if(event.key==='Enter')chatAttGMDone('av')"></div>
+      <div class="modal-actions"><button class="btn btn-dim" onclick="chatAttGMDone('manual')">Leave it to the table</button><button class="btn btn-gold" onclick="chatAttGMDone('av')">Resolve</button></div>`);
+    const el = document.getElementById('att-gm-av');
+    if (el) { el.focus(); el.select(); }
+    clearInterval(chatAttWatch);
+    chatAttWatch = setInterval(() => { if (!attModalOpen()) { clearInterval(chatAttWatch); if (chatAttGMPrompt.resolve === resolve) { chatAttGMPrompt.resolve = null; resolve(null); } } }, 400);
+  });
+  clearInterval(chatAttWatch);
+  if (!answer) return;   // closed without answering: the attacker can still decide at the table
+
+  let payload;
+  if (answer.manual) payload = { att_reply: { req: rq.id, manual: true } };
+  else {
+    chatAttGMLastAV = String(answer.av);
+    const res = attGMResolve(rq, answer.av);
+    payload = { att_reply: Object.assign({ req: rq.id }, res.second ? { hit: true, second: res.second, secondHit: res.secondHit, reduction: res.reduction } : { hit: res.hit }) };
+    chatLocalLine('system', `⚔ ${rq.who}: rolled ${rq.roll} against ${res.needed} (to hit ${rq.hit} + AV ${answer.av}) — ${rq.crit ? `critical, second roll ${res.second.total} ${res.secondHit ? 'hit' : 'missed'}` : res.hit ? 'hit' : 'miss'}. Only you see this.`);
+  }
+  payload.whisper = { characters: msg.character_id ? [msg.character_id] : [], gm: false };
+  await chatInsertMessage({ kind: 'message', body: '⚔ attack resolved', payload });
+}
+function chatAttGMDone(which) {
+  const resolve = chatAttGMPrompt.resolve;
+  chatAttGMPrompt.resolve = null;
+  const el = document.getElementById('att-gm-av');
+  const av = el ? parseFloat(el.value) : NaN;
+  closeModal();
+  if (resolve) resolve(which === 'manual' ? { manual: true } : { av: isNaN(av) ? 0 : av });
 }
 
 async function chatAttackRun() {
@@ -205,28 +342,20 @@ async function chatAttackFlow() {
     if (m.effectiveRange > 0) rangeRow = ['Range', `${dist} of ${Math.round(m.effectiveRange)}: to hit × ${Math.round(m.rangeMod * 100) / 100}${m.rangeMod === 0 ? ' (out of range)' : ''}`];
   }
   const stats = attStats(line);
-
-  // The target's AV is added to the to-hit needed. A player usually doesn't
-  // know it, so blank means unknown: the roll is shown against nothing and the
-  // GM is asked about (Hit? and a critical's second roll) instead.
-  const avAnswer = await chatAsk(`Target's AV — leave blank if you don't know it (the GM tells you if it hit) — ${pick.label}`, null, chatAttackAV);
-  if (avAnswer === null) return;
-  chatAttackAV = String(avAnswer).trim();
-  const av = chatAttackAV === '' || isNaN(parseFloat(chatAttackAV)) ? null : parseFloat(chatAttackAV);
-  const needed = av === null ? null : Math.round(stats.hit + av);
+  const toHit = Math.round(stats.hit);
   const critAt = Math.max(0, Math.floor(Math.round(stats.crit)));
   const fumbleAt = Math.min(100, Math.round(stats.fumble));
   const who = char.name || 'Attacker';
   const weaponName = (it.name || 'weapon').replace(/\s*\(spike\)$/i, ' spike');
+  const weaponLabel = `${it.name || 'Weapon'} (${attGripLabel(line)})`;
 
   // 2. Multiple Attack: a d100 at or under the skill gives 2 attacks, +1 per full 25 under
   const skill = Math.round(w.multipleAttackSkval || 0);
-  const isThrow = line.grip === 'Throw';
-  const noMulti = isThrow ? 'a thrown weapon leaves the hand' : /crossbow/i.test(it.weaponClass || '') ? 'crossbows have to be spanned between shots' : '';
+  const noMulti = line.grip === 'Throw' ? 'a thrown weapon leaves the hand' : /crossbow/i.test(it.weaponClass || '') ? 'crossbows have to be spanned between shots' : '';
   let attacks = 1;
   const head = [['Weapon', `${it.name || 'Weapon'} — ${attGripLabel(line)}`]];
   if (rangeRow) head.push(rangeRow);
-  head.push(['To hit', `${Math.round(stats.hit)}${av === null ? ' (target AV not known)' : av ? ` + AV ${av} = ${needed}` : ''}; crit ≤ ${critAt}, fumble ≥ ${fumbleAt}`]);
+  head.push(['To hit', `${toHit} before the target's AV; crit ≤ ${critAt}, fumble ≥ ${fumbleAt}`]);
   if (noMulti) head.push(['Multiple Attack', `none (${noMulti}): 1 attack`]);
   else if (skill <= 0) head.push(['Multiple Attack', 'no skill: 1 attack']);
   else {
@@ -243,54 +372,57 @@ async function chatAttackFlow() {
     const v = r.total;
     const fumble = v >= fumbleAt;
     const crit = !fumble && v <= critAt;
-    const roughHit = needed !== null && v <= needed && v < ATT_ALWAYS_MISS;
-    const rows = [['Roll', needed === null ? `[[${r.expr}]]` : `[[${r.expr}]] vs needed ${needed}`, [r]]];
+    const rows = [['Roll', `[[${r.expr}]]`, [r]]];
 
     if (fumble) {
       rows.push(['Fumble!', 'The attack misses and the attacks left in this sequence are lost. Reflex roll −25: made → next initiative +3; missed → slipped and fell, next initiative +3 and another d8+3.']);
       if (v >= 97) {
         const again = DiceRoller.roll(`1d100cf>${fumbleAt}`);
-        const out = again.total >= fumbleAt ? 'fumbled again: hits themselves for full damage (or 50/50 with a PC fighting close by)'
-          : needed === null ? 'the GM says if it hits (a miss throws the weapon)'
-          : again.total <= needed && again.total < ATT_ALWAYS_MISS ? 'hits: the weapon is kept' : 'misses: the weapon is thrown';
-        rows.push(['Roll of 97+', `Rolls to hit again: [[${again.expr}]] — ${out}`, [again]]);
+        rows.push(['Roll of 97+', `Rolls to hit again: [[${again.expr}]] — ${again.total >= fumbleAt ? 'fumbled again: hits themselves for full damage (or 50/50 with a PC fighting close by)' : 'the GM says if it hits (a miss throws the weapon)'}`, [again]]);
       }
       await chatAttackPost(`${label}: FUMBLE`, rows);
       await chatAttackPublic(`fumbles with the ${weaponName}!`);
       return;
     }
 
-    let critInfo = null;
-    if (crit) {
-      critInfo = attCrit(v, needed, { crit: Math.round(stats.crit) }, attDamageParts(it, line).sides);
-      rows.push(['Critical!', 'A critical always hits, and gets a second to-hit roll.'], ...critInfo.rows);
-      if (needed === null) {
-        // AV unknown: the GM judges the second roll, so ask what they said
-        const judged = await attAskCritReduction(label, critInfo.second);
-        if (judged === null) return;
-        critInfo.reduction = judged.reduction;
-        rows.push(['Second roll result', judged.text]);
-      }
-      if (!await chatAttackPost(`${label}: CRITICAL`, rows)) return;
+    // the GM supplies the target's AV in private and gets back only the outcome
+    const res = await attAskGM({ who, weapon: weaponName, label, roll: v, hit: toHit, critAt, crit });
+    if (res === null) return;
+
+    let hit, critInfo = null;
+    const sides = attDamageParts(it, line).sides;
+    if (!res.manual) {
+      hit = res.hit;
+      if (crit) critInfo = attCrit(v, { crit: Math.round(stats.crit) }, sides, res);
+    } else if (crit) {
+      // left to the table: the second roll is made here and the GM's verdict asked for
+      hit = true;
+      critInfo = attCrit(v, { crit: Math.round(stats.crit) }, sides, null);
+      const judged = await attAskCritReduction(label, critInfo.second);
+      if (judged === null) return;
+      critInfo.reduction = judged.reduction;
+      critInfo.rows.push(['Second roll result', judged.text]);
     } else {
-      if (needed !== null) rows.push(['Looks like', roughHit ? 'a hit' : v >= ATT_ALWAYS_MISS ? 'a miss (93+ always misses)' : 'a miss']);
-      if (!await chatAttackPost(label, rows)) return;
       const answer = await chatPromptButtons(`${label}: Hit?`,
-        needed === null
-          ? `You rolled <b>${v}</b> (to hit ${Math.round(stats.hit)} before the target's AV). The GM knows the AV: did it hit?`
-          : `You rolled <b>${v}</b> against <b>${needed}</b> — ${roughHit ? 'that looks like a hit' : 'that looks like a miss'}. Did it hit?`,
-        [{ label: 'Hit', value: 'y', gold: roughHit }, { label: 'Miss', value: 'n', gold: needed !== null && !roughHit }, { label: 'Stop (target down)', value: 'stop' }]);
-      if (answer === null || answer === 'stop') { if (answer === 'stop') await chatAttackPost(`${label}: stopped`, [['', 'The target is down; the rest of the sequence is lost.']]); return; }
-      if (answer === 'n') {
-        await chatAttackPost(`${label}: miss`, []);
-        await chatAttackPublic(`whiffs with the ${weaponName}.`);
-        continue;
-      }
+        `You rolled <b>${v}</b> (to hit ${toHit} before the target's AV). The GM knows the AV: did it hit?`,
+        [{ label: 'Hit', value: 'y', gold: true }, { label: 'Miss', value: 'n' }, { label: 'Stop (target down)', value: 'stop' }]);
+      if (answer === null) return;
+      if (answer === 'stop') { await chatAttackPost(`${label}: stopped`, [['', 'The target is down; the rest of the sequence is lost.']]); return; }
+      hit = answer === 'y';
+    }
+    if (crit) rows.push(['Critical!', 'A critical always hits, and gets a second to-hit roll.'], ...critInfo.rows);
+
+    if (!hit) {
+      rows.push(['Result', 'Miss']);
+      await chatAttackPost(`${label}: miss`, rows);
+      await chatAttackPublic(`whiffs with the ${weaponName}.`);
+      continue;
     }
 
     // 4. damage
     const dmg = attDamage(it, line, critInfo ? { reduction: critInfo.reduction, dieSides: critInfo.dieSides } : null);
-    if (!await chatAttackPost(`${label}: ${crit ? 'critical damage' : 'hit, damage'}`, dmg.rows)) return;
+    rows.push(...dmg.rows);
+    if (!await chatAttackPost(`${label}: ${crit ? 'critical hit' : 'hit'}`, rows)) return;
     await chatAttackPublic(`${crit ? 'critically hits' : 'hits'} with the ${weaponName} for ${dmg.total} damage.`);
   }
 }
