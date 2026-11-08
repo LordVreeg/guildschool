@@ -434,6 +434,7 @@ function confirmContainer() {
     if (char.storageOrder) char.storageOrder = char.storageOrder.map(n => n === old ? name : n);
     delete char.storageOnPerson[old];
     delete char.storageNoEncumber[old];
+    if (char.storageHideContents && char.storageHideContents[old]) { delete char.storageHideContents[old]; char.storageHideContents[name] = true; }
     for (const it of char.items || []) if ((it.location || '').trim() === old) it.location = name;
   }
   char.storageCapacities[name] = capacity;
@@ -455,10 +456,22 @@ function confirmDeleteContainer(name, moveTo) {
   if (char.storageCapacities) delete char.storageCapacities[name];
   if (char.storageOnPerson) delete char.storageOnPerson[name];
   if (char.storageNoEncumber) delete char.storageNoEncumber[name];
+  if (char.storageHideContents) delete char.storageHideContents[name];
   if (char.storageOrder) char.storageOrder = char.storageOrder.filter(n => n !== name);
   collapsedItemGroups.delete(name);
   saveState();
   closeModal();
+  renderInventoryModule();
+}
+
+// Storage Locations' Hide Contents tick: the container's items aren't listed
+// in the Inventory's item table (char.storageHideContents, saved with the character).
+function setContainerHideContents(name, on) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  if (!char.storageHideContents) char.storageHideContents = {};
+  if (on) char.storageHideContents[name] = true; else delete char.storageHideContents[name];
+  saveState();
   renderInventoryModule();
 }
 

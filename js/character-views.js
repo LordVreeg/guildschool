@@ -409,9 +409,12 @@ function inUseCellHtml(char, it, idx) {
 // Read-only inventory rows, grouped into folding sections by kind
 // (INVENTORY_SECTIONS); the Location column says where each one is kept.
 function inventoryGroupsHtml(char) {
-  const entries = (char.items || []).map((it, idx) => ({ it, idx })).filter(({ it }) => !isBlankItem(it));
-  const containers = itemLocations(char);
   const where = it => (it.location || '').trim();
+  // items in a container ticked Hide Contents (under Storage Locations) aren't listed
+  const hiddenIn = char.storageHideContents || {};
+  const all = (char.items || []).map((it, idx) => ({ it, idx })).filter(({ it }) => !isBlankItem(it));
+  const entries = all.filter(({ it }) => !(where(it) && hiddenIn[where(it)]));
+  const containers = itemLocations(char);
   // within a section: Carried first, then the containers in their set order, then by name
   const rank = it => where(it) ? 1 + containers.indexOf(where(it)) : 0;
   const rowsOf = key => entries.filter(({ it }) => inventorySectionOf(it) === key)
@@ -429,6 +432,7 @@ function inventoryGroupsHtml(char) {
     return header(section, section, count) + itemRowsHtml(rows, false) +
       subs.map(s => header(s.key, s.label, s.rows.length, true) + (collapsedItemGroups.has(s.key) ? '' : itemRowsHtml(s.rows, true))).join('');
   }).join('');
+  if (!html && all.length) return `<tr><td colspan="9" class="note">All items are in containers with Hide Contents ticked.</td></tr>`;
   return html || `<tr><td colspan="9" class="note">No items yet. Use <i>Add Item</i> below.</td></tr>`;
 
   function itemRowsHtml(rows, sub) {
@@ -481,7 +485,7 @@ function renderInventoryModule() {
 
       <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px">Storage Locations${infoTip(`Capacity is how much weight a container can hold (blank = no limit); On Person's is your Weight Possible. Tick On Person on a container you wear or carry so its contents count toward Weight Carried; one marked Does not encumber adds no weight.`)}</div>
       <table class="item-table inventory-table">
-        <thead><tr><th>Container</th><th>On Person</th><th>Items</th><th>Weight</th><th>Capacity</th><th>Available Capacity</th><th>Worth</th><th></th><th></th><th></th></tr></thead>
+        <thead><tr><th>Container</th><th>On Person</th><th>Hide Contents${infoTip("Ticked: the container's items aren't listed in the item table above. They still count toward weight and worth.")}</th><th>Items</th><th>Weight</th><th>Capacity</th><th>Available Capacity</th><th>Worth</th><th></th><th></th><th></th></tr></thead>
         <tbody>
           ${computeStorageSummary(char).map(g => {
             const isPerson = g.location === ON_PERSON_LOCATION;
@@ -489,6 +493,7 @@ function renderInventoryModule() {
             return `<tr data-container="${escapeHtml(g.location)}">
             <td>${isPerson ? 'On Person' : escapeHtml(g.location)}${g.noEncumber ? ' <span class="item-group-stats">(does not encumber)</span>' : ''}</td>
             <td>${isPerson ? 'always' : (g.onPerson ? '✓' : '')}</td>
+            <td style="text-align:center">${isPerson ? '' : `<input type="checkbox" ${(char.storageHideContents || {})[g.location] ? 'checked' : ''} onchange="setContainerHideContents(this.closest('tr').dataset.container, this.checked)">`}</td>
             <td>${g.count.toLocaleString()}</td>
             <td>${g.weight.toLocaleString()}</td>
             <td>${g.capacity === null ? 'no limit' : g.capacity.toLocaleString()}</td>
