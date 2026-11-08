@@ -420,15 +420,21 @@ function inventoryGroupsHtml(char) {
   const rank = it => where(it) ? 1 + containers.indexOf(where(it)) : 0;
   const rowsOf = key => entries.filter(({ it }) => inventorySectionOf(it) === key)
     .sort((a, b) => (rank(a.it) - rank(b.it)) || String(a.it.name || '').localeCompare(String(b.it.name || ''), undefined, { sensitivity: 'base' }));
+  // the sections shown (those with items), in the player's order (▲/▼)
+  const shown = inventorySectionOrder(char).filter(section => rowsOf(section).length || (INVENTORY_SUBSECTIONS[section] || []).some(([key]) => rowsOf(key).length));
+  const moveBtns = section => {
+    const i = shown.indexOf(section);
+    const b = (dir, glyph, disabled) => `<button type="button" class="btn btn-dim container-move" title="Move this section ${dir < 0 ? 'up' : 'down'}" ${disabled ? 'disabled' : ''} onclick="event.stopPropagation();moveInventorySection(this.closest('[data-group]').dataset.group, ${dir})">${glyph}</button>`;
+    return `<span class="item-group-move">${b(-1, '▲', i <= 0)}${b(1, '▼', i >= shown.length - 1)}</span>`;
+  };
   const header = (key, label, count, sub) => {
     const hidden = collapsedItemGroups.has(key);
-    return `<tr class="item-group${sub ? ' item-subgroup' : ''}" data-group="${escapeHtml(key)}" title="${hidden ? 'Show' : 'Hide'} these items" onclick="toggleItemGroup(this.dataset.group)"><td colspan="9"><span class="item-group-toggle">${hidden ? '▸' : '▾'}</span>${escapeHtml(label)}<span class="item-group-stats">(${count})</span></td></tr>`;
+    return `<tr class="item-group${sub ? ' item-subgroup' : ''}" data-group="${escapeHtml(key)}" title="${hidden ? 'Show' : 'Hide'} these items" onclick="toggleItemGroup(this.dataset.group)"><td colspan="9"><span class="item-group-toggle">${hidden ? '▸' : '▾'}</span>${escapeHtml(label)}<span class="item-group-stats">(${count})</span>${sub ? '' : moveBtns(key)}</td></tr>`;
   };
-  const html = INVENTORY_SECTIONS.map(section => {
+  const html = shown.map(section => {
     const rows = rowsOf(section);
     const subs = (INVENTORY_SUBSECTIONS[section] || []).map(([key, label]) => ({ key, label, rows: rowsOf(key) })).filter(s => s.rows.length);
     const count = rows.length + subs.reduce((n, s) => n + s.rows.length, 0);
-    if (!count) return '';
     if (collapsedItemGroups.has(section)) return header(section, section, count);
     return header(section, section, count) + itemRowsHtml(rows, false) +
       subs.map(s => header(s.key, s.label, s.rows.length, true) + (collapsedItemGroups.has(s.key) ? '' : itemRowsHtml(s.rows, true))).join('');
@@ -437,8 +443,14 @@ function inventoryGroupsHtml(char) {
   return html || `<tr><td colspan="9" class="note">No items yet. Use <i>Add Item</i> below.</td></tr>`;
 
   function itemRowsHtml(rows, sub) {
-    return rows.map(({ it, idx }) => { const warn = inventoryAmmoWarning(char, it); return `<tr class="item-row${sub ? ' item-sub-row' : ''}" style="${it.masterwork ? 'font-style:italic' : ''}">
-        <td>${escapeHtml(it.name || '')}</td>
+    return rows.map(({ it, idx }) => {
+      const warn = inventoryAmmoWarning(char, it);
+      // magic modifiers and spells / effect: rows under the item that ▾ folds away
+      const subRows = itemModsLineHtml(char, it) + itemSpellRowsHtml(char, it, idx, 9);
+      const folded = collapsedItemRows.has(it);
+      const toggle = subRows ? `<span class="item-row-toggle" title="${folded ? 'Show' : 'Hide'} its magic and spells" onclick="toggleItemRows(${idx})">${folded ? '▸' : '▾'}</span>` : '<span class="item-row-toggle"></span>';
+      return `<tr class="item-row${sub ? ' item-sub-row' : ''}" style="${it.masterwork ? 'font-style:italic' : ''}">
+        <td>${toggle}${escapeHtml(it.name || '')}</td>
         <td class="item-kind">${escapeHtml(itemKindLabel(it))}</td>
         <td class="item-kind">${where(it) ? escapeHtml(where(it)) : 'Carried'}</td>
         <td class="item-qty">${escapeHtml(it.qty || 1)}</td>
@@ -447,7 +459,7 @@ function inventoryGroupsHtml(char) {
         <td class="item-kind">${warn || escapeHtml(it.notes || '')}</td>
         <td class="item-edit" title="Edit" onclick="openEditItemModal(${idx})">✎</td>
         <td class="item-del" title="Delete" onclick="removeItem(${idx})">✕</td>
-      </tr>` + itemModsLineHtml(char, it) + itemSpellRowsHtml(char, it, idx, 9); }).join('');
+      </tr>` + (folded ? '' : subRows); }).join('');
   }
 }
 

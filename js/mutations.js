@@ -577,6 +577,35 @@ function moveContainer(name, dir) {
 
 // Show/hide a location's items in the Items list (not saved).
 let collapsedItemGroups = new Set();
+// Items whose magic / spell rows are folded on the Inventory (kept while the page is open).
+let collapsedItemRows = new WeakSet();
+function toggleItemRows(idx) {
+  const char = state.characters[state.activeChar];
+  const it = char && (char.items || [])[idx];
+  if (!it) return;
+  if (collapsedItemRows.has(it)) collapsedItemRows.delete(it); else collapsedItemRows.add(it);
+  renderInventoryModule();
+}
+// The Inventory's sections in the player's order (char.inventorySectionOrder,
+// set with ▲/▼); sections not placed yet keep their default place at the end.
+function inventorySectionOrder(char) {
+  const saved = (char.inventorySectionOrder || []).filter(s => INVENTORY_SECTIONS.includes(s));
+  return [...saved, ...INVENTORY_SECTIONS.filter(s => !saved.includes(s))];
+}
+// ▲/▼ on a section header: swap it with the next section shown above or below.
+function moveInventorySection(name, dir) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const order = inventorySectionOrder(char);
+  const shown = [...document.querySelectorAll('.inventory-table tr.item-group:not(.item-subgroup)')].map(r => r.dataset.group);
+  const j = shown.indexOf(name) + dir;
+  if (j < 0 || j >= shown.length) return;
+  const a = order.indexOf(name), b = order.indexOf(shown[j]);
+  [order[a], order[b]] = [order[b], order[a]];
+  char.inventorySectionOrder = order;
+  saveState();
+  renderInventoryModule();
+}
 function toggleItemGroup(name) {
   if (collapsedItemGroups.has(name)) collapsedItemGroups.delete(name); else collapsedItemGroups.add(name);
   renderInventoryModule();
