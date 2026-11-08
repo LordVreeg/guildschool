@@ -289,8 +289,11 @@ function chatPostAsChar() {
   const sel = document.getElementById('chat-post-as');
   const v = sel ? sel.value : '';
   if (v.startsWith(CHAT_AS_PREFIX)) {
+    const name = v.slice(CHAT_AS_PREFIX.length);
     const current = state.characters[state.activeChar];
-    return current && current.name === v.slice(CHAT_AS_PREFIX.length) ? current : null;
+    if (current && current.name === name) return current;
+    // An NPC with a sheet of its own (one of the GM's characters), posted as by name
+    return Object.values(state.characters).find(c => (c.name || '').trim().toLowerCase() === name.trim().toLowerCase()) || null;
   }
   const appId = Object.keys(charRowIds).find(k => charRowIds[k] === v);
   return appId ? state.characters[appId] : null;
@@ -891,6 +894,12 @@ async function sendChatMessage(textOverride) {
 async function chatInsertMessage(msg) {
   const asSel = document.getElementById('chat-post-as');
   const btn = document.getElementById('chat-send-btn');
+  // Posting as an NPC (a name): the row carries that name, like /as and /emas
+  if (asSel.value.startsWith(CHAT_AS_PREFIX) && !msg.sender_name) {
+    msg = Object.assign({}, msg, { sender_name: asSel.value.slice(CHAT_AS_PREFIX.length) });
+    if (msg.kind === 'message') msg.kind = 'as';
+    else if (msg.kind === 'emote') msg.kind = 'emas';
+  }
   if (btn) btn.disabled = true;
   const row = { group_id: chatGroupId, character_id: asSel.value && !asSel.value.startsWith(CHAT_AS_PREFIX) ? asSel.value : null, body: msg.body, kind: msg.kind, payload: msg.payload };
   if (msg.sender_name) row.sender_name = msg.sender_name;

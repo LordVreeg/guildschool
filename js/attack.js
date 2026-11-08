@@ -184,6 +184,14 @@ let chatAttWatch = null;         // interval noticing a modal closed without an 
 // null (cancel the attack).
 async function attAskGM(rq) {
   if (chatTalkToMyself) return { manual: true };
+  // The GM attacking (an NPC, or their own character) is also the one who knows
+  // the AV: ask right here, with no request message to send and wait for.
+  if (chatIsGM()) {
+    const answer = await attGMPrompt(rq, true);
+    if (!answer) return null;
+    if (answer.manual) return { manual: true };
+    return attGMOutcome(rq, answer.av);
+  }
   const id = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now()) + Math.random();
   const answered = new Promise(res => { chatAttPending[id] = res; });
   const body = `⚔ ${rq.who} rolled ${rq.roll} to hit (${rq.hit}) with the ${rq.weapon}${rq.crit ? ' — a critical' : ''}. Waiting for the GM's AV.`;
@@ -251,8 +259,9 @@ async function chatAttGMDrain() {
   }
 }
 
-async function chatAttGMAnswer(msg) {
-  const rq = msg.payload.att_req;
+// The GM's AV popup. selfRun: the GM is the one attacking (an NPC), so the
+// skip button reads differently. Resolves to { av }, { manual: true } or null.
+async function attGMPrompt(rq, selfRun) {
   while (attModalOpen()) await new Promise(r => setTimeout(r, 500));   // don't cut in on another popup
   const answer = await new Promise(resolve => {
     chatAttGMPrompt.resolve = resolve;
@@ -260,25 +269,32 @@ async function chatAttGMAnswer(msg) {
       <h3>⚔ ${escapeHtml(rq.who)} attacks — the target's AV</h3>
       <div style="margin-bottom:8px">${escapeHtml(rq.weapon)} · ${escapeHtml(rq.label)}<br>
         Rolled <b>${rq.roll}</b> to hit. To hit is <b>${rq.hit}</b> before the target's AV; crit on ${rq.critAt} or less.${rq.crit ? ' <b>A critical:</b> its second roll is made for you.' : ''}</div>
-      <div class="form-group"><label>Target's AV with everything that applies (the players never see it)</label>
+      <div class="form-group"><label>Target's AV with everything that applies${selfRun ? '' : ' (the players never see it)'}</label>
         <input id="att-gm-av" type="number" class="w-sm" value="${escapeHtml(chatAttGMLastAV)}" onkeydown="if(event.key==='Enter')chatAttGMDone('av')"></div>
-      <div class="modal-actions"><button class="btn btn-dim" onclick="chatAttGMDone('manual')">Leave it to the table</button><button class="btn btn-gold" onclick="chatAttGMDone('av')">Resolve</button></div>`);
+      <div class="modal-actions"><button class="btn btn-dim" onclick="chatAttGMDone('manual')">${selfRun ? "Skip the AV: I'll say hit or miss" : 'Leave it to the table'}</button><button class="btn btn-gold" onclick="chatAttGMDone('av')">Resolve</button></div>`);
     const el = document.getElementById('att-gm-av');
     if (el) { el.focus(); el.select(); }
     clearInterval(chatAttWatch);
     chatAttWatch = setInterval(() => { if (!attModalOpen()) { clearInterval(chatAttWatch); if (chatAttGMPrompt.resolve === resolve) { chatAttGMPrompt.resolve = null; resolve(null); } } }, 400);
   });
   clearInterval(chatAttWatch);
-  if (!answer) return;   // closed without answering: the attacker can still decide at the table
+  return answer;
+}
 
-  let payload;
-  if (answer.manual) payload = { att_reply: { req: rq.id, manual: true } };
-  else {
-    chatAttGMLastAV = String(answer.av);
-    const res = attGMResolve(rq, answer.av);
-    payload = { att_reply: Object.assign({ req: rq.id }, res.second ? { hit: true, second: res.second, secondHit: res.secondHit, reduction: res.reduction } : { hit: res.hit }) };
-    chatLocalLine('system', `⚔ ${rq.who}: rolled ${rq.roll} against ${res.needed} (to hit ${rq.hit} + AV ${answer.av}) — ${rq.crit ? `critical, second roll ${res.second.total} ${res.secondHit ? 'hit' : 'missed'}` : res.hit ? 'hit' : 'miss'}. Only you see this.`);
-  }
+// Hit or miss (and a critical's second roll) against the AV the GM gave; the
+// GM also gets a private line saying how it worked out.
+function attGMOutcome(rq, av) {
+  chatAttGMLastAV = String(av);
+  const res = attGMResolve(rq, av);
+  chatLocalLine('system', `⚔ ${rq.who}: rolled ${rq.roll} against ${res.needed} (to hit ${rq.hit} + AV ${av}) — ${rq.crit ? `critical, second roll ${res.second.total} ${res.secondHit ? 'hit' : 'missed'}` : res.hit ? 'hit' : 'miss'}. Only you see this.`);
+  return res.second ? { hit: true, second: res.second, secondHit: res.secondHit, reduction: res.reduction } : { hit: res.hit };
+}
+
+async function chatAttGMAnswer(msg) {
+  const rq = msg.payload.att_req;
+  const answer = await attGMPrompt(rq, false);
+  if (!answer) return;   // closed without answering: the attacker can still decide at the table
+  const payload = { att_reply: Object.assign({ req: rq.id }, answer.manual ? { manual: true } : attGMOutcome(rq, answer.av)) };
   payload.whisper = { characters: msg.character_id ? [msg.character_id] : [], gm: false };
   await chatInsertMessage({ kind: 'message', body: '⚔ attack resolved', payload });
 }
@@ -302,7 +318,7 @@ async function chatAttackRun() {
 
 async function chatAttackFlow() {
   const char = chatPostAsChar();
-  if (!char) throw new Error('/att attacks as one of your characters. Pick one under "Post as" (not GM or an NPC).');
+  if (!char) throw new Error('/att attacks as a character with a sheet: one of yours under "Post as", or an NPC of yours posted as by name. (Bestiary foes and temp characters have no sheet to attack from.)');
 
   // 1. the weapon: everything in hand, one choice per grip / throw
   const options = [];
@@ -404,7 +420,7 @@ async function chatAttackFlow() {
       critInfo.rows.push(['Second roll result', judged.text]);
     } else {
       const answer = await chatPromptButtons(`${label}: Hit?`,
-        `You rolled <b>${v}</b> (to hit ${toHit} before the target's AV). The GM knows the AV: did it hit?`,
+        chatIsGM() ? `Rolled <b>${v}</b> (to hit ${toHit} before the target's AV). Did it hit?` : `You rolled <b>${v}</b> (to hit ${toHit} before the target's AV). The GM knows the AV: did it hit?`,
         [{ label: 'Hit', value: 'y', gold: true }, { label: 'Miss', value: 'n' }, { label: 'Stop (target down)', value: 'stop' }]);
       if (answer === null) return;
       if (answer === 'stop') { await chatAttackPost(`${label}: stopped`, [['', 'The target is down; the rest of the sequence is lost.']]); return; }
