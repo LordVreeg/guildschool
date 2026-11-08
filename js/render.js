@@ -69,7 +69,7 @@ function paintFileMenuCombats() {
   box.innerHTML = '<hr><div style="font-size:calc(10px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;padding:2px 8px">Active Combats</div>' +
     fileMenuCombats.map(e => {
       const g = myGroups.find(x => x.id === e.group_id);
-      return `<button onclick="closeTopMenus();openEncounterFromMenu('${e.id}')">⚔ ${escapeHtml(e.name)}` +
+      return `<button onclick="closeTopMenus();openEncounterFromMenu('${e.id}')"><span class="menu-icon">⚔</span>${escapeHtml(e.name)}` +
         `<span style="font-size:calc(10px * var(--fs));margin-left:6px;color:${statusColor[e.status] || 'inherit'}">${e.status}, seg ${e.current_segment}</span>` +
         (g ? `<span style="font-size:calc(10px * var(--fs));margin-left:6px;color:var(--text-dim)">${escapeHtml(g.name)}</span>` : '') + '</button>';
     }).join('');
