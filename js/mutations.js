@@ -250,12 +250,16 @@ function confirmAddItem() {
 // stops the save ('' = fine). A spell row that's been started but isn't
 // complete stops it rather than being dropped.
 function finishItemSpellsAndMods(d) {
+  const isPotion = itemSpellRule(d) === 'potion';
+  const uses = isPotion ? parseInt(d.potionUses === undefined ? potionUses(d) : d.potionUses) : 0;
+  if (isPotion && !(uses >= 1)) return 'Give the potion at least 1 use.';
   if (itemCanHoldSpells(d)) {
     const started = itemSpellDrafts.filter(sp => sp.school || String(sp.name || '').trim());
+    if (isPotion) for (const sp of started) sp.usesMax = uses; // a potion's spell takes the potion's uses
     if (started.some(sp => !itemSpellReady(sp))) return 'Finish each spell under Spells (school, spell, level and uses), or remove it with ✕.';
     const rule = itemSpellRule(d);
     const total = (d.spells || []).length + started.length;
-    const ruleError = rule === 'potion' && total !== 1 ? 'A potion holds exactly one spell.'
+    const ruleError = rule === 'potion' && total + (String(d.effect || '').trim() ? 1 : 0) !== 1 ? 'A potion has one spell or one effect: give it an Effect, or add a spell.'
       : itemSpellOneUse(rule) && total < 1 ? `A ${rule} needs at least one spell.` : '';
     if (ruleError) return ruleError;
     for (const sp of started) {
@@ -267,6 +271,16 @@ function finishItemSpellsAndMods(d) {
     if (rule) for (const sp of d.spells || []) { sp.period = 'charges'; if (itemSpellOneUse(rule)) sp.usesMax = sp.usesLeft = 1; }
     resetItemSpellDraft();
   }
+  // A potion's uses: its spell's, or its effect's (counted on the potion)
+  if (isPotion) {
+    d.potionUses = uses;
+    for (const sp of d.spells || []) if (parseInt(sp.usesMax) !== uses) { sp.usesMax = uses; sp.usesLeft = uses; }
+    d.effect = String(d.effect || '').trim();
+    if (d.effect && !(d.spells || []).length) {
+      const left = parseInt(d.effectUsesLeft);
+      d.effectUsesLeft = left >= 0 && left <= uses ? left : uses;
+    } else { delete d.effect; delete d.effectUsesLeft; }
+  } else { delete d.potionUses; delete d.effect; delete d.effectUsesLeft; }
   delete d.coin;
   if (!itemCanHoldSpells(d)) delete d.spells;
   // Magic modifiers: keep only the kinds this item has; void rows need a pool and an amount
@@ -438,6 +452,22 @@ function useUpItemSpell(char, itemIdx, spellIdx) {
   if (!it || !it.spells) return;
   it.spells.splice(spellIdx, 1);
   if (!it.spells.length) char.items.splice(itemIdx, 1);
+}
+// Use on a potion with an effect (not a spell): one use; when they run out,
+// one potion is gone (the next on its line starts full).
+function usePotionEffect(itemIdx) {
+  const char = state.characters[state.activeChar];
+  const it = char && (char.items || [])[itemIdx];
+  if (!it || !it.effect) return;
+  const uses = potionUses(it);
+  const left = (it.effectUsesLeft === undefined ? uses : parseInt(it.effectUsesLeft) || 0) - 1;
+  if (left < 0) return;
+  if (left === 0 && !confirm(`Use the last of ${it.name || 'this potion'}${(parseInt(it.qty) || 1) > 1 ? ' (one of ' + it.qty + ')' : ''}?`)) return;
+  if (left > 0) it.effectUsesLeft = left;
+  else if ((parseInt(it.qty) || 1) > 1) { it.qty = (parseInt(it.qty) || 1) - 1; it.effectUsesLeft = uses; }
+  else char.items.splice(itemIdx, 1);
+  saveState();
+  renderItemSpellPage();
 }
 // ↺: the uses come back (a new day, a recharge...).
 function rechargeItemSpell(itemIdx, spellIdx) {

@@ -88,6 +88,11 @@ function itemSpellRule(it) {
   if (!it || it.type !== 'Magic Item') return null;
   return it.magicItemClass === 'Potions' ? 'potion' : it.magicItemClass === 'Scrolls' ? 'scroll' : it.magicItemClass === 'Plaques' ? 'plaque' : null;
 }
+// A potion's uses (the Uses field by Unit Worth): shared by its one spell or
+// its one effect. Older potions kept them on the spell only.
+function potionUses(it) {
+  return parseInt(it && it.potionUses) || parseInt(((it && it.spells) || [])[0] && it.spells[0].usesMax) || 1;
+}
 // A scroll or a plaque: one use per spell, gone with its last spell.
 function itemSpellOneUse(rule) { return rule === 'scroll' || rule === 'plaque'; }
 function itemCanHoldSpells(it) {

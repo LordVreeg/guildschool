@@ -188,6 +188,7 @@ function renderAddItemModal(justAdded) {
       ${field('Qty', num('qty', 'min="1"'), 'sm')}
       ${field('Unit Weight', d.type === 'Spell Book' ? `<input class="w-full" type="number" value="${SPELL_BOOK_WEIGHT}" disabled title="A spell book always weighs ${SPELL_BOOK_WEIGHT}">` : num('weight'), 'sm one-line-label')}
       ${field('Unit Worth', num('worth'), 'sm one-line-label')}
+      ${itemSpellRule(d) === 'potion' ? field('Uses' + infoTip('How many times the potion can be used, for its spell or its effect. When they run out, one potion is used up.'), `<input class="w-full" type="number" min="1" ${lock} value="${val(d.potionUses === undefined ? potionUses(d) : d.potionUses)}" oninput="setAddItemField('potionUses',this.value)">`, 'sm') : ''}
       ${d.type === 'Magic Item' ? '' : `<div class="form-group" style="justify-content:flex-end">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
           <input type="checkbox" ${lock} ${d.masterwork ? 'checked' : ''} onchange="setAddItemField('masterwork',this.checked);renderAddItemModal()"> Masterwork / Magic
@@ -198,6 +199,7 @@ function renderAddItemModal(justAdded) {
       ${field('Location' + infoTip('Carried items count toward Weight Carried. To put an item in a new bag, stash or other location, add it under Storage Locations first.'), `<select class="w-full"  ${lock} onchange="setAddItemField('location',this.value)">${opt('', 'Carried', !location)}${locations.map(l => opt(l, l, location === l)).join('')}</select>`, 'md')}
       ${field('Notes', `<input class="w-full"  ${lock} value="${val(d.notes)}" oninput="setAddItemField('notes',this.value)">`, 'fill')}
     </div>
+    ${itemSpellRule(d) === 'potion' ? `<div class="form-row">${field('Effect' + infoTip('What the potion does, when it casts no spell. A potion has one spell or one effect.'), `<input class="w-full" ${lock} value="${val(d.effect)}" ${(d.spells || []).length || itemSpellDrafts.length ? 'disabled title="This potion has a spell; remove it to give it an effect instead"' : ''} oninput="setAddItemField('effect',this.value)" onchange="renderAddItemModal()">`, 'full')}</div>` : ''}
     ${ready && itemModKinds(d) ? itemModsSectionHtml(d) : ''}
     ${ready && itemCanHoldSpells(d) ? itemSpellsSectionHtml(d) : ''}
     ${ready ? '' : '<div class="note">Choose from every list above to fill in the rest of the item.</div>'}
@@ -317,7 +319,7 @@ function itemSpellsSectionHtml(d) {
       <div class="form-group"><label>School</label>${picked ? `<input class="w-md" value="${escapeHtml(s.school)}" readonly>` : `<select class="w-md" onchange="setItemSpellDraft(${i},'school',this.value,true)">${opt('', '— select —', !s.school)}${schools.map(sc => opt(sc, sc, s.school === sc)).join('')}</select>`}</div>
       <div class="form-group"><label>Spell</label>${spellField}</div>
       <div class="form-group"><label>Level</label><input type="number" min="1" class="w-sm" value="${escapeHtml(s.level)}" oninput="setItemSpellDraft(${i},'level',this.value)"></div>
-      ${itemSpellOneUse(rule) || (!rule && s.period === 'permanent') ? '' : `<div class="form-group"><label>Uses</label><input type="number" min="1" class="w-sm" value="${escapeHtml(s.usesMax)}" oninput="setItemSpellDraft(${i},'usesMax',this.value)"></div>`}
+      ${itemSpellOneUse(rule) || rule === 'potion' || (!rule && s.period === 'permanent') ? '' : `<div class="form-group"><label>Uses</label><input type="number" min="1" class="w-sm" value="${escapeHtml(s.usesMax)}" oninput="setItemSpellDraft(${i},'usesMax',this.value)"></div>`}
       ${rule ? '' : `<div class="form-group"><label>Per</label><select class="w-md" onchange="setItemSpellDraft(${i},'period',this.value,true)">${ITEM_SPELL_PERIODS.map(([v, l]) => opt(v, l, s.period === v)).join('')}</select></div>`}
       <div class="form-group"><span class="item-del" style="cursor:pointer;color:var(--red-b);padding:6px 2px" title="Remove this spell" onclick="closeItemSpellRow(${i})">✕</span></div>
     </div>`;
@@ -327,10 +329,10 @@ function itemSpellsSectionHtml(d) {
   return `
     ${search}
     <hr class="divider">
-    <div class="form-group"><label>Spells${infoTip(itemSpellOneUse(rule) ? `A ${rule} holds one or more spells. Each can be cast once and is then gone; the ${rule} goes with its last spell. Casting one opens the spell Cast popup in ${rule === 'scroll' ? 'Scrollcast' : 'Plaque'} mode: it costs spell points, with no success roll.` : (rule === 'potion' ? 'A potion holds exactly one spell. Each cast uses one of its uses; when they run out the potion is gone. ' : '') + 'Spells are saved with the item. Each is cast at its fixed level, with no spell points, and always succeeds; a cast uses one of its uses.')}</label></div>
+    <div class="form-group"><label>Spells${infoTip(itemSpellOneUse(rule) ? `A ${rule} holds one or more spells. Each can be cast once and is then gone; the ${rule} goes with its last spell. Casting one opens the spell Cast popup in ${rule === 'scroll' ? 'Scrollcast' : 'Plaque'} mode: it costs spell points, with no success roll.` : (rule === 'potion' ? 'A potion has one spell or one effect, with the Uses set above. Each cast uses one; when they run out the potion is gone. ' : '') + 'Spells are saved with the item. Each is cast at its fixed level, with no spell points, and always succeeds; a cast uses one of its uses.')}</label></div>
     ${list || (rows ? '' : '<div class="note">No spells on this item yet.</div>')}
     ${rows}
-    ${rule === 'potion' && (d.spells || []).length + itemSpellDrafts.length >= 1 ? '' : '<div style="margin-top:6px"><button type="button" class="btn btn-dim" onclick="openItemSpellRow()">Add spell</button></div>'}
+    ${rule === 'potion' && ((d.spells || []).length + itemSpellDrafts.length >= 1 || String(d.effect || '').trim()) ? '' : '<div style="margin-top:6px"><button type="button" class="btn btn-dim" onclick="openItemSpellRow()">Add spell</button></div>'}
     `;
 }
 

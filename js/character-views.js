@@ -455,6 +455,12 @@ function inventoryGroupsHtml(char) {
 // the item's row on the Inventory page and the Combat page.
 function itemSpellRowsHtml(char, it, idx, colspan) {
   if (!itemCanHoldSpells(it)) return '';
+  // a potion with an effect instead of a spell: the effect, its uses and Use
+  if (itemSpellRule(it) === 'potion' && it.effect && !(it.spells || []).length) {
+    const max = potionUses(it), left = it.effectUsesLeft === undefined ? max : parseInt(it.effectUsesLeft) || 0;
+    return `<tr class="item-spell-row"><td colspan="${colspan}">✚ ${escapeHtml(it.effect)} · <span style="${left > 0 ? '' : 'color:#c05050'}">${left}/${max} use${max === 1 ? '' : 's'}</span>
+      <button class="btn btn-gold item-spell-btn" ${left > 0 ? '' : 'disabled'} title="Use one" onclick="usePotionEffect(${idx})">Use</button></td></tr>`;
+  }
   if (typeof idx === 'string') idx = `'${idx}'`; // a companion ('c0', see spellHolderOf)
   return (it.spells || []).map((sp, j) => {
         const left = itemSpellUsesLeft(sp, char);
