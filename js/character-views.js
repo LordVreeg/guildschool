@@ -1080,10 +1080,11 @@ function renderSpellModule() {
           <tr><th>Max</th>${pools.map(p => `<td>${p.maxSP}</td>`).join('')}</tr>
           <tr><th>Current</th>${pools.map(p => `<td><input type="number" step="1" class="w-sm" value="${p.currentSP}" data-pool="${escapeHtml(p.name)}" onchange="updateSpellState(this.dataset.pool,'current',this.value)"></td>`).join('')}</tr>
           <tr><th>Used</th>${pools.map(p => `<td>${p.usedSP}</td>`).join('')}</tr>
-          <tr><th>Familiarity</th>${pools.map(p => `<td>${escapeHtml(p.familiarity)}</td>`).join('')}</tr>
+          <tr class="spell-click-row" title="What familiarity means, and how far each pool is from the next tier" onclick="openFamiliarityModal()"><th>Familiarity ▸</th>${pools.map(p => `<td>${escapeHtml(p.familiarity)}</td>`).join('')}</tr>
+          <tr class="spell-click-row" title="Choose which items and companions reduce spell costs" onclick="openVoidSourcesModal()"><th>SP Reduction ▸</th>${pools.map(p => `<td>${p.spReduction ? '−' + p.spReduction : '0'}</td>`).join('')}</tr>
         </tbody>
       </table>
-      <div class="note">Click a pool's name for its details, recovery and Magic Enhancers.</div>` : ''}
+      <div class="note">Click a pool's name, Familiarity or SP Reduction for more.</div>` : ''}
       <div class="form-group" style="margin-top:10px"><label>Spell Success Modifier${infoTip('Added to the success chance of every spell this character casts. Use a negative number for a penalty.')}</label>
         <input type="number" step="any" class="w-sm" value="${escapeHtml(char.spellSuccessMod ?? '')}" placeholder="0" onchange="updateChar('spellSuccessMod', this.value.trim() === '' ? '' : (parseFloat(this.value) || 0))"></div>
 
@@ -1181,6 +1182,95 @@ function renderSpellPoolModal() {
       <div class="form-group"><label>Spell Success Bonus</label><input type="number" class="w-sm" value="${p.successBonus}" onchange="updateSpellEnhancer('${p.name}','successBonus',this.value)"></div>
     </div>
     <div class="modal-actions"><button class="btn btn-gold" onclick="openSpellPool=null;closeModal()">Close</button></div>`, { wide: true });
+}
+
+// The Familiarity popup (from the Familiarity row on the Spells page): the
+// tiers, then where each pool stands and what it needs for the next tier.
+function openFamiliarityModal() {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const pools = spellPoolsInOrder(char);
+  const spirit = pools.find(p => p.name === 'Spirit SP');
+  const spiritLevel = pools.length ? pools[0].spiritLevel : 0;
+  const tiers = SPELL_FAMILIARITY_TIERS;
+  const fmt = n => n == null ? '—' : Math.max(0, n).toLocaleString();
+  const xpTo = (p, level) => { const need = rawXPForLevel(level, p.expmod); return need == null ? null : need - p.rawXP; };
+  const tierRule = t => t.minLevel ? `Level ${t.minLevel}+, and ${t.spiritFrac === 0.5 ? '½' : '¾'} of Spirit level or ${t.cap}+` : 'Every trained school starts here';
+  const esl = t => t.eslFactor ? `Spirit level + ${t.eslFactor === 0.5 ? '½' : '¾'} × pool level` : 'Spirit level';
+  const rows = pools.map(p => {
+    if (p.name === 'Spirit SP') {
+      return `<tr><td>${escapeHtml(p.name)}</td><td>${p.level}</td><td>—</td><td>${p.effectiveLevel}</td>
+        <td colspan="3" class="note">Spirit sets every school's thresholds and Effective Spell Level.</td>
+        <td>${fmt(xpTo(p, p.level + 1))}</td></tr>`;
+    }
+    const idx = tiers.findIndex(t => t.name === p.familiarity);
+    const next = tiers[idx + 1];
+    const needed = next ? familiarityLevelNeeded(next, spiritLevel) : null;
+    return `<tr><td>${escapeHtml(p.name)}</td><td>${p.level}</td><td>${escapeHtml(p.familiarity)}</td><td>${p.effectiveLevel}</td>
+      ${next ? `<td>${next.name}</td><td>${needed}</td><td>${Math.max(0, needed - p.level)}</td>` : '<td colspan="3" class="note">Highest tier</td>'}
+      <td>${fmt(xpTo(p, p.level + 1))}${next && needed > p.level + 1 ? ` <span class="note">(${fmt(xpTo(p, needed))} to level ${needed})</span>` : ''}</td></tr>`;
+  }).join('');
+  openModal(`
+    <h3>Familiarity</h3>
+    <div class="note">How well a character knows each school, from its pool's level against Spirit SP. The higher the tier, the less Spirit it takes to cover missing school points, and the higher the school's Effective Spell Level ("plev").</div>
+    <table class="skill-table familiarity-table">
+      <thead><tr><th>Tier</th><th>Needs</th><th>Spirit conversion${infoTip('Spirit SP spent for each point of this school a spell needs but the pool can\'t cover.')}</th><th>Effective Spell Level${infoTip('Rounded up. Used by spell duration and range formulas.')}</th></tr></thead>
+      <tbody>${tiers.map(t => `<tr><td>${t.name}</td><td>${tierRule(t)}</td><td>${t.ratio}:1</td><td>${esl(t)}</td></tr>`).join('')}</tbody>
+    </table>
+    ${spirit ? `<div class="note">With Spirit at level ${spiritLevel}: ${tiers.slice(1).map(t => `${t.name} needs level ${familiarityLevelNeeded(t, spiritLevel)}`).join(', ')}.</div>` : '<div class="warn">No Spirit SP trained: every school is measured against Spirit level 0.</div>'}
+    <table class="skill-table familiarity-table">
+      <thead><tr><th>Pool</th><th>Level</th><th>Familiarity</th><th>Eff. Level</th><th>Next tier</th><th>At level${infoTip('Raising Spirit raises this, until the pool reaches the tier\'s fixed level (8 for Specialized, 12 for Devoted).')}</th><th>Levels to go</th><th>Raw XP to next level${infoTip('At the pool\'s current EXPMOD. In brackets: raw XP to the level the next tier needs.')}</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="modal-actions"><button class="btn btn-gold" onclick="closeModal()">Close</button></div>`, { wide: true });
+}
+
+// The Spell Pool Reduction popup (from the SP Reduction row on the Spells
+// page): every item and companion with a void reduction, what it takes off
+// each pool, and a tick for whether it's taking part.
+let voidSourcesModalOpen = false;
+function openVoidSourcesModal() {
+  voidSourcesModalOpen = true;
+  renderVoidSourcesModal();
+}
+function renderVoidSourcesModal() {
+  const char = state.characters[state.activeChar];
+  if (!char || !voidSourcesModalOpen) return;
+  const sources = voidSources(char);
+  const active = voidActiveKeys(char, sources);
+  const pools = spellPoolsInOrder(char);
+  // Pools the character has, then any other pool a source names.
+  const poolNames = pools.map(p => p.name);
+  for (const s of sources) for (const name of Object.keys(s.amounts)) if (!poolNames.includes(name)) poolNames.push(name);
+  const poolByName = Object.fromEntries(pools.map(p => [p.name, p]));
+  const cell = n => n ? '−' + n : '—';
+  const rule = 'Tick the items and companions taking part. Only one non-stacking source can be ticked; any number of stacking ones can. For each pool, the non-stacking source\'s reduction is added to the greatest stacking reduction for that pool (stacking sources don\'t add to each other). Only items in use (worn, wielded or carried) and companions count. Until you tick a box, the strongest non-stacking source and every stacking one are used.';
+  const rows = sources.map(s => {
+    const it = s.it, isCompanion = s.key[0] === 'c';
+    const status = !s.eligible ? '<span class="note">not in use</span>' : '';
+    return `<tr class="${active.has(s.key) ? '' : 'void-off'}">
+      <td><input type="checkbox" ${active.has(s.key) ? 'checked' : ''} ${s.eligible ? '' : 'disabled'} onchange="setVoidSourceActive('${s.key}', this.checked)"></td>
+      <td>${escapeHtml(it.name || '(unnamed)')}${isCompanion ? ' <span class="note">(companion)</span>' : ''} ${status}</td>
+      <td>${s.stacks ? 'Stacking' : 'Non-stacking'}</td>
+      ${poolNames.map(n => `<td>${cell(s.amounts[n] || 0)}</td>`).join('')}
+    </tr>`;
+  }).join('');
+  const itemTotal = n => magicVoidReduction(char, n, sources);
+  const manual = n => poolByName[n] ? poolByName[n].spReductionManual : 0;
+  const anyManual = poolNames.some(n => manual(n));
+  openModal(`
+    <h3>Spell Pool Reduction${infoTip(rule)}</h3>
+    ${sources.length ? `
+    <table class="skill-table void-sources-table">
+      <thead><tr><th></th><th>Source</th><th>Type</th>${poolNames.map(n => `<th>${escapeHtml(n)}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${rows}
+        <tr class="void-total"><td></td><td colspan="2">From items</td>${poolNames.map(n => `<td>${cell(itemTotal(n))}</td>`).join('')}</tr>
+        ${anyManual ? `<tr><td></td><td colspan="2">Manual${infoTip('The SP Cost Reduction entered in each pool\'s Magic Enhancers (click the pool\'s name).')}</td>${poolNames.map(n => `<td>${cell(manual(n))}</td>`).join('')}</tr>
+        <tr class="void-total"><td></td><td colspan="2">Total</td>${poolNames.map(n => `<td>${cell(itemTotal(n) + manual(n))}</td>`).join('')}</tr>` : ''}
+      </tbody>
+    </table>` : '<div class="note">No items or companions reduce spell costs. Add Void modifiers to one on the Inventory or Companions page.</div>'}
+    <div class="modal-actions"><button class="btn btn-gold" onclick="voidSourcesModalOpen=false;closeModal()">Close</button></div>`, { wide: true });
 }
 
 function renderUtilitiesModule() {

@@ -202,7 +202,7 @@ function setItemPick(key, value) {
   if (String(old.notes || '').trim()) d.notes = old.notes;
   if (old.masterwork && ['Weapon', 'Armor', 'Shield', 'Ammunition'].includes(d.type)) d.masterwork = true;
   if ((old.spells || []).length) d.spells = old.spells;
-  for (const f of [...MAGIC_MOD_FIELDS.defense, ...MAGIC_MOD_FIELDS.offense, 'magicVoid', 'magicVoidStacks', '_mod_offense', '_mod_defense', '_mod_void']) {
+  for (const f of [...MAGIC_MOD_FIELDS.defense, ...MAGIC_MOD_FIELDS.offense, 'magicVoid', 'magicVoidStacks', 'voidActive', '_mod_offense', '_mod_defense', '_mod_void']) {
     if (old[f] !== undefined && old[f] !== '' && d[f] === undefined) d[f] = old[f];
   }
   itemDraft = d;
@@ -755,6 +755,27 @@ function updateSpellState(poolName, field, value) {
   saveState();
   renderSpellModule();
   if (openSpellPool && document.getElementById('modal-overlay').classList.contains('open')) renderSpellPoolModal();
+}
+
+// Ticks or unticks one void source in the Spell Pool Reduction popup. The
+// first tick turns the automatic choice into an explicit one (every source
+// keeps what it had), and ticking a non-stacking source unticks the others.
+function setVoidSourceActive(key, checked) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const sources = voidSources(char);
+  const src = sources.find(s => s.key === key);
+  if (!src) return;
+  if (!char.voidChoiceMade) {
+    const active = voidActiveKeys(char, sources);
+    sources.forEach(s => { s.it.voidActive = active.has(s.key); });
+    char.voidChoiceMade = true;
+  }
+  if (checked && !src.stacks) sources.forEach(s => { if (!s.stacks) s.it.voidActive = false; });
+  src.it.voidActive = !!checked;
+  saveState();
+  renderSpellModule();
+  renderVoidSourcesModal();
 }
 
 function updateSpellEnhancer(poolName, field, value) {

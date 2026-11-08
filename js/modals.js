@@ -277,8 +277,8 @@ function itemModsSectionHtml(d) {
     </div>`).join('');
     parts.push(head('Void', 'void', rows + `<div style="display:flex;align-items:center;gap:12px;margin-top:2px">
       <button type="button" class="btn btn-dim" onclick="addItemVoidRow()">Add pool</button>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${d.magicVoidStacks ? 'checked' : ''} onchange="setAddItemField('magicVoidStacks',this.checked)"> Stacks with other items' void bonuses</label>
-    </div>`, 'Spell cost reduction per pool. Only the best single item counts, unless an item is marked as stacking.'));
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${d.magicVoidStacks ? 'checked' : ''} onchange="setAddItemField('magicVoidStacks',this.checked)"> Stacking</label>
+    </div>`, 'Spell cost reduction per pool. On the Spells page (SP Reduction) you choose which items take part: one non-stacking item, plus any stacking ones, which add the greatest of their reductions for each pool.'));
   }
   const adders = k.optional.filter(kind => !itemHasModKind(d, kind))
     .map(kind => `<button type="button" class="btn btn-dim" onclick="addItemModKind('${kind}')">Add ${kind}</button>`).join(' ');

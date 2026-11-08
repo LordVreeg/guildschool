@@ -382,11 +382,38 @@ function computeWeapon(character, item) {
   return { skillAbility, baseWeaponSkval, singleWeapSpec, critHitBonusSkval, damageBonusSkval, initiativeBonusSkval, skillDamageBonus, skillSpeedBonus, readiedSpeed, parrySkval, parryPointsUsed, multipleAttackSkval, oneHand, twoHand, missile, magicDamageBeforeDivider, magicCritBonus };
 }
 
+// How familiar a character is with a school, from the school pool's level
+// against the Spirit SP level. Each tier needs the pool at minLevel or more,
+// and also at spiritFrac × Spirit level or more, unless the pool has reached
+// cap. ratio = Spirit points per missing school point; the Effective Spell
+// Level is Spirit level + pool level × eslFactor.
+const SPELL_FAMILIARITY_TIERS = [
+  { name: 'Familiar',    ratio: 3,   eslFactor: 0,    minLevel: 0, spiritFrac: 0,    cap: 0 },
+  { name: 'Specialized', ratio: 2,   eslFactor: 0.5,  minLevel: 3, spiritFrac: 0.5,  cap: 8 },
+  { name: 'Devoted',     ratio: 1.5, eslFactor: 0.75, minLevel: 6, spiritFrac: 0.75, cap: 12 },
+];
+// The pool level a tier needs at the given Spirit level.
+function familiarityLevelNeeded(tier, spiritLevel) {
+  return Math.max(tier.minLevel, Math.min(Math.ceil(spiritLevel * tier.spiritFrac - 1e-9), tier.cap));
+}
+function familiarityTier(level, spiritLevel) {
+  let best = SPELL_FAMILIARITY_TIERS[0];
+  for (const t of SPELL_FAMILIARITY_TIERS) if (level >= familiarityLevelNeeded(t, spiritLevel)) best = t;
+  return best;
+}
+// Raw XP a skill needs to reach a level at its current expmod (null if it can't).
+function rawXPForLevel(level, expmod) {
+  const row = LEVELS.find(r => r.level === level);
+  if (!row || !(expmod > 0)) return null;
+  return Math.ceil(row.from / expmod);
+}
+
 function computeSpellPools(character) {
   const skills = character.skills || [];
   const trainedNames = new Set(skills.map(s => s.skillName));
   const poolDefs = SKILLS.filter(s => s.type === 'Spell' && !s.parent);
   const spellState = character.spellState || {};
+  const voidSourceList = voidSources(character);
 
   const spiritInst = skills.find(s => s.skillName === 'Spirit SP');
   const spiritLevel = spiritInst ? computeSkillValues(spiritInst, character, skills).level : 0;
@@ -418,27 +445,21 @@ function computeSpellPools(character) {
     if (poolDef.name === 'Spirit SP') {
       familiarity = '—'; conversionRatio = null; effectiveLevel = spiritLevel;
     } else {
-      const halfSpirit = spiritLevel / 2;
-      const threeQuarterSpirit = spiritLevel * 0.75;
-      if (level >= 6 && (level >= threeQuarterSpirit || level >= 12)) {
-        familiarity = 'Devoted'; conversionRatio = 1.5; effectiveLevel = spiritLevel + (level * 0.75);
-      } else if (level >= 3 && (level >= halfSpirit || level >= 8)) {
-        familiarity = 'Specialized'; conversionRatio = 2; effectiveLevel = spiritLevel + (level * 0.5);
-      } else {
-        familiarity = 'Familiar'; conversionRatio = 3; effectiveLevel = spiritLevel;
-      }
+      const tier = familiarityTier(level, spiritLevel);
+      familiarity = tier.name; conversionRatio = tier.ratio; effectiveLevel = spiritLevel + level * tier.eslFactor;
     }
     const reclamationChild = childStatus.find(c => c.name.toLowerCase().includes('reclamation'));
     const reclamationSkval = reclamationChild ? reclamationChild.skval : 0;
     const enhancers = (character.spellEnhancers && character.spellEnhancers[poolDef.name]) || {};
     const spReductionManual = parseFloat(enhancers.spReduction) || 0;
-    const spReductionItems = magicVoidReduction(character, poolDef.name);
+    const spReductionItems = magicVoidReduction(character, poolDef.name, voidSourceList);
     const spReduction = spReductionManual + spReductionItems;
     const reclamationBonus = parseFloat(enhancers.reclamationBonus) || 0;
     const successBonus = parseFloat(enhancers.successBonus) || 0;
     const recoverAwake = Math.round(((reclamationSkval * 0.10) + reclamationBonus) * 10) / 10;
     const recoverSleep = Math.round(((reclamationSkval * 0.20) + reclamationBonus) * 10) / 10;
-    pools.push({ name: poolDef.name, maxSP, currentSP, trueSP, usedSP, level, children: childStatus,
+    pools.push({ name: poolDef.name, maxSP, currentSP, trueSP, usedSP, level, spiritLevel,
+                 rawXP: parseFloat(poolInst.rawXP) || 0, expmod: vals.expmod, children: childStatus,
                  familiarity, conversionRatio, effectiveLevel: Math.ceil(effectiveLevel - 1e-9), // spell levels are whole numbers, rounded up
                  reclamationSkval, recoverAwake, recoverSleep,
                  spReduction, spReductionManual, spReductionItems, reclamationBonus, successBonus });
@@ -803,18 +824,62 @@ function magicOffenseFromOthers(character) {
   }
   return t;
 }
-// Void for one pool: the best single item in use, plus every item marked as
-// stacking its void bonuses.
-function magicVoidReduction(character, poolName) {
+// Every item and companion with a void (spell cost) reduction:
+// { it, key ('i3' / 'c0'), stacks, amounts {pool: n}, eligible (in use) }.
+function voidSources(character) {
   const counted = shieldsCountedItems(character);
-  let best = 0, stacked = 0;
-  for (const it of magicModSources(character)) {
-    if (!itemHasModKind(it, 'void') || !itemModsInUse(character, it, counted)) continue;
-    const amt = (it.magicVoid || []).filter(v => v && v.pool === poolName).reduce((s, v) => s + (parseFloat(v.amount) || 0), 0);
-    if (!amt) continue;
-    if (it.magicVoidStacks) stacked += amt; else best = Math.max(best, amt);
+  const out = [];
+  const add = (it, key) => {
+    if (!itemHasModKind(it, 'void')) return;
+    const amounts = {};
+    for (const v of it.magicVoid || []) {
+      const amt = parseFloat(v && v.amount) || 0;
+      if (v && v.pool && amt) amounts[v.pool] = (amounts[v.pool] || 0) + amt;
+    }
+    if (!Object.keys(amounts).length) return;
+    out.push({ it, key, stacks: !!it.magicVoidStacks, amounts, eligible: itemModsInUse(character, it, counted) });
+  };
+  (character.items || []).forEach((it, i) => add(it, 'i' + i));
+  (character.companions || []).forEach((c, i) => add(c, 'c' + i));
+  return out;
+}
+// Which sources are taking part. Once the player has ticked boxes on the
+// Spells page (character.voidChoiceMade), it's the ticked ones (voidActive)
+// that are in use, with at most one non-stacking source. Before that, every
+// stacking source and the strongest non-stacking one.
+function voidActiveKeys(character, sources) {
+  const eligible = (sources || voidSources(character)).filter(s => s.eligible);
+  const active = new Set();
+  if (character.voidChoiceMade) {
+    let haveSingle = false;
+    for (const s of eligible) {
+      if (!s.it.voidActive) continue;
+      if (!s.stacks) { if (haveSingle) continue; haveSingle = true; }
+      active.add(s.key);
+    }
+  } else {
+    let best = null, bestTotal = 0;
+    for (const s of eligible) {
+      if (s.stacks) { active.add(s.key); continue; }
+      const total = Object.values(s.amounts).reduce((a, b) => a + b, 0);
+      if (total > bestTotal) { best = s; bestTotal = total; }
+    }
+    if (best) active.add(best.key);
   }
-  return best + stacked;
+  return active;
+}
+// Void for one pool: the active non-stacking source's reduction, plus the
+// greatest of the active stacking sources' reductions for that pool.
+function magicVoidReduction(character, poolName, sources) {
+  sources = sources || voidSources(character);
+  const active = voidActiveKeys(character, sources);
+  let single = 0, stacked = 0;
+  for (const s of sources) {
+    if (!active.has(s.key)) continue;
+    const amt = s.amounts[poolName] || 0;
+    if (s.stacks) stacked = Math.max(stacked, amt); else single = amt;
+  }
+  return single + stacked;
 }
 
 // A protection roll is (Protection − 1d10) ÷ (2d6 ÷ 2), rounded, never below
