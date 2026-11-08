@@ -780,7 +780,8 @@ function renderHardcastModal() {
   const majorPoolInfo = poolByName[hs.majorPool];
   const successBonus = majorPoolInfo ? majorPoolInfo.successBonus : 0;
   const overcastBonus = mode === 'hardcast' ? (hs.overcastSpirit + hs.overcastMajor) : 0;
-  const totalSuccess = Math.round((hs.spellSuccessBase + spiritSuccessSkval + majorSuccessSkval + successBonus + overcastBonus) * 10) / 10;
+  const successMod = parseFloat(char.spellSuccessMod) || 0;
+  const totalSuccess = Math.round((hs.spellSuccessBase + spiritSuccessSkval + majorSuccessSkval + successBonus + overcastBonus + successMod) * 10) / 10;
   hs.totalSuccess = totalSuccess;
 
   const shortfalls = Object.entries(finalCosts).filter(([poolName, needed]) => {
@@ -827,7 +828,7 @@ function renderHardcastModal() {
     ${eligibilityIssues.length ? `<hr class="divider"><div class="warn">${eligibilityIssues.join('<br>')}</div>` : ''}
 
     <hr class="divider">
-    <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Final Cost & Success</div>
+    <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Final Cost</div>
     <table class="skill-table" style="margin-bottom:8px">
       <thead><tr><th>Pool</th><th>SP Needed</th><th>Current SP</th><th></th></tr></thead>
       <tbody>
@@ -838,7 +839,7 @@ function renderHardcastModal() {
         }).join('')}
       </tbody>
     </table>
-    <div class="computed-item" style="margin-bottom:8px"><span class="ci-label">Success Chance (before the GM's d50)${infoTip(`Base ${hs.spellSuccessBase} + Spirit Success [${spiritSuccessSkval}] + ${hs.school} Success [${majorSuccessSkval}] + Magic Bonus [${successBonus}]${mode==='hardcast' ? ` + Overcast [${overcastBonus}]` : ''}`)}</span><span class="ci-value skval" style="font-size:calc(20px * var(--fs))">${totalSuccess}</span></div>
+    <div class="computed-item" style="margin:18px 0 8px"><span class="ci-label" style="font-size:calc(11px * var(--fs));color:var(--gold-dim);letter-spacing:1px">Success Chance (before the GM's d50)${infoTip(`Base ${hs.spellSuccessBase} + Spirit Success [${spiritSuccessSkval}] + ${hs.school} Success [${majorSuccessSkval}] + Magic Bonus [${successBonus}]${mode==='hardcast' ? ` + Overcast [${overcastBonus}]` : ''} + Spell Success Modifier [${successMod}]`)}</span><span class="ci-value skval" style="font-size:calc(20px * var(--fs))">${totalSuccess}</span></div>
 
     <div class="modal-actions">
       <button class="btn btn-dim" onclick="closeModal()">Cancel</button>

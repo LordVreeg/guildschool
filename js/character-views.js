@@ -1025,6 +1025,8 @@ function renderSpellModule() {
         </tbody>
       </table>
       <div class="note">Click a pool's name for its details, recovery and Magic Enhancers.</div>` : ''}
+      <div class="form-group" style="margin-top:10px"><label>Spell Success Modifier${infoTip('Added to the success chance of every spell this character casts. Use a negative number for a penalty.')}</label>
+        <input type="number" step="any" class="w-sm" value="${escapeHtml(char.spellSuccessMod ?? '')}" placeholder="0" onchange="updateChar('spellSuccessMod', this.value.trim() === '' ? '' : (parseFloat(this.value) || 0))"></div>
 
       <hr class="divider">
       <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Spellbook</div>
