@@ -51,6 +51,20 @@ function openAboutModal() {
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Close</button></div>`);
 }
 
+// Other -> Settings: the selected character's settings.
+function openSettingsModal() {
+  const char = state.characters[state.activeChar];
+  const body = !char ? `<div class="note">Select a character first.</div>` : `
+    <div class="settings-row">
+      <label class="check-row"><input type="checkbox" ${computeHP(char).system === 'collegium' ? 'checked' : ''} onchange="setCharSetting('collegium', this.checked)"> Collegium System (uncheck for Standard)${infoTip('How Hit Points work. Standard: one HP pool. Collegium: Physical and Endurance; damage hits Endurance first, and Physical is only touched once Endurance is depleted. Physical = ceil(total ÷ 2), Endurance = floor(total ÷ 2).')}</label>
+      <label class="check-row"><input type="checkbox" ${char.hideCollegiumOnCombat ? '' : 'checked'} onchange="setCharSetting('collegiumOnCombat', this.checked)"> Show on combat page</label>
+    </div>`;
+  openModal(`
+    <h3>Settings${char ? ' — ' + escapeHtml(char.name || '') : ''}</h3>
+    ${body}
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Close</button></div>`);
+}
+
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
 }

@@ -360,7 +360,7 @@ const COMBAT_PAGE_INTRO_HTML = `
   <ul style="margin:6px 0 6px 18px;padding:0">
     <li><b>Weapons:</b> a weapon you carry and tick In Use on your Inventory page appears here with its to-hit, damage bonus, speed, crit and fumble chances, and parry, worked out from your attributes and your skill in that weapon's class. Set the weapon's class to the skill you trained (for example Basic Spears).</li>
     <li><b>Armor and shields:</b> armor and a shield you carry and tick In Use add to your Avoidance and Protection totals here. Your Avoidance and Protection skills are applied on top.</li>
-    <li><b>Hit Points:</b> track your current HP here. It uses your Hit Points skill; pick the Standard or Collegium system under Campaign Settings on General Info.</li>
+    <li><b>Hit Points:</b> track your current HP here. It uses your Hit Points skill; pick the Standard or Collegium system under Other → Settings.</li>
     <li><b>Nothing is entered twice:</b> add, change or remove an item in your inventory and this page updates to match.</li>
   </ul>`;
 

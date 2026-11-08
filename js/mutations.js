@@ -1101,6 +1101,18 @@ async function removeSpell(idx) {
   renderSpellModule();
 }
 
+// The Settings popup (openSettingsModal): saves, then redraws the page behind it.
+function setCharSetting(key, on) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  if (key === 'collegium') { updateHPState('system', on ? 'collegium' : 'standard'); return; }
+  if (key === 'collegiumOnCombat') {
+    if (on) delete char.hideCollegiumOnCombat; else char.hideCollegiumOnCombat = true;
+    saveState();
+    if (state.activeView === 'combat') renderCombatModule();
+  }
+}
+
 function updateHPState(field, value) {
   const char = state.characters[state.activeChar];
   if (!char) return;
@@ -1111,8 +1123,8 @@ function updateHPState(field, value) {
   if (!char.hpState) char.hpState = {};
   char.hpState[field] = (field === 'system') ? value : (parseFloat(value) || 0);
   saveState();
-  // The HP system is set on General Info; current HP on the Combat page
-  if (state.activeView === 'general') renderGeneralModule(); else renderCombatModule();
+  // The HP system is set in Settings (or on the Combat page); current HP on the Combat page
+  if (state.activeView === 'combat') renderCombatModule(); else if (state.activeView === 'general') renderGeneralModule();
 }
 
 function updateWeaponField(idx, field, value) {

@@ -283,12 +283,6 @@ function renderGeneralModule() {
         <textarea class="w-full" rows="4" style="resize:vertical" onchange="updateChar('relationshipNotes',this.value)">${char.relationshipNotes||''}</textarea>
       </div>
 
-      <hr class="divider">
-      <div style="font-size:11px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Campaign Settings</div>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-        <input type="checkbox" ${computeHP(char).system==='collegium'?'checked':''} onchange="updateHPState('system', this.checked ? 'collegium' : 'standard')">
-        Collegium System (uncheck for Standard)${infoTip('How Hit Points work. Standard: one HP pool. Collegium: Physical and Endurance; damage hits Endurance first, and Physical is only touched once Endurance is depleted. Physical = ceil(total ÷ 2), Endurance = floor(total ÷ 2).')}
-      </label>
     </div>
   </div>`;
 
@@ -665,8 +659,8 @@ function renderCombatModule() {
 
       <div class="combat-top">
       <div class="combat-top-col">
-      <div class="combat-section-head"><span>Hit Points${infoTip('Standard: one HP pool. Collegium: Physical and Endurance; damage hits Endurance first, and Physical is only touched once Endurance is depleted. Physical = ceil(total ÷ 2), Endurance = floor(total ÷ 2). The same setting is under Campaign Settings on General Info.')}</span></div>
-      <label class="check-row"><input type="checkbox" ${hp.system === 'collegium' ? 'checked' : ''} onchange="updateHPState('system', this.checked ? 'collegium' : 'standard')"> Collegium System (uncheck for Standard)</label>
+      <div class="combat-section-head"><span>Hit Points${infoTip('Standard: one HP pool. Collegium: Physical and Endurance; damage hits Endurance first, and Physical is only touched once Endurance is depleted. Physical = ceil(total ÷ 2), Endurance = floor(total ÷ 2). The same setting is under Other → Settings.')}</span></div>
+      ${char.hideCollegiumOnCombat ? '' : `<label class="check-row"><input type="checkbox" ${hp.system === 'collegium' ? 'checked' : ''} onchange="updateHPState('system', this.checked ? 'collegium' : 'standard')"> Collegium System (uncheck for Standard)</label>`}
       ${hpTable}
       </div>
       <div class="combat-top-col">
