@@ -346,7 +346,7 @@ function openItemCastModal(itemIdx, spellIdx) {
   // catalog has no costs for.
   const oneUse = itemSpellRule(it);
   if (itemSpellOneUse(oneUse) && def && def.costs) {
-    openSpellCastModal(def, oneUse, { itemIdx, spellIdx, itemName: it.name || oneUse });
+    openSpellCastModal(def, oneUse, { itemIdx, spellIdx, itemName: it.name || oneUse, level: sp.level });
     return;
   }
   itemCastState = { itemIdx, spellIdx };
@@ -680,7 +680,7 @@ function openHardcastModal(spellbookIdx) {
 
 // The spell Cast popup, in one mode, set by where the spell is cast from:
 // Hardcast from the Spells page, Scrollcast from a scroll and Plaque from a
-// plaque in the inventory (fromItem = { itemIdx, spellIdx, itemName }; that
+// plaque in the inventory (fromItem = { itemIdx, spellIdx, itemName, level }; that
 // spell is used up when the cast goes ahead).
 function openSpellCastModal(catalogEntry, castMode, fromItem) {
   hardcastState = {
@@ -822,7 +822,7 @@ function renderHardcastModal() {
     <div style="display:flex;gap:8px;margin-bottom:12px">
       <span class="btn btn-gold" style="cursor:default">${modeLabel}</span>${infoTip(modeHelp[mode])}
     </div>
-    ${hs.castItem ? `<div class="warn">Casting uses this spell up${castItem && (castItem.spells || []).length === 1 ? ', and with it the ' + (mode === 'scroll' ? 'scroll' : 'plaque') : ''}, whether it succeeds or not.</div>` : ''}
+    ${hs.castItem ? `<div class="warn">Casting uses this spell up${castItem && (castItem.spells || []).length === 1 ? ', and with it the ' + (mode === 'scroll' ? 'scroll' : 'plaque') : ''}.</div>` : ''}
 
     ${mode === 'hardcast' ? `
     <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Substitute with Spirit?</div>
@@ -858,7 +858,7 @@ function renderHardcastModal() {
         }).join('')}
       </tbody>
     </table>
-    <div class="computed-item" style="margin:18px 0 8px"><span class="ci-label" style="font-size:calc(11px * var(--fs));color:var(--gold-dim);letter-spacing:1px">Success Chance (before the GM's d50)${infoTip(`Base ${hs.spellSuccessBase} + Spirit Success [${spiritSuccessSkval}] + ${hs.school} Success [${majorSuccessSkval}] + Magic Bonus [${successBonus}]${mode==='hardcast' ? ` + Overcast [${overcastBonus}]` : ''} + Spell Success Modifier [${successMod}]`)}</span><span class="ci-value skval" style="font-size:calc(20px * var(--fs))">${totalSuccess}</span></div>
+    ${hs.castItem ? '' : `<div class="computed-item" style="margin:18px 0 8px"><span class="ci-label" style="font-size:calc(11px * var(--fs));color:var(--gold-dim);letter-spacing:1px">Success Chance (before the GM's d50)${infoTip(`Base ${hs.spellSuccessBase} + Spirit Success [${spiritSuccessSkval}] + ${hs.school} Success [${majorSuccessSkval}] + Magic Bonus [${successBonus}]${mode==='hardcast' ? ` + Overcast [${overcastBonus}]` : ''} + Spell Success Modifier [${successMod}]`)}</span><span class="ci-value skval" style="font-size:calc(20px * var(--fs))">${totalSuccess}</span></div>`}
 
     <div class="modal-actions">
       <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
@@ -891,6 +891,13 @@ function confirmHardcast() {
   // SP is spent either way -- hardcastState stays alive through resolving
   // success and (if successful) marking a duration, closed out at the end
   // of that chain rather than here.
+  // A scroll or plaque cast has no success roll: on to marking its duration
+  if (hs.castItem) {
+    hs.fromItem = hs.castItem.itemName; hs.level = hs.castItem.level;
+    if (char.playGroupId) { renderMain(); openMarkDurationModal(); }
+    else { hardcastState = null; closeModal(); renderMain(); }
+    return;
+  }
   openSpellResolveModal();
 }
 

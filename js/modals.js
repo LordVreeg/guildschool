@@ -286,7 +286,7 @@ function itemSpellsSectionHtml(d) {
   return `
     ${search}
     <hr class="divider">
-    <div class="form-group"><label>Spells${infoTip(itemSpellOneUse(rule) ? `A ${rule} holds one or more spells. Each can be cast once and is then gone; the ${rule} goes with its last spell. Casting one opens the spell Cast popup in ${rule === 'scroll' ? 'Scrollcast' : 'Plaque'} mode: it costs spell points and needs a success roll.` : (rule === 'potion' ? 'A potion holds exactly one spell. Each cast uses one of its uses; when they run out the potion is gone. ' : '') + 'Spells are saved with the item. Each is cast at its fixed level, with no spell points, and always succeeds; a cast uses one of its uses.')}</label></div>
+    <div class="form-group"><label>Spells${infoTip(itemSpellOneUse(rule) ? `A ${rule} holds one or more spells. Each can be cast once and is then gone; the ${rule} goes with its last spell. Casting one opens the spell Cast popup in ${rule === 'scroll' ? 'Scrollcast' : 'Plaque'} mode: it costs spell points, with no success roll.` : (rule === 'potion' ? 'A potion holds exactly one spell. Each cast uses one of its uses; when they run out the potion is gone. ' : '') + 'Spells are saved with the item. Each is cast at its fixed level, with no spell points, and always succeeds; a cast uses one of its uses.')}</label></div>
     ${list || (rows ? '' : '<div class="note">No spells on this item yet.</div>')}
     ${rows}
     ${rule === 'potion' && (d.spells || []).length + itemSpellDrafts.length >= 1 ? '' : '<div style="margin-top:6px"><button type="button" class="btn btn-dim" onclick="openItemSpellRow()">Add spell</button></div>'}
