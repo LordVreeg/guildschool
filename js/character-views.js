@@ -438,6 +438,8 @@ function itemSpellRowsHtml(char, it, idx, colspan) {
   return (it.spells || []).map((sp, j) => {
         const left = itemSpellUsesLeft(sp, char);
         const rule = itemSpellRule(it);
+        // a permanent spell is always in effect: no uses, no Cast
+        if (!rule && sp.period === 'permanent') return `<tr class="item-spell-row"><td colspan="${colspan}">✦ <a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener">${escapeHtml(sp.name)}</a> · Level ${sp.level} · permanent</td></tr>`;
         return `<tr class="item-spell-row"><td colspan="${colspan}">✦ <a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener">${escapeHtml(sp.name)}</a> · Level ${sp.level} · <span style="${left > 0 ? '' : 'color:#c05050'}" title="${rule ? 'Used up as it is cast; does not come back' : sp.period === 'charges' ? 'Charges only come back with ↺' : characterClockSeconds(char) != null ? 'Comes back as the group clock passes into the next ' + escapeHtml(itemSpellPeriodLabel(sp.period).replace(/^per /, '')) + ', or with ↺' : 'Comes back with ↺ (or as the group clock passes, once this character is in a group)'}">${escapeHtml(itemSpellUsageText(sp, char, rule))}</span>
           <button class="btn btn-gold item-spell-btn" ${left > 0 ? '' : 'disabled'} title="Cast ${escapeHtml(sp.name)} from this item" onclick="openItemCastModal(${idx},${j})">Cast</button>
           ${rule ? '' : `<button class="btn btn-dim item-spell-btn" title="Reset its uses" onclick="rechargeItemSpell(${idx},${j})">↺</button>`}</td></tr>`;

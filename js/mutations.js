@@ -227,6 +227,7 @@ function confirmAddItem() {
       return;
     }
     for (const sp of started) {
+      if (!rule && sp.period === 'permanent') { (d.spells = d.spells || []).push({ school: sp.school, name: String(sp.name).trim(), level: parseInt(sp.level), period: 'permanent' }); continue; }
       const usesMax = rule === 'scroll' ? 1 : parseInt(sp.usesMax);
       (d.spells = d.spells || []).push({ school: sp.school, name: String(sp.name).trim(), level: parseInt(sp.level), usesMax, period: sp.period, usesLeft: usesMax });
     }
@@ -277,7 +278,7 @@ function resetItemSpellDraft() { itemSpellDrafts = []; }
 function openItemSpellRow() { itemSpellDrafts.push({ school: '', name: '', level: 1, usesMax: 1, period: 'day' }); renderAddItemModal(); }
 function closeItemSpellRow(i) { itemSpellDrafts.splice(i, 1); renderAddItemModal(); }
 function itemSpellReady(s) {
-  return !!(s && s.school && String(s.name || '').trim() && parseInt(s.level) >= 1 && parseInt(s.usesMax) >= 1);
+  return !!(s && s.school && String(s.name || '').trim() && parseInt(s.level) >= 1 && (s.period === 'permanent' || parseInt(s.usesMax) >= 1));
 }
 function setItemSpellDraft(i, field, value, rerender) {
   const s = itemSpellDrafts[i];
@@ -343,7 +344,7 @@ function confirmItemCast() {
   const c = itemCastState;
   const it = char && c && (char.items || [])[c.itemIdx];
   const sp = it && (it.spells || [])[c.spellIdx];
-  if (!sp || itemSpellUsesLeft(sp, char) <= 0) return;
+  if (!sp || sp.period === 'permanent' || itemSpellUsesLeft(sp, char) <= 0) return;
   sp.usesLeft = itemSpellUsesLeft(sp, char) - 1;
   sp.periodIndex = itemSpellPeriodIndex(sp.period, characterClockSeconds(char)); // which period this use counts against
   const rule = itemSpellRule(it);
@@ -369,7 +370,7 @@ function confirmItemCast() {
 function rechargeItemSpell(itemIdx, spellIdx) {
   const char = state.characters[state.activeChar];
   const sp = char && ((char.items || [])[itemIdx] || {}).spells && char.items[itemIdx].spells[spellIdx];
-  if (!sp || itemSpellRule(char.items[itemIdx])) return; // potions and scrolls don't come back
+  if (!sp || itemSpellRule(char.items[itemIdx]) || sp.period === 'permanent') return; // potions and scrolls don't come back; permanent spells have no uses
   sp.usesLeft = parseInt(sp.usesMax) || 0;
   sp.periodIndex = itemSpellPeriodIndex(sp.period, characterClockSeconds(char));
   saveState();

@@ -257,7 +257,7 @@ function itemSpellsSectionHtml(d) {
   const opt = (value, label, selected) => `<option value="${escapeHtml(value)}" ${selected ? 'selected' : ''}>${escapeHtml(label)}</option>`;
   const schools = Object.keys(SPELL_SCHOOL_TO_POOL).sort();
   const rule = itemSpellRule(d);
-  const list = (d.spells || []).map((sp, i) => `<div style="display:flex;align-items:center;gap:8px;padding:2px 0">✦ ${escapeHtml(sp.name)} (${escapeHtml(sp.school)}) · Level ${sp.level} · ${escapeHtml(rule === 'scroll' ? 'one use' : rule === 'potion' ? sp.usesMax + ' use' + (sp.usesMax == 1 ? '' : 's') : sp.usesMax + ' ' + itemSpellPeriodLabel(sp.period))}<span class="item-del" style="cursor:pointer;color:var(--red-b)" title="Remove" onclick="removeItemSpellFromDraft(${i})">✕</span></div>`).join('');
+  const list = (d.spells || []).map((sp, i) => `<div style="display:flex;align-items:center;gap:8px;padding:2px 0">✦ ${escapeHtml(sp.name)} (${escapeHtml(sp.school)}) · Level ${sp.level} · ${escapeHtml(rule === 'scroll' ? 'one use' : rule === 'potion' ? sp.usesMax + ' use' + (sp.usesMax == 1 ? '' : 's') : sp.period === 'permanent' ? 'permanent' : sp.usesMax + ' ' + itemSpellPeriodLabel(sp.period))}<span class="item-del" style="cursor:pointer;color:var(--red-b)" title="Remove" onclick="removeItemSpellFromDraft(${i})">✕</span></div>`).join('');
   // One selection row per draft, on a single line, ending with ✕
   const rows = itemSpellDrafts.map((s, i) => {
     const catalog = s.school ? SPELLS.filter(sp => sp.school === s.school).sort((a, b) => a.name.localeCompare(b.name)) : [];
@@ -276,8 +276,8 @@ function itemSpellsSectionHtml(d) {
       <div class="form-group"><label>School</label>${picked ? `<input class="w-md" value="${escapeHtml(s.school)}" readonly>` : `<select class="w-md" onchange="setItemSpellDraft(${i},'school',this.value,true)">${opt('', '— select —', !s.school)}${schools.map(sc => opt(sc, sc, s.school === sc)).join('')}</select>`}</div>
       <div class="form-group"><label>Spell</label>${spellField}</div>
       <div class="form-group"><label>Level</label><input type="number" min="1" class="w-sm" value="${escapeHtml(s.level)}" oninput="setItemSpellDraft(${i},'level',this.value)"></div>
-      ${rule === 'scroll' ? '' : `<div class="form-group"><label>Uses</label><input type="number" min="1" class="w-sm" value="${escapeHtml(s.usesMax)}" oninput="setItemSpellDraft(${i},'usesMax',this.value)"></div>`}
-      ${rule ? '' : `<div class="form-group"><label>Per</label><select class="w-md" onchange="setItemSpellDraft(${i},'period',this.value)">${ITEM_SPELL_PERIODS.map(([v, l]) => opt(v, l, s.period === v)).join('')}</select></div>`}
+      ${rule === 'scroll' || (!rule && s.period === 'permanent') ? '' : `<div class="form-group"><label>Uses</label><input type="number" min="1" class="w-sm" value="${escapeHtml(s.usesMax)}" oninput="setItemSpellDraft(${i},'usesMax',this.value)"></div>`}
+      ${rule ? '' : `<div class="form-group"><label>Per</label><select class="w-md" onchange="setItemSpellDraft(${i},'period',this.value,true)">${ITEM_SPELL_PERIODS.map(([v, l]) => opt(v, l, s.period === v)).join('')}</select></div>`}
       <div class="form-group"><span class="item-del" style="cursor:pointer;color:var(--red-b);padding:6px 2px" title="Remove this spell" onclick="closeItemSpellRow(${i})">✕</span></div>
     </div>`;
   }).join('');

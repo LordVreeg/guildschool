@@ -71,10 +71,11 @@ const ITEM_TYPES = ['Ammunition', 'Armor', 'Coin', 'Item', 'Magic Item', 'Shield
   .sort((a, b) => itemTypeLabel(a).localeCompare(itemTypeLabel(b)));
 // Magic items (and magic weapons, armor, shields and ammunition) can carry
 // spells, each cast at a fixed level with a usage limit: N uses per period,
-// or N charges in total. Uses are tracked on the item (usesLeft).
+// or N charges in total. Uses are tracked on the item (usesLeft). A
+// permanent spell is always in effect: it has no uses and isn't cast.
 const ITEM_SPELL_PERIODS = [
   ['charges', 'charges (total)'], ['hour', 'per hour'], ['day', 'per day'],
-  ['hawaak', 'per Hawaak (8 days)'], ['goesi', 'per Goesi (60 days)'],
+  ['hawaak', 'per Hawaak (8 days)'], ['goesi', 'per Goesi (60 days)'], ['permanent', 'permanent'],
 ];
 function itemSpellPeriodLabel(period) { const p = ITEM_SPELL_PERIODS.find(x => x[0] === period); return p ? p[1] : period; }
 // Potions and Scrolls (Magic Item classes) work differently: a potion holds
@@ -112,6 +113,7 @@ function itemSpellUsageText(sp, char, rule) {
   const left = itemSpellUsesLeft(sp, char), max = parseInt(sp.usesMax) || 0;
   if (rule === 'scroll') return 'one use';
   if (rule === 'potion') return `${left}/${max} use${max === 1 ? '' : 's'}`;
+  if (sp.period === 'permanent') return 'permanent';
   return sp.period === 'charges' ? `${left}/${max} charges` : `${left}/${max} ${itemSpellPeriodLabel(sp.period)}`;
 }
 // Magic item modifiers, in three kinds (fields saved on the item):
