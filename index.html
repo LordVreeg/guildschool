@@ -11,7 +11,7 @@ try { var gsT = localStorage.getItem('gs_theme'), gsF = parseFloat(localStorage.
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600;1,700&family=Cinzel:wght@500;600;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=2026-11-08.10">
+<link rel="stylesheet" href="css/app.css?v=2026-11-08.11">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -91,12 +91,12 @@ try { var gsT = localStorage.getItem('gs_theme'), gsF = parseFloat(localStorage.
     <div class="top-menu" data-menu="other">
       <button class="top-menu-btn" onclick="toggleTopMenu('other', event)">Other <span id="other-menu-badge" class="chat-badge" style="display:none"></span> ▾</button>
       <div class="top-menu-panel">
-        <button onclick="closeTopMenus();showChatModule()">💬 Chat <span id="chat-menu-badge" class="chat-badge" style="display:none"></span></button>
-        <button onclick="closeTopMenus();showBestiaryModule()">🐉 Bestiary</button>
-        <button onclick="closeTopMenus();showScheduleModule()">📅 Game Schedule</button>
-        <button id="admin-panel-btn" onclick="closeTopMenus();openAdminPanel()" style="display:none">Admin</button>
-        <button onclick="closeTopMenus();openSettingsModal()">⚙ Settings</button>
-        <button onclick="closeTopMenus();openAboutModal()">ℹ About</button>
+        <button onclick="closeTopMenus();showChatModule()"><span class="menu-icon">💬</span>Chat <span id="chat-menu-badge" class="chat-badge" style="display:none"></span></button>
+        <button onclick="closeTopMenus();showBestiaryModule()"><span class="menu-icon">🐉</span>Bestiary</button>
+        <button onclick="closeTopMenus();showScheduleModule()"><span class="menu-icon">📅</span>Game Schedule</button>
+        <button id="admin-panel-btn" onclick="closeTopMenus();openAdminPanel()" style="display:none"><span class="menu-icon">🛡</span>Admin</button>
+        <button onclick="closeTopMenus();openSettingsModal()"><span class="menu-icon">⚙</span>Settings</button>
+        <button onclick="closeTopMenus();openAboutModal()"><span class="menu-icon">ℹ</span>About</button>
       </div>
     </div>
     <div class="sep"></div>
@@ -125,24 +125,24 @@ try { var gsT = localStorage.getItem('gs_theme'), gsF = parseFloat(localStorage.
      Whenever anything in css/, js/ or data/ changes, bump ?v= on the
      stylesheet link and on every script tag below, all to the same new
      value, so browsers fetch the new files instead of cached copies. -->
-<script src="js/auth.js?v=2026-11-08.10"></script>
-<script src="js/data.js?v=2026-11-08.10"></script>
-<script src="js/state.js?v=2026-11-08.10"></script>
-<script src="js/formulas.js?v=2026-11-08.10"></script>
-<script src="js/render.js?v=2026-11-08.10"></script>
-<script src="js/bestiary.js?v=2026-11-08.10"></script>
-<script src="js/groups.js?v=2026-11-08.10"></script>
-<script src="js/schedule.js?v=2026-11-08.10"></script>
-<script src="js/combat.js?v=2026-11-08.10"></script>
-<script src="js/goesi.js?v=2026-11-08.10"></script>
-<script src="js/group-add-member.js?v=2026-11-08.10"></script>
-<script src="js/dice.js?v=2026-11-08.10"></script>
-<script src="js/chat.js?v=2026-11-08.10"></script>
-<script src="js/attack.js?v=2026-11-08.10"></script>
-<script src="js/character-views.js?v=2026-11-08.10"></script>
-<script src="js/modals.js?v=2026-11-08.10"></script>
-<script src="js/mutations.js?v=2026-11-08.10"></script>
-<script src="js/import-export.js?v=2026-11-08.10"></script>
-<script src="js/init.js?v=2026-11-08.10"></script>
+<script src="js/auth.js?v=2026-11-08.11"></script>
+<script src="js/data.js?v=2026-11-08.11"></script>
+<script src="js/state.js?v=2026-11-08.11"></script>
+<script src="js/formulas.js?v=2026-11-08.11"></script>
+<script src="js/render.js?v=2026-11-08.11"></script>
+<script src="js/bestiary.js?v=2026-11-08.11"></script>
+<script src="js/groups.js?v=2026-11-08.11"></script>
+<script src="js/schedule.js?v=2026-11-08.11"></script>
+<script src="js/combat.js?v=2026-11-08.11"></script>
+<script src="js/goesi.js?v=2026-11-08.11"></script>
+<script src="js/group-add-member.js?v=2026-11-08.11"></script>
+<script src="js/dice.js?v=2026-11-08.11"></script>
+<script src="js/chat.js?v=2026-11-08.11"></script>
+<script src="js/attack.js?v=2026-11-08.11"></script>
+<script src="js/character-views.js?v=2026-11-08.11"></script>
+<script src="js/modals.js?v=2026-11-08.11"></script>
+<script src="js/mutations.js?v=2026-11-08.11"></script>
+<script src="js/import-export.js?v=2026-11-08.11"></script>
+<script src="js/init.js?v=2026-11-08.11"></script>
 </body>
 </html>

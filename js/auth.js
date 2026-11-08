@@ -270,7 +270,7 @@ async function handleSignedIn() {
   }
   hidePendingGate();
   const adminBtn = document.getElementById('admin-panel-btn');
-  if (adminBtn) adminBtn.style.display = currentProfile.is_admin ? 'inline-block' : 'none';
+  if (adminBtn) adminBtn.style.display = currentProfile.is_admin ? '' : 'none';
   await loadState();
   await fetchMyGroups();
   startChatWatcher();

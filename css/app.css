@@ -129,6 +129,10 @@ body {
 #topbar .top-menu.open .top-menu-panel { display: flex; }
 #topbar .top-menu-panel button { width: 100%; text-align: left; border-color: transparent; white-space: nowrap; }
 #topbar .top-menu-panel button:hover { background: rgba(var(--tint-rgb),.1); }
+/* a menu item's icon in a fixed-width column, so the labels line up */
+#topbar .top-menu-panel button { display: flex; align-items: center; }
+#topbar .top-menu-panel .menu-icon { display: inline-block; width: 1.6em; flex-shrink: 0; text-align: center; margin-right: 6px; }
+#topbar .top-menu-panel .chat-badge { margin-left: 6px; }
 #topbar .top-menu-panel hr { border: 0; border-top: 1px solid var(--border); margin: 3px 0; }
 #topbar h1 { color: var(--header-text); font-family: var(--font-head); font-weight: 600; font-size: calc(16px * var(--fs)); letter-spacing: 2px; text-transform: uppercase; white-space: nowrap; }
 #topbar .banner-logo { height: 34px; display: block; }
