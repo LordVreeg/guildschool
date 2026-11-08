@@ -245,12 +245,6 @@ body {
 .rolls-grid input.has-val { border-color: #3a5a40; background: rgba(60,100,65,.15); }
 /* DIVIDER */
 .divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
-/* ATTRIBUTE GRID */
-.attr-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 12px; }
-.attr-cell { display: flex; flex-direction: column; gap: 4px; align-items: center; background: var(--input-bg); padding: 8px 6px 10px; }
-.attr-cell label { font-size: calc(11px * var(--fs)); color: var(--gold-dim); text-transform: uppercase; letter-spacing: .5px; }
-.attr-cell input { background: transparent; color: var(--gold); font-weight: bold; border: 1px solid transparent; padding: 0; text-align: center; font-size: calc(20px * var(--fs)); width: 100%; font-family: inherit; }
-.attr-cell input:focus { border-color: var(--gold); outline: none; }
 /* OVERVIEW TABLE */
 .skill-table { width: 100%; border-collapse: collapse; }
 .skill-table th { background: var(--header-bg); color: var(--header-text); font-size: calc(11px * var(--fs)); text-transform: uppercase; letter-spacing: .5px; padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); }

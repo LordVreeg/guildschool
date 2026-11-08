@@ -205,12 +205,9 @@ function renderGeneralModule() {
 
       <hr class="divider">
       <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Attributes</div>
-      <div class="attr-grid">
+      <div class="form-row">
         ${['ST','IN','WI','CD','HE','CH','AP'].map(attr=>`
-        <div class="attr-cell">
-          <label>${attr}</label>
-          <input type="number" min="1" max="25" value="${a[attr]||''}" onchange="updateAttr('${attr}',this.value)">
-        </div>`).join('')}
+        <div class="form-group"><label>${attr}</label><input type="number" class="w-sm" min="1" max="25" value="${a[attr]||''}" onchange="updateAttr('${attr}',this.value)"></div>`).join('')}
       </div>
       <hr class="divider">
       <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Guilds</div>
