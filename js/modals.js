@@ -66,6 +66,7 @@ function openSettingsModal() {
   const theme = currentTheme();
   openModal(`
     <h3>Settings</h3>
+    ${body}
     <div class="settings-section">Display${infoTip('Theme and font size are saved in this browser, for every character.')}</div>
     <div class="settings-row">
       <label class="theme-choice">Theme <select onchange="setTheme(this.value)">${THEMES.map(t => `<option value="${t.key}" ${theme === t.key ? 'selected' : ''}>${t.label}</option>`).join('')}</select></label>
@@ -75,8 +76,6 @@ function openSettingsModal() {
         <button type="button" class="btn btn-dim" title="Larger" onclick="stepFontScale(1)" ${fontScale() >= FONT_SCALE_MAX ? 'disabled' : ''}>A+</button>
       </span>
     </div>
-    <div class="settings-section">Character${char ? ' — ' + escapeHtml(char.name || '') : ''}</div>
-    ${body}
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Close</button></div>`);
 }
 
