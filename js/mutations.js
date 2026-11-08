@@ -275,7 +275,7 @@ function setItemVoidRow(i, field, value) { if (itemDraft && itemDraft.magicVoid 
 // as { school, name, level, usesMax, period, usesLeft } (see confirmAddItem).
 let itemSpellDrafts = [];
 function resetItemSpellDraft() { itemSpellDrafts = []; }
-function openItemSpellRow() { itemSpellDrafts.push({ school: '', name: '', level: 1, usesMax: 1, period: 'day' }); renderAddItemModal(); }
+function openItemSpellRow() { itemSpellDrafts.push({ school: '', name: '', level: 16, usesMax: 1, period: 'day' }); renderAddItemModal(); }
 function closeItemSpellRow(i) { itemSpellDrafts.splice(i, 1); renderAddItemModal(); }
 function itemSpellReady(s) {
   return !!(s && s.school && String(s.name || '').trim() && parseInt(s.level) >= 1 && (s.period === 'permanent' || parseInt(s.usesMax) >= 1));
