@@ -31,7 +31,7 @@ if (authLinkError) setAuthStatus(authLinkError + ' Request a new link with "Forg
 (function () {
   const grip = document.getElementById('sidebar-grip');
   if (!grip) return;
-  const KEY = 'gs_sidebar_w', MIN = 120, MAX = 480, DEFAULT = 220;
+  const KEY = 'gs_sidebar_w', MIN = 80, MAX = 300, DEFAULT = 220;
   const setWidth = w => document.documentElement.style.setProperty('--sidebar-w', Math.round(w) + 'px');
   try { const saved = parseInt(localStorage.getItem(KEY)); if (saved >= MIN && saved <= MAX) setWidth(saved); } catch (e) {}
   grip.addEventListener('pointerdown', e => {

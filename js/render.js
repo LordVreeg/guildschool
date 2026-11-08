@@ -244,7 +244,7 @@ function sidebarSkillsHtml(char, byType, skills) {
     const isCollapsed = collapsedSections[type] === undefined ? true : collapsedSections[type];
     const arrow = isCollapsed ? '▶' : '▼';
     html += `<div class="sidebar-section${type === UNKNOWN_SKILL_TYPE ? ' skill-unknown' : ''}" style="cursor:pointer;display:flex;align-items:center;gap:5px" ${type === UNKNOWN_SKILL_TYPE ? 'title="These skills don\'t match any skill in the catalog, so their values can\'t be calculated"' : ''} onclick="toggleSection('${type}')">
-      <span style="font-size:calc(9px * var(--fs))">${arrow}</span>${SIDEBAR_TYPE_LABELS[type] || type} <span style="color:var(--text-dim);font-weight:normal">(${byType[type].length})</span>
+      <span style="font-size:calc(9px * var(--fs))">${arrow}</span><span class="sidebar-clip">${SIDEBAR_TYPE_LABELS[type] || type}</span> <span style="color:var(--text-dim);font-weight:normal;flex-shrink:0">(${byType[type].length})</span>
     </div>`;
     if (isCollapsed) continue;
     const children = skillChildrenMap(byType[type], skills);
