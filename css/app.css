@@ -17,9 +17,9 @@
   --header-bg: #3E0F14;
   --header-text: #F3E9CE;
   --tint-rgb:  110,27,34;   /* the accent, for see-through tints: rgba(var(--tint-rgb), .1) */
-  --font-body:    'IM Fell English', 'Georgia', serif;
-  --font-head:    'Cinzel', serif;
-  --font-display: 'Cormorant Garamond', 'Georgia', serif;
+  --font-body:    var(--font-body);
+  --font-head:    var(--font-head);
+  --font-display: var(--font-display);
   --fs: 1;                  /* font scale, from Settings (A- / A+); every px font size is calc(Npx * var(--fs)) */
 }
 /* Themes (Other -> Settings), set as <html data-theme="...">; "Default" is
@@ -554,3 +554,8 @@ body.chat-window #chat-window-root { display: flex; flex-direction: column; heig
 .font-size-ctl { display: inline-flex; align-items: center; gap: 6px; }
 .font-size-ctl .btn { padding: 3px 10px; }
 .font-size-ctl .fs-readout { min-width: 3.5em; text-align: center; color: var(--text-dim); }
+
+/* Result of the last Game Schedule save / email */
+.sched-notice { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; padding: 6px 10px; border: 1px solid var(--gold-dim); background: var(--bg); color: var(--text); }
+.sched-notice.bad { border-color: var(--red-b); color: var(--red-b); }
+.sched-notice button { background: none; border: none; cursor: pointer; color: inherit; font-size: calc(14px * var(--fs)); }
