@@ -380,8 +380,11 @@ td div.note, td.note, li.note { margin: 0; }
 /* A skill (or group of skills) that doesn't match anything in the skill catalog */
 .skill-unknown, .sidebar-section.skill-unknown { color: #c05050 !important; }
 /* Inventory: a magic item's spells, under the item's row */
-.inventory-table tr.item-spell-row td { padding: 2px 8px 4px 38px; color: var(--text-dim); border-bottom: 1px solid rgba(179,154,102,.25); }
-.inventory-table .item-spell-btn { padding: 1px 8px; margin-left: 6px; }
+.inventory-table tr.item-spell-row td { padding: 2px 8px 4px 20px; color: var(--text-dim); border-bottom: 1px solid rgba(179,154,102,.25); }
+.inventory-table tr.item-spell-row td + td { padding-left: 6px; }
+.inventory-table .item-spell-btn { padding: 1px 8px; }
+.item-spell-btns { white-space: nowrap; }
+.item-spell-btns .item-spell-btn + .item-spell-btn { margin-left: 4px; }
 .inventory-table .item-spell-btn:disabled { opacity: .4; cursor: default; }
 /* Item popup: a spell's selection row stays on one line */
 .item-spell-edit { flex-wrap: nowrap; gap: 8px; }
@@ -526,7 +529,8 @@ body.sidebar-resizing { cursor: col-resize; user-select: none; }
 .about-rows { display: flex; flex-direction: column; gap: 6px; }
 /* Combat page: a weapon's or armor's spells (and magic line) under its row */
 .combat-table tr.item-spell-row td { padding: 2px 8px 4px 24px; color: var(--text-dim); text-align: left; }
-.combat-table .item-spell-btn { padding: 1px 8px; margin-left: 6px; }
+.combat-table tr.item-spell-row td + td { padding-left: 10px; }
+.combat-table .item-spell-btn { padding: 1px 8px; }
 .combat-table .item-spell-btn:disabled { opacity: .4; cursor: default; }
 /* The chat window (index.html?view=chat, js/chat.js): only the chat, filling
    the window */

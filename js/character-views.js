@@ -453,23 +453,30 @@ function inventoryGroupsHtml(char) {
 
 // A row per spell on an item, with Cast (and ↺ where uses come back), under
 // the item's row on the Inventory page and the Combat page.
-function itemSpellRowsHtml(char, it, idx, colspan) {
+// btnCol: the table column (1-based) the Cast / Use buttons line up in --
+// Type on the Inventory, To Hit on the Combat page's weapons. The spell or
+// effect's name fills the columns before it, its level and uses the rest.
+function itemSpellRowsHtml(char, it, idx, colspan, btnCol) {
   if (!itemCanHoldSpells(it)) return '';
+  btnCol = Math.min(btnCol || 2, colspan);
+  const row = (name, buttons, detail) => `<tr class="item-spell-row"><td colspan="${btnCol - 1}">${name}</td><td class="item-spell-btns">${buttons}</td>${colspan > btnCol ? `<td colspan="${colspan - btnCol}">${detail}</td>` : ''}</tr>`;
   // a potion with an effect instead of a spell: the effect, its uses and Use
   if (itemSpellRule(it) === 'potion' && it.effect && !(it.spells || []).length) {
     const max = potionUses(it), left = it.effectUsesLeft === undefined ? max : parseInt(it.effectUsesLeft) || 0;
-    return `<tr class="item-spell-row"><td colspan="${colspan}">✚ ${escapeHtml(it.effect)} · <span style="${left > 0 ? '' : 'color:#c05050'}">${left}/${max} use${max === 1 ? '' : 's'}</span>
-      <button class="btn btn-gold item-spell-btn" ${left > 0 ? '' : 'disabled'} title="Use one" onclick="usePotionEffect(${idx})">Use</button></td></tr>`;
+    return row(`✚ ${escapeHtml(it.effect)}`,
+      `<button class="btn btn-gold item-spell-btn" ${left > 0 ? '' : 'disabled'} title="Use one" onclick="usePotionEffect(${idx})">Use</button>`,
+      `<span style="${left > 0 ? '' : 'color:#c05050'}">${left}/${max} use${max === 1 ? '' : 's'}</span>`);
   }
   if (typeof idx === 'string') idx = `'${idx}'`; // a companion ('c0', see spellHolderOf)
   return (it.spells || []).map((sp, j) => {
         const left = itemSpellUsesLeft(sp, char);
         const rule = itemSpellRule(it);
+        const name = `✦ <a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener">${escapeHtml(sp.name)}</a>`;
         // a permanent spell is always in effect: no uses, no Cast
-        if (!rule && sp.period === 'permanent') return `<tr class="item-spell-row"><td colspan="${colspan}">✦ <a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener">${escapeHtml(sp.name)}</a> · Level ${sp.level} · permanent</td></tr>`;
-        return `<tr class="item-spell-row"><td colspan="${colspan}">✦ <a class="wiki-link" href="${spellWikiUrl(sp.name)}" target="_blank" rel="noopener">${escapeHtml(sp.name)}</a> · Level ${sp.level} · <span style="${left > 0 ? '' : 'color:#c05050'}" title="${rule ? 'Used up as it is cast; does not come back' : sp.period === 'charges' ? 'Charges only come back with ↺' : characterClockSeconds(char) != null ? 'Comes back as the group clock passes into the next ' + escapeHtml(itemSpellPeriodLabel(sp.period).replace(/^per /, '')) + ', or with ↺' : 'Comes back with ↺ (or as the group clock passes, once this character is in a group)'}">${escapeHtml(itemSpellUsageText(sp, char, rule))}</span>
-          <button class="btn btn-gold item-spell-btn" ${left > 0 ? '' : 'disabled'} title="Cast ${escapeHtml(sp.name)} from this item" onclick="openItemCastModal(${idx},${j})">Cast</button>
-          ${rule ? '' : `<button class="btn btn-dim item-spell-btn" title="Reset its uses" onclick="rechargeItemSpell(${idx},${j})">↺</button>`}</td></tr>`;
+        if (!rule && sp.period === 'permanent') return row(name, '', `Level ${sp.level} · permanent`);
+        return row(name,
+          `<button class="btn btn-gold item-spell-btn" ${left > 0 ? '' : 'disabled'} title="Cast ${escapeHtml(sp.name)} from this item" onclick="openItemCastModal(${idx},${j})">Cast</button>${rule ? '' : `<button class="btn btn-dim item-spell-btn" title="Reset its uses" onclick="rechargeItemSpell(${idx},${j})">↺</button>`}`,
+          `Level ${sp.level} · <span style="${left > 0 ? '' : 'color:#c05050'}" title="${rule ? 'Used up as it is cast; does not come back' : sp.period === 'charges' ? 'Charges only come back with ↺' : characterClockSeconds(char) != null ? 'Comes back as the group clock passes into the next ' + escapeHtml(itemSpellPeriodLabel(sp.period).replace(/^per /, '')) + ', or with ↺' : 'Comes back with ↺ (or as the group clock passes, once this character is in a group)'}">${escapeHtml(itemSpellUsageText(sp, char, rule))}</span>`);
       }).join('');
 }
 
@@ -702,7 +709,7 @@ function renderCombatModule() {
         : ln.v ? `<td>${Math.round(ln.v.hit)}</td><td>${fmtCrit(ln.v.critChance)}</td><td>${fmtFumble(ln.v.fumbleThreshold)}</td><td>${escapeHtml(damageRollText(it.damageDice, ln.v.dmgBeforeDivider, it.dividingDie, ln.v.dmgBonus))}</td>${initCell('d10', ln.v.speed, true)}`
         : '<td colspan="5" class="note">No stats</td>';
       return `<tr${i === 0 ? ' class="combat-weapon-first"' : ''}>${lead}<td>${ln.grip}${inUse}</td>${multi}${stats}${tail}</tr>`;
-    }).join('') + (entry.kind === 'item' ? itemSpellRowsHtml(char, it, entry.idx, 10) : '');
+    }).join('') + (entry.kind === 'item' ? itemSpellRowsHtml(char, it, entry.idx, 10, 4) : '');
   }).join('');
 
   // Equipped Armor: the armor worn and shields in hand (In Use on the
