@@ -62,22 +62,26 @@ function renderOverview() {
     sections.push({ key: 'type:' + type, header: `<h2>${type === UNKNOWN_SKILL_TYPE ? '⚠ Not in skill catalog' : type}</h2><span class="type-badge">${byType[type].length}</span>`, body: html, flush: true });
   }
 
-  document.getElementById('main').innerHTML = overviewSectionsHtml(char, sections);
+  const addSkill = `<div class="overview-actions"><button class="btn btn-gold" onclick="openAddSkillModal()">Add Skill</button></div>`;
+  document.getElementById('main').innerHTML = overviewSectionsHtml(char, sections, addSkill);
 }
 
 // The Overview's sections in the character's saved order (char.overviewLayout:
 // { order: [keys], collapsed: { key: true } }); sections not placed yet keep
 // their default position. Each header collapses its section, and has ▲/▼.
-function overviewSectionsHtml(char, sections) {
+// beforeSkills goes just above the first skill-type section (or at the end).
+function overviewSectionsHtml(char, sections, beforeSkills = '') {
   const layout = char.overviewLayout || {};
   const order = layout.order || [];
   const collapsed = layout.collapsed || {};
   const rank = (sec, i) => { const r = order.indexOf(sec.key); return r < 0 ? order.length + i : r; };
   const ordered = sections.map((sec, i) => ({ sec, r: rank(sec, i) })).sort((a, b) => a.r - b.r).map(x => x.sec);
-  return ordered.map((sec, i) => {
+  let placed = false;
+  const html = ordered.map((sec, i) => {
+    const pre = !placed && sec.key.startsWith('type:') ? (placed = true, beforeSkills) : '';
     const shut = !!collapsed[sec.key];
     const move = (dir, glyph, disabled) => `<button type="button" class="btn btn-dim section-move" title="Move ${dir < 0 ? 'up' : 'down'}" ${disabled ? 'disabled' : ''} onclick="event.stopPropagation();moveOverviewSection(this.closest('[data-section]').dataset.section, ${dir})">${glyph}</button>`;
-    return `<div class="panel overview-section" data-section="${escapeHtml(sec.key)}">
+    return `${pre}<div class="panel overview-section" data-section="${escapeHtml(sec.key)}">
       <div class="panel-header" title="${shut ? 'Show' : 'Hide'} this section" onclick="toggleOverviewSection(this.closest('[data-section]').dataset.section)">
         <span class="section-toggle">${shut ? '▸' : '▾'}</span>${sec.header}
         <span class="section-moves">${move(-1, '▲', i === 0)}${move(1, '▼', i === ordered.length - 1)}</span>
@@ -85,6 +89,7 @@ function overviewSectionsHtml(char, sections) {
       ${shut ? '' : `<div class="panel-body"${sec.flush ? ' style="padding:0"' : ''}>${sec.body}</div>`}
     </div>`;
   }).join('');
+  return placed ? html : html + beforeSkills;
 }
 
 // Weight Possible / Carried with its bar, shown on General Info and on the
@@ -299,7 +304,7 @@ function renderGeneralModule() {
       <p>Great, this character now exists. Before you start: the whole game is skill based. Everything your character can do is a skill. On top of that, the world of Celtricia has hundreds of guilds and factions, and they determine which skills you are good at and how you deal with everyone else socially. Here is how to get going.</p>
       <ol style="margin:6px 0 6px 18px;padding:0">
         <li><b>Pick your main Guild/School first</b>, before anything else. On General Info, set your Primary Guild. Your guild decides what you are better and worse at: it adjusts how fast you learn every skill (the EXP modifier), so what your guild favors comes quickly and what it doesn't comes slowly. It is also where your history comes from and your link to the world of Celtricia.</li>
-        <li><b>Spend your starting experience.</b> You already have a few skills; add the rest with <i>Add Skill</i> in the sidebar. A broad skill gives you a little ability in the specialties under it (the dropdown rule).</li>
+        <li><b>Spend your starting experience.</b> You already have a few skills; add the rest with <i>Add Skill</i> on the Overview page. A broad skill gives you a little ability in the specialties under it (the dropdown rule).</li>
         <li><b>Put your gear in your inventory.</b> On the Inventory page, add weapons, armor and shields as items. They go live on the Combat page by themselves: weapons show to-hit, damage, speed and crit chances worked out from your skills and attributes, and armor and shields add to your Avoidance and Protection.</li>
         <li><b>Spells.</b> The Spells page keeps your spell points and your spellbook, and it can draw on the entire spell library.</li>
         <li><b>Playing with a group.</b> The Groups button in the top bar is where your GM keeps the shared clock, the party roster and notes, and where combat is run: a Combat tracker with turn order, hit points and effects. You can link your character to a group from General Info.</li>

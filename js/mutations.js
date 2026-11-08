@@ -1111,6 +1111,11 @@ function setCharSetting(key, on) {
     saveState();
     if (state.activeView === 'combat') renderCombatModule();
   }
+  if (key === 'hideSidebarSkills') {
+    if (on) char.hideSidebarSkills = true; else delete char.hideSidebarSkills;
+    saveState();
+    renderSidebar();
+  }
 }
 
 function updateHPState(field, value) {

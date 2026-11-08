@@ -58,6 +58,9 @@ function openSettingsModal() {
     <div class="settings-row">
       <label class="check-row"><input type="checkbox" ${computeHP(char).system === 'collegium' ? 'checked' : ''} onchange="setCharSetting('collegium', this.checked)"> Collegium System (uncheck for Standard)${infoTip('How Hit Points work. Standard: one HP pool. Collegium: Physical and Endurance; damage hits Endurance first, and Physical is only touched once Endurance is depleted. Physical = ceil(total ÷ 2), Endurance = floor(total ÷ 2).')}</label>
       <label class="check-row"><input type="checkbox" ${char.hideCollegiumOnCombat ? '' : 'checked'} onchange="setCharSetting('collegiumOnCombat', this.checked)"> Show on combat page</label>
+    </div>
+    <div class="settings-row">
+      <label class="check-row"><input type="checkbox" ${char.hideSidebarSkills ? 'checked' : ''} onchange="setCharSetting('hideSidebarSkills', this.checked)"> Hide skills in the left-hand menu${infoTip('Skills stay on the Overview page, which has its own Add Skill button.')}</label>
     </div>`;
   openModal(`
     <h3>Settings${char ? ' — ' + escapeHtml(char.name || '') : ''}</h3>

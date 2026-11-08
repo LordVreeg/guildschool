@@ -224,6 +224,15 @@ function renderSidebar() {
   if (hasSpiritLevel(char)) html += navItem('spell', 'showSpellModule()', '✦', 'Spells');
   html += navItem('inventory', 'showInventoryModule()', '🎒', 'Inventory');
   html += `<hr style="border-color:var(--border);margin:4px 0">`;
+  if (!char.hideSidebarSkills) html += sidebarSkillsHtml(char, byType, skills);
+  html += sidebarGroupsHtml(char, view);
+  document.getElementById('sidebar').innerHTML = html;
+}
+
+// The sidebar's skills, by type, then Add Skill. Other -> Settings can hide
+// them (char.hideSidebarSkills); Overview has its own Add Skill.
+function sidebarSkillsHtml(char, byType, skills) {
+  let html = '';
   const typeOrder = SKILL_TYPE_ORDER;
   const sortedTypes = typeOrder.filter(t => byType[t]).concat(Object.keys(byType).filter(t => !typeOrder.includes(t)));
   for (const type of sortedTypes) {
@@ -257,8 +266,7 @@ function renderSidebar() {
   }
   html += `<div class="sidebar-add"><button onclick="openAddSkillModal()">Add Skill</button></div>`;
   html += `<hr style="border-color:var(--border);margin:4px 0">`;
-  html += sidebarGroupsHtml(char, view);
-  document.getElementById('sidebar').innerHTML = html;
+  return html;
 }
 
 // Under the skills: the group the character plays in (characters.group_id),
