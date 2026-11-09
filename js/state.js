@@ -59,6 +59,7 @@ function restoreLastView() {
   if (!saved) return;
   if (saved.view === 'utilities') showUtilitiesModule();
   else if (saved.view === 'bestiary') showBestiaryModule();
+  else if ((saved.view === 'groupInventory' || saved.view === 'gmInventory') && saved.groupId) showGroupInventory(saved.groupId, saved.view === 'gmInventory');
   else if ((saved.view === 'group' || saved.view === 'encounter') && saved.groupId) {
     activeGroupId = saved.groupId;
     if (saved.groupScope) groupPickerScope = saved.groupScope;
@@ -87,8 +88,10 @@ let savedCharJson = {};
 
 async function flushCharactersToSupabase() {
   if (!currentUser) return;
-  for (const [appId, charData] of Object.entries(state.characters)) {
+  for (const [appId, fullData] of Object.entries(state.characters)) {
     const rowId = charRowIds[appId];
+    // the group's items assigned to it aren't saved with it (see group-inventory.js)
+    const charData = charDataForSave(fullData);
     const json = JSON.stringify(charData);
     if (rowId && savedCharJson[appId] === json) continue;
     const hpStatus = computeHpStatus(charData);
@@ -105,6 +108,7 @@ async function flushCharactersToSupabase() {
       else { charRowIds[appId] = data.id; savedCharJson[appId] = json; }
     }
   }
+  await writeBackAssignedGroupItems();
 }
 
 // Sheet -> combat. A character sitting in an active/paused encounter has its

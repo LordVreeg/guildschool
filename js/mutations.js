@@ -217,21 +217,28 @@ function setAddItemField(field, value) {
 function confirmAddItem() {
   const char = state.characters[state.activeChar];
   const d = itemDraft;
-  if (!char || !d || !itemPicksComplete(d)) return;
+  if ((!char && !itemPopupTarget) || !d || !itemPicksComplete(d)) return;
   d.name = String(d.name || '').trim();
-  if (!d.name) {
-    const err = document.getElementById('ai-error');
-    err.textContent = 'Give the item a name.';
-    err.style.display = 'block';
-    return;
-  }
-  const problem = finishItemSpellsAndMods(d);
+  d.itemNo = String(d.itemNo || '').trim();
+  if (!d.itemNo) delete d.itemNo;
+  // the GM's item number and weight can't be changed by anyone else
+  const original = itemPopupTarget
+    ? (itemPopupTarget.rowId ? ((groupItemsCache.find(r => r.id === itemPopupTarget.rowId) || {}).item) : null)
+    : (editingItemIdx !== null ? (char.items || [])[editingItemIdx] : null);
+  if (original && !canEditGmFields(original)) { d.weight = original.weight; if (original.itemNo) d.itemNo = original.itemNo; else delete d.itemNo; }
+  const byGM = original ? !!original.gmMade : !!(itemPopupTarget && isGroupGM(itemPopupTarget.groupId));
+  const problem = !d.name ? 'Give the item a name.'
+    : itemNeedsNumber(d) && !d.itemNo ? 'Give the item an item number: magic items, weapons, armor and shields need one.'
+    : byGM && d.type !== 'Spell Book' && !(parseFloat(d.weight) > 0) ? 'Give the item a weight: every item the GM makes needs one.'
+    : itemPopupTarget && d.type === 'Spell Book' ? "A spell book can't go into the group's inventory."
+    : finishItemSpellsAndMods(d);
   if (problem) {
     const err = document.getElementById('ai-error');
     err.textContent = problem;
     err.style.display = 'block';
     return;
   }
+  if (itemPopupTarget) { saveGroupItemFromPopup(d); return; }
   if (!char.items) char.items = [];
   const editing = editingItemIdx !== null && char.items[editingItemIdx];
   if (d.type === 'Spell Book') { d.bookId = (editing && editing.bookId) || d.bookId || newBookId(); d.weight = SPELL_BOOK_WEIGHT; } else delete d.bookId;
@@ -1384,6 +1391,7 @@ async function removeItem(idx) {
   const char = state.characters[state.activeChar];
   if (!char || !char.items || !char.items[idx]) return;
   const it = char.items[idx];
+  if (it._groupItem) { alert("This is the group's item. Unassign or delete it on the Group Inventory page."); return; }
   // a spell book takes the spells written in it along with it
   const inBook = it.type === 'Spell Book' && it.bookId ? spellsInBook(char, it.bookId) : [];
   if (!await appConfirm(inBook.length ? `Delete the spell book "${it.name || 'this book'}" and the ${inBook.length} spell${inBook.length === 1 ? '' : 's'} in it?` : `Delete "${it.name || 'this item'}" from the inventory?`)) return;

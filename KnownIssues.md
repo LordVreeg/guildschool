@@ -43,7 +43,7 @@ new files instead of reusing cached copies.
 also bump `?v=` in `index.html`. That includes wiki syncs that only touch
 `data/`.
 
-- Change all 20 tags (1 stylesheet + 19 scripts) to the same new value.
+- Change all 21 tags (1 stylesheet + 20 scripts) to the same new value.
 - Use the date plus a counter for that day, e.g. `2026-10-23.1`, then
   `2026-10-23.2`.
 - One way to do it from the repo root:
@@ -224,3 +224,76 @@ Until step 2 is done a GM can still schedule games; the page says the email
 did not go out. Until step 1 is done the page says the table is missing.
 These SQL and function files live in the private `GS Tool` folder, not in
 this repo.
+
+## Group inventory needs a one-time Supabase setup
+
+The Group Inventory and GM Inventory pages (sidebar, under the group, and
+buttons on the group page) keep the group's items in a `group_items` table.
+Until it exists, both pages say it isn't set up. Run this once in the SQL
+Editor:
+
+```sql
+create table public.group_items (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references public.groups(id) on delete cascade,
+  -- 'gm': the GM Inventory (GM only); 'group': group treasure;
+  -- 'delivery': moved to to_char_id, waiting for its owner's app to take it
+  place text not null default 'group' check (place in ('gm', 'group', 'delivery')),
+  item jsonb not null,
+  starred boolean not null default false,            -- put in the group by the GM, not yet accepted
+  assigned_char_id uuid references public.characters(id) on delete set null,  -- may use it
+  to_char_id uuid references public.characters(id) on delete cascade,
+  created_by uuid default auth.uid(),
+  created_at timestamptz not null default now(),
+  check (place <> 'delivery' or to_char_id is not null)
+);
+create index on public.group_items (group_id);
+create index on public.group_items (assigned_char_id);
+create index on public.group_items (to_char_id);
+
+-- security definer, so the policies below don't run into the RLS of
+-- group_members and characters
+create or replace function public.gi_is_gm(gid uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from group_members where group_id = gid and user_id = auth.uid() and role = 'gm');
+$$;
+create or replace function public.gi_is_member(gid uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from group_members where group_id = gid and user_id = auth.uid())
+      or exists (select 1 from characters where group_id = gid and owner_id = auth.uid());
+$$;
+create or replace function public.gi_owns_char(cid uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select cid is not null and exists (select 1 from characters where id = cid and owner_id = auth.uid());
+$$;
+
+-- signed-in users may use the table at all (the policies below decide which rows);
+-- without it every request fails with "permission denied for table group_items"
+grant select, insert, update, delete on public.group_items to authenticated;
+
+alter table public.group_items enable row level security;
+create policy group_items_select on public.group_items for select using (
+  gi_is_gm(group_id) or (place <> 'gm' and (gi_is_member(group_id) or gi_owns_char(to_char_id) or gi_owns_char(assigned_char_id))));
+create policy group_items_insert on public.group_items for insert with check (
+  gi_is_gm(group_id) or (place = 'group' and gi_is_member(group_id)));
+create policy group_items_update on public.group_items for update
+  using (gi_is_gm(group_id) or (place = 'group' and (gi_is_member(group_id) or gi_owns_char(assigned_char_id))))
+  with check (gi_is_gm(group_id) or (place in ('group', 'delivery') and (gi_is_member(group_id) or gi_owns_char(assigned_char_id))));
+create policy group_items_delete on public.group_items for delete using (
+  gi_is_gm(group_id) or (place <> 'gm' and (gi_is_member(group_id) or gi_owns_char(to_char_id) or gi_owns_char(assigned_char_id))));
+```
+
+How it works (`js/group-inventory.js`):
+
+- **Assigned** items stay the group's. The character's inventory shows a
+  copy ("Group (assigned)") that works like their own: In Use, magic
+  modifiers, Cast / Use. Changes go back to the group's row; using up the
+  last of it removes the row. The copy is never saved in the character's
+  data. The GM's views of other players' sheets (the roster HP, attack
+  checks) read the saved data, so they don't count assigned items.
+- **Moved** items become the character's. A character you own gets it at
+  once; anyone else's gets it the next time their owner opens the app (or
+  their Inventory or Combat page).
+- Item numbers and weights on items the GM made (`gmMade`) can only be
+  changed by that group's GM. This is checked in the app, not by these
+  policies.

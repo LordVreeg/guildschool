@@ -120,8 +120,10 @@ function closeModal() {
 // item is built in itemDraft (mutations.js) and only added on confirm.
 // Every dropdown starts at "— select —", and the other fields and the Add
 // button stay locked until each dropdown has a choice.
+// opts.target: save to the group's lists instead (see openGroupItemModal).
 function openAddItemModal(opts) {
   opts = opts || {};
+  itemPopupTarget = opts.target || null;
   itemDraft = { type: '', name: '', qty: 1, weight: 0, worth: '', notes: '', location: '', masterwork: false };
   itemPicks = {};
   editingItemIdx = null;
@@ -135,6 +137,8 @@ function openAddItemModal(opts) {
 function openEditItemModal(idx) {
   const char = state.characters[state.activeChar];
   if (!char || !char.items || !char.items[idx]) return;
+  if (char.items[idx]._groupItem) { alert("This is the group's item, assigned to " + (char.name || 'this character') + '. Change it on the Group Inventory page.'); return; }
+  itemPopupTarget = null;
   itemDraft = JSON.parse(JSON.stringify(char.items[idx]));
   itemPicks = itemPicksFromItem(itemDraft);
   // A class that is no longer in its list (renamed since) reads as "— custom —",
@@ -147,7 +151,9 @@ function openEditItemModal(idx) {
 }
 
 function renderAddItemModal(justAdded) {
-  const char = state.characters[state.activeChar];
+  // an item in the group's lists has no character (and no place in one's bags)
+  const forGroup = !!itemPopupTarget;
+  const char = state.characters[state.activeChar] || (forGroup ? {} : null);
   const d = itemDraft;
   if (!char || !d) return;
   if (d.type === 'Companion') { renderCompanionModal(); return; }
@@ -175,6 +181,10 @@ function renderAddItemModal(justAdded) {
   const locations = itemLocations(char);
   if (location && !locations.includes(location)) locations.push(location);
   const num = (key, extra) => `<input class="w-full" type="number"  ${extra || ''} ${lock} value="${val(d[key])}" oninput="setAddItemField('${key}',this.value)">`;
+  // an item the GM made: only the GM changes its item number and weight
+  const gmLock = canEditGmFields(d) ? '' : `disabled title="Set by the GM"`;
+  const needsNo = itemNeedsNumber(d);
+  const giveToGroup = !forGroup && editing && char.playGroupId && d.type !== 'Spell Book';
 
   openModal(`
     <h3>${editing ? 'Edit Item' : 'Add Item'}</h3>
@@ -186,7 +196,8 @@ function renderAddItemModal(justAdded) {
     <div class="form-row">
       ${hasArmorStats ? field('AV', num('av'), 'sm') + field('PR', num('pr'), 'sm') : ''}
       ${field('Qty', num('qty', 'min="1"'), 'sm')}
-      ${field('Unit Weight', d.type === 'Spell Book' ? `<input class="w-full" type="number" value="${SPELL_BOOK_WEIGHT}" disabled title="A spell book always weighs ${SPELL_BOOK_WEIGHT}">` : num('weight'), 'sm one-line-label')}
+      ${field('Item #' + (needsNo ? infoTip('Magic items, weapons, armor and shields need an item number.') : ''), `<input class="w-full" ${lock} ${gmLock} value="${val(d.itemNo)}" oninput="setAddItemField('itemNo',this.value)">`, 'sm one-line-label')}
+      ${field('Unit Weight', d.type === 'Spell Book' ? `<input class="w-full" type="number" value="${SPELL_BOOK_WEIGHT}" disabled title="A spell book always weighs ${SPELL_BOOK_WEIGHT}">` : num('weight', gmLock), 'sm one-line-label')}
       ${field('Unit Worth', num('worth'), 'sm one-line-label')}
       ${itemSpellRule(d) === 'potion' ? field('Uses' + infoTip('How many times the potion can be used, for its spell or its effect. When they run out, one potion is used up.'), `<input class="w-full" type="number" min="1" ${lock} value="${val(d.potionUses === undefined ? potionUses(d) : d.potionUses)}" oninput="setAddItemField('potionUses',this.value)">`, 'sm') : ''}
       ${d.type === 'Magic Item' ? '' : `<div class="form-group" style="justify-content:flex-end">
@@ -196,7 +207,7 @@ function renderAddItemModal(justAdded) {
       </div>`}
     </div>
     <div class="form-row">
-      ${field('Location' + infoTip('Carried items count toward Weight Carried. To put an item in a new bag, stash or other location, add it under Storage Locations first.'), `<select class="w-full"  ${lock} onchange="setAddItemField('location',this.value)">${opt('', 'Carried', !location)}${locations.map(l => opt(l, l, location === l)).join('')}</select>`, 'md')}
+      ${forGroup ? '' : field('Location' + infoTip('Carried items count toward Weight Carried. To put an item in a new bag, stash or other location, add it under Storage Locations first.'), `<select class="w-full"  ${lock} onchange="setAddItemField('location',this.value)">${opt('', 'Carried', !location)}${locations.map(l => opt(l, l, location === l)).join('')}</select>`, 'md')}
       ${field('Notes', `<input class="w-full"  ${lock} value="${val(d.notes)}" oninput="setAddItemField('notes',this.value)">`, 'fill')}
     </div>
     ${itemSpellRule(d) === 'potion' ? `<div class="form-row">${field('Effect' + infoTip('What the potion does, when it casts no spell. A potion has one spell or one effect.'), `<input class="w-full" ${lock} value="${val(d.effect)}" ${(d.spells || []).length || itemSpellDrafts.length ? 'disabled title="This potion has a spell; remove it to give it an effect instead"' : ''} oninput="setAddItemField('effect',this.value)" onchange="renderAddItemModal()">`, 'full')}</div>` : ''}
@@ -208,7 +219,8 @@ function renderAddItemModal(justAdded) {
       ${editing ? '' : `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-right:auto">
         <input type="checkbox" ${addNextItem ? 'checked' : ''} onchange="addNextItem=this.checked"> Add next item
       </label>`}
-      <button class="btn btn-dim" onclick="itemDraft=null;editingItemIdx=null;addNextItem=false;closeModal()">Cancel</button>
+      ${giveToGroup ? `<button class="btn btn-dim" style="margin-right:auto" title="Move it into the group's inventory" onclick="giveItemToGroup()">Give to Group</button>` : ''}
+      <button class="btn btn-dim" onclick="itemDraft=null;editingItemIdx=null;itemPopupTarget=null;addNextItem=false;closeModal()">Cancel</button>
       <button class="btn btn-gold" ${lock} onclick="confirmAddItem()">${editing ? 'Save' : 'Add Item'}</button>
     </div>`, { wide: true, width: 'min(760px, 94vw)', className: 'plain-font' });
 }

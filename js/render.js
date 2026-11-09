@@ -286,7 +286,10 @@ function sidebarGroupsHtml(char, view) {
   return `<div class="sidebar-section">Group</div>` + ids.map(id => {
     const g = myGroups.find(x => x.id === id);
     const active = view === 'group' && activeGroupId === id ? 'active' : '';
-    return `<div class="sidebar-item sidebar-nav ${active}" data-group="${escapeHtml(id)}" onclick="openSidebarGroup(this.dataset.group)"><span class="nav-icon">👥</span><span>${escapeHtml(g ? g.name : 'Group')}</span></div>`;
+    const here = activeGroupId === id;
+    return `<div class="sidebar-item sidebar-nav ${active}" data-group="${escapeHtml(id)}" onclick="openSidebarGroup(this.dataset.group)"><span class="nav-icon">👥</span><span>${escapeHtml(g ? g.name : 'Group')}</span></div>` +
+      `<div class="sidebar-item sidebar-nav ${view === 'groupInventory' && here ? 'active' : ''}" data-group="${escapeHtml(id)}" onclick="showGroupInventory(this.dataset.group, false)"><span class="nav-icon">💰</span><span>Group Inventory</span></div>` +
+      (g && g.myRole === 'gm' ? `<div class="sidebar-item sidebar-nav ${view === 'gmInventory' && here ? 'active' : ''}" data-group="${escapeHtml(id)}" onclick="showGroupInventory(this.dataset.group, true)"><span class="nav-icon">🔒</span><span>GM Inventory</span></div>` : '');
   }).join('');
 }
 function openSidebarGroup(id) {
@@ -307,6 +310,7 @@ function renderMain() {
   }
   if (state.activeView === 'utilities') { renderUtilitiesModule(); return; }
   if (state.activeView === 'group') { renderGroupModule(); return; }
+  if (state.activeView === 'groupInventory' || state.activeView === 'gmInventory') { renderGroupInventoryModule(); return; }
   if (state.activeView === 'schedule') { renderScheduleModule(); return; }
   if (state.activeView === 'bestiary') { renderBestiaryModule(); return; }
   if (state.activeView === 'encounter') { renderEncounterModule(); return; }
@@ -344,6 +348,7 @@ function showInventoryModule() {
   state.activeView = 'inventory';
   renderSidebar();
   renderInventoryModule();
+  syncGroupItemsForMyCharacters(); // anything the group gave or assigned meanwhile
 }
 
 function showCombatModule() {
@@ -351,6 +356,7 @@ function showCombatModule() {
   state.activeView = 'combat';
   renderSidebar();
   renderCombatModule();
+  syncGroupItemsForMyCharacters();
   showPageIntroOnce('combat', 'The Combat page', COMBAT_PAGE_INTRO_HTML);
 }
 

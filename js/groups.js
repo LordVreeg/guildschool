@@ -376,6 +376,8 @@ async function renderGroupDetail(group) {
         ${combatFlagHtml}
       </div>
       <div style="display:flex;gap:6px"><button class="btn btn-dim" onclick="showScheduleModule('${group.id}')">📅 Game Schedule</button>
+      <button class="btn btn-dim" onclick="showGroupInventory('${group.id}', false)">💰 Group Inventory</button>
+      ${isGM ? `<button class="btn btn-dim" onclick="showGroupInventory('${group.id}', true)">🔒 GM Inventory</button>` : ''}
       ${isGM ? `<button class="btn btn-dim" onclick="openAddToGroupModal('${group.id}')">Add to Group</button>` : ''}</div>
     </div>
     <div class="form-group" style="margin-top:8px"><label>Roster (PCs &amp; NPCs)</label>

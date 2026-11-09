@@ -167,6 +167,11 @@ body {
 .inventory-table .item-group-toggle { display: inline-block; width: 14px; }
 .inventory-table .item-group-move { float: right; white-space: nowrap; }
 .inventory-table .item-group-move .container-move + .container-move { margin-left: 2px; }
+.group-star { color: var(--gold); }
+.inventory-table .item-no { color: var(--text-dim); font-size: calc(11px * var(--fs)); }
+.inventory-table select.group-item-select { width: auto; min-width: 7em; max-width: 12em; }
+.inventory-table .group-item-actions .item-spell-btn { display: block; margin-bottom: 4px; }
+.inventory-table tr.group-item-new td { background: rgba(var(--tint-rgb), .1); }
 .inventory-table .item-row-toggle { display: inline-block; width: 14px; cursor: pointer; color: var(--gold-dim); user-select: none; }
 /* a subsection inside a section (Items > Custom): indented one step further */
 .inventory-table tr.item-subgroup td { background: rgba(var(--tint-rgb),.04); padding-left: 18px; }

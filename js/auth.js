@@ -279,6 +279,7 @@ async function handleSignedIn() {
   try { localStorage.removeItem('gs_last_export'); } catch (e) {}
   loadData().then(() => {
     if (removeAutoHandFootForAll()) { saveState(); if (typeof renderApp === 'function') renderApp(); }
+    syncGroupItemsForMyCharacters(true); // the group's items given or assigned to your characters
   }).catch(err => {
     document.getElementById('main').innerHTML = `<div style="padding:40px;color:var(--red-b)">
       <strong>Could not load data.</strong><br><br>${err.message}

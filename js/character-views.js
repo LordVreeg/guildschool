@@ -449,16 +449,18 @@ function inventoryGroupsHtml(char) {
       const subRows = itemModsLineHtml(char, it) + itemSpellRowsHtml(char, it, idx, 9);
       const folded = collapsedItemRows.has(it);
       const toggle = subRows ? `<span class="item-row-toggle" title="${folded ? 'Show' : 'Hide'} its magic and spells" onclick="toggleItemRows(${idx})">${folded ? '▸' : '▾'}</span>` : '<span class="item-row-toggle"></span>';
+      // the group's item, assigned to this character: used here, changed on the Group Inventory page
+      const fromGroup = !!it._groupItem;
       return `<tr class="item-row${sub ? ' item-sub-row' : ''}" style="${it.masterwork ? 'font-style:italic' : ''}">
-        <td>${toggle}${escapeHtml(it.name || '')}</td>
+        <td>${toggle}${escapeHtml(it.name || '')}${it.itemNo ? ` <span class="item-no">#${escapeHtml(it.itemNo)}</span>` : ''}</td>
         <td class="item-kind">${escapeHtml(itemKindLabel(it))}</td>
-        <td class="item-kind">${where(it) ? escapeHtml(where(it)) : 'Carried'}</td>
+        <td class="item-kind">${fromGroup ? '<span title="Assigned by the group: the group still owns it">Group (assigned)</span>' : where(it) ? escapeHtml(where(it)) : 'Carried'}</td>
         <td class="item-qty">${escapeHtml(it.qty || 1)}</td>
         <td style="text-align:center">${inUseCellHtml(char, it, idx)}</td>
         <td style="text-align:center">${it.masterwork || it.type === 'Magic Item' ? '✓' : ''}</td>
         <td class="item-kind">${warn || escapeHtml(it.notes || '')}</td>
-        <td class="item-edit" title="Edit" onclick="openEditItemModal(${idx})">✎</td>
-        <td class="item-del" title="Delete" onclick="removeItem(${idx})">✕</td>
+        ${fromGroup ? `<td colspan="2"><button class="btn btn-dim item-spell-btn" title="The group's item: change it there" onclick="showGroupInventory('${it._groupItem.groupId}', false)">Group</button></td>` : `<td class="item-edit" title="Edit" onclick="openEditItemModal(${idx})">✎</td>
+        <td class="item-del" title="Delete" onclick="removeItem(${idx})">✕</td>`}
       </tr>` + (folded ? '' : subRows); }).join('');
   }
 }
