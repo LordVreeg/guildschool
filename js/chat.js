@@ -163,6 +163,7 @@ function onChatChange(payload) {
         chatMessages.push(msg);
         if (!chatSearch) renderChatMessages(stick ? 'bottom' : 'keep');
       }
+      chatAnimateMessage(msg);   // its dice roll across the chat, a critical cuts it (js/dice.js)
       if (document.visibilityState === 'visible') chatMarkRead(chatGroupId);
       return;
     }
@@ -197,6 +198,7 @@ async function renderChatModule() {
       <div class="panel-header"><h2>Chat</h2>
         <div style="flex:1"></div>
         <input id="chat-search-input" class="chat-search" type="search" placeholder="Search this chat…" onkeydown="if(event.key==='Enter')searchChat(this.value)">
+        ${diceAnimButtonHtml()}
         <button class="btn btn-dim" style="font-size:calc(11px * var(--fs));padding:3px 8px" onclick="showChatHelp()" title="Commands and dice syntax">? Help</button>
         <button class="btn btn-dim chat-close" title="Close the chat window" onclick="closeChatWindow()">✕</button>
       </div>
@@ -559,13 +561,15 @@ function renderChatMessages(mode) {
 
 // A line only you see: help, talk-to-myself, or why something didn't send.
 function chatLocalLine(kind, body, extra) {
-  chatMessages.push(Object.assign({
+  const line = Object.assign({
     id: 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2),
     local: true, group_id: chatGroupId, author_id: currentUser.id,
     sender_name: extra && extra.sender_name || '', kind, body,
     created_at: new Date().toISOString(), payload: null
-  }, extra || {}));
+  }, extra || {});
+  chatMessages.push(line);
   if (chatSearch) clearChatSearch(); else renderChatMessages('bottom');
+  chatAnimateMessage(line);
 }
 
 // ---------- attributes, macros, queries ----------
@@ -915,6 +919,7 @@ async function chatInsertMessage(msg) {
     if (chatSearch) clearChatSearch(); else renderChatMessages('bottom');
   }
   chatMarkRead(chatGroupId);
+  if (data && data.group_id === chatGroupId) chatAnimateMessage(data);
   if (typeof chatAttHandleIncoming === 'function') chatAttHandleIncoming(data);   // your own /att request, if you are the GM
   return true;
 }

@@ -307,7 +307,8 @@ const DiceRoller = (() => {
       else if (e.success) k = 'success'; else if (e.failure) k = 'failure';
       else if (e.crit && !e.fumble) k = 'crit'; else if (e.fumble && !e.crit) k = 'fumble';
       const label = fate ? (e.v > 0 ? '+' : e.v < 0 ? '-' : '0') : String(e.v);
-      parts.push({ s: label, k, m: e.match || undefined });
+      // d: the die's sides ('F' for fate), so the chat can draw it rolling (see chatAnimateRolls)
+      parts.push({ s: label, k, m: e.match || undefined, d: fate ? 'F' : sides });
     });
     parts.push({ s: ')' });
     return { v, parts };
@@ -402,3 +403,206 @@ const DiceRoller = (() => {
 
   return { roll, findInline, partsHtml, partsText };
 })();
+
+// ============================================================
+// DICE ROLLING ACROSS THE CHAT
+// ============================================================
+// A new message with dice in it (a /roll, an [[inline roll]], a template)
+// sends those dice tumbling across the chat's message area. Each lands
+// showing what it really rolled (the parts' d says its sides; rolls made
+// before that was stored don't animate). Crits and fumbles are coloured as
+// in the roll text, dropped dice are dimmed. The 🎲 button in the chat
+// header turns it off for this browser.
+
+const DICE_ANIM_MAX = 12;           // more dice than this: the rest as "+N more"
+const DICE_ANIM_KEY = 'gs_dice_anim';
+const diceAnimSeen = new Set();     // message ids already animated
+function diceAnimEnabled() {
+  try { return localStorage.getItem(DICE_ANIM_KEY) !== 'off'; } catch (e) { return true; }
+}
+function toggleDiceAnim() {
+  try { localStorage.setItem(DICE_ANIM_KEY, diceAnimEnabled() ? 'off' : 'on'); } catch (e) {}
+  const b = document.getElementById('dice-anim-btn');
+  if (b) b.outerHTML = diceAnimButtonHtml();
+}
+function diceAnimButtonHtml() {
+  const on = diceAnimEnabled();
+  return `<button id="dice-anim-btn" class="btn btn-dim" style="font-size:calc(11px * var(--fs));padding:3px 8px" title="Chat animations (dice rolling, critical hits): ${on ? 'on' : 'off'}" onclick="toggleDiceAnim()">🎲 ${on ? 'On' : 'Off'}</button>`;
+}
+
+// The outline of a die with this many sides, in a 100 x 100 box, and how far
+// its number sits off centre (a d4's is low, in the wide part of the triangle).
+function diceAnimShape(d) {
+  const poly = (pts, extra) => `<polygon points="${pts}"/>${extra || ''}`;
+  switch (d) {
+    case 4:   return { svg: poly('50,6 96,90 4,90'), dy: 14 };
+    case 6:
+    case 'F': return { svg: '<rect x="9" y="9" width="82" height="82" rx="12"/>', dy: 0 };
+    case 8:   return { svg: poly('50,3 97,50 50,97 3,50', '<line x1="3" y1="50" x2="97" y2="50"/>'), dy: 0 };
+    case 10:
+    case 100: return { svg: poly('50,3 95,42 50,97 5,42', '<polyline points="5,42 50,58 95,42" fill="none"/><line x1="50" y1="58" x2="50" y2="97"/>'), dy: -6 };
+    case 12:  return { svg: poly('50,3 97,37 79,95 21,95 3,37'), dy: 4 };
+    case 20:  return { svg: poly('50,2 94,26 94,74 50,98 6,74 6,26', '<polygon points="50,22 78,70 22,70" fill="none"/>'), dy: 4 };
+    default:  return { svg: '<circle cx="50" cy="50" r="45"/>', dy: 0 };
+  }
+}
+function diceAnimFace(d, v) {
+  if (d === 'F') return v > 0 ? '+' : v < 0 ? '−' : '0';
+  return String(v);
+}
+
+function chatAnimateRolls(msg) {
+  if (!msg || !msg.id || diceAnimSeen.has(msg.id)) return;
+  diceAnimSeen.add(msg.id);
+  if (!diceAnimEnabled() || msg.deleted_at) return;
+  if (msg.created_at && Date.now() - new Date(msg.created_at).getTime() > 60000) return; // only fresh rolls
+  const p = msg.payload || {};
+  const rolls = [...(p.rolls || []), ...(p.inline || [])].filter(r => r && !r.error);
+  const dice = [];
+  for (const r of rolls) for (const part of r.parts || []) {
+    if (part.d !== undefined && ['die', 'crit', 'fumble', 'success', 'failure', 'dropped'].includes(part.k)) dice.push(part);
+  }
+  const box = document.getElementById('chat-messages');
+  if (!dice.length || !box) return;
+  const rect = box.getBoundingClientRect();
+  if (rect.width < 60 || rect.height < 60) return;
+
+  const tray = document.createElement('div');
+  tray.className = 'dice-tray';
+  Object.assign(tray.style, { left: rect.left + 'px', top: rect.top + 'px', width: rect.width + 'px', height: rect.height + 'px' });
+  document.body.appendChild(tray);
+
+  const fs = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fs')) || 1;
+  const size = Math.round(46 * fs);
+  const shown = dice.slice(0, DICE_ANIM_MAX);
+  const perRow = Math.max(1, Math.floor((rect.width - 20) / (size + 10)));
+  const rows = Math.ceil(shown.length / perRow);
+  const floorY = Math.max(10, Math.min(rect.height - rows * (size + 8) - 24, rect.height * 0.55 - rows * (size + 8) / 2));
+  const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  let longest = 0;
+
+  shown.forEach((part, i) => {
+    const d = part.d === 'F' ? 'F' : parseInt(part.d) || 0;
+    const shape = diceAnimShape(d);
+    const el = document.createElement('div');
+    el.className = 'anim-die' + (part.k === 'crit' || part.k === 'success' ? ' crit' : part.k === 'fumble' || part.k === 'failure' ? ' fumble' : part.k === 'dropped' ? ' dropped' : '');
+    el.style.width = el.style.height = size + 'px';
+    el.innerHTML = `<svg viewBox="0 0 100 100" aria-hidden="true">${shape.svg}</svg><span class="anim-die-num"></span>`;
+    const num = el.querySelector('.anim-die-num');
+    num.style.marginTop = (shape.dy * size / 100) + 'px';
+    num.style.fontSize = Math.round(size * (String(part.s).length > 2 ? 0.3 : 0.38)) + 'px';
+    tray.appendChild(el);
+    // where it lands: its place in a row, a little off true
+    const row = Math.floor(i / perRow), col = i % perRow, inRow = Math.min(perRow, shown.length - row * perRow);
+    const startX = (rect.width - inRow * (size + 10)) / 2;
+    const endX = startX + col * (size + 10) + rnd(-4, 4), endY = floorY + row * (size + 8) + rnd(-4, 4);
+    const endRot = rnd(-15, 15);
+    const setFinal = () => { num.textContent = d === 'F' ? diceAnimFace('F', part.s === '+' ? 1 : part.s === '-' ? -1 : 0) : String(part.s); el.classList.add('landed'); };
+    if (still) { el.style.transform = `translate(${endX}px, ${endY}px) rotate(${endRot}deg)`; setFinal(); return; }
+    const dur = 1100 + i * 90 + rnd(0, 200);
+    longest = Math.max(longest, dur);
+    const fromY = rnd(0, Math.max(0, rect.height - size));
+    const spin = (Math.random() < 0.5 ? -1 : 1) * 360 * (Math.random() < 0.5 ? 2 : 3); // whole turns: it lands upright
+    el.animate([
+      { transform: `translate(${-size - 10}px, ${fromY}px) rotate(0deg)`, offset: 0 },
+      { transform: `translate(${endX * 0.55}px, ${endY - 40}px) rotate(${spin * 0.6}deg)`, offset: 0.45 },
+      { transform: `translate(${endX * 0.85}px, ${endY}px) rotate(${spin * 0.85}deg)`, offset: 0.7 },
+      { transform: `translate(${endX * 0.95}px, ${endY - 12}px) rotate(${spin * 0.95}deg)`, offset: 0.85 },
+      { transform: `translate(${endX}px, ${endY}px) rotate(${spin + endRot}deg)`, offset: 1 }
+    ], { duration: dur, easing: 'cubic-bezier(.25,.6,.35,1)', fill: 'forwards' });
+    // the faces flicker while it rolls, then it shows what it rolled
+    const maxFace = d === 'F' ? 3 : Math.max(2, d || 6);
+    num.textContent = diceAnimFace(d, d === 'F' ? 0 : 1 + Math.floor(Math.random() * maxFace));
+    const flick = setInterval(() => { num.textContent = diceAnimFace(d, d === 'F' ? Math.floor(Math.random() * 3) - 1 : 1 + Math.floor(Math.random() * maxFace)); }, 70);
+    setTimeout(() => { clearInterval(flick); setFinal(); }, dur);
+  });
+  if (dice.length > shown.length) {
+    const more = document.createElement('div');
+    more.className = 'anim-die-more';
+    more.textContent = `+${dice.length - shown.length} more`;
+    more.style.top = (floorY + rows * (size + 8)) + 'px';
+    tray.appendChild(more);
+  }
+  // they rest a moment, then fade away
+  setTimeout(() => {
+    tray.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 500, fill: 'forwards' });
+    setTimeout(() => tray.remove(), 520);
+  }, longest + 1800);
+}
+
+// ============================================================
+// A CRITICAL HIT CUTS THE CHAT
+// ============================================================
+// /att's "critically hits" line carries payload.att_crit (js/attack.js).
+// When it arrives, a red slash tears across the chat's message area and
+// blood drips from it for a few seconds, then it all fades. The same 🎲
+// button turns it off.
+
+const critAnimSeen = new Set();
+function chatAnimateCrit(msg) {
+  if (!msg || !msg.id || critAnimSeen.has(msg.id)) return;
+  critAnimSeen.add(msg.id);
+  if (!diceAnimEnabled() || msg.deleted_at || !(msg.payload && msg.payload.att_crit)) return;
+  if (msg.created_at && Date.now() - new Date(msg.created_at).getTime() > 60000) return;
+  const box = document.getElementById('chat-messages');
+  if (!box) return;
+  const rect = box.getBoundingClientRect();
+  if (rect.width < 80 || rect.height < 80) return;
+  const W = rect.width, H = rect.height;
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const tray = document.createElement('div');
+  tray.className = 'crit-tray';
+  Object.assign(tray.style, { left: rect.left + 'px', top: rect.top + 'px', width: W + 'px', height: H + 'px' });
+  document.body.appendChild(tray);
+
+  // the cut: a ragged line from upper left to lower right, wide in the middle
+  const x1 = W * rnd(0.04, 0.12), y1 = H * rnd(0.15, 0.32);
+  const x2 = W * rnd(0.88, 0.96), y2 = H * rnd(0.52, 0.7);
+  const at = t => ({ x: x1 + (x2 - x1) * t, y: y1 + (y2 - y1) * t });
+  const nx = -(y2 - y1), ny = x2 - x1, nl = Math.hypot(nx, ny) || 1;   // the cut's sideways direction
+  const steps = 14, top = [], bottom = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps, p = at(t);
+    const half = Math.sin(Math.PI * t) * rnd(4, 7) + 0.5;               // widest mid-cut, a point at each end
+    const jag = i && i < steps ? rnd(-3, 3) : 0;
+    top.push(`${(p.x + nx / nl * (half + jag)).toFixed(1)},${(p.y + ny / nl * (half + jag)).toFixed(1)}`);
+    bottom.unshift(`${(p.x - nx / nl * (half - jag)).toFixed(1)},${(p.y - ny / nl * (half - jag)).toFixed(1)}`);
+  }
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  tray.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">
+    <defs><clipPath id="crit-reveal"><rect class="crit-reveal" x="0" y="0" width="${still ? W : 0}" height="${H}"/></clipPath></defs>
+    <g clip-path="url(#crit-reveal)">
+      <polygon class="crit-cut" points="${top.concat(bottom).join(' ')}"/>
+      <line class="crit-cut-core" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>
+    </g></svg>`;
+  // the blade's sweep: the cut opens left to right
+  const reveal = tray.querySelector('.crit-reveal');
+  if (!still) reveal.animate([{ width: '0px' }, { width: W + 'px' }], { duration: 220, easing: 'cubic-bezier(.6,0,.2,1)', fill: 'forwards' });
+  if (!still) tray.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-4px,3px)' }, { transform: 'translate(3px,-2px)' }, { transform: 'translate(0,0)' }], { duration: 260, delay: 200 });
+
+  // the drips: from points along the cut, running down at their own pace
+  const drips = Math.max(5, Math.min(11, Math.round(len / 45)));
+  for (let i = 0; i < drips; i++) {
+    const p = at(rnd(0.12, 0.88));
+    const d = document.createElement('div');
+    d.className = 'blood-drip';
+    const w = rnd(3, 7), fall = rnd(H * 0.12, Math.max(H * 0.15, H - p.y - 10));
+    Object.assign(d.style, { left: (p.x - w / 2) + 'px', top: (p.y - 2) + 'px', width: w + 'px', '--drop': (w * 1.7) + 'px' });
+    tray.appendChild(d);
+    if (still) { d.style.height = Math.min(fall, 30) + 'px'; continue; }
+    d.animate([{ height: '0px' }, { height: (fall * 0.25) + 'px', offset: 0.3 }, { height: fall + 'px' }],
+      { duration: rnd(1800, 3200), delay: 250 + rnd(0, 700), easing: 'cubic-bezier(.5,0,.9,.6)', fill: 'forwards' });
+  }
+  setTimeout(() => {
+    tray.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 900, fill: 'forwards' });
+    setTimeout(() => tray.remove(), 920);
+  }, still ? 2000 : 4200);
+}
+// Everything a new chat message sets off.
+function chatAnimateMessage(msg) {
+  chatAnimateRolls(msg);
+  chatAnimateCrit(msg);
+}

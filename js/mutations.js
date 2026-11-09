@@ -200,6 +200,7 @@ function setItemPick(key, value) {
   // When editing, the item's name stays too (a new item takes the catalog's).
   if (editingItemIdx !== null && String(old.name || '').trim()) d.name = old.name;
   if (String(old.notes || '').trim()) d.notes = old.notes;
+  for (const f of ['itemNo', 'omniEyed', 'groupContainer', 'gmMade', 'gmBy', 'gmGroupId', 'veiled']) if (old[f] !== undefined) d[f] = old[f];
   if (old.masterwork && ['Weapon', 'Armor', 'Shield', 'Ammunition'].includes(d.type)) d.masterwork = true;
   if ((old.spells || []).length) d.spells = old.spells;
   for (const f of [...MAGIC_MOD_FIELDS.defense, ...MAGIC_MOD_FIELDS.offense, 'magicVoid', 'magicVoidStacks', '_mod_offense', '_mod_defense', '_mod_void']) {
@@ -217,21 +218,31 @@ function setAddItemField(field, value) {
 function confirmAddItem() {
   const char = state.characters[state.activeChar];
   const d = itemDraft;
-  if (!char || !d || !itemPicksComplete(d)) return;
+  if ((!char && !itemPopupTarget) || !d || !itemPicksComplete(d)) return;
   d.name = String(d.name || '').trim();
-  if (!d.name) {
-    const err = document.getElementById('ai-error');
-    err.textContent = 'Give the item a name.';
-    err.style.display = 'block';
-    return;
-  }
-  const problem = finishItemSpellsAndMods(d);
+  d.itemNo = String(d.itemNo || '').trim();
+  if (!d.itemNo) delete d.itemNo;
+  // the GM's item number and weight can't be changed by anyone else
+  const original = itemPopupTarget
+    ? (itemPopupTarget.rowId ? ((groupItemsCache.find(r => r.id === itemPopupTarget.rowId) || {}).item) : null)
+    : (editingItemIdx !== null ? (char.items || [])[editingItemIdx] : null);
+  if (original && !canEditGmFields(original)) { d.weight = original.weight; if (original.itemNo) d.itemNo = original.itemNo; else delete d.itemNo; d.omniEyed = original.omniEyed; }
+  const byGM = original ? !!original.gmMade : popupMakerIsGM(itemPopupTarget);
+  const problem = !d.name ? 'Give the item a name.'
+    : itemNeedsNumber(d) && !d.itemNo ? 'Give the item an item number: magic items, weapons, armor and shields need one.'
+    : byGM && d.type !== 'Spell Book' && !(parseFloat(d.weight) > 0) ? 'Give the item a weight: every item the GM makes needs one.'
+    : itemPopupTarget && d.type === 'Spell Book' ? "A spell book can't go into the group's inventory."
+    : finishItemSpellsAndMods(d);
   if (problem) {
     const err = document.getElementById('ai-error');
     err.textContent = problem;
     err.style.display = 'block';
     return;
   }
+  // a new item a GM makes is the GM's; its magic is hidden until Omni Eyed is ticked
+  if (!original && byGM) { d.gmMade = true; d.gmBy = currentUser.id; if (itemPopupTarget.groupId) d.gmGroupId = itemPopupTarget.groupId; }
+  settleItemVeil(d);
+  if (itemPopupTarget) { saveGroupItemFromPopup(d); return; }
   if (!char.items) char.items = [];
   const editing = editingItemIdx !== null && char.items[editingItemIdx];
   if (d.type === 'Spell Book') { d.bookId = (editing && editing.bookId) || d.bookId || newBookId(); d.weight = SPELL_BOOK_WEIGHT; } else delete d.bookId;
@@ -258,8 +269,9 @@ function finishItemSpellsAndMods(d) {
     if (isPotion) for (const sp of started) sp.usesMax = uses; // a potion's spell takes the potion's uses
     if (started.some(sp => !itemSpellReady(sp))) return 'Finish each spell under Spells (school, spell, level and uses), or remove it with ✕.';
     const rule = itemSpellRule(d);
-    const total = (d.spells || []).length + started.length;
-    const ruleError = rule === 'potion' && total + (String(d.effect || '').trim() ? 1 : 0) !== 1 ? 'A potion has one spell or one effect: give it an Effect, or add a spell.'
+    // spells or an effect the GM has hidden (see veilItemMagic) still count here
+    const total = (d.spells || []).length + started.length + ((d.veiled && d.veiled.spells) || []).length;
+    const ruleError = rule === 'potion' && total + (String(d.effect || (d.veiled && d.veiled.effect) || '').trim() ? 1 : 0) !== 1 ? 'A potion has one spell or one effect: give it an Effect, or add a spell.'
       : itemSpellOneUse(rule) && total < 1 ? `A ${rule} needs at least one spell.` : '';
     if (ruleError) return ruleError;
     for (const sp of started) {
@@ -1384,6 +1396,7 @@ async function removeItem(idx) {
   const char = state.characters[state.activeChar];
   if (!char || !char.items || !char.items[idx]) return;
   const it = char.items[idx];
+  if (it._groupItem) { alert("This is the group's item. Unassign or delete it on the Group Inventory page."); return; }
   // a spell book takes the spells written in it along with it
   const inBook = it.type === 'Spell Book' && it.bookId ? spellsInBook(char, it.bookId) : [];
   if (!await appConfirm(inBook.length ? `Delete the spell book "${it.name || 'this book'}" and the ${inBook.length} spell${inBook.length === 1 ? '' : 's'} in it?` : `Delete "${it.name || 'this item'}" from the inventory?`)) return;

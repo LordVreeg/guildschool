@@ -69,9 +69,10 @@ async function chatAttackPost(title, rows) {
 // The end result of an attack, which everyone in the group sees (an emote:
 // "Name hits with the Longsword for 14 damage."); the steps above stay between
 // you and the GM.
-async function chatAttackPublic(text) {
-  if (chatTalkToMyself) { const c = chatPostAsChar(); chatLocalLine('emote', text, { sender_name: c ? c.name : 'GM' }); return true; }
-  return chatInsertMessage({ kind: 'emote', body: text, payload: null });
+// payload: extra for the row, e.g. { att_crit: true } (the chat draws a cut).
+async function chatAttackPublic(text, payload) {
+  if (chatTalkToMyself) { const c = chatPostAsChar(); chatLocalLine('emote', text, { sender_name: c ? c.name : 'GM', payload: payload || null }); return true; }
+  return chatInsertMessage({ kind: 'emote', body: text, payload: payload || null });
 }
 
 // ---------- the attack ----------
@@ -566,6 +567,6 @@ async function chatAttackFlow() {
     rows.push(...dmg.rows);
     if (!await chatAttackPost(`${label}: ${crit ? 'critical hit' : 'hit'}`, rows)) return;
     const flavor = attFlavor(dmg.total, dmg.eff);
-    await chatAttackPublic(`${crit ? 'critically hits' : 'hits'} with the ${weaponName} for ${dmg.total} damage${flavor.length ? ' — ' + flavor.join(', ') : ''}.`);
+    await chatAttackPublic(`${crit ? 'critically hits' : 'hits'} with the ${weaponName} for ${dmg.total} damage${flavor.length ? ' — ' + flavor.join(', ') : ''}.`, crit ? { att_crit: true } : null);
   }
 }

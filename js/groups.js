@@ -142,6 +142,9 @@ async function fetchMyGroups() {
     .eq('user_id', currentUser.id);
   if (error) { console.error('Failed to load groups', error); return myGroups; }
   myGroups = (memberships || []).filter(m => m.groups).map(m => ({ ...m.groups, myRole: m.role }));
+  // File -> GM Inventory: for anyone who GMs a group
+  const gmBtn = document.getElementById('gm-inventory-btn');
+  if (gmBtn) gmBtn.style.display = myGroups.some(g => g.myRole === 'gm') ? '' : 'none';
   return myGroups;
 }
 
@@ -376,6 +379,7 @@ async function renderGroupDetail(group) {
         ${combatFlagHtml}
       </div>
       <div style="display:flex;gap:6px"><button class="btn btn-dim" onclick="showScheduleModule('${group.id}')">📅 Game Schedule</button>
+      <button class="btn btn-dim" onclick="showGroupInventory('${group.id}', false)">💰 Group Inventory</button>
       ${isGM ? `<button class="btn btn-dim" onclick="openAddToGroupModal('${group.id}')">Add to Group</button>` : ''}</div>
     </div>
     <div class="form-group" style="margin-top:8px"><label>Roster (PCs &amp; NPCs)</label>
