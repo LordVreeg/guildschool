@@ -268,6 +268,8 @@ function renderGeneralModule() {
         <div class="form-row" style="margin-bottom:4px">
           <div class="computed-item"><span class="ci-label">Base Speed</span><span class="ci-value">${Math.round(sp.baseSpeed)} ft/sec</span></div>
           <div class="computed-item"><span class="ci-label">Adjusted Speed${infoTip(`CD/4 + 10 + (Speed Move skval÷10), scaled by (1 − Weight Carried/Weight Possible)`)}</span><span class="ci-value">${Math.round(sp.adjustedSpeed)} ft/sec</span></div>
+          <div class="computed-item"><span class="ci-label">Normal Move${infoTip(`Adjusted Speed × .5: just walking around, looking around, going for hours. Allows detect and surprise at 25%.`)}</span><span class="ci-value">${Math.round(sp.normalMove * 10) / 10} ft/sec</span></div>
+          <div class="computed-item"><span class="ci-label">Exploring Move${infoTip(`Adjusted Speed × .33: looking around for traps and dangers.`)}</span><span class="ci-value">${Math.round(sp.exploringMove * 10) / 10} ft/sec</span></div>
           <div class="computed-item"><span class="ci-label">Dash/Rout Speed${infoTip(`Dash/Rout Speed = Adjusted Speed × 2 (charging or fleeing full rout). Max Distance = ((WI÷4) + HE) × 4 yards.`)}</span><span class="ci-value skval">${Math.round(sp.dashRoutSpeed)} ft/sec</span></div>
           <div class="computed-item"><span class="ci-label">Dash/Rout Max Distance</span><span class="ci-value">${Math.round(sp.dashRoutMaxDistance)} yds</span></div>
         </div>

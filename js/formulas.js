@@ -241,8 +241,12 @@ function computeSpeed(character) {
   const adjustedSpeed = baseSpeed * ratio;
   const dashRoutSpeed = adjustedSpeed * 2;
   const dashRoutMaxDistance = ((a.WI||0)/4 + (a.HE||0)) * 4;
+  // Other movement (wiki): walking around, for hours, is Adjusted Speed x .5;
+  // exploring, watching for traps and dangers, is Adjusted Speed x .33.
+  const normalMove = adjustedSpeed * 0.5;
+  const exploringMove = adjustedSpeed * 0.33;
   const armoredMoveTrained = (character.skills||[]).some(s => s.skillName === 'Armored Move');
-  return { baseSpeed, adjustedSpeed, dashRoutSpeed, dashRoutMaxDistance, armoredMoveTrained };
+  return { baseSpeed, adjustedSpeed, normalMove, exploringMove, dashRoutSpeed, dashRoutMaxDistance, armoredMoveTrained };
 }
 
 function shieldUseBonus(skval, shieldBasePR) {
