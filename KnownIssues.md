@@ -224,3 +224,11 @@ Until step 2 is done a GM can still schedule games; the page says the email
 did not go out. Until step 1 is done the page says the table is missing.
 These SQL and function files live in the private `GS Tool` folder, not in
 this repo.
+
+## Archiving groups needs schema_v29
+
+Groups can be archived and restored from the Groups page (Archive button on a
+group, Archived list at the end of the group picker). That needs the
+`archived` column that `schema_v29_group_archive.sql` adds. Until it is run
+in the Supabase SQL Editor the app works as before, with no Archive buttons.
+The same file also stops the day-before game reminders for an archived group.

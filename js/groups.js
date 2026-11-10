@@ -135,13 +135,25 @@ function showGroupModule(scope) {
   renderGroupModule();
 }
 
+// Archived groups (schema_v29) are kept apart: myGroups, which the chat, the
+// schedule, the File menu and the rest read, holds only the active ones.
+let myArchivedGroups = [];
+let groupArchiveSupported = false;   // false until the groups table has the archived column
+let groupArchiveView = false;        // the Groups page is showing the archived list
+
 async function fetchMyGroups() {
   if (!currentUser) return [];
-  const { data: memberships, error } = await sb.from('group_members')
-    .select('role, groups(id,name,created_by,clock_seconds,roster_order_notes)')
-    .eq('user_id', currentUser.id);
-  if (error) { console.error('Failed to load groups', error); return myGroups; }
-  myGroups = (memberships || []).filter(m => m.groups).map(m => ({ ...m.groups, myRole: m.role }));
+  const load = cols => sb.from('group_members').select(`role, groups(${cols})`).eq('user_id', currentUser.id);
+  const base = 'id,name,created_by,clock_seconds,roster_order_notes';
+  let res = await load(base + ',archived');
+  if (res.error && /archived/i.test(res.error.message || '')) {   // schema_v29 not run yet
+    groupArchiveSupported = false;
+    res = await load(base);
+  } else if (!res.error) groupArchiveSupported = true;
+  if (res.error) { console.error('Failed to load groups', res.error); return myGroups; }
+  const all = (res.data || []).filter(m => m.groups).map(m => ({ ...m.groups, myRole: m.role }));
+  myGroups = all.filter(g => !g.archived);
+  myArchivedGroups = all.filter(g => g.archived);
   return myGroups;
 }
 
@@ -159,9 +171,15 @@ async function renderGroupModule() {
   // ★ marks the selected character's group, when there's a choice of groups
   const picker = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-      ${shown.map(g => `<button class="btn ${g.id===activeGroupId?'btn-gold':'btn-dim'}" onclick="selectGroup('${g.id}')">${escapeHtml(g.name)}${shown.length > 1 && charGroups.includes(g.id) ? ' ★' : ''}</button>`).join('')}
+      ${shown.map(g => `<button class="btn ${g.id===activeGroupId && !groupArchiveView?'btn-gold':'btn-dim'}" onclick="selectGroup('${g.id}')">${escapeHtml(g.name)}${shown.length > 1 && charGroups.includes(g.id) ? ' ★' : ''}</button>`).join('')}
+      ${groupArchiveSupported && myArchivedGroups.length ? `<button class="btn ${groupArchiveView?'btn-gold':'btn-dim'}" onclick="showArchivedGroups()">Archived (${myArchivedGroups.length})</button>` : ''}
     </div>`;
 
+  if (groupArchiveView && groupArchiveSupported) {
+    document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body">${picker}${archivedGroupsHtml()}</div></div>`;
+    return;
+  }
+  groupArchiveView = false;
   if (!activeGroupId) {
     document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body">${picker}<div class="note">You're not in any groups yet. Create one (File → New Group), or ask your GM to invite you by email.</div></div></div>`;
     return;
@@ -170,7 +188,76 @@ async function renderGroupModule() {
   renderGroupDetail(myGroups.find(g => g.id === activeGroupId));
 }
 
+function showArchivedGroups() {
+  groupArchiveView = true;
+  renderGroupModule();
+}
+
+// The Archived list: restore (any GM of the group) or delete for good (its creator).
+function archivedGroupsHtml() {
+  const rows = myArchivedGroups.map(g => `<li style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="flex:1">${escapeHtml(g.name)}</span>
+      ${g.myRole === 'gm' ? `<button class="btn btn-dim" onclick="archiveGroup('${g.id}', false)">Restore</button>` : ''}
+      ${g.created_by === currentUser.id ? `<button class="btn btn-dim" style="color:var(--red-b)" onclick="openDeleteGroupModal('${g.id}')">Delete…</button>` : ''}
+    </li>`).join('');
+  return `<div class="note" style="margin-bottom:8px">Archived groups are hidden from the group list, chat, schedule and combat list. Everything in them is kept.</div>
+    <ul style="margin:0;padding:0;list-style:none">${rows || '<li class="note">No archived groups.</li>'}</ul>`;
+}
+
+// Archive or restore a group (any GM of it; groups_update allows that).
+async function archiveGroup(groupId, archive) {
+  const g = (archive ? myGroups : myArchivedGroups).find(x => x.id === groupId);
+  if (!g) return;
+  const ok = await appConfirm(archive
+    ? `Archive "${g.name}"? It disappears from the group list, chat, schedule and combat list, and its game reminder emails stop. Its notes, combats and members are kept, and you can restore it from Archived.`
+    : `Restore "${g.name}"? It comes back to the group list.`, archive ? 'Archive' : 'Restore');
+  if (!ok) return;
+  const { error } = await sb.from('groups').update({ archived: archive, archived_at: archive ? new Date().toISOString() : null }).eq('id', groupId);
+  if (error) { alert(`Could not ${archive ? 'archive' : 'restore'} the group: ` + error.message); return; }
+  if (archive && activeGroupId === groupId) activeGroupId = null;
+  await fetchMyGroups();
+  if (!myArchivedGroups.length) groupArchiveView = false;
+  renderSidebar();
+  renderGroupModule();
+}
+
+// Deleting is for the creator, from the Archived list, and asks for the name.
+async function openDeleteGroupModal(groupId) {
+  const g = myArchivedGroups.find(x => x.id === groupId);
+  if (!g) return;
+  const count = async table => {
+    const { count, error } = await sb.from(table).select('id', { count: 'exact', head: true }).eq('group_id', groupId);
+    return error ? '?' : count;
+  };
+  const [notes, volumes, combats, sessions, chars] = await Promise.all(['group_notes', 'group_note_volumes', 'combat_encounters', 'game_sessions', 'characters'].map(count));
+  openModal(`
+    <h3 style="margin:0 0 8px">Delete "${escapeHtml(g.name)}" for good?</h3>
+    <div style="margin-bottom:8px">This cannot be undone. It deletes the group and everything in it:</div>
+    <ul style="margin:0 0 8px 18px">
+      <li>${notes} log notes in ${volumes} log volumes, and the group's calendar</li>
+      <li>${combats} combats</li>
+      <li>${sessions} scheduled games</li>
+      <li>the group's chat</li>
+    </ul>
+    <div style="margin-bottom:8px">The ${chars} characters linked to it are not deleted; they just have no group.</div>
+    <div class="form-group"><label>Type the group's name to confirm</label><input id="del-group-name" class="w-full" autocomplete="off" oninput="document.getElementById('del-group-btn').disabled = this.value.trim() !== ${escapeHtml(JSON.stringify(g.name))}"></div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-red" id="del-group-btn" disabled onclick="deleteGroupForGood('${g.id}')">Delete group</button></div>`);
+}
+async function deleteGroupForGood(groupId) {
+  const g = myArchivedGroups.find(x => x.id === groupId);
+  const el = document.getElementById('del-group-name');
+  if (!g || !el || el.value.trim() !== g.name) return;
+  const { error } = await sb.from('groups').delete().eq('id', groupId);
+  if (error) { alert('Could not delete the group: ' + error.message); return; }
+  closeModal();
+  await fetchMyGroups();
+  if (!myArchivedGroups.length) groupArchiveView = false;
+  renderSidebar();
+  renderGroupModule();
+}
+
 function selectGroup(groupId) {
+  groupArchiveView = false;
   activeGroupId = groupId;
   renderSidebar(); // its group link shows which group is open
   renderGroupModule();
@@ -379,7 +466,8 @@ async function renderGroupDetail(group) {
         ${combatFlagHtml}
       </div>
       <div style="display:flex;gap:6px"><button class="btn btn-dim" onclick="showScheduleModule('${group.id}')">📅 Game Schedule</button>
-      ${isGM ? `<button class="btn btn-dim" onclick="openAddToGroupModal('${group.id}')">Add to Group</button>` : ''}</div>
+      ${isGM ? `<button class="btn btn-dim" onclick="openAddToGroupModal('${group.id}')">Add to Group</button>` : ''}
+      ${isGM && groupArchiveSupported ? `<button class="btn btn-dim" title="Hide this group from the lists; it can be restored" onclick="archiveGroup('${group.id}', true)">Archive</button>` : ''}</div>
     </div>
     <div class="form-group" style="margin-top:8px"><label>Roster (PCs &amp; NPCs)</label>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0">${orderToggleHtml}</div>

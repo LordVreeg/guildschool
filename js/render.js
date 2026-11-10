@@ -82,7 +82,8 @@ async function refreshFileMenuCombats() {
     sb.from('combat_encounters').select('id, name, status, current_segment, group_id, updated_at').in('status', ['active', 'paused']).order('updated_at', { ascending: false })
   ]);
   if (error) { console.error('Failed to load active combats', error); return; }
-  fileMenuCombats = data || [];
+  // combats of an archived group stay out of the list (myGroups holds only active groups)
+  fileMenuCombats = (data || []).filter(e => myGroups.some(g => g.id === e.group_id));
   paintFileMenuCombats();
 }
 function openEncounterFromMenu(id) {
