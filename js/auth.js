@@ -111,7 +111,7 @@ const GUILD_BLURBS = {
   "eye": "The Eye is one of the three large multinational Thieves' Guilds in the Continent of Celtricia. Control of turf, and extraction.",
   "frigid song": "To create the present in bardic terms that will become history.",
   "green flame": "To Support the Eye of Igbar and provide magical and alchemical backing for them.",
-  "greta s words": "Building a school of words and thought. A collegiate school of 19 students and 3 teachers, founded in 885 RON by Greta, a gnome sage who left the Order of Stenron, and specializing in the lore of Ogrillites and Astrikons.",
+  "greta s words": "Building a school of words and thought. Greta (fem gnome) was once a sage from the Order of Stenron, in the Steel Circle. She tired of the political and martial dimensions of the work, and left. In 885 RON, she started her own school, and she has a great partnership (and library privileges) at the Steel Libram. She specializes in the lore of Ogrillites and of the Astrikons.",
   "gurellium traders": "Like many trading guilds, profit is an overwhelming interest. But The Gurelliums are also ' Nativists ', Islandres who wish to minimize the political influence of the mainland.",
   "heralds night": "Shrouded in mystery. They are as much bards who seek information and who work in taverns and in the nobility as they are killers.",
   "holders straight way": "This is not a church, but a group of holy assassins/warriors attached to the Church of Belial the True and Clear. They are not public knowledge, though they are not a hidden group to other underworld types.",
