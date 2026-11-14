@@ -511,6 +511,7 @@ function renderInventoryModule() {
         <tbody>${inventoryGroupsHtml(char)}</tbody>
       </table>
       <button class="btn btn-gold" onclick="openAddItemModal()">Add Item</button>
+      <button class="btn btn-dim" onclick="openQuickAddModal()" title="Add several plain, custom items at once — a strange wine bottle, a box of cookies">Quick Add</button>
 
       <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px">Storage Locations${infoTip(`Capacity is how much weight a container can hold (blank = no limit); On Person's is your Weight Possible. Tick On Person on a container you wear or carry so its contents count toward Weight Carried; one marked Does not encumber adds no weight.`)}</div>
       <table class="item-table inventory-table">

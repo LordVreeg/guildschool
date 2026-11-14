@@ -213,6 +213,44 @@ function renderAddItemModal(justAdded) {
     </div>`, { wide: true, width: 'min(760px, 94vw)', className: 'plain-font' });
 }
 
+// "Quick Add" on the Inventory page: many plain items at once (see
+// confirmQuickAdd in mutations.js).
+function openQuickAddModal() {
+  quickItems = [newQuickRow(), newQuickRow(), newQuickRow(), newQuickRow(), newQuickRow()];
+  quickLocation = '';
+  renderQuickAddModal();
+}
+function renderQuickAddModal() {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const val = x => escapeHtml(x === undefined || x === null ? '' : x);
+  const locations = itemLocations(char);
+  const rows = quickItems.map((r, i) => `<tr>
+    <td><input class="w-full" ${i === 0 ? 'id="qa-first"' : ''} value="${val(r.name)}" placeholder="e.g. Strange wine bottle" oninput="setQuickField(${i},'name',this.value)"></td>
+    <td><input type="number" min="1" style="width:64px" value="${val(r.qty)}" oninput="setQuickField(${i},'qty',this.value)"></td>
+    <td><input type="number" step="any" style="width:76px" value="${val(r.weight)}" oninput="setQuickField(${i},'weight',this.value)"></td>
+    <td><input type="number" step="any" style="width:76px" value="${val(r.worth)}" oninput="setQuickField(${i},'worth',this.value)"></td>
+    <td><input class="w-full" value="${val(r.notes)}" oninput="setQuickField(${i},'notes',this.value)"></td>
+    <td class="item-del" title="Remove row" onclick="removeQuickRow(${i})">✕</td>
+  </tr>`).join('');
+  openModal(`
+    <h3>Quick Add Items</h3>
+    <div class="note">For odds and ends that aren't in the catalog. Each row with a name becomes a custom item (under Items, Custom) that you can still edit later. Weight and worth are per item.</div>
+    <table class="item-table" style="margin:8px 0">
+      <thead><tr><th>Name</th><th>Qty</th><th>Weight</th><th>Worth</th><th>Notes</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="form-row" style="align-items:flex-end">
+      <div class="form-group w-md"><label>Location</label><select class="w-full" onchange="quickLocation=this.value"><option value="" ${quickLocation ? '' : 'selected'}>Carried</option>${locations.map(l => `<option value="${val(l)}" ${quickLocation === l ? 'selected' : ''}>${escapeHtml(l)}</option>`).join('')}</select></div>
+      <div class="form-group"><button type="button" class="btn btn-dim" onclick="addQuickRow()">Add row</button></div>
+    </div>
+    <div id="qa-error" class="warn" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn btn-dim" onclick="quickItems=[];closeModal()">Cancel</button>
+      <button class="btn btn-gold" onclick="confirmQuickAdd()">Add Items</button>
+    </div>`, { wide: true, width: 'min(820px, 94vw)', className: 'plain-font' });
+}
+
 // Add Companion / ✎ on the Companions page. The companion is edited in
 // itemDraft (type 'Companion'), so the item popup's Magic Modifiers and Spells
 // sections work on it unchanged; see confirmCompanion.

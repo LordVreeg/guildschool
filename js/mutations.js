@@ -245,6 +245,39 @@ function confirmAddItem() {
   closeModal();
 }
 
+// "Quick Add" on the Inventory page: a grid for the odd things a character
+// arrives with (a strange wine bottle, a box of cookies) that aren't in the
+// catalog. Each filled row becomes a custom Item (no catalog class or name),
+// so it lands under Items, Custom and can still be edited with the pencil.
+let quickItems = [];
+let quickLocation = '';
+function newQuickRow() { return { name: '', qty: 1, weight: '', worth: '', notes: '' }; }
+function setQuickField(i, field, value) { if (quickItems[i]) quickItems[i][field] = value; }
+function addQuickRow() { quickItems.push(newQuickRow()); renderQuickAddModal(); }
+function removeQuickRow(i) { quickItems.splice(i, 1); if (!quickItems.length) quickItems.push(newQuickRow()); renderQuickAddModal(); }
+function confirmQuickAdd() {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const rows = quickItems.filter(r => String(r.name || '').trim());
+  const err = document.getElementById('qa-error');
+  if (!rows.length) { err.textContent = 'Type a name on at least one row.'; err.style.display = 'block'; return; }
+  if (!char.items) char.items = [];
+  for (const r of rows) {
+    char.items.push({
+      type: 'Item', name: String(r.name).trim(),
+      qty: Math.max(1, parseInt(r.qty) || 1),
+      weight: parseFloat(r.weight) || 0,
+      worth: r.worth === '' || r.worth === undefined ? '' : (parseFloat(r.worth) || 0),
+      notes: String(r.notes || '').trim(),
+      location: quickLocation, masterwork: false,
+    });
+  }
+  quickItems = [];
+  saveState();
+  renderInventoryModule();
+  closeModal();
+}
+
 // Saving the item (or companion) popup: adds the finished rows under Spells
 // to d.spells and keeps only the magic modifier kinds it has. Returns what
 // stops the save ('' = fine). A spell row that's been started but isn't
