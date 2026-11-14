@@ -232,3 +232,12 @@ group, Archived list at the end of the group picker). That needs the
 `archived` column that `schema_v29_group_archive.sql` adds. Until it is run
 in the Supabase SQL Editor the app works as before, with no Archive buttons.
 The same file also stops the day-before game reminders for an archived group.
+
+## The shared item library needs schema_v30
+
+Every item typed into Inventory > Quick Add is also saved to a shared library
+(`item_library`) so anyone can pick it again by name. That needs
+`schema_v30_item_library.sql`, run once in the Supabase SQL Editor. Until it is
+run, Quick Add still adds the items; they just are not saved for reuse (an
+admin sees a note in the popup). The SQL file lives in `GS Tool\`, not in this
+repo.

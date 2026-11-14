@@ -272,10 +272,65 @@ function confirmQuickAdd() {
       location: quickLocation, masterwork: false,
     });
   }
+  saveToItemLibrary(rows); // in the background; the inventory doesn't wait for it
   quickItems = [];
   saveState();
   renderInventoryModule();
   closeModal();
+}
+
+// The shared item library (schema_v30): everything typed into Quick Add is
+// kept there, so anyone can pick it again and it fills in weight, worth and
+// notes. If the table isn't set up yet, Quick Add still works without it.
+let itemLibrary = [];
+let itemLibraryOk = true;
+async function fetchItemLibrary() {
+  const { data, error } = await sb.from('item_library').select('id, created_by, name, name_key, weight, worth, notes').order('name', { ascending: true });
+  if (error) { itemLibraryOk = false; itemLibrary = []; return; }
+  itemLibraryOk = true;
+  itemLibrary = data || [];
+}
+function itemLibraryKey(name) { return String(name || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+// A name already in the library is left as it is (the first one saved wins).
+async function saveToItemLibrary(rows) {
+  if (!itemLibraryOk || !currentUser) return;
+  const known = new Set(itemLibrary.map(l => l.name_key));
+  const fresh = [];
+  for (const r of rows) {
+    const key = itemLibraryKey(r.name);
+    if (!key || known.has(key)) continue;
+    known.add(key);
+    fresh.push({ created_by: currentUser.id, name: String(r.name).trim(), name_key: key, weight: parseFloat(r.weight) || 0, worth: r.worth === '' || r.worth === undefined ? null : (parseFloat(r.worth) || 0), notes: String(r.notes || '').trim() });
+  }
+  if (!fresh.length) return;
+  const { error } = await sb.from('item_library').upsert(fresh, { onConflict: 'name_key', ignoreDuplicates: true });
+  if (error) console.error('Item library save failed', error);
+}
+// Typing a name that is in the library fills the row's blank weight, worth and notes.
+function quickPickLibrary(i, el) {
+  const lib = itemLibrary.find(l => l.name_key === itemLibraryKey(el.value));
+  const r = quickItems[i];
+  if (!lib || !r) return;
+  const inputs = el.closest('tr').querySelectorAll('input'); // name, qty, weight, worth, notes
+  r.name = lib.name; el.value = lib.name;
+  if (r.weight === '' || r.weight === undefined) { r.weight = lib.weight; inputs[2].value = lib.weight; }
+  if ((r.worth === '' || r.worth === undefined) && lib.worth !== null) { r.worth = lib.worth; inputs[3].value = lib.worth; }
+  if (!String(r.notes || '').trim() && lib.notes) { r.notes = lib.notes; inputs[4].value = lib.notes; }
+}
+// "Use" in the library list: fill the first empty row (or add one) from the entry.
+function quickUseLibrary(id) {
+  const lib = itemLibrary.find(l => l.id === id);
+  if (!lib) return;
+  let row = quickItems.find(r => !String(r.name || '').trim());
+  if (!row) { row = newQuickRow(); quickItems.push(row); }
+  Object.assign(row, { name: lib.name, weight: lib.weight, worth: lib.worth === null ? '' : lib.worth, notes: lib.notes || '' });
+  renderQuickAddModal();
+}
+async function deleteLibraryItem(id) {
+  const { error } = await sb.from('item_library').delete().eq('id', id);
+  if (error) { console.error('Item library delete failed', error); return; }
+  await fetchItemLibrary();
+  renderQuickAddModal();
 }
 
 // Saving the item (or companion) popup: adds the finished rows under Spells
