@@ -44,6 +44,10 @@ commit.
   category ("Bows", "Crossbow") or a weapon's name ("Sling"), or a list of
   them; `ammoFitsWeapon` in `js/data.js` reads it. A wiki sync
   must keep this split. See "Ammunition" in `KnownIssues.md`.
+- **The Quarterstaff is under Pole Arms, Spears and Blunt only.** The wiki
+  also lists it under Straight Swords and Thrown, and has no Blunt row; the
+  game group wants Pole, Spear and Blunt, so `data/weapons.json` drops the
+  last two and adds a Blunt copy (same stats). A wiki sync must keep this.
 - **The reference data stays in `data/*.json` for now.** Moving it into
   Supabase is on hold.
 - **Look skills up with `findSkillDef(name)`.** To get a skill's catalog
