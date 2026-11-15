@@ -453,7 +453,9 @@ function removeAutoHandFootForAll() {
 
 async function openAdminPanel() {
   if (!currentProfile || !currentProfile.is_admin) return;
-  openModal('<h3>Admin</h3><div id="admin-content">Loading…</div>');
+  openModal(`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px"><h3>Admin</h3><button class="btn btn-dim" onclick="closeModal()">Close</button></div>
+    <div id="admin-content">Loading…</div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Close</button></div>`);
   const [{ data: profiles, error: pErr }, { data: chars, error: cErr }] = await Promise.all([
     sb.from('profiles').select('id, email, approved, is_admin, created_at').order('created_at'),
     sb.from('characters').select('id, owner_id, data, updated_at').order('updated_at', { ascending: false })
@@ -508,7 +510,7 @@ function openAdminTransferModal(charRowId, charName) {
     <h3>Transfer "${escapeHtml(charName)}"</h3>
     <div class="form-group" style="margin-bottom:8px"><label>New Owner's Email</label><input class="w-full" id="admin-transfer-email"  type="email"></div>
     <div id="admin-transfer-status" style="font-size:calc(12px * var(--fs));color:var(--red-b);margin-bottom:8px;display:none"></div>
-    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-red" onclick="confirmAdminTransfer('${charRowId}')">Transfer</button></div>`);
+    <div class="modal-actions"><button class="btn btn-dim" onclick="openAdminPanel()">Cancel</button><button class="btn btn-red" onclick="confirmAdminTransfer('${charRowId}')">Transfer</button></div>`);
 }
 
 async function confirmAdminTransfer(charRowId) {
