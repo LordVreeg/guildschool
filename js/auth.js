@@ -126,6 +126,7 @@ const GUILD_BLURBS = {
   "restitution arlieng": "To feed all underworld, political, or mercantile information back to Vinivixias.",
   "scarlet deductors": "To determine the root causes of crimes too difficult for the ordinary Pilums, and to bring those causes before the Unicorn Courts. Unofficially, to give the Spear-Lord an instrument for matters he does not wish handled by the ordinary watch, when it becomes delicate, or difficult.",
   "scarlet pilums": "Currently, to fulfill their decade contract with Trabler. Long term, to increase their mercenary brotherhood.",
+  "shrine curseless love": "To reduce social taboos around love and sex, and to foster stronger bonds. A light, somewhat taboo membership, loosely tied to the mother Church in Hagenos. Chased out of town twice in earlier centuries, the most recent Shrine in the Church of the Green Mother began in 866. A well-visited shrine, with relationships with many bardic guilds. Admired or hated.",
   "shrine winding skein": "To discover mysteries and to build secure homesteads. This Church is small, and is very often only in shrine levels. They tend towards order and a belief in fate.",
   "tower": "The tower exists to study air and weather magic. They are a known commodity for all seagoing vessels, being able to summon wind elementals and to change weather patterns.",
   "trombic fanfare": "To be the horns of the call, the valhalla harbingers. This group performs regularly, solo or in smaller groups, and seeks out news and deeds of renown.",
