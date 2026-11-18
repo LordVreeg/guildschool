@@ -203,7 +203,7 @@ function setItemPick(key, value) {
   for (const f of ['itemNo', 'omniEyed', 'groupContainer', 'gmMade', 'gmBy', 'gmGroupId', 'veiled']) if (old[f] !== undefined) d[f] = old[f];
   if (old.masterwork && ['Weapon', 'Armor', 'Shield', 'Ammunition'].includes(d.type)) d.masterwork = true;
   if ((old.spells || []).length) d.spells = old.spells;
-  for (const f of [...MAGIC_MOD_FIELDS.defense, ...MAGIC_MOD_FIELDS.offense, 'magicVoid', 'magicVoidStacks', '_mod_offense', '_mod_defense', '_mod_void']) {
+  for (const f of [...MAGIC_MOD_FIELDS.defense, ...MAGIC_MOD_FIELDS.offense, 'magicVoid', 'magicVoidStacks', 'voidActive', '_mod_offense', '_mod_defense', '_mod_void']) {
     if (old[f] !== undefined && old[f] !== '' && d[f] === undefined) d[f] = old[f];
   }
   itemDraft = d;
@@ -254,6 +254,94 @@ function confirmAddItem() {
   renderInventoryModule();
   if (!editing && addNextItem) { openAddItemModal({ keepAddNext: true, justAdded: d.name }); return; }
   closeModal();
+}
+
+// "Quick Add" on the Inventory page: a grid for the odd things a character
+// arrives with (a strange wine bottle, a box of cookies) that aren't in the
+// catalog. Each filled row becomes a custom Item (no catalog class or name),
+// so it lands under Items, Custom and can still be edited with the pencil.
+let quickItems = [];
+let quickLocation = '';
+function newQuickRow() { return { name: '', qty: 1, weight: '', worth: '', notes: '' }; }
+function setQuickField(i, field, value) { if (quickItems[i]) quickItems[i][field] = value; }
+function addQuickRow() { quickItems.push(newQuickRow()); renderQuickAddModal(); }
+function removeQuickRow(i) { quickItems.splice(i, 1); if (!quickItems.length) quickItems.push(newQuickRow()); renderQuickAddModal(); }
+function confirmQuickAdd() {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const rows = quickItems.filter(r => String(r.name || '').trim());
+  const err = document.getElementById('qa-error');
+  if (!rows.length) { err.textContent = 'Type a name on at least one row.'; err.style.display = 'block'; return; }
+  if (!char.items) char.items = [];
+  for (const r of rows) {
+    char.items.push({
+      type: 'Item', name: String(r.name).trim(),
+      qty: Math.max(1, parseInt(r.qty) || 1),
+      weight: parseFloat(r.weight) || 0,
+      worth: r.worth === '' || r.worth === undefined ? '' : (parseFloat(r.worth) || 0),
+      notes: String(r.notes || '').trim(),
+      location: quickLocation, masterwork: false,
+    });
+  }
+  saveToItemLibrary(rows); // in the background; the inventory doesn't wait for it
+  quickItems = [];
+  saveState();
+  renderInventoryModule();
+  closeModal();
+}
+
+// The shared item library (schema_v30): everything typed into Quick Add is
+// kept there, so anyone can pick it again and it fills in weight, worth and
+// notes. If the table isn't set up yet, Quick Add still works without it.
+let itemLibrary = [];
+let itemLibraryOk = true;
+async function fetchItemLibrary() {
+  const { data, error } = await sb.from('item_library').select('id, created_by, name, name_key, weight, worth, notes').order('name', { ascending: true });
+  if (error) { itemLibraryOk = false; itemLibrary = []; return; }
+  itemLibraryOk = true;
+  itemLibrary = data || [];
+}
+function itemLibraryKey(name) { return String(name || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+// A name already in the library is left as it is (the first one saved wins).
+async function saveToItemLibrary(rows) {
+  if (!itemLibraryOk || !currentUser) return;
+  const known = new Set(itemLibrary.map(l => l.name_key));
+  const fresh = [];
+  for (const r of rows) {
+    const key = itemLibraryKey(r.name);
+    if (!key || known.has(key)) continue;
+    known.add(key);
+    fresh.push({ created_by: currentUser.id, name: String(r.name).trim(), name_key: key, weight: parseFloat(r.weight) || 0, worth: r.worth === '' || r.worth === undefined ? null : (parseFloat(r.worth) || 0), notes: String(r.notes || '').trim() });
+  }
+  if (!fresh.length) return;
+  const { error } = await sb.from('item_library').upsert(fresh, { onConflict: 'name_key', ignoreDuplicates: true });
+  if (error) console.error('Item library save failed', error);
+}
+// Typing a name that is in the library fills the row's blank weight, worth and notes.
+function quickPickLibrary(i, el) {
+  const lib = itemLibrary.find(l => l.name_key === itemLibraryKey(el.value));
+  const r = quickItems[i];
+  if (!lib || !r) return;
+  const inputs = el.closest('tr').querySelectorAll('input'); // name, qty, weight, worth, notes
+  r.name = lib.name; el.value = lib.name;
+  if (r.weight === '' || r.weight === undefined) { r.weight = lib.weight; inputs[2].value = lib.weight; }
+  if ((r.worth === '' || r.worth === undefined) && lib.worth !== null) { r.worth = lib.worth; inputs[3].value = lib.worth; }
+  if (!String(r.notes || '').trim() && lib.notes) { r.notes = lib.notes; inputs[4].value = lib.notes; }
+}
+// "Use" in the library list: fill the first empty row (or add one) from the entry.
+function quickUseLibrary(id) {
+  const lib = itemLibrary.find(l => l.id === id);
+  if (!lib) return;
+  let row = quickItems.find(r => !String(r.name || '').trim());
+  if (!row) { row = newQuickRow(); quickItems.push(row); }
+  Object.assign(row, { name: lib.name, weight: lib.weight, worth: lib.worth === null ? '' : lib.worth, notes: lib.notes || '' });
+  renderQuickAddModal();
+}
+async function deleteLibraryItem(id) {
+  const { error } = await sb.from('item_library').delete().eq('id', id);
+  if (error) { console.error('Item library delete failed', error); return; }
+  await fetchItemLibrary();
+  renderQuickAddModal();
 }
 
 // Saving the item (or companion) popup: adds the finished rows under Spells
@@ -767,6 +855,47 @@ function updateSpellState(poolName, field, value) {
   saveState();
   renderSpellModule();
   if (openSpellPool && document.getElementById('modal-overlay').classList.contains('open')) renderSpellPoolModal();
+}
+
+// Ticks or unticks one void source in the Spell Pool Reduction popup. The
+// first tick turns the automatic choice into an explicit one (every source
+// keeps what it had), and ticking a non-stacking source unticks the others.
+function setVoidSourceActive(key, checked) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const sources = voidSources(char);
+  const src = sources.find(s => s.key === key);
+  if (!src) return;
+  if (!char.voidChoiceMade) {
+    const active = voidActiveKeys(char, sources);
+    sources.forEach(s => { s.it.voidActive = active.has(s.key); });
+    char.voidChoiceMade = true;
+  }
+  if (checked && !src.stacks) sources.forEach(s => { if (!s.stacks) s.it.voidActive = false; });
+  src.it.voidActive = !!checked;
+  saveState();
+  renderSpellModule();
+  renderVoidSourcesModal();
+}
+
+// Hides a pool's column in the Spells page's Spell Points table (the pool
+// itself is unchanged). "Show all" under the table brings them back.
+function hideSpellPoolColumn(poolName) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const hidden = char.hiddenSpellPools || (char.hiddenSpellPools = []);
+  if (!hidden.includes(poolName)) hidden.push(poolName);
+  openSpellPool = null;
+  closeModal();
+  saveState();
+  renderSpellModule();
+}
+function showAllSpellPoolColumns() {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  delete char.hiddenSpellPools;
+  saveState();
+  renderSpellModule();
 }
 
 function updateSpellEnhancer(poolName, field, value) {

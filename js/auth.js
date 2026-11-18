@@ -111,6 +111,7 @@ const GUILD_BLURBS = {
   "eye": "The Eye is one of the three large multinational Thieves' Guilds in the Continent of Celtricia. Control of turf, and extraction.",
   "frigid song": "To create the present in bardic terms that will become history.",
   "green flame": "To Support the Eye of Igbar and provide magical and alchemical backing for them.",
+  "greta s words": "Building a school of words and thought. Greta (fem gnome) was once a sage from the Order of Stenron, in the Steel Circle. She tired of the political and martial dimensions of the work, and left. In 885 RON, she started her own school, and she has a great partnership (and library privileges) at the Steel Libram. She specializes in the lore of Ogrillites and of the Astrikons.",
   "gurellium traders": "Like many trading guilds, profit is an overwhelming interest. But The Gurelliums are also ' Nativists ', Islandres who wish to minimize the political influence of the mainland.",
   "heralds night": "Shrouded in mystery. They are as much bards who seek information and who work in taverns and in the nobility as they are killers.",
   "holders straight way": "This is not a church, but a group of holy assassins/warriors attached to the Church of Belial the True and Clear. They are not public knowledge, though they are not a hidden group to other underworld types.",
@@ -125,6 +126,7 @@ const GUILD_BLURBS = {
   "restitution arlieng": "To feed all underworld, political, or mercantile information back to Vinivixias.",
   "scarlet deductors": "To determine the root causes of crimes too difficult for the ordinary Pilums, and to bring those causes before the Unicorn Courts. Unofficially, to give the Spear-Lord an instrument for matters he does not wish handled by the ordinary watch, when it becomes delicate, or difficult.",
   "scarlet pilums": "Currently, to fulfill their decade contract with Trabler. Long term, to increase their mercenary brotherhood.",
+  "shrine curseless love": "To reduce social taboos around love and sex, and to foster stronger bonds. A light, somewhat taboo membership, loosely tied to the mother Church in Hagenos. Chased out of town twice in earlier centuries, the most recent Shrine in the Church of the Green Mother began in 866. A well-visited shrine, with relationships with many bardic guilds. Admired or hated.",
   "shrine winding skein": "To discover mysteries and to build secure homesteads. This Church is small, and is very often only in shrine levels. They tend towards order and a belief in fate.",
   "tower": "The tower exists to study air and weather magic. They are a known commodity for all seagoing vessels, being able to summon wind elementals and to change weather patterns.",
   "trombic fanfare": "To be the horns of the call, the valhalla harbingers. This group performs regularly, solo or in smaller groups, and seeks out news and deeds of renown.",
@@ -452,7 +454,9 @@ function removeAutoHandFootForAll() {
 
 async function openAdminPanel() {
   if (!currentProfile || !currentProfile.is_admin) return;
-  openModal('<h3>Admin</h3><div id="admin-content">Loading…</div>');
+  openModal(`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px"><h3>Admin</h3><button class="btn btn-dim" onclick="closeModal()">Close</button></div>
+    <div id="admin-content">Loading…</div>
+    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Close</button></div>`);
   const [{ data: profiles, error: pErr }, { data: chars, error: cErr }] = await Promise.all([
     sb.from('profiles').select('id, email, approved, is_admin, created_at').order('created_at'),
     sb.from('characters').select('id, owner_id, data, updated_at').order('updated_at', { ascending: false })
@@ -507,7 +511,7 @@ function openAdminTransferModal(charRowId, charName) {
     <h3>Transfer "${escapeHtml(charName)}"</h3>
     <div class="form-group" style="margin-bottom:8px"><label>New Owner's Email</label><input class="w-full" id="admin-transfer-email"  type="email"></div>
     <div id="admin-transfer-status" style="font-size:calc(12px * var(--fs));color:var(--red-b);margin-bottom:8px;display:none"></div>
-    <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-red" onclick="confirmAdminTransfer('${charRowId}')">Transfer</button></div>`);
+    <div class="modal-actions"><button class="btn btn-dim" onclick="openAdminPanel()">Cancel</button><button class="btn btn-red" onclick="confirmAdminTransfer('${charRowId}')">Transfer</button></div>`);
 }
 
 async function confirmAdminTransfer(charRowId) {

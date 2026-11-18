@@ -236,6 +236,69 @@ function renderAddItemModal(justAdded) {
     </div>`, { wide: true, width: 'min(760px, 94vw)', className: 'plain-font' });
 }
 
+// "Quick Add" on the Inventory page: many plain items at once (see
+// confirmQuickAdd in mutations.js).
+async function openQuickAddModal() {
+  quickItems = [newQuickRow(), newQuickRow(), newQuickRow(), newQuickRow(), newQuickRow()];
+  quickLocation = '';
+  await fetchItemLibrary();
+  renderQuickAddModal();
+}
+function renderQuickAddModal() {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const val = x => escapeHtml(x === undefined || x === null ? '' : x);
+  const locations = itemLocations(char);
+  const rows = quickItems.map((r, i) => `<tr>
+    <td><input class="w-full" list="qa-lib" value="${val(r.name)}" placeholder="e.g. Strange wine bottle" oninput="setQuickField(${i},'name',this.value)" onchange="quickPickLibrary(${i},this)"></td>
+    <td><input type="number" min="1" style="width:64px" value="${val(r.qty)}" oninput="setQuickField(${i},'qty',this.value)"></td>
+    <td><input type="number" step="any" style="width:76px" value="${val(r.weight)}" oninput="setQuickField(${i},'weight',this.value)"></td>
+    <td><input type="number" step="any" style="width:76px" value="${val(r.worth)}" oninput="setQuickField(${i},'worth',this.value)"></td>
+    <td><input class="w-full" value="${val(r.notes)}" oninput="setQuickField(${i},'notes',this.value)"></td>
+    <td class="item-del" title="Remove row" onclick="removeQuickRow(${i})">✕</td>
+  </tr>`).join('');
+  openModal(`
+    <h3>Quick Add Items</h3>
+    <div class="note">For odds and ends that aren't in the catalog. Each row with a name becomes a custom item (under Items, Custom) that you can still edit later. Weight and worth are per item.</div>
+    <table class="item-table" style="margin:8px 0">
+      <thead><tr><th>Name</th><th>Qty</th><th>Weight</th><th>Worth</th><th>Notes</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="form-row" style="align-items:flex-end">
+      <div class="form-group w-md"><label>Location</label><select class="w-full" onchange="quickLocation=this.value"><option value="" ${quickLocation ? '' : 'selected'}>Carried</option>${locations.map(l => `<option value="${val(l)}" ${quickLocation === l ? 'selected' : ''}>${escapeHtml(l)}</option>`).join('')}</select></div>
+      <div class="form-group"><button type="button" class="btn btn-dim" onclick="addQuickRow()">Add row</button></div>
+    </div>
+    <datalist id="qa-lib">${itemLibrary.map(l => `<option value="${val(l.name)}"></option>`).join('')}</datalist>
+    ${quickLibraryHtml()}
+    <div id="qa-error" class="warn" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn btn-dim" onclick="quickItems=[];closeModal()">Cancel</button>
+      <button class="btn btn-gold" onclick="confirmQuickAdd()">Add Items</button>
+    </div>`, { wide: true, width: 'min(820px, 94vw)', className: 'plain-font' });
+}
+
+// The shared library under the Quick Add grid: everything anyone has typed
+// into Quick Add. "Use" copies an entry into the grid; ✕ shows for entries
+// you added (or for an admin).
+function quickLibraryHtml() {
+  const admin = !!(currentProfile && currentProfile.is_admin);
+  if (!itemLibraryOk) {
+    return admin ? '<div class="note">The shared item library isn\'t set up yet: run schema_v30_item_library.sql in Supabase. Quick Add works without it.</div>' : '';
+  }
+  if (!itemLibrary.length) return '<div class="note">Items you add here are saved to a shared library, so you can pick them again later by typing their name.</div>';
+  const rows = itemLibrary.map(l => {
+    const mine = admin || (currentUser && l.created_by === currentUser.id);
+    return `<tr>
+      <td>${escapeHtml(l.name)}</td><td>${escapeHtml(l.weight)}</td><td>${l.worth === null ? '' : escapeHtml(l.worth)}</td><td>${escapeHtml(l.notes || '')}</td>
+      <td><button type="button" class="btn btn-dim item-spell-btn" onclick="quickUseLibrary('${l.id}')">Use</button></td>
+      <td class="${mine ? 'item-del' : ''}" ${mine ? `title="Remove from the library" onclick="deleteLibraryItem('${l.id}')"` : ''}>${mine ? '✕' : ''}</td>
+    </tr>`;
+  }).join('');
+  return `<details class="fold" style="margin-top:6px"><summary>Library (${itemLibrary.length}) — saved from Quick Add, shared with everyone</summary>
+    <div style="max-height:200px;overflow:auto"><table class="item-table"><thead><tr><th>Name</th><th>Weight</th><th>Worth</th><th>Notes</th><th></th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+  </details>`;
+}
+
 // Add Companion / ✎ on the Companions page. The companion is edited in
 // itemDraft (type 'Companion'), so the item popup's Magic Modifiers and Spells
 // sections work on it unchanged; see confirmCompanion.
@@ -300,8 +363,8 @@ function itemModsSectionHtml(d) {
     </div>`).join('');
     parts.push(head('Void', 'void', rows + `<div style="display:flex;align-items:center;gap:12px;margin-top:2px">
       <button type="button" class="btn btn-dim" onclick="addItemVoidRow()">Add pool</button>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${d.magicVoidStacks ? 'checked' : ''} onchange="setAddItemField('magicVoidStacks',this.checked)"> Stacks with other items' void bonuses</label>
-    </div>`, 'Spell cost reduction per pool. Only the best single item counts, unless an item is marked as stacking.'));
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${d.magicVoidStacks ? 'checked' : ''} onchange="setAddItemField('magicVoidStacks',this.checked)"> Stacking</label>
+    </div>`, 'Spell cost reduction per pool. On the Spells page (SP Reduction) you choose which items take part: one non-stacking item, plus any stacking ones, which add the greatest of their reductions for each pool.'));
   }
   const adders = k.optional.filter(kind => !itemHasModKind(d, kind))
     .map(kind => `<button type="button" class="btn btn-dim" onclick="addItemModKind('${kind}')">Add ${kind}</button>`).join(' ');

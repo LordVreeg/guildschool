@@ -78,6 +78,8 @@ function buildCharacterSheetHtml(char) {
       <div class="pv-item"><b>Weight</b>${w.carried} / ${w.possible}</div>
       <div class="pv-item"><b>Base Speed</b>${Math.round(sp.baseSpeed)} ft/s</div>
       <div class="pv-item"><b>Adjusted Speed</b>${Math.round(sp.adjustedSpeed)} ft/s</div>
+      <div class="pv-item"><b>Normal Move</b>${Math.round(sp.normalMove * 10) / 10} ft/s</div>
+      <div class="pv-item"><b>Exploring Move</b>${Math.round(sp.exploringMove * 10) / 10} ft/s</div>
       <div class="pv-item"><b>Dash/Rout Speed</b>${Math.round(sp.dashRoutSpeed)} ft/s</div>
       <div class="pv-item"><b>Dash/Rout Max Distance</b>${Math.round(sp.dashRoutMaxDistance)} yds</div>
     </div>
