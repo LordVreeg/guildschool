@@ -579,6 +579,19 @@ body.chat-window #chat-window-root { display: flex; flex-direction: column; heig
 #chat-window-root .chat-composer select { width: 100%; }
 #chat-window-root .chat-composer #chat-send-btn { order: 1; }
 
+/* The chat docked down the right-hand side of the page (openChatDock in
+   js/chat.js): an iframe of the chat window, and the page narrows to fit. */
+#chat-dock { display: none; position: fixed; top: 0; right: 0; bottom: 0; width: min(var(--chat-dock-w, 400px), 60vw); z-index: 50; background: var(--panel); border-left: 2px solid var(--gold-dim); }
+body.chat-docked #chat-dock { display: flex; }
+body.chat-docked { padding-right: min(var(--chat-dock-w, 400px), 60vw); }
+body.chat-docked #modal-overlay { right: min(var(--chat-dock-w, 400px), 60vw); }
+#chat-dock iframe { flex: 1; width: 100%; height: 100%; border: 0; background: var(--panel); }
+#chat-dock-grip { position: absolute; left: -6px; top: 0; bottom: 0; width: 10px; cursor: col-resize; z-index: 2; }
+#chat-dock-grip:hover { background: rgba(var(--tint-rgb),.2); }
+body.chat-dock-resizing { cursor: col-resize; user-select: none; }
+body.chat-dock-resizing #chat-dock iframe { pointer-events: none; }
+@media print { #chat-dock { display: none !important; } body.chat-docked { padding-right: 0; } }
+
 /* A checkbox with its label on one line (Combat page: Collegium System) */
 .check-row { display: flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 6px; }
 .settings-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; margin: 4px 0 8px; }

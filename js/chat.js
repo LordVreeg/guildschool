@@ -104,10 +104,75 @@ function chatPageOpen() {
 function chatContainer() {
   return document.getElementById('chat-window-root');
 }
-// Other -> Chat: open the chat window, or bring it to the front.
+// Other -> Chat: on a wide screen the chat docks down the right-hand side of
+// this page and the tool narrows to make room (a web page can't resize its
+// own browser window, so the chat comes into the page instead). "Pop out"
+// moves it to its own browser window, e.g. for a second monitor; a narrow
+// screen opens the window straight away.
+const CHAT_DOCK_MIN_VIEWPORT = 900;
+const CHAT_IN_DOCK = CHAT_WINDOW && window.parent !== window;
+function chatDockOpen() { return document.body.classList.contains('chat-docked'); }
+function chatDockWidth() {
+  let w = 400;
+  try { w = parseInt(localStorage.getItem('gs_chat_dock_w'), 10) || 400; } catch (e) {}
+  return Math.max(300, Math.min(w, 700));
+}
+function setChatDockWidth(w, save) {
+  w = Math.max(300, Math.min(Math.round(w), 700));
+  document.documentElement.style.setProperty('--chat-dock-w', w + 'px');
+  if (save) { try { localStorage.setItem('gs_chat_dock_w', String(w)); } catch (e) {} }
+}
+function openChatDock() {
+  if (chatDockOpen()) return;
+  let dock = document.getElementById('chat-dock');
+  if (!dock) {
+    dock = document.createElement('div');
+    dock.id = 'chat-dock';
+    dock.innerHTML = '<div id="chat-dock-grip" title="Drag to resize the chat"></div><iframe title="Chat" src="' + location.pathname + '?view=chat"></iframe>';
+    document.body.appendChild(dock);
+    const grip = dock.querySelector('#chat-dock-grip');
+    grip.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      grip.setPointerCapture(e.pointerId);
+      document.body.classList.add('chat-dock-resizing');
+      const move = ev => setChatDockWidth(window.innerWidth - ev.clientX, false);
+      const up = ev => {
+        grip.removeEventListener('pointermove', move);
+        grip.removeEventListener('pointerup', up);
+        grip.removeEventListener('pointercancel', up);
+        document.body.classList.remove('chat-dock-resizing');
+        setChatDockWidth(window.innerWidth - ev.clientX, true);
+      };
+      grip.addEventListener('pointermove', move);
+      grip.addEventListener('pointerup', up);
+      grip.addEventListener('pointercancel', up);
+    });
+  }
+  setChatDockWidth(chatDockWidth(), false);
+  document.body.classList.add('chat-docked');
+}
+function closeChatDock() {
+  document.body.classList.remove('chat-docked');
+  const dock = document.getElementById('chat-dock');
+  if (dock) dock.remove();   // also stops the chat page inside it
+}
+// The docked chat asks this page to close it or pop it out.
+window.addEventListener('message', e => {
+  if (CHAT_WINDOW || e.origin !== location.origin || !e.data) return;
+  if (e.data.gsChat === 'close') closeChatDock();
+  else if (e.data.gsChat === 'popout') { closeChatDock(); openChatPopup(); }
+});
 function showChatModule() {
   if (CHAT_WINDOW) { window.focus(); return; }
   if (chatWindowRef && !chatWindowRef.closed) { chatWindowRef.focus(); return; }
+  if (chatDockOpen()) { const f = document.querySelector('#chat-dock iframe'); if (f) f.focus(); return; }
+  if (window.innerWidth >= CHAT_DOCK_MIN_VIEWPORT) { openChatDock(); return; }
+  openChatPopup();
+}
+function chatPopoutBtn() {
+  return CHAT_IN_DOCK ? '<button class="btn btn-dim chat-close" title="Open the chat in its own window" onclick="parent.postMessage({gsChat:\'popout\'}, location.origin)">⧉ Pop out</button>' : '';
+}
+function openChatPopup() {
   const w = 420, h = Math.min(760, (window.screen && window.screen.availHeight) || 760);
   const left = Math.max(0, (window.screenX || 0) + (window.outerWidth || 1200) - w - 20);
   const top = Math.max(0, (window.screenY || 0) + 60);
@@ -116,7 +181,10 @@ function showChatModule() {
     openModal(`<h3>Chat</h3><div class="warn">The browser blocked the chat window. Allow pop-ups for this site, then choose Other → Chat again.</div><div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">OK</button></div>`);
   }
 }
-function closeChatWindow() { window.close(); }
+function closeChatWindow() {
+  if (CHAT_IN_DOCK) parent.postMessage({ gsChat: 'close' }, location.origin);
+  else window.close();
+}
 // In the chat window, after sign-in: show just the chat.
 function startChatWindow() {
   if (!CHAT_WINDOW) return;
@@ -190,7 +258,7 @@ async function renderChatModule() {
     chatGroupId = (unreadGroup || myGroups[0]).id;
   }
   if (!myGroups.length) {
-    main.innerHTML = `<div class="panel chat-panel"><div class="panel-header"><h2>Chat</h2><div style="flex:1"></div><button class="btn btn-dim chat-close" title="Close the chat window" onclick="closeChatWindow()">✕</button></div><div class="panel-body"><div class="note">You're not in any groups yet. Each group has its own chat — ask your GM to add one of your characters to a group.</div></div></div>`;
+    main.innerHTML = `<div class="panel chat-panel"><div class="panel-header"><h2>Chat</h2><div style="flex:1"></div>${chatPopoutBtn()}<button class="btn btn-dim chat-close" title="Close the chat window" onclick="closeChatWindow()">✕</button></div><div class="panel-body"><div class="note">You're not in any groups yet. Each group has its own chat — ask your GM to add one of your characters to a group.</div></div></div>`;
     return;
   }
   main.innerHTML = `
@@ -200,6 +268,7 @@ async function renderChatModule() {
         <input id="chat-search-input" class="chat-search" type="search" placeholder="Search this chat…" onkeydown="if(event.key==='Enter')searchChat(this.value)">
         ${diceAnimButtonHtml()}
         <button class="btn btn-dim" style="font-size:calc(11px * var(--fs));padding:3px 8px" onclick="showChatHelp()" title="Commands and dice syntax">? Help</button>
+        ${chatPopoutBtn()}
         <button class="btn btn-dim chat-close" title="Close the chat window" onclick="closeChatWindow()">✕</button>
       </div>
       <div class="panel-body">
