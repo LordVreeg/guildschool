@@ -404,6 +404,8 @@ td div.note, td.note, li.note { margin: 0; }
 /* CHAT */
 .chat-badge { display: inline-block; min-width: 16px; padding: 0 5px; border-radius: 8px; background: var(--red-b); color: #fff; font-size: calc(10px * var(--fs)); line-height: 16px; text-align: center; font-weight: bold; }
 .chat-group-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.cs-group-label { font-size: calc(11px * var(--fs)); color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; margin: 8px 0 4px; }
+.cs-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
 .chat-to { position: relative; }
 .chat-to-menu { position: absolute; bottom: 100%; left: 0; z-index: 20; min-width: 190px; max-height: 260px; overflow-y: auto; margin-bottom: 2px; padding: 4px; background: var(--panel); border: 1px solid var(--gold-dim); box-shadow: 0 4px 12px rgba(0,0,0,.25); }
 .chat-to-row { display: flex; align-items: center; gap: 6px; padding: 4px 8px; cursor: pointer; white-space: nowrap; font-family: inherit; font-size: calc(13px * var(--fs)); color: var(--text); background: none; border: 0; width: 100%; text-align: left; }

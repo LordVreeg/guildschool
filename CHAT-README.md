@@ -38,6 +38,24 @@ dice syntax, inline rolls, macros and roll queries.
   untick it to go back to Everyone.
 - A `/w` or `/gr` typed in the message still wins for that one message.
 
+## Sessions: `/session`
+
+`/session` opens one dialog for the group's chat as a game session.
+
+- **Session** picker: the session being played now (since the last one was
+  ended), or any saved session. **Name** is the current session's name.
+- **Download text**, **Download HTML**, **Copy to clipboard**: the whole
+  session in order, with dice results. A whisper is in it only if you sent
+  or received it.
+- **Save session** (GM): keeps the current session under its name. Saving
+  again later updates it. Afterwards it asks whether to end the session and
+  start a new one; **End session** starts the next session from that point.
+- **Load session**: reads the chosen session in the chat window (**Back to
+  chat** returns). **Delete saved session** (GM) removes only the saved name
+  and dates; the messages stay.
+- Saving and loading need `schema_v31_chat_sessions.sql` (see Setup).
+  Download and copy work without it, for the whole chat.
+
 ## Commands
 
 | Command | What it does |
@@ -53,6 +71,7 @@ dice syntax, inline rolls, macros and roll queries.
 | `/desc The door creaks open.` | **GM only.** Narration with no name |
 | `/as "Old Man" Who goes there?` | **GM only.** Speak as anyone |
 | `/emas "Old Man" coughs` | **GM only.** Emote as anyone |
+| `/session` | Download, copy, save or load the chat as a game session (see Sessions) |
 | `/talktomyself` (or `on` / `off`) | Your messages stay on your screen only and are not sent or saved |
 | `/help` | Show the command and dice list (also the **? Help** button) |
 

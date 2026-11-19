@@ -610,7 +610,9 @@ function clearChatSearch() {
 function renderChatSearchBar() {
   const el = document.getElementById('chat-search-bar');
   if (!el) return;
-  el.innerHTML = chatSearch
+  el.innerHTML = chatSearch && chatSearch.session
+    ? `<div class="chat-search-bar">Session “${escapeHtml(chatSearch.term)}”: ${chatSearch.results.length} message${chatSearch.results.length === 1 ? '' : 's'} <button class="btn btn-dim" style="font-size:calc(11px * var(--fs));padding:2px 8px" onclick="clearChatSearch()">Back to chat</button></div>`
+    : chatSearch
     ? `<div class="chat-search-bar">${chatSearch.results.length}${chatSearch.results.length === 200 ? '+' : ''} message${chatSearch.results.length === 1 ? '' : 's'} matching “${escapeHtml(chatSearch.term)}” <button class="btn btn-dim" style="font-size:calc(11px * var(--fs));padding:2px 8px" onclick="clearChatSearch()">Back to chat</button></div>`
     : '';
 }
@@ -901,6 +903,7 @@ const CHAT_HELP_HTML = `
     <tr><td>/desc <i>text</i></td><td>GM: narration with no name</td></tr>
     <tr><td>/as "<i>Name</i>" <i>message</i></td><td>GM: speak as anyone</td></tr>
     <tr><td>/emas "<i>Name</i>" <i>action</i></td><td>GM: emote as anyone</td></tr>
+    <tr><td>/session</td><td>The chat as a game session: download it as text or HTML, copy it, save it under a name (GM), load a saved one, or end it and start a new one</td></tr>
     <tr><td>/talktomyself [on|off]</td><td>Messages stay on your screen only, not sent or saved</td></tr>
     <tr><td>/help</td><td>This list</td></tr>
   </table>
@@ -1010,6 +1013,7 @@ function chatParseCommand(text) {
       renderChatModeNote();
       return { local: 'system', body: chatTalkToMyself ? 'Talking to yourself: from now on your messages stay on this screen only. /talktomyself off to stop.' : 'Stopped talking to yourself. Messages go to the group again.' };
     }
+    case 'session': return { local: 'session' };
     case 'help': case '?': return { local: 'help' };
   }
   throw new Error(`Unknown command /${name}. Type /help to see the commands.`);
@@ -1033,6 +1037,7 @@ async function sendChatMessage(textOverride) {
     if (!text) return;
     msg = chatParseCommand(text);
     if (msg.local === 'help') { showChatHelp(); chatAfterSend(input, typed, textOverride); return; }
+    if (msg.local === 'session') { chatAfterSend(input, typed, textOverride); openChatSessionModal(); return; }
     if (msg.local === 'att') { chatAfterSend(input, typed, textOverride); await chatAttackRun(); return; }
     if (msg.local === 'prot') { chatAfterSend(input, typed, textOverride); await chatProtRun(); return; }
     if (msg.local) { chatLocalLine('system', msg.body); chatAfterSend(input, typed, textOverride); return; }

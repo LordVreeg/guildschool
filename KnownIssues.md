@@ -349,3 +349,11 @@ Every item typed into Inventory > Quick Add is also saved to a shared library
 run, Quick Add still adds the items; they just are not saved for reuse (an
 admin sees a note in the popup). The SQL file lives in `GS Tool\`, not in this
 repo.
+
+## Saving and loading chat sessions needs schema_v31
+
+`/session` can always download or copy a session's chat. Saving a session under
+a name, loading a saved one and ending a session need `chat_sessions`, made by
+`schema_v31_chat_sessions.sql`, run once in the Supabase SQL Editor (after
+schema_v30). Until it is run, the dialog shows a note and keeps Save and Load
+disabled. The SQL file lives in `GS Tool\`, not in this repo.
