@@ -146,17 +146,31 @@ async function chatSessionSave() {
   if (!newest || !newest.length || newest[0].created_at <= from) { chatSessionStatus('Nothing to save yet: there are no messages in this session.'); return; }
   const ended = newest[0].created_at;
   const open = chatSessionOpenRow();
+  // The write asks for nothing back, then the list is read again to confirm it
+  // landed: a database rule that hides a row would otherwise fail with a vague
+  // "cannot coerce the result" error.
   const res = open
-    ? await sb.from('chat_sessions').update({ name, ended_at: ended }).eq('id', open.id).select().single()
-    : await sb.from('chat_sessions').insert({ group_id: chatGroupId, name, started_at: from, ended_at: ended, closed: false, created_by: currentUser.id }).select().single();
-  if (res.error) { chatSessionStatus('Failed to save: ' + res.error.message); return; }
-  await chatSessionsLoad();
+    ? await sb.from('chat_sessions').update({ name, ended_at: ended }).eq('id', open.id)
+    : await sb.from('chat_sessions').insert({ group_id: chatGroupId, name, started_at: from, ended_at: ended, closed: false, created_by: currentUser.id });
+  if (res.error) { chatSessionStatus(`Failed to save (${open ? 'update' : 'add'}): ${res.error.message}${res.error.code ? ' [' + res.error.code + ']' : ''}`); return; }
+  const loadErr = await chatSessionsLoad();
+  const saved = chatSessionOpenRow();
+  if (loadErr || !saved || Date.parse(saved.ended_at) !== Date.parse(ended)) {
+    chatSessionStatus(loadErr
+      ? 'Saved, but the saved sessions could not be read back: ' + loadErr.message
+      : `The database did not keep the ${open ? 'change' : 'new session'}. Check that schema_v31_chat_sessions.sql ran completely and that you are a GM of this group.`);
+    return;
+  }
   renderChatSessionModal(`Saved “${name}”.`);
   const end = await appConfirm(`Saved “${name}”. End this session and start a new one?`, 'End session');
   if (!end) { renderChatSessionModal(`Saved “${name}”. The session is still going.`); return; }
-  const { error } = await sb.from('chat_sessions').update({ closed: true }).eq('id', res.data.id);
-  if (error) { renderChatSessionModal('Saved, but the session could not be ended: ' + error.message); return; }
-  await chatSessionsLoad();
+  const { error } = await sb.from('chat_sessions').update({ closed: true }).eq('id', saved.id);
+  const reloadErr = error ? null : await chatSessionsLoad();
+  const stillOpen = !error && !reloadErr && chatSessions.some(s => s.id === saved.id && !s.closed);
+  if (error || reloadErr || stillOpen) {
+    renderChatSessionModal('Saved, but the session could not be ended' + (error ? ': ' + error.message : stillOpen ? ': the database did not keep the change.' : '.'));
+    return;
+  }
   chatSessionPick = 'current';
   renderChatSessionModal(`“${name}” ended. A new session has started.`);
   chatLocalLine('system', `Session “${name}” ended. A new session starts here.`);
