@@ -99,7 +99,7 @@ function renderChatSessionModal(status) {
         ${choices.map(c => `<option value="${escapeHtml(c.value)}" ${c.value === cur.value ? 'selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
       </select></div>
     <div class="form-group" style="margin-bottom:10px"><label>Name</label>
-      <input id="cs-name" class="w-full" maxlength="80" value="${escapeHtml(cur.name)}" ${isCurrent ? '' : 'disabled'}></div>
+      <input id="cs-name" class="w-full" maxlength="80" value="${escapeHtml(cur.name)}" ${isCurrent ? '' : 'disabled'} onkeydown="if(event.key==='Enter'){event.preventDefault();chatSessionSave()}"></div>
     <div class="cs-group-label">Get a copy${infoTip('Everything in the session, in order, with dice results. A whisper is included only if you sent it or it was sent to you.')}</div>
     <div class="cs-buttons">
       <button class="btn btn-dim" onclick="chatSessionExport('txt')">Download text</button>
@@ -143,8 +143,10 @@ async function chatSessionSave() {
     .order('created_at', { ascending: false }).limit(1);
   if (nErr) { chatSessionStatus('Failed to save: ' + nErr.message); return; }
   const from = chatSessionCurrentStart();
-  if (!newest || !newest.length || newest[0].created_at <= from) { chatSessionStatus('Nothing to save yet: there are no messages in this session.'); return; }
-  const ended = newest[0].created_at;
+  // A session with no messages yet (the one just started) can still be named:
+  // it is saved with nothing in it, and Save session again later keeps its messages.
+  const empty = !newest || !newest.length || newest[0].created_at <= from;
+  const ended = empty ? (from === CHAT_SESSION_EPOCH ? new Date().toISOString() : from) : newest[0].created_at;
   const open = chatSessionOpenRow();
   // The write asks for nothing back, then the list is read again to confirm it
   // landed: a database rule that hides a row would otherwise fail with a vague
@@ -161,6 +163,7 @@ async function chatSessionSave() {
       : `The database did not keep the ${open ? 'change' : 'new session'}. Check that schema_v31_chat_sessions.sql ran completely and that you are a GM of this group.`);
     return;
   }
+  if (empty) { renderChatSessionModal(`Named this session “${name}”. Save session again once you've played some, to keep its messages.`); return; }
   renderChatSessionModal(`Saved “${name}”.`);
   const end = await appConfirm(`Saved “${name}”. End this session and start a new one?`, 'End session');
   if (!end) { renderChatSessionModal(`Saved “${name}”. The session is still going.`); return; }
