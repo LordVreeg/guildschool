@@ -289,6 +289,7 @@ async function selectChatGroup(groupId) {
   chatGroupId = groupId;
   chatMessages = [];
   chatSearch = null;
+  chatWhisperTo = { gm: false, ids: [] };   // "To" is per group
   renderChatSearchBar();
   renderChatGroupTabs();
   await loadChatRoster();
@@ -396,13 +397,123 @@ function renderChatComposer() {
           ${opts.filter(o => !o.section && !o.value).map(optHtml).join('')}
         </select>
       </div>
+      <div class="form-group chat-to"><label>To</label>
+        <button type="button" class="btn btn-dim" id="chat-to-btn" onclick="toggleChatToMenu(event)">Everyone ▾</button>
+        <div id="chat-to-menu" class="chat-to-menu" style="display:none"></div>
+      </div>
       <textarea id="chat-input" rows="2" maxlength="4000" placeholder="Message, /roll 1d20+5, [[2d6]], /w Name … — /help for commands" onkeydown="chatInputKeydown(event)"></textarea>
       <button class="btn btn-gold" id="chat-send-btn" onclick="sendChatMessage()">Send</button>
     </div>
     <div id="chat-status" class="note" style="color:var(--red-b);display:none"></div>
+    <div id="chat-whisper-note" class="chat-whisper-note" style="display:none"></div>
     <div id="chat-mode-note" class="note" style="display:none"></div>`;
   renderChatMacroBar();
   renderChatModeNote();
+  renderChatWhisperUI();
+}
+
+// ---------- "To": whisper everything you send ----------
+// Pick who the next messages go to (the GM and/or characters in this group)
+// and every message, roll and emote is whispered to them until you pick
+// Everyone again. A /w typed in the message still wins for that one message.
+// The Reply box on a whisper sets this to the other side of that whisper.
+let chatWhisperTo = { gm: false, ids: [] };   // ids are group_roster ids
+function chatWhisperActive() { return chatWhisperTo.gm || chatWhisperTo.ids.length > 0; }
+// Characters you can whisper to: the group's player characters except your own.
+function chatWhisperTargets() {
+  return chatRoster.filter(r => !r.is_npc && r.owner_id !== currentUser.id)
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+}
+function chatWhisperNames() {
+  const names = chatWhisperTo.ids.map(id => (chatRoster.find(r => r.id === id) || {}).name).filter(Boolean);
+  return (chatWhisperTo.gm ? ['GM'] : []).concat(names);
+}
+function setChatWhisper(t) {
+  const ids = t ? (t.ids || []).filter(id => chatRoster.some(r => r.id === id)) : [];
+  chatWhisperTo = { gm: !!(t && t.gm), ids };
+  renderChatWhisperUI();
+  if (document.getElementById('chat-messages')) renderChatMessages('keep');
+}
+function chatWhisperMatches(t) {
+  return !!t && !!t.gm === chatWhisperTo.gm && t.ids.length === chatWhisperTo.ids.length && t.ids.every(id => chatWhisperTo.ids.includes(id));
+}
+function renderChatWhisperUI() {
+  const btn = document.getElementById('chat-to-btn');
+  if (!btn) return;
+  const on = chatWhisperActive(), names = chatWhisperNames();
+  btn.textContent = (on ? 'Whisper: ' + (names.length > 2 ? names.length + ' people' : names.join(', ')) : 'Everyone') + ' ▾';
+  btn.classList.toggle('btn-gold', on);
+  btn.classList.toggle('btn-dim', !on);
+  const input = document.getElementById('chat-input');
+  if (input) input.classList.toggle('whispering', on);
+  const note = document.getElementById('chat-whisper-note');
+  if (note) {
+    note.style.display = on ? '' : 'none';
+    note.innerHTML = on ? `Whispering to <b>${escapeHtml(names.join(', '))}</b>: everything you send is private to them. <a href="#" onclick="setChatWhisper(null);return false">Back to Everyone</a>` : '';
+  }
+  const menu = document.getElementById('chat-to-menu');
+  if (menu && menu.style.display !== 'none') renderChatToMenu();
+}
+function renderChatToMenu() {
+  const menu = document.getElementById('chat-to-menu');
+  if (!menu) return;
+  const row = (checked, onchange, label) => `<label class="chat-to-row"><input type="checkbox" ${checked ? 'checked' : ''} onchange="${onchange}"> ${escapeHtml(label)}</label>`;
+  menu.innerHTML = `<button type="button" class="chat-to-row chat-to-everyone ${chatWhisperActive() ? '' : 'on'}" onclick="setChatWhisper(null);closeChatToMenu()">Everyone</button>`
+    + (chatIsGM() ? '' : row(chatWhisperTo.gm, 'chatToggleWhisperTarget(\'gm\', this.checked)', 'GM'))
+    + chatWhisperTargets().map(r => row(chatWhisperTo.ids.includes(r.id), `chatToggleWhisperTarget('${r.id}', this.checked)`, r.name || '(unnamed)')).join('')
+    + (chatWhisperTargets().length || !chatIsGM() ? '' : '<div class="note" style="padding:4px 8px">No player characters in this group.</div>');
+}
+function chatToggleWhisperTarget(id, on) {
+  const next = { gm: chatWhisperTo.gm, ids: chatWhisperTo.ids.slice() };
+  if (id === 'gm') next.gm = on;
+  else if (on) { if (!next.ids.includes(id)) next.ids.push(id); }
+  else next.ids = next.ids.filter(x => x !== id);
+  setChatWhisper(next);
+}
+function toggleChatToMenu(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById('chat-to-menu');
+  if (!menu) return;
+  if (menu.style.display !== 'none') { closeChatToMenu(); return; }
+  menu.style.display = '';
+  renderChatToMenu();
+}
+function closeChatToMenu() {
+  const menu = document.getElementById('chat-to-menu');
+  if (menu) menu.style.display = 'none';
+  const input = document.getElementById('chat-input');
+  if (input) input.focus();
+}
+document.addEventListener('click', e => {
+  const menu = document.getElementById('chat-to-menu');
+  if (menu && menu.style.display !== 'none' && !e.target.closest('.chat-to')) menu.style.display = 'none';
+});
+document.addEventListener('keydown', e => {
+  const menu = document.getElementById('chat-to-menu');
+  if (e.key === 'Escape' && menu && menu.style.display !== 'none') menu.style.display = 'none';
+});
+// The other side of a whisper, or null when it can't be worked out: for one
+// sent to you, whoever sent it (their character, else the GM); for one you
+// sent, whoever it went to.
+function chatReplyTarget(m) {
+  if (!m.whisper_to || m.local || m.deleted_at) return null;
+  if (m.author_id === currentUser.id) {
+    const w = m.payload && m.payload.whisper;
+    return w ? { gm: !!w.gm, ids: (w.characters || []).slice() } : null;
+  }
+  if (m.character_id) {
+    const row = chatRoster.find(r => r.id === m.character_id && !r.is_npc);
+    return row ? { gm: false, ids: [row.id] } : null;
+  }
+  return chatIsGM() ? null : { gm: true, ids: [] };
+}
+// The Reply box on a whisper: tick to send everything you type back to them.
+function chatReplyToggle(msgId, on) {
+  const m = (chatSearch ? chatSearch.results : chatMessages).find(x => x.id === msgId);
+  const t = m && chatReplyTarget(m);
+  if (on && t) setChatWhisper(t); else setChatWhisper(null);
+  const input = document.getElementById('chat-input');
+  if (input) input.focus();
 }
 
 function renderChatModeNote() {
@@ -566,8 +677,10 @@ function chatMessageBodyHtml(m) {
 
 function chatWhisperTag(m) {
   if (!m.whisper_to) return '';
-  if (m.author_id === currentUser.id) return `<span class="chat-whisper-tag">(To ${escapeHtml(m.whisper_label || '?')})</span>`;
-  return `<span class="chat-whisper-tag">(Whisper${m.whisper_label ? ' to ' + escapeHtml(m.whisper_label) : ''})</span>`;
+  const t = chatReplyTarget(m);
+  const reply = t ? ` <label class="chat-reply" title="Tick to send everything you type to this whisper's other side, privately, until you untick it."><input type="checkbox" ${chatWhisperMatches(t) ? 'checked' : ''} onchange="chatReplyToggle('${m.id}', this.checked)"> Reply</label>` : '';
+  if (m.author_id === currentUser.id) return `<span class="chat-whisper-tag">(To ${escapeHtml(m.whisper_label || '?')})</span>${reply}`;
+  return `<span class="chat-whisper-tag">(Whisper${m.whisper_label ? ' to ' + escapeHtml(m.whisper_label) : ''})</span>${reply}`;
 }
 
 function chatDayLabel(d) {
@@ -782,6 +895,7 @@ const CHAT_HELP_HTML = `
     <tr><td>/gmroll <i>dice</i> &nbsp;or&nbsp; /gr</td><td>Roll so only you and the GM see it</td></tr>
     <tr><td>[[<i>dice</i>]]</td><td>Inline roll inside any message: <code>I hit for [[2d6+3]]!</code></td></tr>
     <tr><td>/w <i>Name</i> <i>message</i></td><td>Whisper to a character in this group (use "quotes" for names with spaces), or <code>/w gm</code></td></tr>
+    <tr><td>To (next to Post as)</td><td>Pick the GM and/or characters and everything you send is whispered to them until you pick Everyone. Tick <b>Reply</b> on a whisper to answer it the same way</td></tr>
     <tr><td>/em <i>action</i> &nbsp;or&nbsp; /me</td><td>Emote: <code>/em draws his sword.</code></td></tr>
     <tr><td>/ooc <i>message</i></td><td>Out of character</td></tr>
     <tr><td>/desc <i>text</i></td><td>GM: narration with no name</td></tr>
@@ -922,6 +1036,11 @@ async function sendChatMessage(textOverride) {
     if (msg.local === 'att') { chatAfterSend(input, typed, textOverride); await chatAttackRun(); return; }
     if (msg.local === 'prot') { chatAfterSend(input, typed, textOverride); await chatProtRun(); return; }
     if (msg.local) { chatLocalLine('system', msg.body); chatAfterSend(input, typed, textOverride); return; }
+    // "To" is set: whisper it, unless the line already says who it's for (/w, /gr)
+    if (!msg.whisper && chatWhisperActive()) {
+      if (!['message', 'roll', 'emote', 'ooc'].includes(msg.kind)) throw new Error('That can\'t be whispered. Set To back to Everyone to send it.');
+      msg.whisper = { characters: chatWhisperTo.ids.slice(), gm: chatWhisperTo.gm };
+    }
     const payload = {};
     if (msg.kind === 'roll') {
       payload.rolls = [DiceRoller.roll(msg.body)];

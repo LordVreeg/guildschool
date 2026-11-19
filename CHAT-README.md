@@ -27,6 +27,17 @@ dice syntax, inline rolls, macros and roll queries.
   4,000 characters.
 - **↑ / ↓** in an empty box steps back and forward through what you've sent.
 
+## Whispering without typing
+
+- **To** (next to Post as): tick the GM and/or any characters in the group,
+  and everything you send (messages, rolls, emotes, OOC, macros) is
+  whispered to them until you choose **Everyone** again. A purple box and a
+  line under it show who it is going to. It resets when you switch groups.
+- **Reply** (on every whisper that has a clear other side): tick it to set
+  To to that person (or the GM) so you can answer without typing a name;
+  untick it to go back to Everyone.
+- A `/w` or `/gr` typed in the message still wins for that one message.
+
 ## Commands
 
 | Command | What it does |

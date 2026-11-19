@@ -404,6 +404,18 @@ td div.note, td.note, li.note { margin: 0; }
 /* CHAT */
 .chat-badge { display: inline-block; min-width: 16px; padding: 0 5px; border-radius: 8px; background: var(--red-b); color: #fff; font-size: calc(10px * var(--fs)); line-height: 16px; text-align: center; font-weight: bold; }
 .chat-group-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.chat-to { position: relative; }
+.chat-to-menu { position: absolute; bottom: 100%; left: 0; z-index: 20; min-width: 190px; max-height: 260px; overflow-y: auto; margin-bottom: 2px; padding: 4px; background: var(--panel); border: 1px solid var(--gold-dim); box-shadow: 0 4px 12px rgba(0,0,0,.25); }
+.chat-to-row { display: flex; align-items: center; gap: 6px; padding: 4px 8px; cursor: pointer; white-space: nowrap; font-family: inherit; font-size: calc(13px * var(--fs)); color: var(--text); background: none; border: 0; width: 100%; text-align: left; }
+.form-group .chat-to-menu label.chat-to-row { font-size: calc(13px * var(--fs)); color: var(--text); text-transform: none; letter-spacing: 0; }
+.form-group .chat-to-menu input { padding: 0; width: auto; background: none; }
+.chat-to-row:hover { background: rgba(var(--tint-rgb),.1); }
+.chat-to-everyone.on { font-weight: bold; color: var(--gold); }
+.chat-composer textarea.whispering { border-color: #7a5aa8; background: rgba(92,60,140,.09); }
+.chat-whisper-note { font-size: calc(12px * var(--fs)); color: #6a4a98; margin-top: 4px; }
+.chat-whisper-note a { color: inherit; }
+.chat-reply { font-size: calc(11px * var(--fs)); color: var(--text-dim); font-weight: normal; cursor: pointer; white-space: nowrap; }
+.chat-reply input { vertical-align: middle; margin: 0 2px 0 0; }
 .chat-messages { flex: 1; min-height: 120px; overflow-y: auto; background: var(--input-bg); border: 1px solid var(--border); padding: 8px 10px; }
 .chat-day { text-align: center; margin: 10px 0 6px; border-bottom: 1px solid var(--border); line-height: 0; }
 .chat-day span { background: var(--input-bg); padding: 0 8px; font-size: calc(11px * var(--fs)); color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
