@@ -55,6 +55,10 @@ dice syntax, inline rolls, macros and roll queries.
   and dates; the messages stay.
 - Saving and loading need `schema_v31_chat_sessions.sql` (see Setup).
   Download and copy work without it, for the whole chat.
+- **In the chat itself:** a divider marks where each saved session begins and
+  ends, with its name, and the header shows the current session's name next
+  to "Chat". Everyone in the group sees them. A window that was already open
+  picks up a change the next time you click back into it.
 
 ## Commands
 

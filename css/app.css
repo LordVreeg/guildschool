@@ -404,6 +404,10 @@ td div.note, td.note, li.note { margin: 0; }
 /* CHAT */
 .chat-badge { display: inline-block; min-width: 16px; padding: 0 5px; border-radius: 8px; background: var(--red-b); color: #fff; font-size: calc(10px * var(--fs)); line-height: 16px; text-align: center; font-weight: bold; }
 .chat-group-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.chat-session-label { font-size: calc(12px * var(--fs)); color: var(--header-text); opacity: .85; font-style: italic; margin-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.chat-session-divider { display: flex; align-items: center; gap: 10px; margin: 14px 0 8px; color: var(--gold); font-size: calc(11px * var(--fs)); text-transform: uppercase; letter-spacing: 1px; }
+.chat-session-divider::before, .chat-session-divider::after { content: ""; flex: 1; border-top: 2px solid var(--gold-dim); }
+.chat-session-divider span { text-align: center; }
 .cs-group-label { font-size: calc(11px * var(--fs)); color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; margin: 8px 0 4px; }
 .cs-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
 .chat-to { position: relative; }

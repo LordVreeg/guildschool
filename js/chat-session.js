@@ -20,17 +20,56 @@ let chatSessionPick = 'current';  // the picker's choice
 function chatSessionsMissing(error) {
   return error && (error.code === '42P01' || error.code === 'PGRST205' || /chat_sessions/.test(error.message || ''));
 }
-async function chatSessionsLoad() {
-  const { data, error } = await sb.from('chat_sessions').select('*').eq('group_id', chatGroupId).order('started_at');
+// quiet: don't redraw the chat (the caller is about to).
+async function chatSessionsLoad(quiet) {
+  const groupId = chatGroupId;
+  const { data, error } = await sb.from('chat_sessions').select('*').eq('group_id', groupId).order('started_at');
+  if (groupId !== chatGroupId) return null;   // switched groups while loading
   if (error) {
     chatSessionsReady = !chatSessionsMissing(error);
     chatSessions = [];
+    if (!quiet) chatSessionsViewRefresh();
     return error;
   }
   chatSessionsReady = true;
   chatSessions = data || [];
+  if (!quiet) chatSessionsViewRefresh();
   return null;
 }
+function chatSessionsViewRefresh() {
+  renderChatSessionLabel();
+  if (typeof chatPageOpen === 'function' && chatPageOpen() && !chatSearch) renderChatMessages('keep');
+}
+// The session being played, named in the chat header (blank until a session has been saved).
+function renderChatSessionLabel() {
+  const el = document.getElementById('chat-session-label');
+  if (!el) return;
+  const open = chatSessionOpenRow();
+  const name = open ? open.name : (chatSessions.some(s => s.closed) ? chatSessionDefaultName() : '');
+  el.textContent = name ? '· ' + name : '';
+  el.title = name ? 'The current session. /session to save, load or end it.' : '';
+}
+// Dividers for the chat: where each saved session begins and ends, and where
+// the current one began. t is the timestamp a divider sits at: a "begins"
+// divider goes before the first message after it, an "ends" divider after the
+// last message up to it (an end comes first when both fall on the same moment).
+function chatSessionMarkers() {
+  if (!chatSessionsReady || !chatSessions.length) return [];
+  const mk = [];
+  for (const s of chatSessions) {
+    mk.push({ t: s.started_at, order: 1, text: `${s.name} begins` });
+    if (s.closed) mk.push({ t: s.ended_at, order: 0, text: `${s.name} ends` });
+  }
+  if (!chatSessionOpenRow()) mk.push({ t: chatSessionCurrentStart(), order: 1, text: `${chatSessionDefaultName()} begins` });   // the new session, not named yet
+  return mk.sort((a, b) => a.t.localeCompare(b.t) || a.order - b.order);
+}
+// Sessions are ended by a GM in another window, so look again when this one comes to the front.
+let chatSessionsLastLook = 0;
+window.addEventListener('focus', () => {
+  if (typeof chatPageOpen !== 'function' || !chatPageOpen() || Date.now() - chatSessionsLastLook < 5000) return;
+  chatSessionsLastLook = Date.now();
+  chatSessionsLoad();
+});
 // Where the session being played began: the end of the last ended session.
 function chatSessionCurrentStart() {
   return chatSessions.filter(s => s.closed).reduce((a, s) => (s.ended_at > a ? s.ended_at : a), CHAT_SESSION_EPOCH);
@@ -176,7 +215,6 @@ async function chatSessionSave() {
   }
   chatSessionPick = 'current';
   renderChatSessionModal(`“${name}” ended. A new session has started.`);
-  chatLocalLine('system', `Session “${name}” ended. A new session starts here.`);
 }
 async function chatSessionDelete() {
   const cur = chatSessionChoice();

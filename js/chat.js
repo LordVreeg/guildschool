@@ -263,7 +263,7 @@ async function renderChatModule() {
   }
   main.innerHTML = `
     <div class="panel chat-panel">
-      <div class="panel-header"><h2>Chat</h2>
+      <div class="panel-header"><h2>Chat</h2><span id="chat-session-label" class="chat-session-label"></span>
         <div style="flex:1"></div>
         <input id="chat-search-input" class="chat-search" type="search" placeholder="Search this chat…" onkeydown="if(event.key==='Enter')searchChat(this.value)">
         ${diceAnimButtonHtml()}
@@ -575,6 +575,9 @@ async function loadChatMessages(older) {
     // Keep local-only lines (talk-to-myself, help, errors) from this visit.
     chatMessages = batch.concat(chatMessages.filter(m => m.local && m.group_id === groupId));
     chatMessages.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    await chatSessionsLoad(true);   // session names, for the dividers and the header
+    if (groupId !== chatGroupId) return;
+    renderChatSessionLabel();
     renderChatMessages('bottom');
     chatMarkRead(groupId);
     renderChatGroupTabs();
@@ -703,8 +706,21 @@ function renderChatMessages(mode) {
   let html = !chatSearch && chatHasMore ? `<div style="text-align:center;margin-bottom:8px"><button class="btn btn-dim" style="font-size:calc(11px * var(--fs))" onclick="loadChatMessages(true)">Load older messages</button></div>` : '';
   if (!list.length) html += `<div class="note" style="text-align:center;padding:20px">${chatSearch ? 'No messages match.' : 'No messages yet. Say hello! Type /help to see the commands.'}</div>`;
   let lastDay = null, prev = null;
+  // Where a saved session begins or ends (js/chat-session.js), drawn between messages
+  let markers = chatSearch ? [] : chatSessionMarkers();
+  if (markers.length && chatHasMore) {   // older messages aren't loaded: skip markers before the first one shown
+    const first = list.find(x => !x.local);
+    if (first) markers = markers.filter(k => k.t >= first.created_at);
+  }
+  const flushMarkers = before => {
+    while (markers.length && (before === null || markers[0].t < before)) {
+      html += `<div class="chat-session-divider"><span>${escapeHtml(markers.shift().text)}</span></div>`;
+      prev = null;
+    }
+  };
   for (const m of list) {
     if (m.payload && m.payload.att_reply) continue;   // the GM's private AV answer for /att (js/attack.js): never shown
+    flushMarkers(m.created_at);
     const d = new Date(m.created_at);
     const day = d.toDateString();
     if (day !== lastDay) { html += `<div class="chat-day"><span>${chatDayLabel(d)}</span></div>`; lastDay = day; prev = null; }
@@ -737,6 +753,7 @@ function renderChatMessages(mode) {
     }
     html += `<div class="${classes.filter(Boolean).join(' ')}" title="${escapeHtml(d.toLocaleString())}">${inner}${actions ? `<div class="chat-actions">${actions}</div>` : ''}</div>`;
   }
+  flushMarkers(null);
   box.innerHTML = html;
   if (mode === 'bottom') box.scrollTop = box.scrollHeight;
   else if (mode === 'older') box.scrollTop = box.scrollHeight - prevHeight + prevTop;
