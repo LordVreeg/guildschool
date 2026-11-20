@@ -749,10 +749,45 @@ function renderEncounterHtml(enc, isGM) {
   </div></div>`;
 }
 
+// ---------- quick edits: on screen at once, saved behind ----------
+// A simple edit (a +/- nudge, a segment, HP, team, status, target...) is
+// applied to what's loaded and redrawn straight away; the save goes to
+// Supabase behind it. Saves to the same field run one at a time and only the
+// latest value is sent, so fast clicking can't land out of order. A full
+// reload already on its way is dropped (it would bring back the old value).
+// If a save fails, the page reloads the real values.
+function repaintEncounterFromCache() {
+  encounterRenderSeq++;   // a reload already on its way would undo this edit
+  if (encounterCache) paintEncounter(encounterViewHtml(encounterCache, encounterIsGM), encounterCache.id);
+}
+const combatSaveQueue = {};
+function queueCombatSave(key, save) {
+  const q = combatSaveQueue[key] || (combatSaveQueue[key] = { running: false, next: null });
+  q.next = save;
+  if (!q.running) runCombatSave(q);
+}
+async function runCombatSave(q) {
+  q.running = true;
+  while (q.next) {
+    const save = q.next;
+    q.next = null;
+    let error = null;
+    try { ({ error } = await save()); } catch (e) { error = e; }
+    if (error) {
+      q.next = null;
+      alert('Failed to save: ' + (error.message || error));
+      renderEncounterModule({ silent: true });
+      break;
+    }
+  }
+  q.running = false;
+}
+
 async function updateEncounterField(field, value) {
-  const { error } = await sb.from('combat_encounters').update({ [field]: value }).eq('id', activeEncounterId);
-  if (error) { alert('Failed to update: ' + error.message); return; }
-  renderEncounterModule();
+  if (encounterCache && encounterCache.id === activeEncounterId) { encounterCache[field] = value; repaintEncounterFromCache(); }
+  else { const { error } = await sb.from('combat_encounters').update({ [field]: value }).eq('id', activeEncounterId); if (error) alert('Failed to update: ' + error.message); renderEncounterModule(); return; }
+  const encId = activeEncounterId;
+  queueCombatSave(`enc:${encId}:${field}`, () => sb.from('combat_encounters').update({ [field]: value }).eq('id', encId));
 }
 
 async function advanceToNextSegment(encId) {
@@ -784,19 +819,20 @@ async function advanceToNextSegment(encId) {
   }
   if (!upcoming.length) { alert('No queued actions to advance to.'); return; }
   const next = Math.min(...upcoming);
-  const { error } = await sb.from('combat_encounters').update({ current_segment: next }).eq('id', encId);
-  if (error) { alert('Failed to advance: ' + error.message); return; }
-  renderEncounterModule();
+  if (encounterCache && encounterCache.id === encId) { encounterCache.current_segment = next; repaintEncounterFromCache(); }
+  queueCombatSave(`enc:${encId}:current_segment`, () => sb.from('combat_encounters').update({ current_segment: next }).eq('id', encId));
 }
 
 async function updateCombatantField(id, field, value) {
-  const { error } = await sb.from('combat_combatants').update({ [field]: value }).eq('id', id);
-  if (error) { alert('Failed to update: ' + error.message); return; }
-  if (field === 'current_hp') {
-    const c = combatantsCache.find(x => x.id === id);
-    if (c && c.character_id) await syncCombatHpToCharacter(c.character_id, { currentHP: value });
-  }
-  renderEncounterModule();
+  const c = combatantsCache.find(x => x.id === id);
+  if (!c) { const { error } = await sb.from('combat_combatants').update({ [field]: value }).eq('id', id); if (error) alert('Failed to update: ' + error.message); renderEncounterModule(); return; }
+  c[field] = value;
+  repaintEncounterFromCache();
+  queueCombatSave(`cc:${id}:${field}`, async () => {
+    const res = await sb.from('combat_combatants').update({ [field]: value }).eq('id', id);
+    if (!res.error && field === 'current_hp' && c.character_id) await syncCombatHpToCharacter(c.character_id, { currentHP: value });
+    return res;
+  });
 }
 
 // Writes one Physical/Endurance field and recomputes the merged
@@ -811,12 +847,15 @@ async function updateCollegiumHp(id, field, value) {
   const fields = { [field]: v };
   if (merged.physical_current != null && merged.endurance_current != null) fields.current_hp = merged.physical_current + merged.endurance_current;
   if (merged.physical_max != null && merged.endurance_max != null) fields.max_hp = merged.physical_max + merged.endurance_max;
-  const { error } = await sb.from('combat_combatants').update(fields).eq('id', id);
-  if (error) { alert('Failed to update: ' + error.message); return; }
-  if ((field === 'physical_current' || field === 'endurance_current') && c.character_id) {
-    await syncCombatHpToCharacter(c.character_id, { physicalCurrent: merged.physical_current, enduranceCurrent: merged.endurance_current });
-  }
-  renderEncounterModule();
+  Object.assign(c, fields);
+  repaintEncounterFromCache();
+  queueCombatSave(`cc:${id}:${field}`, async () => {
+    const res = await sb.from('combat_combatants').update(fields).eq('id', id);
+    if (!res.error && (field === 'physical_current' || field === 'endurance_current') && c.character_id) {
+      await syncCombatHpToCharacter(c.character_id, { physicalCurrent: merged.physical_current, enduranceCurrent: merged.endurance_current });
+    }
+    return res;
+  });
 }
 
 // A combatant with a real character_id (not a bestiary foe/temp-PC) feeds
@@ -924,9 +963,11 @@ async function updateActionTrack(id, field, value) {
   const patch = { [field]: value };
   // A tie position only means something at the segment it was set for.
   if (field === 'next_segment' && tracksHaveTieOrder()) patch.tie_order = null;
-  const { error } = await sb.from('combat_action_tracks').update(patch).eq('id', id);
-  if (error) { alert('Failed to update: ' + error.message); return; }
-  renderEncounterModule();
+  const t = actionTracksCache.find(x => x.id === id);
+  if (!t) { const { error } = await sb.from('combat_action_tracks').update(patch).eq('id', id); if (error) alert('Failed to update: ' + error.message); renderEncounterModule(); return; }
+  Object.assign(t, patch);
+  repaintEncounterFromCache();
+  queueCombatSave(`track:${id}:${field}`, () => sb.from('combat_action_tracks').update(patch).eq('id', id));
 }
 
 // One-tap initiative nudge -- the fast path both GM and player use most,
@@ -949,9 +990,10 @@ async function deleteActionTrack(id) {
 async function resolveActionTrack(id) {
   const patch = { next_segment: null };
   if (tracksHaveTieOrder()) patch.tie_order = null;
-  const { error } = await sb.from('combat_action_tracks').update(patch).eq('id', id);
-  if (error) { alert('Failed to resolve: ' + error.message); return; }
-  renderEncounterModule();
+  const t = actionTracksCache.find(x => x.id === id);
+  if (t) { Object.assign(t, patch); repaintEncounterFromCache(); }
+  queueCombatSave(`track:${id}:next_segment`, () => sb.from('combat_action_tracks').update(patch).eq('id', id));
+  if (!t) renderEncounterModule();
 }
 
 function openAddEffectModal(combatantId) {
