@@ -532,6 +532,13 @@ td div.note, td.note, li.note { margin: 0; }
 /* A narrow sidebar (it can be dragged down to 80px) trims labels with … instead of overflowing */
 #sidebar { overflow-x: hidden; display: flex; flex-direction: column; }
 #sidebar > * { flex-shrink: 0; }
+/* Combat page: small HP boxes, AV / Prot, and the spear that resizes the Turn Order */
+#main .cc-num { width: calc(44px * var(--fs)); padding: 1px 3px; font-size: calc(11px * var(--fs)); text-align: center; }
+.cc-lbl { font-size: calc(10px * var(--fs)); color: var(--text-dim); }
+.cc-box { display: inline-block; min-width: calc(30px * var(--fs)); padding: 1px 4px; font-size: calc(11px * var(--fs)); text-align: center; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+.turn-order-grip { width: 38px; align-self: stretch; object-fit: contain; flex-shrink: 0; mix-blend-mode: multiply; filter: sepia(.3); cursor: col-resize; touch-action: none; user-select: none; }
+.turn-order-grip:hover { filter: sepia(.3) brightness(1.15) drop-shadow(0 0 3px rgba(var(--tint-rgb), .5)); }
+body.turn-order-resizing { cursor: col-resize; user-select: none; }
 .sidebar-version { margin-top: auto; padding: 10px 12px 2px; font-size: calc(10px * var(--fs)); color: var(--text-dim); opacity: .8; }
 /* the item popup's required fields, while empty (refreshItemRequired) */
 #modal-box .req-missing { outline: 2px solid var(--red-b); outline-offset: -1px; }

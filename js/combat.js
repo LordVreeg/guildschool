@@ -28,6 +28,8 @@ let encounterIsGM = false; // set on every render so modals outside renderEncoun
 let combatFoeEntry = {};   // combatant id -> that foe's full Beastiary entry (GM only; for the Stats popup)
 let combatFoeType = {};    // combatant id -> creature type of that foe (GM only; its Beastiary entry's race)
 let combatFoeXp = {};      // combatant id -> XP value of that foe (GM only; computeFoeXP on its Beastiary entry)
+let combatSheets = {};     // character row id -> its sheet (yours, or for the GM every character's): Nickname / Title, AV / Prot
+let combatEntryById = {};  // Beastiary entry id -> entry (GM only): a foe's or temp character's AV / Prot
 
 // The Group page's one Combat button: a campaign can rack up 20-30
 // encounters over time, so this can't just guess which one to jump back
@@ -84,6 +86,7 @@ function closeEncounter() {
 async function pollEncounterChanges() {
   if (state.activeView !== 'encounter' || !activeEncounterId || document.hidden) return;
   if (document.getElementById('modal-overlay').classList.contains('open')) return;
+  if (document.body.classList.contains('turn-order-resizing')) return;
   const a = document.activeElement;
   if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && a.closest('#main')) return;
   const encId = activeEncounterId;
@@ -138,6 +141,18 @@ async function renderEncounterModule(opts) {
     return;
   }
 
+  // The characters' sheets, for their Nickname / Title and AV / Prot: yours
+  // are loaded already; the GM reads the rest.
+  const sheets = {};
+  const charIds = [...new Set(combatantRows.filter(c => c.character_id).map(c => c.character_id))];
+  for (const [appId, rowId] of Object.entries(charRowIds)) if (charIds.includes(rowId) && state.characters[appId]) sheets[rowId] = state.characters[appId];
+  const unread = charIds.filter(id => !sheets[id]);
+  if (isGM && unread.length) {
+    const { data: rows } = await sb.from('characters').select('id, data').in('id', unread);
+    for (const r of rows || []) if (r.data) sheets[r.id] = r.data;
+  }
+  if (!stillCurrent()) return;
+
   // Foe XP values, for the GM: each foe combatant's Beastiary entry run
   // through the same computeFoeXP the Beastiary uses, with this fight's own
   // max HP (a foe rolled tougher or weaker than its template is worth that).
@@ -145,11 +160,11 @@ async function renderEncounterModule(opts) {
   const foeXp = {};
   const foeType = {};
   const foeEntry = {};
+  let entryById = {};
   if (isGM) {
     const entryIds = [...new Set(combatantRows.filter(c => c.bestiary_entry_id).map(c => c.bestiary_entry_id))];
     if (entryIds.length) {
       const { data: entries } = await sb.from('bestiary_entries').select('*').in('id', entryIds);
-      const entryById = {};
       for (const e of entries || []) entryById[e.id] = e;
       for (const c of combatantRows) {
         const e = c.bestiary_entry_id ? entryById[c.bestiary_entry_id] : null;
@@ -176,6 +191,18 @@ async function renderEncounterModule(opts) {
   combatFoeXp = foeXp;
   combatFoeType = foeType;
   combatFoeEntry = foeEntry;
+  combatSheets = sheets;
+  combatEntryById = entryById;
+  // A character's name in the fight follows its Nickname / Title setting: the
+  // GM or its owner puts the right one on the combatant, so everyone sees it.
+  for (const c of combatantRows) {
+    const sheet = c.character_id && sheets[c.character_id];
+    const want = sheet && charDisplayName(sheet);
+    if (!want || want === c.display_name) continue;
+    if (!isGM && combatOwnerByCharId[c.character_id] !== currentUser.id) continue;
+    c.display_name = want;
+    sb.from('combat_combatants').update({ display_name: want }).eq('id', c.id).then(({ error }) => { if (error) console.error('Could not rename combatant', error); });
+  }
   paintEncounter(renderEncounterHtml(enc, isGM), enc.id);
 }
 
@@ -202,6 +229,53 @@ function paintEncounter(html, encId) {
   if (!el) return;
   el.focus({ preventScroll: true });
   try { if (focus.start != null && el.setSelectionRange) el.setSelectionRange(focus.start, focus.end); } catch (e) {}
+}
+
+// AV and Prot beside a combatant's HP, read-only: a character's from its
+// sheet as it stands (armor, shield in hand, magic, spells...), a foe's or
+// temp character's from its Beastiary entry. Nothing shown when unknown.
+function combatantArmorHtml(c) {
+  let av = null, pr = null;
+  const sheet = c.character_id && combatSheets[c.character_id];
+  if (sheet) {
+    try { const cur = computeArmor(sheet).current; av = Math.round(cur.totalAV); pr = Math.round(cur.totalPR); } catch (e) {}
+  } else if (c.bestiary_entry_id && combatEntryById[c.bestiary_entry_id]) {
+    const e = combatEntryById[c.bestiary_entry_id];
+    av = parseFloat(e.avoidance) || 0; pr = parseFloat(e.protection) || 0;
+  }
+  if (av === null) return '';
+  const src = sheet ? 'from the character sheet' : 'from the Beastiary entry';
+  return `<span class="cc-lbl">AV</span><span class="cc-box" title="Avoidance, ${src}">${av}</span><span class="cc-lbl">Prot</span><span class="cc-box" title="Protection, ${src}">${pr}</span>`;
+}
+
+// The Turn Order's width: dragged on the spear between it and the cards,
+// remembered in this browser; double-click puts it back.
+const TURN_ORDER_W_KEY = 'gs_turn_order_w', TURN_ORDER_W_DEFAULT = 300, TURN_ORDER_W_MIN = 200, TURN_ORDER_W_MAX = 800;
+function turnOrderWidth() {
+  try { const w = parseInt(localStorage.getItem(TURN_ORDER_W_KEY)); if (w >= TURN_ORDER_W_MIN && w <= TURN_ORDER_W_MAX) return w; } catch (e) {}
+  return TURN_ORDER_W_DEFAULT;
+}
+function startTurnOrderResize(e) {
+  const bar = e.currentTarget, box = document.getElementById('turn-order-box');
+  if (!box) return;
+  e.preventDefault();
+  bar.setPointerCapture(e.pointerId);
+  document.body.classList.add('turn-order-resizing');
+  const startX = e.clientX, startW = box.getBoundingClientRect().width;
+  const move = ev => { box.style.width = Math.max(TURN_ORDER_W_MIN, Math.min(TURN_ORDER_W_MAX, startW + ev.clientX - startX)) + 'px'; };
+  const up = () => {
+    bar.removeEventListener('pointermove', move);
+    document.body.classList.remove('turn-order-resizing');
+    try { localStorage.setItem(TURN_ORDER_W_KEY, Math.round(box.getBoundingClientRect().width)); } catch (err) {}
+  };
+  bar.addEventListener('pointermove', move);
+  bar.addEventListener('pointerup', up, { once: true });
+  bar.addEventListener('pointercancel', up, { once: true });
+}
+function resetTurnOrderWidth() {
+  try { localStorage.removeItem(TURN_ORDER_W_KEY); } catch (e) {}
+  const box = document.getElementById('turn-order-box');
+  if (box) box.style.width = TURN_ORDER_W_DEFAULT + 'px';
 }
 
 // A foe's given name ("Groll", "Barty") often doesn't say what it is, so the
@@ -386,13 +460,14 @@ function renderEncounterHtml(enc, isGM) {
         ${combatantHpBadge(c, isGM)}
         ${canEdit ? (c.hp_system === 'collegium' ? `
         <span style="font-size:calc(10px * var(--fs));color:var(--text-dim)">Phys</span>
-        <input type="number" class="w-sm" style="font-size:calc(11px * var(--fs))" value="${c.physical_current!=null?c.physical_current:''}" title="Physical Current" onchange="updateCollegiumHp('${c.id}','physical_current',this.value)">
-        / <input type="number" class="w-sm" style="font-size:calc(11px * var(--fs))" value="${c.physical_max!=null?c.physical_max:''}" title="Physical Max" onchange="updateCollegiumHp('${c.id}','physical_max',this.value)">
+        <input type="number" class="cc-num" value="${c.physical_current!=null?c.physical_current:''}" title="Physical Current" onchange="updateCollegiumHp('${c.id}','physical_current',this.value)">
+        / <input type="number" class="cc-num" value="${c.physical_max!=null?c.physical_max:''}" title="Physical Max" onchange="updateCollegiumHp('${c.id}','physical_max',this.value)">
         <span style="font-size:calc(10px * var(--fs));color:var(--text-dim)">End</span>
-        <input type="number" class="w-sm" style="font-size:calc(11px * var(--fs))" value="${c.endurance_current!=null?c.endurance_current:''}" title="Endurance Current" onchange="updateCollegiumHp('${c.id}','endurance_current',this.value)">
-        / <input type="number" class="w-sm" style="font-size:calc(11px * var(--fs))" value="${c.endurance_max!=null?c.endurance_max:''}" title="Endurance Max" onchange="updateCollegiumHp('${c.id}','endurance_max',this.value)">` : `
-        <input type="number" class="w-sm" style="font-size:calc(11px * var(--fs))" value="${c.current_hp!=null?c.current_hp:''}" title="Current HP" onchange="updateCombatantField('${c.id}','current_hp',this.value===''?null:parseFloat(this.value))">
-        / <input type="number" class="w-sm" style="font-size:calc(11px * var(--fs))" value="${c.max_hp!=null?c.max_hp:''}" title="Max HP" onchange="updateCombatantField('${c.id}','max_hp',this.value===''?null:parseFloat(this.value))">`) : ''}
+        <input type="number" class="cc-num" value="${c.endurance_current!=null?c.endurance_current:''}" title="Endurance Current" onchange="updateCollegiumHp('${c.id}','endurance_current',this.value)">
+        / <input type="number" class="cc-num" value="${c.endurance_max!=null?c.endurance_max:''}" title="Endurance Max" onchange="updateCollegiumHp('${c.id}','endurance_max',this.value)">` : `
+        <input type="number" class="cc-num" value="${c.current_hp!=null?c.current_hp:''}" title="Current HP" onchange="updateCombatantField('${c.id}','current_hp',this.value===''?null:parseFloat(this.value))">
+        / <input type="number" class="cc-num" value="${c.max_hp!=null?c.max_hp:''}" title="Max HP" onchange="updateCombatantField('${c.id}','max_hp',this.value===''?null:parseFloat(this.value))">`) : ''}
+        ${canEdit ? combatantArmorHtml(c) : ''}
         <select style="font-size:calc(11px * var(--fs))" onchange="updateCombatantField('${c.id}','target_combatant_id',this.value||null)">${targetOptionsHtml(c.id, c.target_combatant_id)}</select>
         <select style="font-size:calc(11px * var(--fs))" onchange="updateCombatantField('${c.id}','status',this.value)" title="Status -- drives Turn Order placement and name styling">
           ${['active','waiting','incapacitated','killed'].map(s => `<option value="${s}" ${status===s?'selected':''}>${s[0].toUpperCase()+s.slice(1)}</option>`).join('')}
@@ -489,7 +564,7 @@ function renderEncounterHtml(enc, isGM) {
         ${t.label ? `<span style="font-size:calc(12px * var(--fs));color:var(--text-dim)"> ${escapeHtml(t.label)}</span>` : ''}
         ${t.action_category ? `<span style="display:block;font-size:calc(11px * var(--fs));color:var(--text-dim)">${COMBAT_CATEGORY_LABELS[t.action_category]}</span>` : ''}
       </span>
-      <span style="font-size:calc(32px * var(--fs));font-weight:bold;line-height:1;color:${t.next_segment!=null?'var(--gold)':'var(--text-dim)'};flex-shrink:0">${t.next_segment!=null?t.next_segment:'—'}</span>
+      <span style="font-size:calc(17px * var(--fs));font-weight:bold;line-height:1;color:${t.next_segment!=null?'var(--gold)':'var(--text-dim)'};flex-shrink:0">${t.next_segment!=null?t.next_segment:'—'}</span>
     </div>`;
   };
   // A timed effect (Blessings, a buff, a debuff) gets its own row in the
@@ -522,7 +597,7 @@ function renderEncounterHtml(enc, isGM) {
         <span style="font-size:calc(15px * var(--fs));font-weight:bold">✦ ${escapeHtml(eff.label)}</span>
         <span style="display:block;font-size:calc(11px * var(--fs));color:var(--text-dim)">on ${names} -- ${ended ? 'ended' : left + ' seg left'} <a href="#" onclick="${clearCall};return false" style="color:var(--red-b)">✕ clear${shared && combatants.length > 1 ? ' all' : ''}</a></span>
       </span>
-      <span style="font-size:calc(26px * var(--fs));font-weight:bold;line-height:1;color:var(--text-dim);flex-shrink:0">${eff.expires_at_segment}</span>
+      <span style="font-size:calc(15px * var(--fs));font-weight:bold;line-height:1;color:var(--text-dim);flex-shrink:0">${eff.expires_at_segment}</span>
     </div>`;
   };
   const timeline = visibleOrderedTracks.filter(t => t.next_segment != null).map(t => ({ seg: t.next_segment, html: renderTrackRow(t) }))
@@ -539,7 +614,7 @@ function renderEncounterHtml(enc, isGM) {
         ${foeTypeTag(c)}${foeStatsBtn(c)}${combatFoeXp[c.id] != null ? `<span style="font-size:calc(11px * var(--fs));color:var(--gold-dim)"> XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
         <span style="display:block;font-size:calc(11px * var(--fs));color:var(--text-dim)">${killed?'Killed':'Waiting'}</span>
       </span>
-      <span style="font-size:calc(24px * var(--fs));font-weight:bold;line-height:1;color:${killed?'#a03030':'var(--text-dim)'};flex-shrink:0">${killed?'KIA':'W'}</span>
+      <span style="font-size:calc(17px * var(--fs));font-weight:bold;line-height:1;color:${killed?'#a03030':'var(--text-dim)'};flex-shrink:0">${killed?'KIA':'W'}</span>
     </div>`;
   }).join('');
   // GM-only: what the foes in this fight are worth, and how much of that is
@@ -577,14 +652,14 @@ function renderEncounterHtml(enc, isGM) {
       ${foeXpHeaderHtml}
     </div>
     <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
-      <div style="width:300px;flex-shrink:0;border:2px solid var(--gold-dim);border-radius:4px;overflow:hidden">
+      <div id="turn-order-box" style="width:${turnOrderWidth()}px;max-width:100%;flex-shrink:0;border:2px solid var(--gold-dim);border-radius:4px;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:baseline;background:var(--header-bg);padding:8px 12px">
           <span style="font-size:calc(14px * var(--fs));font-weight:bold;color:var(--header-text);text-transform:uppercase;letter-spacing:1px">Turn Order</span>${infoTip(`Default order within a tied segment: Spell → Non-Combat → Missile → Melee. Use the ▲▼ on a tied row in the Turn Order to put whoever you like first. Click a name there to jump to their card. Everything here is an editable suggestion -- adjust freely.`)}
           <span style="font-size:calc(11px * var(--fs));color:var(--header-text);opacity:.7">Count: ${visibleOrderedTracks.length + visibleSidelined.length}</span>
         </div>
         ${upcomingHtml}
       </div>
-      <img src="assets/img/spear-divider.png" alt="" style="width:38px;align-self:center;flex-shrink:0;mix-blend-mode:multiply;filter:sepia(.3)">
+      <img src="assets/img/spear-divider.png" alt="" draggable="false" class="turn-order-grip" title="Drag to make the Turn Order wider or narrower; double-click to reset" onpointerdown="startTurnOrderResize(event)" ondblclick="resetTurnOrderWidth()">
       <div style="flex:1;min-width:280px">
         ${combatantsHtml}
         <hr class="divider">
@@ -991,7 +1066,7 @@ async function addCombatantFromSource(kind, sourceId, opts = {}) {
     const isCollegium = hp.system === 'collegium';
     const cur = isCollegium ? (hp.physicalCurrent + hp.enduranceCurrent) : hp.currentHP;
     const max = isCollegium ? (hp.physicalMax + hp.enduranceMax) : hp.totalHP;
-    row = { ...row, character_id: c.id, display_name: (c.data && c.data.name) || '(unnamed)', current_hp: cur, max_hp: max, team: 'Party',
+    row = { ...row, character_id: c.id, display_name: (c.data && charDisplayName(c.data)) || '(unnamed)', current_hp: cur, max_hp: max, team: 'Party',
       hp_system: isCollegium ? 'collegium' : 'standard',
       physical_current: isCollegium ? hp.physicalCurrent : null, physical_max: isCollegium ? hp.physicalMax : null,
       endurance_current: isCollegium ? hp.enduranceCurrent : null, endurance_max: isCollegium ? hp.enduranceMax : null };
