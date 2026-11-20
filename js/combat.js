@@ -98,10 +98,11 @@ setInterval(pollEncounterChanges, 8000);
 async function renderEncounterModule(opts) {
   const mySeq = ++encounterRenderSeq;
   const stillCurrent = () => mySeq === encounterRenderSeq;
-  // Only the very first call in a burst shows the loading state -- if a
-  // newer call has already started, its own paint (or this one's, whichever
-  // finishes last while still current) is all that should reach the screen.
-  if (stillCurrent() && !(opts && opts.silent)) document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body">Loading combat…</div></div>`;
+  // "Loading combat…" only when the combat isn't on screen yet (opening it).
+  // After an edit the page it already shows stays up until the fresh one is
+  // ready, then is swapped in quietly (see paintEncounter).
+  const onScreen = !!document.querySelector(`#main [data-encounter-view="${activeEncounterId}"]`);
+  if (stillCurrent() && !onScreen && !(opts && opts.silent)) document.getElementById('main').innerHTML = `<div class="panel"><div class="panel-body">Loading combat…</div></div>`;
   await fetchMyGroups();
   const { data: enc, error: encErr } = await sb.from('combat_encounters').select('*').eq('id', activeEncounterId).single();
   if (!stillCurrent()) return;
@@ -175,7 +176,32 @@ async function renderEncounterModule(opts) {
   combatFoeXp = foeXp;
   combatFoeType = foeType;
   combatFoeEntry = foeEntry;
-  document.getElementById('main').innerHTML = renderEncounterHtml(enc, isGM);
+  paintEncounter(renderEncounterHtml(enc, isGM), enc.id);
+}
+
+// Swaps in the redrawn combat page without the jolt: the scroll position
+// stays, and so does the field you were in (found again by what it does --
+// its onchange / oninput / onclick -- and its place among fields that do the
+// same), with the cursor where it was.
+function paintEncounter(html, encId) {
+  const main = document.getElementById('main');
+  const scroll = main.scrollTop, winY = window.scrollY;   // the main area or the window, whichever scrolls
+  const a = document.activeElement;
+  let focus = null;
+  if (a && a !== document.body && main.contains(a)) {
+    const sig = ['onchange', 'oninput', 'onclick', 'id', 'name'].map(k => a.getAttribute(k) || '').join('|');
+    const same = [...main.querySelectorAll(a.tagName)].filter(el => ['onchange', 'oninput', 'onclick', 'id', 'name'].map(k => el.getAttribute(k) || '').join('|') === sig);
+    focus = { tag: a.tagName, sig, index: same.indexOf(a), start: a.selectionStart, end: a.selectionEnd };
+  }
+  main.innerHTML = `<div data-encounter-view="${escapeHtml(encId)}">${html}</div>`;
+  main.scrollTop = scroll;
+  window.scrollTo(window.scrollX, winY);
+  if (!focus || focus.index < 0) return;
+  const same = [...main.querySelectorAll(focus.tag)].filter(el => ['onchange', 'oninput', 'onclick', 'id', 'name'].map(k => el.getAttribute(k) || '').join('|') === focus.sig);
+  const el = same[focus.index];
+  if (!el) return;
+  el.focus({ preventScroll: true });
+  try { if (focus.start != null && el.setSelectionRange) el.setSelectionRange(focus.start, focus.end); } catch (e) {}
 }
 
 // A foe's given name ("Groll", "Barty") often doesn't say what it is, so the
