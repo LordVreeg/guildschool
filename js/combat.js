@@ -550,11 +550,11 @@ function renderEncounterHtml(enc, isGM) {
         </select>
         ${isGM ? `<button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px" onclick="removeCombatant('${c.id}')">Remove</button>` : ''}
       </div>
-      ${preparedSpellLineHtml(c)}
       <div style="margin-top:4px">${tracksHtml}</div>
       ${canEdit ? `<button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px;margin-top:2px" onclick="addActionTrack('${c.id}')">Track</button>
       <button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px;margin-top:2px" onclick="openAddEffectModal('${c.id}')">Effect</button>` : ''}
       <div style="margin-top:2px">${effectsHtml}</div>
+      ${preparedSpellLineHtml(c)}
     </div>`;
   }).join('') : '<div class="note">No combatants yet.</div>';
 
