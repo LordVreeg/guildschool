@@ -670,6 +670,7 @@ async function chatCastRun() {
     const appId = char && Object.keys(state.characters).find(k => state.characters[k] === char);
     if (!appId || !charRowIds[appId]) throw new Error('/cast casts the spell your "Post as" character has prepared: pick one of your characters.');
     await reloadCharacterFromDb(appId);
+    await settlePreparedSpell(appId);   // its combat may have ended
     const fresh = state.characters[appId];
     if (!fresh.preparedSpell) throw new Error(`${charDisplayName(fresh) || 'That character'} has no spell prepared. During a combat, use Prepare on the Spells page.`);
     chatCastPending = { appId, name: fresh.preparedSpell.name };

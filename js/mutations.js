@@ -1169,6 +1169,43 @@ function charInCombatCached(char) {
   const hit = appId && charCombatCache[charRowIds[appId]];
   return !!(hit && hit.encounterId);
 }
+// A preparation ends with its combat: when the combat it was made for is no
+// longer active (or the character left it), it's cleared. Checked by the
+// character's own app -- on load, on the Spells page, on /cast -- since only
+// it can change the character. Returns true if it cleared one.
+async function settlePreparedSpell(appId) {
+  const char = state.characters[appId];
+  const p = char && char.preparedSpell;
+  if (!p) return false;
+  let active = false;
+  if (p.encounterId) {
+    const { data, error } = await sb.from('combat_encounters').select('status').eq('id', p.encounterId).maybeSingle();
+    if (error) return false;   // can't tell: leave it
+    active = !!(data && data.status === 'active');
+  }
+  if (active) return false;
+  delete char.preparedSpell;
+  saveState();
+  announceCharacterChange(appId);
+  return true;
+}
+async function settleAllPreparedSpells() {
+  let cleared = false;
+  for (const appId of Object.keys(state.characters)) if (await settlePreparedSpell(appId)) cleared = true;
+  if (cleared && typeof renderMain === 'function' && !CHAT_WINDOW && !document.getElementById('modal-overlay').classList.contains('open')) renderMain();
+}
+// "casts Fireball." in the character's group chat, for a cast made outside
+// the chat (the combat card's Cast, the Spells page).
+async function postCastToChat(appId, spellName) {
+  const char = state.characters[appId];
+  const rowId = charRowIds[appId];
+  if (!char || !rowId || !char.playGroupId) return;
+  const row = { group_id: char.playGroupId, character_id: rowId, kind: 'emote', body: `casts ${spellName}.`, payload: null };
+  if (charDisplayName(char) !== char.name) row.payload = { as_name: charDisplayName(char) };
+  const { error } = await sb.from('group_chat_messages').insert(row);
+  if (error) console.error('Could not post the cast to the chat', error);
+}
+
 function preparedSpellIdx(char) {
   const p = char && char.preparedSpell;
   if (!p) return -1;
@@ -1263,7 +1300,11 @@ function confirmHardcast() {
   if (wasPrepared) delete char.preparedSpell;
   saveState();
   announceCharacterChange(state.activeChar);
-  if (wasPrepared && typeof chatCastAnnounce === 'function') chatCastAnnounce(hs.spellName);
+  // a prepared spell cast: "casts …" in the group's chat (from /cast, the chat window posts it)
+  if (wasPrepared) {
+    if (typeof chatCastPending !== 'undefined' && chatCastPending && typeof chatCastAnnounce === 'function') chatCastAnnounce(hs.spellName);
+    else postCastToChat(state.activeChar, hs.spellName);
+  }
   // SP is spent either way -- hardcastState stays alive through resolving
   // success and (if successful) marking a duration, closed out at the end
   // of that chain rather than here.

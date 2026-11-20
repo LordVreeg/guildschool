@@ -1067,7 +1067,10 @@ function renderSpellModule() {
   // whether the character is in a combat (for Prepare): checked behind, redrawn if it changed
   if (charNow) {
     const before = charInCombatCached(charNow);
-    characterActiveCombat(charNow).then(() => { if (state.activeView === 'spell' && state.characters[state.activeChar] === charNow && charInCombatCached(charNow) !== before) renderSpellModule(); });
+    const appNow = state.activeChar;
+    Promise.all([characterActiveCombat(charNow), settlePreparedSpell(appNow)]).then(([, cleared]) => {
+      if (state.activeView === 'spell' && state.characters[state.activeChar] === charNow && (cleared || charInCombatCached(charNow) !== before)) renderSpellModule();
+    });
   }
   const char = state.characters[state.activeChar];
   if (!char) return;

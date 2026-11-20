@@ -282,6 +282,7 @@ async function handleSignedIn() {
   loadData().then(() => {
     if (removeAutoHandFootForAll()) { saveState(); if (typeof renderApp === 'function') renderApp(); }
     syncGroupItemsForMyCharacters(true); // the group's items given or assigned to your characters
+    settleAllPreparedSpells();           // spells prepared for a combat that has since ended
   }).catch(err => {
     document.getElementById('main').innerHTML = `<div style="padding:40px;color:var(--red-b)">
       <strong>Could not load data.</strong><br><br>${err.message}

@@ -305,7 +305,8 @@ function combatantArmorHtml(c) {
 function preparedSpellLineHtml(c) {
   const sheet = c.character_id && combatSheets[c.character_id];
   const p = sheet && sheet.preparedSpell;
-  if (!p) return '';
+  // only for this combat, while it's on (an ended one's is cleared by the owner's app)
+  if (!p || (p.encounterId && p.encounterId !== c.encounter_id) || !encounterCache || encounterCache.status !== 'active') return '';
   const appId = Object.keys(charRowIds).find(k => charRowIds[k] === c.character_id);
   const mine = appId && state.characters[appId] === sheet;
   return `<div class="cc-prep">✦ Preparing <b>${escapeHtml(p.name)}</b> <span class="cc-lbl">(${escapeHtml(p.school || '')})</span>${mine ? ` <button class="btn btn-gold" onclick="castPreparedSpell('${appId}')">Cast</button>` : ''}</div>`;
