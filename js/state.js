@@ -28,7 +28,7 @@ async function loadState() {
     state.activeChar = (remembered && characters[remembered]) ? remembered : (Object.keys(characters)[0] || null);
   } catch (e) {
     console.error('Failed to load characters from Supabase', e);
-    alert('Could not load your characters. Check your connection and try reloading the page.');
+    appAlert('Could not load your characters. Check your connection and try reloading the page.');
   }
 }
 
@@ -272,10 +272,10 @@ function addNewChoice(listKey, value) {
   saveCustomData(custom);
 }
 
-function handleChoiceSelect(selectEl, char, field, listKey) {
+async function handleChoiceSelect(selectEl, char, field, listKey) {
   const val = selectEl.value;
   if (val === '__addnew__') {
-    const newVal = prompt(`Enter a new ${field === 'locale' ? 'Locale' : 'Group'}:`);
+    const newVal = await appPrompt(`Enter a new ${field === 'locale' ? 'Locale' : 'Group'}:`);
     if (newVal && newVal.trim()) {
       addNewChoice(listKey, newVal.trim());
       updateChar(field, newVal.trim());

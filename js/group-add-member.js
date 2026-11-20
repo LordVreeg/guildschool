@@ -10,7 +10,7 @@ async function openAddToGroupModal(groupId) {
     sb.from('profile_lookup').select('id, email').order('email'),
     sb.from('character_lookup').select('id, owner_id, group_id, name, is_npc').order('name')
   ]);
-  if (pErr || cErr) { alert('Failed to load players/characters: ' + (pErr || cErr).message); return; }
+  if (pErr || cErr) { appAlert('Failed to load players/characters: ' + (pErr || cErr).message); return; }
   addToGroupCache = { profiles: profiles || [], characters: characters || [] };
 
   openModal(`
@@ -84,9 +84,9 @@ async function linkCharacterToGroup(groupId) {
   const char = state.characters[appId];
   if (!char) return;
   const rowId = charRowIds[appId];
-  if (!rowId) { alert('This character needs to save at least once (any edit will do) before it can be linked to a group.'); renderGeneralModule(); return; }
+  if (!rowId) { appAlert('This character needs to save at least once (any edit will do) before it can be linked to a group.'); renderGeneralModule(); return; }
   const { error } = await sb.from('characters').update({ group_id: groupId || null }).eq('id', rowId);
-  if (error) { alert('Failed to link character to group: ' + error.message); return; }
+  if (error) { appAlert('Failed to link character to group: ' + error.message); return; }
   char.playGroupId = groupId || null;
   saveState();
   renderGeneralModule();

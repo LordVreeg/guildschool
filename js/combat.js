@@ -79,9 +79,9 @@ function resumeCombat() {
 
 async function createEncounter(groupId) {
   const name = document.getElementById('sc-name').value.trim();
-  if (!name) { alert('Name is required.'); return; }
+  if (!name) { appAlert('Name is required.'); return; }
   const { data, error } = await sb.from('combat_encounters').insert({ group_id: groupId, created_by: currentUser.id, name }).select('id').single();
-  if (error) { alert('Failed to start combat: ' + error.message); return; }
+  if (error) { appAlert('Failed to start combat: ' + error.message); return; }
   closeModal();
   openEncounter(data.id);
 }
@@ -788,7 +788,7 @@ async function runCombatSave(q) {
     try { ({ error } = await save()); } catch (e) { error = e; }
     if (error) {
       q.next = null;
-      alert('Failed to save: ' + (error.message || error));
+      appAlert('Failed to save: ' + (error.message || error));
       renderEncounterModule({ silent: true });
       break;
     }
@@ -798,7 +798,7 @@ async function runCombatSave(q) {
 
 async function updateEncounterField(field, value) {
   if (encounterCache && encounterCache.id === activeEncounterId) { encounterCache[field] = value; repaintEncounterFromCache(); }
-  else { const { error } = await sb.from('combat_encounters').update({ [field]: value }).eq('id', activeEncounterId); if (error) alert('Failed to update: ' + error.message); renderEncounterModule(); return; }
+  else { const { error } = await sb.from('combat_encounters').update({ [field]: value }).eq('id', activeEncounterId); if (error) appAlert('Failed to update: ' + error.message); renderEncounterModule(); return; }
   const encId = activeEncounterId;
   queueCombatSave(`enc:${encId}:${field}`, () => sb.from('combat_encounters').update({ [field]: value }).eq('id', encId));
 }
@@ -830,7 +830,7 @@ async function advanceToNextSegment(encId) {
       if (eff.expires_at_segment != null && eff.expires_at_segment > current) upcoming.push(eff.expires_at_segment);
     }
   }
-  if (!upcoming.length) { alert('No queued actions to advance to.'); return; }
+  if (!upcoming.length) { appAlert('No queued actions to advance to.'); return; }
   const next = Math.min(...upcoming);
   if (encounterCache && encounterCache.id === encId) { encounterCache.current_segment = next; repaintEncounterFromCache(); }
   queueCombatSave(`enc:${encId}:current_segment`, () => sb.from('combat_encounters').update({ current_segment: next }).eq('id', encId));
@@ -838,7 +838,7 @@ async function advanceToNextSegment(encId) {
 
 async function updateCombatantField(id, field, value) {
   const c = combatantsCache.find(x => x.id === id);
-  if (!c) { const { error } = await sb.from('combat_combatants').update({ [field]: value }).eq('id', id); if (error) alert('Failed to update: ' + error.message); renderEncounterModule(); return; }
+  if (!c) { const { error } = await sb.from('combat_combatants').update({ [field]: value }).eq('id', id); if (error) appAlert('Failed to update: ' + error.message); renderEncounterModule(); return; }
   c[field] = value;
   repaintEncounterFromCache();
   queueCombatSave(`cc:${id}:${field}`, async () => {
@@ -925,7 +925,7 @@ function compareQueuedTracks(a, b, byId) {
 async function moveTrackWithinTie(trackId, direction) {
   const track = actionTracksCache.find(t => t.id === trackId);
   if (!track || track.next_segment == null) return;
-  if (!actionTracksCache.some(t => 'tie_order' in t)) { alert('Run schema_v26_track_tie_order.sql in Supabase first -- the up/down arrows need its tie_order column.'); return; }
+  if (!actionTracksCache.some(t => 'tie_order' in t)) { appAlert('Run schema_v26_track_tie_order.sql in Supabase first -- the up/down arrows need its tie_order column.'); return; }
   const byIdLocal = {};
   for (const c of combatantsCache) byIdLocal[c.id] = c;
   const sidelined = c => { const s = (c && c.status) || 'active'; return s === 'waiting' || s === 'killed'; };
@@ -940,7 +940,7 @@ async function moveTrackWithinTie(trackId, direction) {
   [reordered[idx], reordered[targetIdx]] = [reordered[targetIdx], reordered[idx]];
   const results = await Promise.all(reordered.map((t, i) => sb.from('combat_action_tracks').update({ tie_order: i }).eq('id', t.id)));
   const failed = results.find(r => r.error);
-  if (failed) { alert('Failed to reorder: ' + failed.error.message); return; }
+  if (failed) { appAlert('Failed to reorder: ' + failed.error.message); return; }
   renderEncounterModule();
 }
 
@@ -957,14 +957,14 @@ function focusCombatantCard(combatantId) {
 async function removeCombatant(id) {
   if (!await appConfirm('Remove this combatant from the fight?')) return;
   const { error } = await sb.from('combat_combatants').delete().eq('id', id);
-  if (error) { alert('Failed to remove: ' + error.message); return; }
+  if (error) { appAlert('Failed to remove: ' + error.message); return; }
   renderEncounterModule();
 }
 
 async function addActionTrack(combatantId) {
-  const label = prompt('Track label (e.g. "Main Hand", "Off Hand", or leave blank):', '') || '';
+  const label = await appPrompt('Track label (e.g. "Main Hand", "Off Hand", or leave blank):', '') || '';
   const { error } = await sb.from('combat_action_tracks').insert({ combatant_id: combatantId, label, next_segment: null, action_category: null });
-  if (error) { alert('Failed to add track: ' + error.message); return; }
+  if (error) { appAlert('Failed to add track: ' + error.message); return; }
   renderEncounterModule();
 }
 
@@ -977,7 +977,7 @@ async function updateActionTrack(id, field, value) {
   // A tie position only means something at the segment it was set for.
   if (field === 'next_segment' && tracksHaveTieOrder()) patch.tie_order = null;
   const t = actionTracksCache.find(x => x.id === id);
-  if (!t) { const { error } = await sb.from('combat_action_tracks').update(patch).eq('id', id); if (error) alert('Failed to update: ' + error.message); renderEncounterModule(); return; }
+  if (!t) { const { error } = await sb.from('combat_action_tracks').update(patch).eq('id', id); if (error) appAlert('Failed to update: ' + error.message); renderEncounterModule(); return; }
   Object.assign(t, patch);
   repaintEncounterFromCache();
   queueCombatSave(`track:${id}:${field}`, () => sb.from('combat_action_tracks').update(patch).eq('id', id));
@@ -996,7 +996,7 @@ async function nudgeActionTrack(id, delta) {
 
 async function deleteActionTrack(id) {
   const { error } = await sb.from('combat_action_tracks').delete().eq('id', id);
-  if (error) { alert('Failed to delete: ' + error.message); return; }
+  if (error) { appAlert('Failed to delete: ' + error.message); return; }
   renderEncounterModule();
 }
 
@@ -1043,9 +1043,9 @@ function setEffectTargets(key) {
 
 async function addEffect() {
   const label = document.getElementById('eff-label').value.trim();
-  if (!label) { alert('Label is required.'); return; }
+  if (!label) { appAlert('Label is required.'); return; }
   const targetIds = Array.from(document.querySelectorAll('.eff-target-cb:checked')).map(cb => cb.dataset.id);
-  if (!targetIds.length) { alert('Pick at least one combatant who is affected.'); return; }
+  if (!targetIds.length) { appAlert('Pick at least one combatant who is affected.'); return; }
   const durationRaw = document.getElementById('eff-duration').value;
   const expiryRaw = document.getElementById('eff-expiry').value;
   const now = encounterCache ? encounterCache.current_segment : 0;
@@ -1063,7 +1063,7 @@ async function addEffect() {
     return sb.from('combat_combatants').update({ effects }).eq('id', id);
   }));
   const failed = results.find(r => r.error);
-  if (failed) { alert('Failed to add effect: ' + failed.error.message); }
+  if (failed) { appAlert('Failed to add effect: ' + failed.error.message); }
   closeModal();
   renderEncounterModule();
 }
@@ -1074,7 +1074,7 @@ async function removeEffect(combatantId, idx) {
   const effects = (c.effects || []).slice();
   effects.splice(idx, 1);
   const { error } = await sb.from('combat_combatants').update({ effects }).eq('id', combatantId);
-  if (error) { alert('Failed to remove effect: ' + error.message); return; }
+  if (error) { appAlert('Failed to remove effect: ' + error.message); return; }
   renderEncounterModule();
 }
 
@@ -1086,7 +1086,7 @@ async function removeEffectEverywhere(effectId) {
     .filter(c => encounterIsGM || !!(c.character_id && combatOwnerByCharId[c.character_id] === currentUser.id))
     .map(c => sb.from('combat_combatants').update({ effects: c.effects.filter(e => e.effect_id !== effectId) }).eq('id', c.id)));
   const failed = results.find(r => r.error);
-  if (failed) { alert('Failed to remove effect: ' + failed.error.message); return; }
+  if (failed) { appAlert('Failed to remove effect: ' + failed.error.message); return; }
   renderEncounterModule();
 }
 
@@ -1094,7 +1094,7 @@ async function addLogEntry(encId) {
   const combatantId = document.getElementById('log-combatant').value || null;
   const targetId = document.getElementById('log-target').value || null;
   const summary = document.getElementById('log-summary').value.trim();
-  if (!summary) { alert('Action summary is required.'); return; }
+  if (!summary) { appAlert('Action summary is required.'); return; }
   const dealt = document.getElementById('log-dealt').value;
   const taken = document.getElementById('log-taken').value;
   const prevented = document.getElementById('log-prevented').value;
@@ -1109,7 +1109,7 @@ async function addLogEntry(encId) {
     damage_prevented: prevented === '' ? null : parseFloat(prevented),
     created_by: currentUser.id
   });
-  if (error) { alert('Failed to log action: ' + error.message); return; }
+  if (error) { appAlert('Failed to log action: ' + error.message); return; }
   renderEncounterModule();
 }
 
@@ -1124,7 +1124,7 @@ async function openAddCombatantModal() {
     sb.from('bestiary_entries').select('id,name,race').eq('group_id', enc.group_id).eq('is_temp_pc', true),
     sb.from('bestiary_entries').select('*').eq('is_temp_pc', false).order('name', { ascending: true })
   ]);
-  if (rErr || tcErr || fErr) { alert('Failed to load combatant sources: ' + (rErr||tcErr||fErr).message); return; }
+  if (rErr || tcErr || fErr) { appAlert('Failed to load combatant sources: ' + (rErr||tcErr||fErr).message); return; }
   // Custom names ("Barty", "Groll the Gnoll", "Fire LizardBiffin"...) don't
   // always make the underlying creature type obvious, so show it in
   // parentheses when it differs from the name -- that's the thing a GM
@@ -1182,7 +1182,7 @@ async function addCombatantFromSource(kind, sourceId, opts = {}) {
   let row = { encounter_id: activeEncounterId, team: '', manual_order: opts.manualOrder != null ? opts.manualOrder : combatantsCache.length };
   if (kind === 'character') {
     const { data: c, error } = await sb.from('characters').select('id,data').eq('id', sourceId).single();
-    if (error || !c) { alert('Failed to load character: ' + (error?error.message:'not found')); return; }
+    if (error || !c) { appAlert('Failed to load character: ' + (error?error.message:'not found')); return; }
     const hp = computeHP(c.data || {});
     const isCollegium = hp.system === 'collegium';
     const cur = isCollegium ? (hp.physicalCurrent + hp.enduranceCurrent) : hp.currentHP;
@@ -1193,15 +1193,15 @@ async function addCombatantFromSource(kind, sourceId, opts = {}) {
       endurance_current: isCollegium ? hp.enduranceCurrent : null, endurance_max: isCollegium ? hp.enduranceMax : null };
   } else {
     const { data: b, error } = await sb.from('bestiary_entries').select('id,name,max_hp,current_hp,avg_hp,is_temp_pc').eq('id', sourceId).single();
-    if (error || !b) { alert('Failed to load: ' + (error?error.message:'not found')); return; }
+    if (error || !b) { appAlert('Failed to load: ' + (error?error.message:'not found')); return; }
     const max = b.max_hp != null ? b.max_hp : Math.round(b.avg_hp || 0);
     const cur = b.current_hp != null ? b.current_hp : max;
     row = { ...row, bestiary_entry_id: b.id, display_name: b.name, current_hp: cur, max_hp: max, team: b.is_temp_pc ? 'Party' : 'Foes' };
   }
   const { data: inserted, error: insErr } = await sb.from('combat_combatants').insert(row).select('id').single();
-  if (insErr) { alert('Failed to add combatant: ' + insErr.message); return; }
+  if (insErr) { appAlert('Failed to add combatant: ' + insErr.message); return; }
   const { error: trackErr } = await sb.from('combat_action_tracks').insert({ combatant_id: inserted.id, label: '', next_segment: null, action_category: null });
-  if (trackErr) { alert('Combatant added, but failed to create its action track: ' + trackErr.message); }
+  if (trackErr) { appAlert('Combatant added, but failed to create its action track: ' + trackErr.message); }
   if (opts.batch) return;
   closeModal();
   renderEncounterModule();
@@ -1226,7 +1226,7 @@ function openCreateGroupModal() {
 
 async function createGroup() {
   const name = document.getElementById('ng-name').value.trim();
-  if (!name) { alert('Group name is required.'); return; }
+  if (!name) { appAlert('Group name is required.'); return; }
   const year = parseInt(document.getElementById('ng-year').value) || 895;
   const month = parseInt(document.getElementById('ng-month').value) || 0;
   const day = Math.min(60, Math.max(1, parseInt(document.getElementById('ng-day').value) || 1));
@@ -1236,11 +1236,11 @@ async function createGroup() {
   const { data, error } = await sb.from('groups').insert({
     name, created_by: currentUser.id, clock_seconds: clockSeconds
   }).select('id').single();
-  if (error) { alert('Failed to create group: ' + error.message); return; }
+  if (error) { appAlert('Failed to create group: ' + error.message); return; }
   const { error: memErr } = await sb.from('group_members').insert({ group_id: data.id, user_id: currentUser.id, role: 'gm' });
-  if (memErr) { alert('Group created, but failed to add you as its GM: ' + memErr.message); }
+  if (memErr) { appAlert('Group created, but failed to add you as its GM: ' + memErr.message); }
   const { error: volErr } = await sb.from('group_note_volumes').insert({ group_id: data.id, start_seconds: clockSeconds });
-  if (volErr) { alert('Group created, but failed to open its first log volume: ' + volErr.message); }
+  if (volErr) { appAlert('Group created, but failed to open its first log volume: ' + volErr.message); }
   activeGroupId = data.id;
   viewingVolumeId = null;
   closeModal();
@@ -1286,7 +1286,7 @@ async function getActiveVolumeId(groupId) {
 // the 6-hour nightly threshold.
 async function runGroupRecovery(groupId, uptoSeconds, restingMap) {
   const { data: rosterChars, error } = await sb.from('characters').select('id, data').eq('group_id', groupId);
-  if (error) { alert('Failed to load roster for recovery: ' + error.message); return; }
+  if (error) { appAlert('Failed to load roster for recovery: ' + error.message); return; }
   const summaryLines = [];
   const hpRollsQueue = [];
   for (const row of rosterChars || []) {
@@ -1322,13 +1322,13 @@ let restingPromptRoster = [];
 async function maybePromptResting(groupId, nextSeconds, elapsedSeconds) {
   if (elapsedSeconds <= 7200) {
     const { error } = await sb.from('groups').update({ clock_seconds: nextSeconds }).eq('id', groupId);
-    if (error) { alert('Failed to advance time: ' + error.message); return; }
+    if (error) { appAlert('Failed to advance time: ' + error.message); return; }
     await runGroupRecovery(groupId, nextSeconds, {});
     renderGroupModule();
     return;
   }
   const { data: rosterChars, error } = await sb.from('characters').select('id, data').eq('group_id', groupId);
-  if (error) { alert('Failed to load roster: ' + error.message); return; }
+  if (error) { appAlert('Failed to load roster: ' + error.message); return; }
   restingPromptRoster = (rosterChars || []).filter(r => r.data);
   const hours = (elapsedSeconds / 3600).toFixed(1);
   openModal(`
@@ -1392,7 +1392,7 @@ async function confirmRestingPrompt(groupId, nextSeconds) {
     }
   }
   const { error } = await sb.from('groups').update({ clock_seconds: nextSeconds }).eq('id', groupId);
-  if (error) { alert('Failed to advance time: ' + error.message); return; }
+  if (error) { appAlert('Failed to advance time: ' + error.message); return; }
   closeModal();
   await runGroupRecovery(groupId, nextSeconds, restingMap);
   renderGroupModule();
@@ -1506,7 +1506,7 @@ async function setGroupTime(groupId) {
   const minute = Math.min(59, Math.max(0, parseInt(document.getElementById('et-minute').value) || 0));
   const seconds = ronToSeconds({ year, month, day, isLithe, hour, minute, second: 0 });
   const { error } = await sb.from('groups').update({ clock_seconds: seconds }).eq('id', groupId);
-  if (error) { alert('Failed to set time: ' + error.message); return; }
+  if (error) { appAlert('Failed to set time: ' + error.message); return; }
   closeModal();
   renderGroupModule();
 }
@@ -1521,7 +1521,7 @@ async function addGroupNote(groupId) {
   const { error } = await sb.from('group_notes').insert({
     group_id: groupId, author_id: currentUser.id, note: text, game_seconds: group.clock_seconds, visible_to_all: visibleToAll, volume_id: viewingVolumeId
   });
-  if (error) { alert('Failed to add note: ' + error.message); return; }
+  if (error) { appAlert('Failed to add note: ' + error.message); return; }
   renderGroupModule();
 }
 
@@ -1544,10 +1544,10 @@ function selectViewingVolume(volumeId) {
 async function renameVolume(volumeId) {
   const v = groupVolumesCache.find(x => x.id === volumeId);
   if (!v) return;
-  const title = prompt('Title for this log volume (blank to clear):', v.title || '');
+  const title = await appPrompt('Title for this log volume (blank to clear):', v.title || '');
   if (title === null) return;
   const { error } = await sb.from('group_note_volumes').update({ title: title.trim() || null }).eq('id', volumeId);
-  if (error) { alert('Failed to rename: ' + error.message); return; }
+  if (error) { appAlert('Failed to rename: ' + error.message); return; }
   renderGroupModule();
 }
 
@@ -1558,12 +1558,12 @@ async function startNewLogVolume(groupId) {
   const active = groupVolumesCache.find(v => v.end_seconds == null);
   if (active) {
     const { error: closeErr } = await sb.from('group_note_volumes').update({ end_seconds: group.clock_seconds }).eq('id', active.id);
-    if (closeErr) { alert('Failed to close the current log: ' + closeErr.message); return; }
+    if (closeErr) { appAlert('Failed to close the current log: ' + closeErr.message); return; }
   }
   const { data: created, error: createErr } = await sb.from('group_note_volumes')
     .insert({ group_id: groupId, start_seconds: group.clock_seconds })
     .select('id').single();
-  if (createErr) { alert('Failed to start a new log: ' + createErr.message); return; }
+  if (createErr) { appAlert('Failed to start a new log: ' + createErr.message); return; }
   viewingVolumeId = created.id;
   renderGroupModule();
 }

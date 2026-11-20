@@ -53,7 +53,7 @@ async function renderGoesiModal(groupId) {
     sb.from('character_spell_effects').select('id, character_id, spell_name, cast_at_seconds, expires_at_seconds').eq('group_id', groupId).gte('expires_at_seconds', monthStart).lt('expires_at_seconds', monthEnd),
     sb.from('group_notes').select('id, author_id, note, game_seconds, visible_to_all').eq('group_id', groupId).gte('game_seconds', monthStart).lt('game_seconds', monthEnd)
   ]);
-  if (hErr || eErr || nErr) { alert('Failed to load calendar: ' + (hErr||eErr||nErr).message); return; }
+  if (hErr || eErr || nErr) { appAlert('Failed to load calendar: ' + (hErr||eErr||nErr).message); return; }
   goesiCache = { holidays: holidays || [], effects: effects || [], notes: notes || [] };
 
   if (goesiDayDetail) renderGoesiDayDetail(groupId, isGM);
@@ -199,19 +199,19 @@ async function addHoliday(groupId) {
   if (!name || !goesiDayDetail) return;
   const { month, day, isLithe } = goesiDayDetail;
   const { error } = await sb.from('group_holidays').insert({ group_id: groupId, month, day: isLithe ? null : day, is_lithe: isLithe, name });
-  if (error) { alert('Failed to add holiday: ' + error.message); return; }
+  if (error) { appAlert('Failed to add holiday: ' + error.message); return; }
   await renderGoesiModal(groupId);
 }
 
 async function deleteHoliday(groupId, holidayId) {
   const { error } = await sb.from('group_holidays').delete().eq('id', holidayId);
-  if (error) { alert('Failed to remove holiday: ' + error.message); return; }
+  if (error) { appAlert('Failed to remove holiday: ' + error.message); return; }
   await renderGoesiModal(groupId);
 }
 
 async function deleteSpellEffect(groupId, effectId) {
   const { error } = await sb.from('character_spell_effects').delete().eq('id', effectId);
-  if (error) { alert('Failed to remove spell effect: ' + error.message); return; }
+  if (error) { appAlert('Failed to remove spell effect: ' + error.message); return; }
   await renderGoesiModal(groupId);
 }
 
@@ -229,7 +229,7 @@ async function addGoesiNote(groupId) {
   const { error } = await sb.from('group_notes').insert({
     group_id: groupId, author_id: currentUser.id, note: text, game_seconds: gameSeconds, visible_to_all: visibleToAll, volume_id: volumeId
   });
-  if (error) { alert('Failed to add note: ' + error.message); return; }
+  if (error) { appAlert('Failed to add note: ' + error.message); return; }
   await renderGoesiModal(groupId);
 }
 
@@ -237,7 +237,7 @@ async function toggleNoteVisibility(noteId, groupId) {
   const note = groupNotesCache.find(n => n.id === noteId);
   if (!note) return;
   const { error } = await sb.from('group_notes').update({ visible_to_all: !note.visible_to_all }).eq('id', noteId);
-  if (error) { alert('Failed to change visibility: ' + error.message); return; }
+  if (error) { appAlert('Failed to change visibility: ' + error.message); return; }
   renderGroupModule();
 }
 
@@ -281,7 +281,7 @@ async function saveEditedNote(noteId, groupId) {
   const minute = Math.min(59, Math.max(0, parseInt(document.getElementById('en-minute').value) || 0));
   const gameSeconds = ronToSeconds({ year, month, day, isLithe, hour, minute, second: 0 });
   const { error } = await sb.from('group_notes').update({ note: text, game_seconds: gameSeconds }).eq('id', noteId);
-  if (error) { alert('Failed to save note: ' + error.message); return; }
+  if (error) { appAlert('Failed to save note: ' + error.message); return; }
   closeModal();
   renderGroupModule();
 }

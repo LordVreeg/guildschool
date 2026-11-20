@@ -347,7 +347,7 @@ async function deleteGroupContainer(id) {
     if (!await updateGroupItemRow(r.id, { item })) return;
   }
   const { error } = await sb.from('group_items').delete().eq('id', id);
-  if (error) alert('Could not delete: ' + error.message);
+  if (error) appAlert('Could not delete: ' + error.message);
   renderGroupInventoryModule();
 }
 
@@ -401,7 +401,7 @@ async function saveGroupItemFromPopup(d) {
 
 async function updateGroupItemRow(id, patch) {
   const { error } = await sb.from('group_items').update(patch).eq('id', id);
-  if (error) { alert('Could not save: ' + error.message); return false; }
+  if (error) { appAlert('Could not save: ' + error.message); return false; }
   return true;
 }
 async function acceptGroupItem(id, quiet) {
@@ -436,7 +436,7 @@ async function deleteGroupItem(id) {
   const row = groupItemsCache.find(r => r.id === id);
   if (!row || !await appConfirm(`Delete "${(row.item || {}).name || 'this item'}"? It can't be brought back.`, 'Delete')) return;
   const { error } = await sb.from('group_items').delete().eq('id', id);
-  if (error) { alert('Could not delete: ' + error.message); return; }
+  if (error) { appAlert('Could not delete: ' + error.message); return; }
   renderGroupInventoryModule();
   if (row.assigned_char_id && myCharAppIdOfRow(row.assigned_char_id)) syncGroupItemsForMyCharacters(true);
 }
@@ -456,7 +456,7 @@ async function moveGroupItem(id, charId) {
   const row = groupItemsCache.find(r => r.id === id);
   const who = groupItemsRoster.find(c => c.id === charId);
   if (!row || !who) { renderGroupInventoryModule(); return; }
-  if (itemStaysWithGroup(row.item)) { alert('This magical item is not Omni Eyed: it can only be assigned, not given away.'); renderGroupInventoryModule(); return; }
+  if (itemStaysWithGroup(row.item)) { appAlert('This magical item is not Omni Eyed: it can only be assigned, not given away.'); renderGroupInventoryModule(); return; }
   if (!await appConfirm(`Give "${(row.item || {}).name || 'this item'}" to ${who.name || 'this character'}? It leaves the group's inventory and becomes theirs.`, 'Give')) { renderGroupInventoryModule(); return; }
   const appId = myCharAppIdOfRow(charId);
   if (appId && state.characters[appId]) {
@@ -468,7 +468,7 @@ async function moveGroupItem(id, charId) {
     clearTimeout(saveStateTimer); saveStateTimer = null;
     await flushCharactersToSupabase();
     const { error } = await sb.from('group_items').delete().eq('id', row.id);
-    if (error) alert('The item was added to ' + (who.name || 'the character') + ', but could not be taken out of the group: ' + error.message);
+    if (error) appAlert('The item was added to ' + (who.name || 'the character') + ', but could not be taken out of the group: ' + error.message);
   } else {
     if (!await updateGroupItemRow(id, { place: 'delivery', to_char_id: charId, assigned_char_id: null, starred: false })) return;
     dropAssignedCopies(row.id); // it was assigned to one of yours: no longer
@@ -492,14 +492,14 @@ async function giveItemToGroup() {
   const it = char && typeof idx === 'number' && (char.items || [])[idx];
   const groupId = char && char.playGroupId;
   if (!it || !groupId) return;
-  if (it.type === 'Spell Book') { alert("A spell book can't go into the group's inventory."); return; }
+  if (it.type === 'Spell Book') { appAlert("A spell book can't go into the group's inventory."); return; }
   if (!await appConfirm(`Give "${it.name || 'this item'}" to the group? It leaves ${char.name || 'this character'}'s inventory.`, 'Give')) return;
   const isGM = isGroupGM(groupId);
   const item = groupItemPayload(it);
   const def = await groupDefaultContainerId(groupId);
   if (def) item.groupContainer = def;
   const { error } = await sb.from('group_items').insert({ group_id: groupId, place: 'group', item, starred: isGM, created_by: currentUser.id });
-  if (error) { alert(groupItemsErrorText(error)); return; }
+  if (error) { appAlert(groupItemsErrorText(error)); return; }
   const at = char.items.indexOf(it);
   if (at >= 0) char.items.splice(at, 1);
   itemDraft = null; editingItemIdx = null;

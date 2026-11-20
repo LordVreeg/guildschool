@@ -638,7 +638,7 @@ function chatInputKeydown(e) {
 
 function chatShowStatus(text) {
   const el = document.getElementById('chat-status');
-  if (!el) { if (text) alert(text); return; }
+  if (!el) { if (text) appAlert(text); return; }
   el.textContent = text || '';
   el.style.display = text ? '' : 'none';
 }
@@ -1324,9 +1324,9 @@ function saveChatMacro(index) {
   openChatMacros();
   renderChatMacroBar();
 }
-function deleteChatMacro(index) {
+async function deleteChatMacro(index) {
   const char = chatMacroOwner();
-  if (!char || !confirm(`Delete the macro #${char.chatMacros[index].name}?`)) return;
+  if (!char || !await appConfirm(`Delete the macro #${char.chatMacros[index].name}?`, 'Delete')) return;
   char.chatMacros.splice(index, 1);
   saveState();
   openChatMacros();
@@ -1347,10 +1347,10 @@ function openEditChatMessage(id) {
 
 async function saveChatEdit(id) {
   const body = document.getElementById('chat-edit-input').value.trim();
-  if (!body) { alert('A message can\'t be empty. Use Delete to remove it.'); return; }
-  if (DiceRoller.findInline(body).length) { alert('Rolls can\'t be added by editing. Send a new message instead.'); return; }
+  if (!body) { appAlert('A message can\'t be empty. Use Delete to remove it.'); return; }
+  if (DiceRoller.findInline(body).length) { appAlert('Rolls can\'t be added by editing. Send a new message instead.'); return; }
   const { data, error } = await sb.from('group_chat_messages').update({ body }).eq('id', id).select().single();
-  if (error) { alert('Failed to save: ' + error.message); return; }
+  if (error) { appAlert('Failed to save: ' + error.message); return; }
   closeModal();
   const i = chatMessages.findIndex(m => m.id === id);
   if (i >= 0 && data) { chatMessages[i] = data; renderChatMessages('keep'); }
@@ -1381,9 +1381,9 @@ function chatSenderName(m) {
 }
 
 async function deleteChatMessage(id) {
-  if (!confirm('Delete this message?')) return;
+  if (!await appConfirm('Delete this message?', 'Delete')) return;
   const { data, error } = await sb.from('group_chat_messages').update({ deleted_at: new Date().toISOString() }).eq('id', id).select().single();
-  if (error) { alert('Failed to delete: ' + error.message); return; }
+  if (error) { appAlert('Failed to delete: ' + error.message); return; }
   const i = chatMessages.findIndex(m => m.id === id);
   if (i >= 0 && data) { chatMessages[i] = data; renderChatMessages('keep'); }
 }

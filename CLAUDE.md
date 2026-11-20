@@ -63,6 +63,13 @@ commit.
   dropdown. A wiki sync that brings in a new or misspelled type (e.g.
   "Mind>", "Thieve's Tree") puts its skills in a stray group at the end.
   Fix the typo in the data, or add a genuinely new type to the list.
+- **Use the app's own popups, never the browser's dialogs.** Some browsers
+  and embedded views (the Claude preview pane among them) block `alert()`,
+  `confirm()` and `prompt()` without showing anything, so a click seems to do
+  nothing. For a message use `appAlert(text)`; for a yes/no use
+  `await appConfirm(text, okLabel)`; for one typed answer use
+  `await appPrompt(text, default)` (all in `js/modals.js`, on their own layer
+  above any open popup); for anything with more fields use `openModal`.
 - **Themes and font size.** Other → Settings offers themes (Default, Light,
   Dark, Red, Blue, Green, Purple) and a font-size A−/A+, saved in the
   browser and applied to

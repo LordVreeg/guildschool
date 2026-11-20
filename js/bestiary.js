@@ -176,7 +176,7 @@ function archiveSelectedBestiary(archive) {
 async function setBestiaryArchived(ids, archive) {
   const { error } = await sb.from('bestiary_entries').update({ archived: archive }).in('id', ids);
   if (error) {
-    alert(/archived/i.test(error.message)
+    appAlert(/archived/i.test(error.message)
       ? 'The Beastiary archive needs a one-time database update. Run schema_v27_bestiary_archive.sql in the Supabase SQL Editor, then try again.'
       : 'Failed to ' + (archive ? 'archive' : 'restore') + ': ' + error.message);
     return;
@@ -229,7 +229,7 @@ async function loadBestiaryTemplate(key) {
 // can seed future foes the same way a wiki creature does.
 async function saveCurrentAsBestiaryTemplate() {
   const suggested = bestiaryDraft.race || bestiaryDraft.name || '';
-  const name = prompt('Save these stats as a new template. Template name:', suggested);
+  const name = await appPrompt('Save these stats as a new template. Template name:', suggested);
   if (!name || !name.trim()) return;
   const row = {
     name: name.trim(),
@@ -254,7 +254,7 @@ async function saveCurrentAsBestiaryTemplate() {
     notes: bestiaryDraft.notes || null
   };
   const { error } = await sb.from('bestiary_templates').insert({ ...row, created_by: currentUser.id });
-  if (error) { alert('Failed to save template: ' + error.message); return; }
+  if (error) { appAlert('Failed to save template: ' + error.message); return; }
   await fetchCustomBestiaryTemplates();
   renderBestiaryEditor();
 }
@@ -262,13 +262,13 @@ async function saveCurrentAsBestiaryTemplate() {
 async function deleteCustomBestiaryTemplate() {
   const sel = document.getElementById('bf-race-template');
   const key = sel ? sel.value : '';
-  if (!key.startsWith('custom:')) { alert("Select one of your own templates under \"My templates\" first."); return; }
+  if (!key.startsWith('custom:')) { appAlert("Select one of your own templates under \"My templates\" first."); return; }
   const id = key.slice(7);
   const t = customBestiaryTemplates.find(x => x.id === id);
   if (!t) return;
   if (!await appConfirm(`Delete your custom template "${t.name}"? This cannot be undone.`)) return;
   const { error } = await sb.from('bestiary_templates').delete().eq('id', id);
-  if (error) { alert('Failed to delete: ' + error.message); return; }
+  if (error) { appAlert('Failed to delete: ' + error.message); return; }
   await fetchCustomBestiaryTemplates();
   renderBestiaryEditor();
 }
@@ -306,7 +306,7 @@ function openNewTempCharacter(groupId) {
 // here without ever having opened the Beastiary tab this session.
 async function openEditTempCharacter(id) {
   const { data: e, error } = await sb.from('bestiary_entries').select('*').eq('id', id).single();
-  if (error || !e) { alert('Failed to load: ' + (error ? error.message : 'not found')); return; }
+  if (error || !e) { appAlert('Failed to load: ' + (error ? error.message : 'not found')); return; }
   bestiaryEditingId = id;
   bestiaryDraft = e;
   bestiaryDraft.avg_hp = Math.round(bestiaryDraft.avg_hp || 0);
@@ -397,12 +397,12 @@ function rollBestiaryHp(formula, level) {
   return total;
 }
 async function rollBestiaryHpClick() {
-  if (!bestiaryDraft.hp_formula) { alert('Enter an HP formula first.'); return; }
+  if (!bestiaryDraft.hp_formula) { appAlert('Enter an HP formula first.'); return; }
   if (bestiaryDraft.current_hp != null && bestiaryDraft.current_hp !== bestiaryDraft.max_hp) {
     if (!await appConfirm('This foe already has HP tracked (possibly mid-fight). Re-roll and reset Current HP to the new Max HP?')) return;
   }
   const rolled = rollBestiaryHp(bestiaryDraft.hp_formula, bestiaryDraft.level || 1);
-  if (rolled == null) { alert("Couldn't parse the HP formula -- enter Max HP by hand."); return; }
+  if (rolled == null) { appAlert("Couldn't parse the HP formula -- enter Max HP by hand."); return; }
   bestiaryDraft.max_hp = rolled;
   bestiaryDraft.current_hp = rolled;
   fillBlankBestiaryToHits();
@@ -432,7 +432,7 @@ function voidDrText() {
     + tiers.map(([label, val]) => `${label} ${val}`).join(' / ') + '.';
 }
 function showVoidDrModal() {
-  if (!bestiaryDraft) { alert('No foe is currently open for editing.'); return; }
+  if (!bestiaryDraft) { appAlert('No foe is currently open for editing.'); return; }
   const { tiers } = voidDrTiers();
   openModal(`
     <h3>Void Damage Reduction${infoTip(`Protection by weapon quality, ±10 per tier, based on the Protection value above.`)}</h3>
@@ -774,7 +774,7 @@ function renderBestiaryEditor() {
 }
 
 async function saveBestiaryEntry() {
-  if (!bestiaryDraft.name || !bestiaryDraft.name.trim()) { alert('Name is required.'); return; }
+  if (!bestiaryDraft.name || !bestiaryDraft.name.trim()) { appAlert('Name is required.'); return; }
   const row = {
     group_id: bestiaryDraft.group_id || null,
     name: bestiaryDraft.name.trim(),
@@ -815,7 +815,7 @@ async function saveBestiaryEntry() {
   } else {
     ({ error } = await sb.from('bestiary_entries').update(row).eq('id', bestiaryEditingId));
   }
-  if (error) { alert('Failed to save: ' + error.message); return; }
+  if (error) { appAlert('Failed to save: ' + error.message); return; }
   bestiaryEditingId = null;
   bestiaryDraft = null;
   if (bestiaryReturnToGroup) {
@@ -838,14 +838,14 @@ async function duplicateBestiaryEntry(id) {
   row.created_by = currentUser.id;
   row.name = row.name + ' (copy)';
   const { error } = await sb.from('bestiary_entries').insert(row);
-  if (error) { alert('Failed to duplicate: ' + error.message); return; }
+  if (error) { appAlert('Failed to duplicate: ' + error.message); return; }
   renderBestiaryModule();
 }
 
 async function deleteBestiaryEntry(id) {
   if (!await appConfirm('Delete this bestiary entry? This cannot be undone.')) return;
   const { error } = await sb.from('bestiary_entries').delete().eq('id', id);
-  if (error) { alert('Failed to delete: ' + error.message); return; }
+  if (error) { appAlert('Failed to delete: ' + error.message); return; }
   if (bestiaryEditingId === id) { bestiaryEditingId = null; bestiaryDraft = null; }
   renderBestiaryModule();
 }

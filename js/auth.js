@@ -503,7 +503,7 @@ async function openAdminPanel() {
 
 async function toggleApproval(userId, approved) {
   const { error } = await sb.from('profiles').update({ approved }).eq('id', userId);
-  if (error) { alert('Failed to update: ' + error.message); }
+  if (error) { appAlert('Failed to update: ' + error.message); }
   openAdminPanel();
 }
 

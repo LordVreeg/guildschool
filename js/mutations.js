@@ -46,10 +46,10 @@ function updateCCBonus(ccName, value) {
   renderGeneralModule();
 }
 
-function setAllCCBonus() {
+async function setAllCCBonus() {
   const char = state.characters[state.activeChar];
   if (!char) return;
-  const val = prompt('Set this bonus on all 5 Circumstance Checks (e.g. a Luckstone):');
+  const val = await appPrompt('Set this bonus on all 5 Circumstance Checks (e.g. a Luckstone):');
   if (val === null || val.trim() === '') return;
   const num = parseFloat(val) || 0;
   char.ccBonuses = { reflex: num, fortitude: num, will: num, surprise: num, social: num };
@@ -446,10 +446,10 @@ function confirmCompanion() {
   closeModal();
   renderCompanionsModule();
 }
-function removeCompanion(idx) {
+async function removeCompanion(idx) {
   const char = state.characters[state.activeChar];
   const c = char && (char.companions || [])[idx];
-  if (!c || !confirm('Remove ' + (c.name || 'this companion') + '?')) return;
+  if (!c || !await appConfirm('Remove ' + (c.name || 'this companion') + '?', 'Remove')) return;
   char.companions.splice(idx, 1);
   saveState();
   renderCompanionsModule();
@@ -587,14 +587,14 @@ function useUpItemSpell(char, itemIdx, spellIdx) {
 }
 // Use on a potion with an effect (not a spell): one use; when they run out,
 // one potion is gone (the next on its line starts full).
-function usePotionEffect(itemIdx) {
+async function usePotionEffect(itemIdx) {
   const char = state.characters[state.activeChar];
   const it = char && (char.items || [])[itemIdx];
   if (!it || !it.effect) return;
   const uses = potionUses(it);
   const left = (it.effectUsesLeft === undefined ? uses : parseInt(it.effectUsesLeft) || 0) - 1;
   if (left < 0) return;
-  if (left === 0 && !confirm(`Use the last of ${it.name || 'this potion'}${(parseInt(it.qty) || 1) > 1 ? ' (one of ' + it.qty + ')' : ''}?`)) return;
+  if (left === 0 && !await appConfirm(`Use the last of ${it.name || 'this potion'}${(parseInt(it.qty) || 1) > 1 ? ' (one of ' + it.qty + ')' : ''}?`)) return;
   if (left > 0) it.effectUsesLeft = left;
   else if ((parseInt(it.qty) || 1) > 1) { it.qty = (parseInt(it.qty) || 1) - 1; it.effectUsesLeft = uses; }
   else char.items.splice(itemIdx, 1);
@@ -1393,7 +1393,7 @@ function confirmSpellResolve() {
   const hs = hardcastState;
   if (!hs) return;
   const r = readSpellResolve();
-  if (r.gm == null || r.cast == null) { alert('Enter or roll both the GM d50 and the caster d100.'); return; }
+  if (r.gm == null || r.cast == null) { appAlert('Enter or roll both the GM d50 and the caster d100.'); return; }
   hs.gmRoll = r.gm; hs.castRoll = r.cast; hs.finalTarget = r.target;
   const char = state.characters[state.activeChar];
   if (r.success && char && char.playGroupId) {
@@ -1452,7 +1452,7 @@ async function finishSpellCastWithDuration() {
         character_id: rowId, group_id: grp.id, spell_name: hs.spellName,
         cast_at_seconds: castAt, expires_at_seconds: castAt + durationSeconds
       });
-      if (error) alert('Cast succeeded, but failed to save the duration flag: ' + error.message);
+      if (error) appAlert('Cast succeeded, but failed to save the duration flag: ' + error.message);
     }
   }
   hardcastState = null;
@@ -1658,7 +1658,7 @@ function setItemInUse(idx, checked) {
     if (checked) {
       const inHand = char.items.filter(o => o !== it && (o.type === 'Weapon' || o.type === 'Shield') && itemInUse(char, o)).concat([it]);
       const problem = wieldingProblem(inHand);
-      if (problem) { alert(problem + ' Untick something else first.'); renderInventoryModule(); return; }
+      if (problem) { appAlert(problem + ' Untick something else first.'); renderInventoryModule(); return; }
     }
     it.wielded = !!checked;
   }
@@ -1710,7 +1710,7 @@ async function removeItem(idx) {
   const char = state.characters[state.activeChar];
   if (!char || !char.items || !char.items[idx]) return;
   const it = char.items[idx];
-  if (it._groupItem) { alert("This is the group's item. Unassign or delete it on the Group Inventory page."); return; }
+  if (it._groupItem) { appAlert("This is the group's item. Unassign or delete it on the Group Inventory page."); return; }
   // a spell book takes the spells written in it along with it
   const inBook = it.type === 'Spell Book' && it.bookId ? spellsInBook(char, it.bookId) : [];
   if (!await appConfirm(inBook.length ? `Delete the spell book "${it.name || 'this book'}" and the ${inBook.length} spell${inBook.length === 1 ? '' : 's'} in it?` : `Delete "${it.name || 'this item'}" from the inventory?`)) return;
@@ -1872,7 +1872,7 @@ async function deleteSkill(skillId) {
 // says why.
 async function deleteChar() {
   const char = state.characters[state.activeChar];
-  if (!char) { alert('Select a character to delete first.'); return; }
+  if (!char) { appAlert('Select a character to delete first.'); return; }
   if (!await appConfirm(`Delete "${char.name || 'this character'}"? This cannot be undone.`, 'Delete')) return;
   const appId = state.activeChar;
   // a character saved moments ago may still be on its way to Supabase
@@ -1900,7 +1900,7 @@ async function deleteChar() {
 
 function openTransferOwnershipModal() {
   const char = state.characters[state.activeChar];
-  if (!char) { alert('Select a character first.'); return; }
+  if (!char) { appAlert('Select a character first.'); return; }
   openModal(`
     <h3>Transfer Ownership</h3>
     <div class="warn">You will lose access to "${escapeHtml(char.name || 'this character')}" once transferred — the new owner gets full control, and you won't be able to see or edit it anymore (unless you're an admin).</div>

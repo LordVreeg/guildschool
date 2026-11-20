@@ -37,6 +37,51 @@ function appConfirm(message, okLabel) {
   });
 }
 
+// A message in the app's own popup, in place of the browser's alert() (which,
+// like confirm(), doesn't show in every browser or embedded view). Same layer
+// as appConfirm, with one OK; Enter or Escape closes it. Resolves when closed.
+function appAlert(message) {
+  return new Promise(resolve => {
+    const layer = document.createElement('div');
+    layer.id = 'confirm-overlay';
+    layer.innerHTML = `<div id="confirm-box" role="alertdialog" aria-modal="true">
+      <div class="confirm-text">${escapeHtml(String(message == null ? '' : message))}</div>
+      <div class="modal-actions"><button class="btn btn-gold" data-ok="1">OK</button></div>
+    </div>`;
+    const done = () => { document.removeEventListener('keydown', onKey, true); layer.remove(); resolve(); };
+    const onKey = e => { if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); done(); } };
+    layer.addEventListener('click', e => { if (e.target.closest('[data-ok]')) done(); });
+    document.addEventListener('keydown', onKey, true);
+    document.body.appendChild(layer);
+    layer.querySelector('[data-ok]').focus();
+  });
+}
+
+// A typed answer in the app's own popup, in place of the browser's prompt().
+// Resolves to the text (OK / Enter) or null (Cancel / Escape).
+function appPrompt(message, defaultValue) {
+  return new Promise(resolve => {
+    const layer = document.createElement('div');
+    layer.id = 'confirm-overlay';
+    layer.innerHTML = `<div id="confirm-box" role="dialog" aria-modal="true">
+      <div class="confirm-text">${escapeHtml(String(message == null ? '' : message))}</div>
+      <input class="w-full" style="margin-top:8px" value="${escapeHtml(defaultValue == null ? '' : String(defaultValue))}">
+      <div class="modal-actions"><button class="btn btn-dim" data-ok="0">Cancel</button><button class="btn btn-gold" data-ok="1">OK</button></div>
+    </div>`;
+    const input = layer.querySelector('input');
+    const done = ok => { document.removeEventListener('keydown', onKey, true); layer.remove(); resolve(ok ? input.value : null); };
+    const onKey = e => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); }
+      else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); done(true); }
+    };
+    layer.addEventListener('click', e => { const b = e.target.closest('[data-ok]'); if (b) done(b.dataset.ok === '1'); });
+    document.addEventListener('keydown', onKey, true);
+    document.body.appendChild(layer);
+    input.focus();
+    input.select();
+  });
+}
+
 // Other → About: the wiki, the version running (the ?v= tag, see
 // ASSET_VERSION) and credits.
 function openAboutModal() {
@@ -140,7 +185,7 @@ function openAddItemModal(opts) {
 function openEditItemModal(idx) {
   const char = state.characters[state.activeChar];
   if (!char || !char.items || !char.items[idx]) return;
-  if (char.items[idx]._groupItem) { alert("This is the group's item, assigned to " + (char.name || 'this character') + '. Change it on the Group Inventory page.'); return; }
+  if (char.items[idx]._groupItem) { appAlert("This is the group's item, assigned to " + (char.name || 'this character') + '. Change it on the Group Inventory page.'); return; }
   itemPopupTarget = null;
   itemDraft = JSON.parse(JSON.stringify(char.items[idx]));
   if (canSeeGmSecrets(itemDraft)) unveilItemMagic(itemDraft); // the GM sees an item's hidden magic
@@ -918,7 +963,7 @@ function createChar() {
     const gender = document.getElementById('nc-gender-roll').value;
     const rolled = rollNewCharacterData(region, gender === 'Female');
     if (rolled.error) {
-      alert(rolled.error + '\n\nCreating with default attributes instead — adjust race/subrace manually.');
+      appAlert(rolled.error + '\n\nCreating with default attributes instead — adjust race/subrace manually.');
     } else {
       char.attrs = rolled.attrs;
       char.race = rolled.race;
@@ -1161,7 +1206,7 @@ function autoPopulateDropdownChildren(character, parentInst, visited = new Set()
 // (useful for skills trained before a dropdown was added to the catalog).
 function populateAllMissingDropdowns() {
   const char = state.characters[state.activeChar];
-  if (!char) { alert('Select a character first.'); return; }
+  if (!char) { appAlert('Select a character first.'); return; }
   const trained = (char.skills || []).filter(si => {
     const def = !si.dropdownOnly && parseFloat(si.rawXP) > 0 && findSkillDef(si.skillName);
     return def && (!def.templated || WEAPON_CLASSES.includes(si.binding));
@@ -1170,7 +1215,7 @@ function populateAllMissingDropdowns() {
   saveState();
   renderSidebar();
   renderMain();
-  alert(added > 0 ? `Added ${added} dropdown skill(s).` : 'Nothing to add — all dropdown skills are already present.');
+  appAlert(added > 0 ? `Added ${added} dropdown skill(s).` : 'Nothing to add — all dropdown skills are already present.');
 }
 
 function addSkill(skillName) {

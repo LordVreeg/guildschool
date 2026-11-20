@@ -216,7 +216,7 @@ async function archiveGroup(groupId, archive) {
     : `Restore "${g.name}"? It comes back to the group list.`, archive ? 'Archive' : 'Restore');
   if (!ok) return;
   const { error } = await sb.from('groups').update({ archived: archive, archived_at: archive ? new Date().toISOString() : null }).eq('id', groupId);
-  if (error) { alert(`Could not ${archive ? 'archive' : 'restore'} the group: ` + error.message); return; }
+  if (error) { appAlert(`Could not ${archive ? 'archive' : 'restore'} the group: ` + error.message); return; }
   if (archive && activeGroupId === groupId) activeGroupId = null;
   await fetchMyGroups();
   if (!myArchivedGroups.length) groupArchiveView = false;
@@ -251,7 +251,7 @@ async function deleteGroupForGood(groupId) {
   const el = document.getElementById('del-group-name');
   if (!g || !el || el.value.trim() !== g.name) return;
   const { error } = await sb.from('groups').delete().eq('id', groupId);
-  if (error) { alert('Could not delete the group: ' + error.message); return; }
+  if (error) { appAlert('Could not delete the group: ' + error.message); return; }
   closeModal();
   await fetchMyGroups();
   if (!myArchivedGroups.length) groupArchiveView = false;
@@ -288,7 +288,7 @@ async function updateRosterOrderNote(groupId, mode, value) {
   const group = myGroups.find(g => g.id === groupId);
   const notes = { ...((group && group.roster_order_notes) || {}), [mode]: value };
   const { error } = await sb.from('groups').update({ roster_order_notes: notes }).eq('id', groupId);
-  if (error) { alert('Failed to save note: ' + error.message); return; }
+  if (error) { appAlert('Failed to save note: ' + error.message); return; }
   renderGroupModule();
 }
 
@@ -571,7 +571,7 @@ async function moveRosterMember(groupId, characterId, direction) {
   // orderings is currently toggled to.
   const results = await Promise.all(reordered.map((c, i) => sb.rpc('gm_set_roster_order', { p_character_id: c.id, p_order_type: rosterOrderMode, p_order: i })));
   const failed = results.find(r => r.error);
-  if (failed) { alert('Failed to update order: ' + failed.error.message); return; }
+  if (failed) { appAlert('Failed to update order: ' + failed.error.message); return; }
   renderGroupModule();
 }
 
@@ -579,13 +579,13 @@ async function removeRosterMember(characterId) {
   const c = groupRosterCache.find(x => x.id === characterId);
   if (!await appConfirm(`Remove ${c && c.name ? c.name : 'this character'} from the group? The character itself is not deleted.`)) return;
   const { error } = await sb.rpc('gm_remove_character_from_group', { p_character_id: characterId });
-  if (error) { alert('Failed to remove from group: ' + error.message); return; }
+  if (error) { appAlert('Failed to remove from group: ' + error.message); return; }
   renderGroupModule();
 }
 
 async function deleteTempCharacter(id, groupId) {
   if (!await appConfirm('Delete this temp character? This cannot be undone.')) return;
   const { error } = await sb.from('bestiary_entries').delete().eq('id', id);
-  if (error) { alert('Failed to delete: ' + error.message); return; }
+  if (error) { appAlert('Failed to delete: ' + error.message); return; }
   renderGroupModule();
 }

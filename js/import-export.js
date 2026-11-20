@@ -107,8 +107,8 @@ function buildCharacterSheetHtml(char) {
 
 function addCustomSkill() {
   const name = document.getElementById('ns-name').value.trim();
-  if (!name) { alert('Skill name is required.'); return; }
-  if (findSkillDef(name)) { alert('A skill with this name already exists.'); return; }
+  if (!name) { appAlert('Skill name is required.'); return; }
+  if (findSkillDef(name)) { appAlert('A skill with this name already exists.'); return; }
   const skill = {
     type: document.getElementById('ns-type').value,
     name,
@@ -127,7 +127,7 @@ function addCustomSkill() {
   custom.customSkills.push(skill);
   saveCustomData(custom);
   renderUtilitiesModule();
-  alert(`"${name}" added to the master skill list.`);
+  appAlert(`"${name}" added to the master skill list.`);
 }
 
 async function removeCustomSkill(idx) {
@@ -147,9 +147,9 @@ async function addCustomGuildBonus() {
   const guildName = newGuild || existingGuild;
   const skillName = document.getElementById('ge-skill').value.trim();
   const bxp = parseFloat(document.getElementById('ge-bxp').value);
-  if (!guildName) { alert('Pick or name a guild.'); return; }
-  if (!skillName) { alert('Skill name is required.'); return; }
-  if (isNaN(bxp)) { alert('EXPMOD value is required.'); return; }
+  if (!guildName) { appAlert('Pick or name a guild.'); return; }
+  if (!skillName) { appAlert('Skill name is required.'); return; }
+  if (isNaN(bxp)) { appAlert('EXPMOD value is required.'); return; }
   if (!findSkillDef(skillName)) {
     if (!await appConfirm(`"${skillName}" isn't in the master skill list yet. Set the EXPMOD anyway?`)) return;
   }
@@ -160,7 +160,7 @@ async function addCustomGuildBonus() {
   custom.customGuildBonuses[guildName][skillName] = bxp;
   saveCustomData(custom);
   renderUtilitiesModule();
-  alert(`${guildName} — ${skillName}: ${bxp} saved.`);
+  appAlert(`${guildName} — ${skillName}: ${bxp} saved.`);
 }
 
 async function removeCustomGuildBonus(guildName, skillName) {
@@ -199,7 +199,7 @@ function pickJsonFile(onParsed) {
     const reader = new FileReader();
     reader.onload = ev => {
       let parsed;
-      try { parsed = JSON.parse(ev.target.result); } catch (err) { alert('Could not read this file as valid JSON: ' + err.message); return; }
+      try { parsed = JSON.parse(ev.target.result); } catch (err) { appAlert('Could not read this file as valid JSON: ' + err.message); return; }
       onParsed(parsed, file.name);
     };
     reader.readAsText(file);
@@ -234,7 +234,7 @@ let pendingImport = null;
 function importCustomData() {
   pickJsonFile(imported => {
     const r = checkCustomImport(imported);
-    if (r.fatal) { alert(r.fatal); return; }
+    if (r.fatal) { appAlert(r.fatal); return; }
     pendingImport = r;
     const summary = `${r.skills.length} custom skill${r.skills.length === 1 ? '' : 's'} and ${r.rateCount} guild EXPMOD${r.rateCount === 1 ? '' : 's'} to import.`;
     showImportReport('Import Custom Data', summary,
@@ -307,7 +307,7 @@ function exportData() {
 function importData() {
   pickJsonFile(imported => {
     const r = checkCharacterImport(imported);
-    if (r.fatal) { alert(r.fatal); return; }
+    if (r.fatal) { appAlert(r.fatal); return; }
     pendingImport = r;
     const n = Object.keys(r.chars).length;
     const summary = `${n} character${n === 1 ? '' : 's'} to import: ${r.added.length} new, ${r.overwrites.length} replacing one already here.`;

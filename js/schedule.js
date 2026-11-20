@@ -257,8 +257,8 @@ async function saveSession(id) {
   const time = document.getElementById('sch-time').value;
   const tz = document.getElementById('sch-tz').value;
   const hours = parseFloat(document.getElementById('sch-hours').value);
-  if (!date || !time) { alert('Pick a date and a start time.'); return; }
-  if (!(hours >= 0.5 && hours <= 24)) { alert('Length must be between 0.5 and 24 hours.'); return; }
+  if (!date || !time) { appAlert('Pick a date and a start time.'); return; }
+  if (!(hours >= 0.5 && hours <= 24)) { appAlert('Length must be between 0.5 and 24 hours.'); return; }
   const row = {
     title: document.getElementById('sch-title').value.trim() || 'Game session',
     starts_at: new Date(schedZonedToUtcMs(date, time, tz)).toISOString(),
@@ -277,7 +277,7 @@ async function saveSession(id) {
   } else {
     ({ data: saved, error } = await sb.from('game_sessions').insert({ ...row, group_id: groupId, created_by: currentUser.id }).select().single());
   }
-  if (error) { btn.disabled = false; alert('Could not save the game: ' + error.message); return; }
+  if (error) { btn.disabled = false; appAlert('Could not save the game: ' + error.message); return; }
   try { localStorage.setItem('gs_sched_tz', tz); localStorage.setItem('gs_sched_time', time); localStorage.setItem('gs_sched_hours', String(hours)); } catch (e) { /* private mode */ }
 
   // The game is saved; the email goes out in the background so the form closes
@@ -295,7 +295,7 @@ async function cancelSession(id) {
   const s = scheduleCache[id];
   if (!s || !await appConfirm(`Cancel "${s.title}" and email everyone in the group?`)) return;
   const { error } = await sb.from('game_sessions').update({ cancelled_at: new Date().toISOString() }).eq('id', id);
-  if (error) { alert('Could not cancel the game: ' + error.message); return; }
+  if (error) { appAlert('Could not cancel the game: ' + error.message); return; }
   setScheduleNotice('Game cancelled. Emailing the group…', false);
   closeModal();
   renderScheduleModule();
@@ -306,7 +306,7 @@ async function deleteSession(id) {
   const s = scheduleCache[id];
   if (!s || !await appConfirm(`Delete "${s.title}" from the calendar? No email is sent. (Use "Cancel game & email" to tell the players.)`)) return;
   const { error } = await sb.from('game_sessions').delete().eq('id', id);
-  if (error) { alert('Could not delete the game: ' + error.message); return; }
+  if (error) { appAlert('Could not delete the game: ' + error.message); return; }
   setScheduleNotice('Game deleted.', false);
   closeModal();
   renderScheduleModule();
