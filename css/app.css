@@ -206,7 +206,7 @@ body {
 .sidebar-add button { width: 100%; max-width: 160px; min-width: 0; background: rgba(var(--tint-rgb),.1); color: var(--gold); border: 1px solid var(--gold-dim); padding: 5px; font-family: inherit; font-size: calc(12px * var(--fs)); cursor: pointer; }
 .sidebar-add button:hover { background: rgba(var(--tint-rgb),.2); }
 /* MAIN CONTENT */
-#main { flex: 1; overflow-y: auto; padding: 20px; }
+#main { flex: 1; overflow-y: auto; padding: 5px; }
 /* PANELS */
 .panel { background: var(--panel); border: 1px solid var(--border); margin-bottom: 16px; }
 .panel-header { background: var(--header-bg); border-bottom: 1px solid var(--border); padding: 8px 14px; display: flex; align-items: center; gap: 10px; }
