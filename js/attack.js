@@ -69,7 +69,8 @@ async function chatAttackPost(title, rows) {
 // The end result of an attack, which everyone in the group sees (an emote:
 // "Name hits with the Longsword for 14 damage."); the steps above stay between
 // you and the GM.
-// payload: extra for the row, e.g. { att_crit: true } (the chat draws a cut).
+// payload: extra for the row, e.g. { att_crit: true } (the chat draws a cut)
+// or { att_fumble: true } (a banana peel slides down the chat).
 async function chatAttackPublic(text, payload) {
   if (chatTalkToMyself) { const c = chatPostAsChar(); chatLocalLine('emote', text, { sender_name: c ? c.name : 'GM', payload: payload || null }); return true; }
   return chatInsertMessage({ kind: 'emote', body: text, payload: payload || null });
@@ -524,7 +525,7 @@ async function chatAttackFlow() {
         rows.push(['Roll of 97+', `Rolls to hit again: [[${again.expr}]] — ${again.total >= fumbleAt ? 'fumbled again: hits themselves for full damage (or 50/50 with a PC fighting close by)' : 'the GM says if it hits (a miss throws the weapon)'}`, [again]]);
       }
       await chatAttackPost(`${label}: FUMBLE`, rows);
-      await chatAttackPublic(`fumbles with the ${weaponName}!`);
+      await chatAttackPublic(`fumbles with the ${weaponName}!`, { att_fumble: true });
       return;
     }
 

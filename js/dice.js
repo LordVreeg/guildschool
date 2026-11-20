@@ -427,7 +427,7 @@ function toggleDiceAnim() {
 }
 function diceAnimButtonHtml() {
   const on = diceAnimEnabled();
-  return `<button id="dice-anim-btn" class="btn btn-dim" style="font-size:calc(11px * var(--fs));padding:3px 8px" title="Chat animations (dice rolling, critical hits): ${on ? 'on' : 'off'}" onclick="toggleDiceAnim()">🎲 ${on ? 'On' : 'Off'}</button>`;
+  return `<button id="dice-anim-btn" class="btn btn-dim" style="font-size:calc(11px * var(--fs));padding:3px 8px" title="Chat animations (dice rolling, critical hits, fumbles): ${on ? 'on' : 'off'}" onclick="toggleDiceAnim()">🎲 ${on ? 'On' : 'Off'}</button>`;
 }
 
 // The outline of a die with this many sides, in a 100 x 100 box, and how far
@@ -601,8 +601,84 @@ function chatAnimateCrit(msg) {
     setTimeout(() => tray.remove(), 920);
   }, still ? 2000 : 4200);
 }
+// ============================================================
+// A FUMBLE DROPS A BANANA PEEL
+// ============================================================
+// /att's "fumbles with the …!" line carries payload.att_fumble
+// (js/attack.js). When it arrives, a banana peel slides down the chat's
+// message area, skidding as it goes, spins out at the bottom and fades.
+// The same 🎲 button turns it off.
+
+const fumbleAnimSeen = new Set();
+const BANANA_PEEL_SVG = `<svg viewBox="0 0 100 100" aria-hidden="true">
+  <g stroke="#6e4f0c" stroke-width="2" stroke-linejoin="round">
+    <path d="M50 46 C 31 50, 15 66, 7 91 C 22 86, 35 73, 46 58 Z" fill="#f2cf3a"/>
+    <path d="M50 46 C 69 50, 85 66, 93 91 C 78 86, 65 73, 54 58 Z" fill="#f2cf3a"/>
+    <path d="M50 46 C 43 62, 43 80, 50 98 C 57 80, 57 62, 50 46 Z" fill="#f8de6a"/>
+    <path d="M43 50 C 43 38, 46 30, 50 25 C 54 30, 57 38, 57 50 Z" fill="#f2cf3a"/>
+    <rect x="47.5" y="13" width="5" height="14" rx="2" fill="#5a4210"/>
+  </g>
+  <g fill="#8a6418" stroke="none">
+    <circle cx="22" cy="78" r="1.8"/><circle cx="30" cy="68" r="1.2"/>
+    <circle cx="79" cy="80" r="1.8"/><circle cx="70" cy="66" r="1.3"/><circle cx="51" cy="86" r="1.4"/>
+  </g>
+</svg>`;
+function chatAnimateFumble(msg) {
+  if (!msg || !msg.id || fumbleAnimSeen.has(msg.id)) return;
+  fumbleAnimSeen.add(msg.id);
+  if (!diceAnimEnabled() || msg.deleted_at || !(msg.payload && msg.payload.att_fumble)) return;
+  if (msg.created_at && Date.now() - new Date(msg.created_at).getTime() > 60000) return;
+  const box = document.getElementById('chat-messages');
+  if (!box) return;
+  const rect = box.getBoundingClientRect();
+  if (rect.width < 80 || rect.height < 80) return;
+  const W = rect.width, H = rect.height;
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const tray = document.createElement('div');
+  tray.className = 'banana-tray';
+  Object.assign(tray.style, { left: rect.left + 'px', top: rect.top + 'px', width: W + 'px', height: H + 'px' });
+  document.body.appendChild(tray);
+
+  const fs = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fs')) || 1;
+  const size = Math.round(Math.min(72 * fs, W * 0.3, H * 0.3));
+  const peel = document.createElement('div');
+  peel.className = 'banana-peel';
+  peel.style.width = peel.style.height = size + 'px';
+  peel.innerHTML = BANANA_PEEL_SVG;
+  tray.appendChild(peel);
+
+  // from near the top on one side, sliding down and across, a skid each way,
+  // then a spin-out at the bottom
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  const x0 = dir > 0 ? W * rnd(0.05, 0.25) : W * rnd(0.55, 0.75) - size * 0.5;
+  const x1 = Math.max(0, Math.min(W - size, x0 + dir * W * rnd(0.3, 0.45)));
+  const yEnd = H - size * 0.9;
+  const x = t => x0 + (x1 - x0) * t;
+  const tilt = dir * 25;
+  const endRot = dir * rnd(320, 420);
+  if (still) {
+    peel.style.transform = `translate(${x1}px, ${yEnd}px) rotate(${tilt}deg)`;
+  } else {
+    peel.animate([
+      { transform: `translate(${x(0)}px, ${-size}px) rotate(${-tilt}deg)`, offset: 0 },
+      { transform: `translate(${x(0.25) + dir * 14}px, ${yEnd * 0.22}px) rotate(${tilt}deg)`, offset: 0.25 },
+      { transform: `translate(${x(0.45) - dir * 18}px, ${yEnd * 0.46}px) rotate(${-tilt * 1.4}deg)`, offset: 0.45 },
+      { transform: `translate(${x(0.7) + dir * 20}px, ${yEnd * 0.74}px) rotate(${tilt * 1.6}deg)`, offset: 0.7 },
+      { transform: `translate(${x(0.9)}px, ${yEnd}px) rotate(${tilt}deg)`, offset: 0.86 },
+      { transform: `translate(${x1}px, ${yEnd}px) rotate(${endRot}deg)`, offset: 1 }
+    ], { duration: 1900, easing: 'cubic-bezier(.45,.05,.55,.95)', fill: 'forwards' });
+  }
+  setTimeout(() => {
+    tray.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: 'forwards' });
+    setTimeout(() => tray.remove(), 620);
+  }, still ? 1800 : 3000);
+}
+
 // Everything a new chat message sets off.
 function chatAnimateMessage(msg) {
   chatAnimateRolls(msg);
   chatAnimateCrit(msg);
+  chatAnimateFumble(msg);
 }
