@@ -1236,16 +1236,21 @@ function spellPrepProblems(char, idx) {
   for (const school of Object.keys(cat.costs)) { const pool = COST_KEY_TO_POOL[school] || `${school} SP`; if (pool !== 'Spirit SP') all[pool] = true; }
   return Object.keys(all).length && !shortOf(all).length ? [] : plain;
 }
+// Why a spell can't be prepared, in the app's own popup (the browser's alert
+// box doesn't show everywhere, and can be switched off).
+function prepMessage(html) {
+  openModal(`<h3>Can't prepare</h3><div class="warn">${html}</div><div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">OK</button></div>`);
+}
 async function prepareSpell(idx) {
   const char = state.characters[state.activeChar];
   const sp = char && (char.spellbook || [])[idx];
   if (!sp) return;
-  if (char.preparedSpell) { alert(`${char.name || 'This character'} is already preparing ${char.preparedSpell.name}. Cast it or Cancel Prep first.`); return; }
+  if (char.preparedSpell) { prepMessage(`${escapeHtml(charDisplayName(char) || 'This character')} is already preparing ${escapeHtml(char.preparedSpell.name)}. Cast it or Cancel Prep first.`); return; }
   const encounterId = await characterActiveCombat(char, true);
-  if (!encounterId) { alert(`${char.name || 'This character'} isn't in an active combat, so there's nothing to prepare for.`); renderSpellModule(); return; }
+  if (!encounterId) { renderSpellModule(); prepMessage(`${escapeHtml(charDisplayName(char) || 'This character')} isn't in an active combat, so there's nothing to prepare for.`); return; }
   if (char.playGroupId) { const grp = myGroups.find(g => g.id === char.playGroupId); if (grp) settleCharacterRecovery(char, grp.clock_seconds, {}); }
   const problems = spellPrepProblems(char, idx);
-  if (problems.length) { alert(`Not enough spell points to cast ${sp.name}:\n` + problems.join('\n')); renderSpellModule(); return; }
+  if (problems.length) { renderSpellModule(); prepMessage(`Not enough spell points to cast ${escapeHtml(sp.name)}:<br>` + problems.map(escapeHtml).join('<br>')); return; }
   char.preparedSpell = { name: sp.name, school: sp.school, book: sp.book || '', encounterId, at: new Date().toISOString() };
   saveState();
   announceCharacterChange(state.activeChar);
@@ -1264,7 +1269,7 @@ function cancelSpellPrep() {
 function castPreparedSpell(appId) {
   const char = state.characters[appId];
   const idx = preparedSpellIdx(char);
-  if (idx < 0) { alert(char && char.preparedSpell ? `${char.preparedSpell.name} isn't in ${char.name || 'the'}'s spell list any more.` : 'No spell is prepared.'); return false; }
+  if (idx < 0) { prepMessage(char && char.preparedSpell ? `${escapeHtml(char.preparedSpell.name)} isn't in ${escapeHtml(charDisplayName(char) || 'the character')}'s spell list any more.` : 'No spell is prepared.'); return false; }
   if (state.activeChar !== appId) {
     state.activeChar = appId;
     if (!CHAT_WINDOW) { try { localStorage.setItem('gs_active_char', appId); } catch (e) {} const sel = document.getElementById('char-select'); if (sel) sel.value = appId; renderSidebar(); }
