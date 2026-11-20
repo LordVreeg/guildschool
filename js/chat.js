@@ -248,6 +248,18 @@ window.addEventListener('focus', async () => {
   const keep = state.activeChar;
   await loadState();
   if (keep && state.characters[keep]) state.activeChar = keep;
+  // The fights may have changed in the main window: refresh the foes in "Post as" (keeping any draft)
+  if (chatPageOpen() && chatIsGM()) {
+    const names = () => chatFoes.map(f => f.name).join('|');
+    const before = names();
+    await chatLoadFoes();
+    if (names() !== before) {
+      const draft = (document.getElementById('chat-input') || {}).value || '';
+      renderChatComposer();
+      const ta = document.getElementById('chat-input');
+      if (ta) ta.value = draft;
+    }
+  }
 });
 
 function onChatChange(payload) {
@@ -331,6 +343,46 @@ async function selectChatGroup(groupId) {
   loadChatMessages(false);
 }
 
+// ---------- foes the GM can speak and attack as ----------
+// The foes in this group's active or paused fights (by their name in the
+// fight, "Goblin 2") and the group's own Beastiary foes, each with its
+// Beastiary entry so /att can use its attacks. GM only. Names are what "Post
+// as" lists (as a name, like an NPC); /att and /prot read the entry (js/attack.js).
+let chatFoes = [];   // [{ name, entry (or null), combatant (or null), source }]
+async function chatLoadFoes(groupId) {
+  groupId = groupId || chatGroupId;
+  if (!chatIsGM()) { chatFoes = []; return; }
+  const foes = [];
+  const seen = new Set();
+  const add = f => { const k = f.name.trim().toLowerCase(); if (!k || seen.has(k)) return; seen.add(k); foes.push(f); };
+  try {
+    const { data: encs } = await sb.from('combat_encounters').select('id').eq('group_id', groupId).in('status', ['active', 'paused']);
+    const encIds = (encs || []).map(e => e.id);
+    if (encIds.length) {
+      const { data: ccs } = await sb.from('combat_combatants').select('*').in('encounter_id', encIds).order('manual_order', { ascending: true });
+      const foeCCs = (ccs || []).filter(c => !c.character_id && c.display_name);
+      const entryIds = [...new Set(foeCCs.map(c => c.bestiary_entry_id).filter(Boolean))];
+      const byId = {};
+      if (entryIds.length) {
+        const { data: entries } = await sb.from('bestiary_entries').select('*').in('id', entryIds);
+        for (const e of entries || []) byId[e.id] = e;
+      }
+      for (const c of foeCCs) {
+        const e = c.bestiary_entry_id ? byId[c.bestiary_entry_id] : null;
+        if (e && e.is_temp_pc) continue;   // a temp character is listed under Temp characters
+        add({ name: c.display_name, entry: e || null, combatant: c, source: 'Foes in combat' });
+      }
+    }
+    const { data: own } = await sb.from('bestiary_entries').select('*').eq('group_id', groupId).eq('is_temp_pc', false);
+    for (const e of own || []) if (e.archived !== true) add({ name: e.name, entry: e, combatant: null, source: 'Foes (Beastiary)' });
+  } catch (e) { console.error('Failed to load foes for chat', e); }
+  if (groupId === chatGroupId) chatFoes = foes;
+}
+function chatFindFoe(name) {
+  const n = String(name || '').trim().toLowerCase();
+  return chatFoes.find(f => f.name.trim().toLowerCase() === n) || null;
+}
+
 async function loadChatRoster() {
   const groupId = chatGroupId;
   const [{ data, error }, temps] = await Promise.all([
@@ -340,6 +392,7 @@ async function loadChatRoster() {
   if (groupId !== chatGroupId) return;
   chatRoster = error ? [] : (data || []);
   chatTempNames = temps.error ? [] : (temps.data || []).map(t => t.name).filter(Boolean);
+  await chatLoadFoes(groupId);
 }
 
 function renderChatGroupTabs() {
@@ -387,6 +440,8 @@ function chatPostAsOptions(groupId) {
   if (current && current.name) named(current.name, current.name);
   chatRoster.filter(r => r.is_npc).map(r => r.name).sort((a, b) => a.localeCompare(b)).forEach(n => named(n, n, 'NPCs'));
   chatTempNames.slice().sort((a, b) => a.localeCompare(b)).forEach(n => named(n, n, 'Temp characters'));
+  const foeSections = ['Foes in combat', 'Foes (Beastiary)'];
+  chatFoes.slice().sort((a, b) => foeSections.indexOf(a.source) - foeSections.indexOf(b.source) || a.name.localeCompare(b.name, undefined, { numeric: true })).forEach(f => named(f.name, f.name, f.source));
   opts.push({ value: '', label: 'GM' });
   return opts;
 }

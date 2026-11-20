@@ -26,6 +26,17 @@ dice syntax, inline rolls, macros and roll queries.
   group's NPCs and temp characters, and as **GM**. Posting as a name works
   like `/as` and `/emas`. It starts on the selected character; after that
   the choice is remembered for each group.
+- **Foes (GM):** Post as also lists **Foes in combat** (each foe in the
+  group's active or paused fights, by its name there, such as "Goblin 2")
+  and **Foes (Beastiary)** (the group's own Beastiary foes that aren't
+  archived), so the GM can talk as a foe, whisper as it (To), and use `/att`
+  and `/prot` for it. Choose the foe, then type `/att`: it picks the attack
+  from the foe's Beastiary entry (asking which if it has several), rolls the
+  same steps as a character's attack, and asks you for the target's AV.
+  To-hit is the attack's own number, else Bmod × Max HP; crit and fumble are
+  the ones the Beastiary shows; the entry's **Multi** is used as its
+  Multiple Attack skill. `/prot` with no number fills in the foe's Protection.
+  The list refreshes when the chat window is clicked back into.
 - If none of your characters is in the group, you can read the chat but
   not post.
 - Your sender name always comes from the character, so nobody can post

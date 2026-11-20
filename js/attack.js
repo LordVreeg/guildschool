@@ -368,8 +368,12 @@ async function chatProtFlow() {
     const v = sel ? sel.value : '';
     if (v.startsWith(CHAT_AS_PREFIX) && chatIsGM()) {
       who = v.slice(CHAT_AS_PREFIX.length).trim();
-      const { data } = await sb.from('bestiary_entries').select('name, protection, armor_name, shield_name').eq('group_id', chatGroupId).eq('name', who).limit(1);
-      const e = data && data[0];
+      const foe = chatFindFoe(who);   // a foe in combat ("Goblin 2") or the group's Beastiary: its entry
+      let e = foe && foe.entry;
+      if (!e) {
+        const { data } = await sb.from('bestiary_entries').select('name, protection, armor_name, shield_name').eq('group_id', chatGroupId).eq('name', who).limit(1);
+        e = data && data[0];
+      }
       if (e && e.protection !== null && e.protection !== undefined && e.protection !== '') {
         value = Math.round(parseFloat(e.protection) || 0);
         detail = `From ${who}'s Bestiary entry${e.armor_name ? ` (${e.armor_name}${e.shield_name ? ' and ' + e.shield_name : ''})` : ''}.`;
@@ -438,7 +442,10 @@ async function attSheetFor() {
   const name = v.slice(CHAT_AS_PREFIX.length).trim();
   if (!chatIsGM()) return null;
   const row = chatRoster.find(r => (r.name || '').trim().toLowerCase() === name.toLowerCase());
-  if (!row) throw new Error(`${name} has no character sheet (a temp character or a Bestiary foe), so there is nothing for /att to attack from.`);
+  if (!row) {
+    if (chatFindFoe(name)) return null;   // a foe: it attacks from its Beastiary entry (chatFoeAttackFlow)
+    throw new Error(`${name} has no character sheet (a temp character), so there is nothing for /att to attack from.`);
+  }
   const { data, error } = await sb.from('characters').select('id, data').eq('id', row.id).single();
   if (error || !data || !data.data) throw new Error(`Couldn't read ${name}'s sheet${error ? ': ' + error.message : ''}.`);
   return data.data;
@@ -446,7 +453,12 @@ async function attSheetFor() {
 
 async function chatAttackFlow() {
   const char = await attSheetFor();
-  if (!char) throw new Error('/att attacks as a character with a sheet: pick one of your characters under "Post as", or (as GM) an NPC.');
+  if (!char) {
+    const sel = document.getElementById('chat-post-as');
+    const foe = sel && sel.value.startsWith(CHAT_AS_PREFIX) && chatIsGM() ? chatFindFoe(sel.value.slice(CHAT_AS_PREFIX.length)) : null;
+    if (foe) return chatFoeAttackFlow(foe);
+    throw new Error('/att attacks as a character with a sheet: pick one of your characters under "Post as", or (as GM) an NPC or a foe.');
+  }
 
   // 1. the weapon: everything in hand, one choice per grip / throw
   const options = [];
@@ -485,17 +497,24 @@ async function chatAttackFlow() {
     const m = w2.missile;
     if (m.effectiveRange > 0) rangeRow = ['Range', `${dist} of ${Math.round(m.effectiveRange)}: to hit × ${Math.round(m.rangeMod * 100) / 100}${m.rangeMod === 0 ? ' (out of range)' : ''}`];
   }
+  const who = char.name || 'Attacker';
+  const weaponName = (it.name || 'weapon').replace(/\s*\(spike\)$/i, ' spike');
+  const skill = Math.round(w.multipleAttackSkval || 0);
+  const noMulti = line.grip === 'Throw' ? 'a thrown weapon leaves the hand' : /crossbow/i.test(it.weaponClass || '') ? 'crossbows have to be spanned between shots' : '';
+  return attRunSequence({ who, it, line, weaponName, rangeRow, skill, noMulti });
+}
+
+// Steps 2-4 of an attack, for anyone: a character's weapon line or a foe's
+// attack (chatFoeAttackFlow builds the same `it` / `line` shapes).
+//   o.skill: the Multiple Attack skill, o.noMulti: why there is no multiple attack
+async function attRunSequence(o) {
+  const { who, it, line, weaponName, rangeRow, skill, noMulti } = o;
   const stats = attStats(line);
   const toHit = Math.round(stats.hit);
   const critAt = Math.max(0, Math.floor(Math.round(stats.crit)));
   const fumbleAt = Math.min(100, Math.round(stats.fumble));
-  const who = char.name || 'Attacker';
-  const weaponName = (it.name || 'weapon').replace(/\s*\(spike\)$/i, ' spike');
-  const weaponLabel = `${it.name || 'Weapon'} (${attGripLabel(line)})`;
 
   // 2. Multiple Attack: a d100 at or under the skill gives 2 attacks, +1 per full 25 under
-  const skill = Math.round(w.multipleAttackSkval || 0);
-  const noMulti = line.grip === 'Throw' ? 'a thrown weapon leaves the hand' : /crossbow/i.test(it.weaponClass || '') ? 'crossbows have to be spanned between shots' : '';
   let attacks = 1;
   const head = [['Weapon', `${it.name || 'Weapon'} — ${attGripLabel(line)}`]];
   if (rangeRow) head.push(rangeRow);
@@ -570,4 +589,57 @@ async function chatAttackFlow() {
     const flavor = attFlavor(dmg.total, dmg.eff);
     await chatAttackPublic(`${crit ? 'critically hits' : 'hits'} with the ${weaponName} for ${dmg.total} damage${flavor.length ? ' — ' + flavor.join(', ') : ''}.`, crit ? { att_crit: true } : null);
   }
+}
+
+// ---------- a foe's attack ----------
+// The GM attacks as a foe (Post as a foe in combat or in the group's Beastiary):
+// the attack comes from its Beastiary entry and runs through the same steps as
+// a character's. To-hit is the attack's own, else Bmod × Max HP; crit and
+// fumble come from bestiaryCritFumble (the same numbers the Beastiary shows);
+// the entry's Multi is used as its Multiple Attack skill.
+
+// "d6+12" -> "1d6+12", so every term is NdM or a number.
+function attFoeDice(expr) {
+  return String(expr).replace(/\s+/g, '').split('+').filter(Boolean).map(t => /^[dD]\d+$/.test(t) ? '1' + t.toLowerCase() : t).join('+');
+}
+// An entry attack's damage: { dice, sides (the dividing die, 0 = none), after (flat after dividing) }, or null if unreadable.
+//   - with a catalog weapon, damageDice is its dice and the dividing die comes from the weapon
+//   - otherwise the wiki's "((2d4+11)/D6)+0" notation, or plain dice with no dividing die
+function attFoeDamage(a) {
+  const text = String(a.damageDice || '').trim();
+  if (!text) return null;
+  const def = a.weaponName ? WEAPONS.find(w => w.name === a.weaponName) : null;
+  if (def && def.dividing_die && avgDiceExprValue(attFoeDice(text)) != null) return { dice: attFoeDice(text), sides: parseFloat(def.dividing_die) || 0, after: 0 };
+  const m = text.match(/\(\(([^)]+)\)\s*\/\s*[dD](\d+)\)\s*\+?\s*(-?\d+(?:\.\d+)?)?/);
+  if (m && avgDiceExprValue(attFoeDice(m[1])) != null) return { dice: attFoeDice(m[1]), sides: parseInt(m[2], 10), after: m[3] ? parseFloat(m[3]) : 0 };
+  if (avgDiceExprValue(attFoeDice(text)) != null) return { dice: attFoeDice(text), sides: 0, after: 0 };
+  return null;
+}
+
+async function chatFoeAttackFlow(foe) {
+  const e = foe.entry;
+  if (!e) throw new Error(`${foe.name} isn't linked to a Beastiary entry, so it has no attacks for /att.`);
+  const attacks = (e.attacks || []).filter(a => a && (a.name || a.weaponName || a.damageDice));
+  if (!attacks.length) throw new Error(`${foe.name} has no attacks in its Beastiary entry.`);
+  let a = attacks[0];
+  if (attacks.length > 1) {
+    const i = await chatPromptButtons('Attack with which?', `${escapeHtml(foe.name)}'s attacks.`,
+      attacks.map((x, idx) => ({ label: x.name || x.weaponName || `Attack ${idx + 1}`, value: idx })).concat([{ label: 'Cancel', value: null }]));
+    if (i === null) return;
+    a = attacks[i];
+  }
+  const label = a.name || a.weaponName || 'attack';
+  let toHit = parseFloat(a.toHit);
+  if (isNaN(toHit)) {
+    const hp = parseFloat(foe.combatant && foe.combatant.max_hp) || parseFloat(e.max_hp) || parseFloat(e.avg_hp) || 0;
+    toHit = Math.round((parseFloat(e.bmod) || 0) * hp);
+  }
+  if (!(toHit > 0)) throw new Error(`${foe.name}'s ${label} has no to-hit. Set it in its Beastiary entry.`);
+  const dmg = attFoeDamage(a);
+  if (!dmg) throw new Error(`Couldn't read the damage dice of ${foe.name}'s ${label} (“${a.damageDice || ''}”). Fix it in its Beastiary entry.`);
+  const cf = bestiaryCritFumble(toHit, e.crit_bonus);
+  const it = { name: label, damageDice: dmg.dice, dividingDie: dmg.sides };
+  const line = { grip: a.weaponName ? 'weapon attack' : 'natural attack',
+    v: { hit: toHit, critChance: cf.critChance, fumbleThreshold: cf.fumbleThreshold, dmgBeforeDivider: 0, dmgBonus: dmg.after } };
+  return attRunSequence({ who: foe.name, it, line, weaponName: label, rangeRow: null, skill: Math.round(parseFloat(e.multi) || 0), noMulti: '' });
 }
