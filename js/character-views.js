@@ -1058,8 +1058,9 @@ function spellPrepButtonHtml(char, idx, catalogEntry) {
   const prepIdx = preparedSpellIdx(char);
   const style = 'font-size:calc(11px * var(--fs));padding:3px 8px;margin-left:4px';
   if (prepIdx === idx) return `<button class="btn btn-dim spell-prep-on" style="${style}" title="Stop preparing it" onclick="cancelSpellPrep()">Cancel Prep</button>`;
-  if (!catalogEntry || !catalogEntry.costs || (!charInCombatCached(char) && prepIdx < 0)) return '';
-  return `<button class="btn btn-dim" style="${style}" ${prepIdx >= 0 ? `disabled title="Already preparing ${escapeHtml(char.preparedSpell.name)}"` : 'title="Get it ready to cast in this combat"'} onclick="prepareSpell(${idx})">Prepare</button>`;
+  // while one is preparing, the others have no Prepare until it's cast or cancelled
+  if (prepIdx >= 0 || !catalogEntry || !catalogEntry.costs || !charInCombatCached(char)) return '';
+  return `<button class="btn btn-dim" style="${style}" title="Get it ready to cast in this combat" onclick="prepareSpell(${idx})">Prepare</button>`;
 }
 
 function renderSpellModule() {
