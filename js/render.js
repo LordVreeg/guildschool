@@ -284,16 +284,50 @@ function sidebarGroupsHtml(char, view) {
     sidebarGroupsFetched = true;
     fetchMyGroups().then(() => renderSidebar());
   }
+  if (Date.now() - sidebarCombatsFetchedAt > SIDEBAR_COMBAT_REFRESH_MS) refreshSidebarCombats(ids);
   return `<div class="sidebar-section">Group</div>` + ids.map(id => {
     const g = myGroups.find(x => x.id === id);
     const active = (view === 'group' || view === 'groupInventory') && activeGroupId === id ? 'active' : '';
-    return `<div class="sidebar-item sidebar-nav ${active}" data-group="${escapeHtml(id)}" onclick="openSidebarGroup(this.dataset.group)"><span class="nav-icon">👥</span><span>${escapeHtml(g ? g.name : 'Group')}</span></div>`;
+    const enc = sidebarCombats[id];
+    const encActive = enc && view === 'encounter' && typeof activeEncounterId !== 'undefined' && activeEncounterId === enc.id ? 'active' : '';
+    return `<div class="sidebar-item sidebar-nav ${active}" data-group="${escapeHtml(id)}" onclick="openSidebarGroup(this.dataset.group)"><span class="nav-icon">👥</span><span>${escapeHtml(g ? g.name : 'Group')}</span></div>`
+      + (enc ? `<div class="sidebar-item sidebar-nav sidebar-sub sidebar-combat ${encActive}" title="${escapeHtml(enc.name)}" data-enc="${escapeHtml(enc.id)}" data-group="${escapeHtml(id)}" onclick="openSidebarCombat(this.dataset.enc, this.dataset.group)"><span class="nav-icon">⚔</span><span>Combat in progress</span></div>` : '');
   }).join('');
 }
 function openSidebarGroup(id) {
   activeGroupId = id;
   viewingVolumeId = null;
   showGroupModule('char');
+}
+
+// The group's active combat, shown as a link under the group in the sidebar.
+// Combats have no live feed, so this is checked when the sidebar is drawn
+// (at most every 30 seconds) and every 30 seconds while the page is in view.
+const SIDEBAR_COMBAT_REFRESH_MS = 30000;
+let sidebarCombats = {};          // groupId -> { id, name } of its active combat
+let sidebarCombatsFetchedAt = 0;
+async function refreshSidebarCombats(groupIds) {
+  if (typeof sb === 'undefined' || !currentUser) return;
+  if (!groupIds) {
+    const char = state.characters[state.activeChar];
+    groupIds = [char && char.playGroupId].filter(Boolean);
+  }
+  sidebarCombatsFetchedAt = Date.now();
+  if (!groupIds.length) return;
+  const { data, error } = await sb.from('combat_encounters').select('id, name, group_id, updated_at')
+    .in('group_id', groupIds).eq('status', 'active').order('updated_at', { ascending: false });
+  if (error) { console.error('Failed to check for active combats', error); return; }
+  const next = {};
+  for (const e of data || []) if (!next[e.group_id]) next[e.group_id] = { id: e.id, name: e.name };
+  if (JSON.stringify(next) !== JSON.stringify(sidebarCombats)) { sidebarCombats = next; renderSidebar(); }
+}
+setInterval(() => { if (document.visibilityState === 'visible') refreshSidebarCombats(); }, SIDEBAR_COMBAT_REFRESH_MS);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshSidebarCombats(); });
+function openSidebarCombat(encId, groupId) {
+  activeGroupId = groupId;
+  state.activeSkillId = null;
+  openEncounter(encId);
+  renderSidebar();   // after openEncounter, so the link shows as the page open
 }
 
 function renderMain() {
