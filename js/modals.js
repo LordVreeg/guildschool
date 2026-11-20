@@ -62,6 +62,9 @@ function openSettingsModal() {
     <div class="settings-row">
       <label class="check-row"><input type="checkbox" ${char.hideSidebarSkills ? 'checked' : ''} onchange="setCharSetting('hideSidebarSkills', this.checked)"> Hide skills in the left-hand menu${infoTip('Skills stay on the Overview page, which has its own Add Skill button.')}</label>
       <label class="check-row"><input type="checkbox" ${char.hideOverview ? 'checked' : ''} onchange="setCharSetting('hideOverview', this.checked)"> Hide Overview${infoTip('Removes Overview from the left-hand menu; picking a character opens General Info instead. If the skills are hidden too, Add Skill stays in the left-hand menu.')}</label>
+    </div>
+    <div class="settings-row">
+      <label class="check-row"><input type="checkbox" ${char.useNickname ? 'checked' : ''} onchange="setCharSetting('useNickname', this.checked)"> Use Nickname / Title instead of name${infoTip('Shows the Nickname / Title (General Info) in place of the name: in the character list, on the Overview and General Info, and on what this character posts in the chat. Without a Nickname / Title, the name is used.')}</label>
     </div>`;
   const theme = currentTheme();
   openModal(`
@@ -173,7 +176,7 @@ function renderAddItemModal(justAdded) {
     const options = opt('', '— select —', picked === undefined) +
       s.options.map(o => opt(o, s.labelOf ? s.labelOf(o) : o, picked === o)).join('') +
       (s.custom ? opt(ITEM_PICK_CUSTOM, '— custom —', picked === ITEM_PICK_CUSTOM) : '');
-    return field(s.label, `<select class="w-full"  onchange="setItemPick('${s.key}',this.value)">${options}</select>`, s.key === 'type' ? 'md' : 'lg');
+    return field(s.label + ' *', `<select class="w-full" data-req="pick:${s.key}" onchange="setItemPick('${s.key}',this.value)">${options}</select>`, s.key === 'type' ? 'md' : 'lg');
   }).join('');
 
   const hasArmorStats = d.type === 'Armor' || d.type === 'Shield';
@@ -184,7 +187,9 @@ function renderAddItemModal(justAdded) {
   const num = (key, extra) => `<input class="w-full" type="number"  ${extra || ''} ${lock} value="${val(d[key])}" oninput="setAddItemField('${key}',this.value)">`;
   // an item the GM made: only the GM changes its item number and weight
   const gmLock = canEditGmFields(d) ? '' : `disabled title="Set by the GM"`;
-  const needsNo = itemNeedsNumber(d);
+  const needsNo = itemNumberRequired(d);   // only the GM Inventory's magic items, weapons, armor and shields
+  const needsWeight = itemWeightRequired(d);
+  const star = on => on ? ' *' : '';
   const giveToGroup = !forGroup && editing && char.playGroupId && d.type !== 'Spell Book';
   // Omni Eyed: the GM's, on items the GM makes; unticked, players don't see its magic
   const hidden = itemMagicHiddenFromMe(d);
@@ -195,20 +200,25 @@ function renderAddItemModal(justAdded) {
     ${justAdded ? `<div class="note">Added “${escapeHtml(justAdded)}”. Next item:</div>` : ''}
     <div class="form-row">${dropdowns}</div>
     <div class="form-row">
-      ${field('Name', `<input class="w-full" id="ai-name"  ${lock} value="${val(d.name)}" oninput="setAddItemField('name',this.value)">`, 'full')}
+      ${field('Name *', `<input class="w-full" id="ai-name" data-req="name" ${lock} value="${val(d.name)}" oninput="setAddItemField('name',this.value)">`, 'full')}
     </div>
     <div class="form-row">
       ${hasArmorStats ? field('AV', num('av'), 'sm') + field('PR', num('pr'), 'sm') : ''}
       ${field('Qty', num('qty', 'min="1"'), 'sm')}
-      ${field('Item #' + (needsNo ? infoTip('Magic items, weapons, armor and shields need an item number.') : ''), `<input class="w-full" ${lock} ${gmLock} value="${val(d.itemNo)}" oninput="setAddItemField('itemNo',this.value)">`, 'sm one-line-label')}
-      ${field('Unit Weight', d.type === 'Spell Book' ? `<input class="w-full" type="number" value="${SPELL_BOOK_WEIGHT}" disabled title="A spell book always weighs ${SPELL_BOOK_WEIGHT}">` : num('weight', gmLock), 'sm one-line-label')}
+      ${field('Item #' + star(needsNo) + (needsNo ? infoTip('Magic items, weapons, armor and shields in the GM Inventory need an item number.') : ''), `<input class="w-full" data-req="itemNo" ${lock} ${gmLock} value="${val(d.itemNo)}" oninput="setAddItemField('itemNo',this.value)">`, 'sm one-line-label')}
+      ${field('Unit Weight' + star(needsWeight), d.type === 'Spell Book' ? `<input class="w-full" type="number" value="${SPELL_BOOK_WEIGHT}" disabled title="A spell book always weighs ${SPELL_BOOK_WEIGHT}">` : num('weight', gmLock + ' data-req="weight"'), 'sm one-line-label')}
       ${field('Unit Worth', num('worth'), 'sm one-line-label')}
-      ${itemSpellRule(d) === 'potion' ? field('Uses' + infoTip('How many times the potion can be used, for its spell or its effect. When they run out, one potion is used up.'), `<input class="w-full" type="number" min="1" ${lock} value="${val(d.potionUses === undefined ? potionUses(d) : d.potionUses)}" oninput="setAddItemField('potionUses',this.value)">`, 'sm') : ''}
+      ${itemSpellRule(d) === 'potion' ? field('Uses *' + infoTip('How many times the potion can be used, for its spell or its effect. When they run out, one potion is used up.'), `<input class="w-full" type="number" min="1" data-req="potionUses" ${lock} value="${val(d.potionUses === undefined ? potionUses(d) : d.potionUses)}" oninput="setAddItemField('potionUses',this.value)">`, 'sm') : ''}
       ${d.type === 'Magic Item' ? '' : `<div class="form-group" style="justify-content:flex-end">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
           <input type="checkbox" ${lock} ${d.masterwork ? 'checked' : ''} onchange="setAddItemField('masterwork',this.checked);renderAddItemModal()"> Masterwork / Magic
         </label>
       </div>`}
+      ${d.type === 'Weapon' && parseFloat(d.speedMissile) > 0 && !weaponTakesAmmo(d) ? `<div class="form-group" style="justify-content:flex-end">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
+          <input type="checkbox" ${lock} ${d.throwOnlyByCommand ? 'checked' : ''} onchange="setAddItemField('throwOnlyByCommand',this.checked)"> Throw only with /att throw${infoTip("Ticked: chat's /att doesn't offer throwing this weapon alongside its melee attacks; /att throw throws it.")}
+        </label>
+      </div>` : ''}
       ${gmMaking ? `<div class="form-group" style="justify-content:flex-end">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px">
           <input type="checkbox" ${lock} ${d.omniEyed ? 'checked' : ''} onchange="setAddItemField('omniEyed',this.checked)"> Omni Eyed${infoTip("GM only. Ticked: players see the item's magic (modifiers, spells, effect). Unticked: they don't, and it doesn't count for them.")}
@@ -232,8 +242,9 @@ function renderAddItemModal(justAdded) {
       </label>`}
       ${giveToGroup ? `<button class="btn btn-dim" style="margin-right:auto" title="Move it into the group's inventory" onclick="giveItemToGroup()">Give to Group</button>` : ''}
       <button class="btn btn-dim" onclick="itemDraft=null;editingItemIdx=null;itemPopupTarget=null;addNextItem=false;closeModal()">Cancel</button>
-      <button class="btn btn-gold" ${lock} onclick="confirmAddItem()">${editing ? 'Save' : 'Add Item'}</button>
+      <button class="btn btn-gold" id="ai-add" onclick="confirmAddItem()">${editing ? 'Save' : 'Add Item'}</button>
     </div>`, { wide: true, width: 'min(760px, 94vw)', className: 'plain-font' });
+  refreshItemRequired();
 }
 
 // "Quick Add" on the Inventory page: many plain items at once (see

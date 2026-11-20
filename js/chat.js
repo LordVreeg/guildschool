@@ -68,6 +68,7 @@ async function refreshChatUnread() {
   const results = await Promise.all(myGroups.map(g => sb.from('group_chat_messages')
     .select('id', { count: 'exact', head: true })
     .eq('group_id', g.id).neq('author_id', currentUser.id).is('deleted_at', null)
+    .is('payload->>react_to', null)   // a 👍 isn't a message to read
     .gt('created_at', chatLastRead(g.id))));
   const failed = results.find(r => r.error);
   if (failed) {
@@ -185,8 +186,8 @@ function showChatModule() {
 // Docked: "Pop out" to its own window. In its own window: "Pop in" docks it
 // back into the main window (the one that opened it, else any open one).
 function chatPopoutBtn() {
-  if (CHAT_IN_DOCK) return '<button class="btn btn-dim chat-close" title="Open the chat in its own window" onclick="parent.postMessage({gsChat:\'popout\'}, location.origin)">⧉ Pop out</button>';
-  if (CHAT_WINDOW) return '<button class="btn btn-dim chat-close" title="Put the chat back beside the main window" onclick="popChatIn()">⇲ Pop in</button>';
+  if (CHAT_IN_DOCK) return '<button class="btn btn-dim chat-close chat-head-btn" title="Open the chat in its own window" onclick="parent.postMessage({gsChat:\'popout\'}, location.origin)">⧉ Pop out</button>';
+  if (CHAT_WINDOW) return '<button class="btn btn-dim chat-close chat-head-btn" title="Put the chat back beside the main window" onclick="popChatIn()">⇲ Pop in</button>';
   return '';
 }
 function popChatIn() {
@@ -277,7 +278,7 @@ function onChatChange(payload) {
       if (document.visibilityState === 'visible') chatMarkRead(chatGroupId);
       return;
     }
-    if (msg.author_id !== currentUser.id) {
+    if (msg.author_id !== currentUser.id && !(msg.payload && msg.payload.react_to)) {
       chatUnread[msg.group_id] = (chatUnread[msg.group_id] || 0) + 1;
       updateChatMenuBadge();
       if (chatPageOpen()) renderChatGroupTabs();
@@ -304,7 +305,7 @@ async function renderChatModule() {
   if (!groups.length) {
     const c = state.characters[state.activeChar];
     const why = c ? `${escapeHtml(c.name || 'This character')} isn't in a group. Each group has its own chat — ask your GM to add this character to one.` : 'Select a character at the top of the page to see its group\'s chat.';
-    main.innerHTML = `<div class="panel chat-panel"><div class="panel-header"><h2>Chat</h2><div style="flex:1"></div>${chatPopoutBtn()}<button class="btn btn-dim chat-close" title="Close the chat window" onclick="closeChatWindow()">✕</button></div><div class="panel-body"><div class="note">${why}</div></div></div>`;
+    main.innerHTML = `<div class="panel chat-panel"><div class="panel-header"><h2>Chat</h2><div style="flex:1"></div>${chatPopoutBtn()}<button class="btn btn-dim chat-close chat-head-btn" title="Close the chat window" onclick="closeChatWindow()">✕</button></div><div class="panel-body"><div class="note">${why}</div></div></div>`;
     return;
   }
   main.innerHTML = `
@@ -313,9 +314,9 @@ async function renderChatModule() {
         <div style="flex:1"></div>
         <input id="chat-search-input" class="chat-search" type="search" placeholder="Search this chat…" onkeydown="if(event.key==='Enter')searchChat(this.value)">
         ${diceAnimButtonHtml()}
-        <button class="btn btn-dim" style="font-size:calc(11px * var(--fs));padding:3px 8px" onclick="showChatHelp()" title="Commands and dice syntax">? Help</button>
+        <button class="btn btn-dim chat-head-btn" onclick="showChatHelp()" title="Commands and dice syntax">? Help</button>
         ${chatPopoutBtn()}
-        <button class="btn btn-dim chat-close" title="Close the chat window" onclick="closeChatWindow()">✕</button>
+        <button class="btn btn-dim chat-close chat-head-btn" title="Close the chat window" onclick="closeChatWindow()">✕</button>
       </div>
       <div class="panel-body">
         <div id="chat-group-tabs" class="chat-group-tabs"></div>
@@ -415,7 +416,7 @@ function chatIsGM() {
 function chatMyCharacters(groupId) {
   return Object.keys(state.characters)
     .filter(appId => state.characters[appId].playGroupId === groupId && charRowIds[appId])
-    .map(appId => ({ appId, rowId: charRowIds[appId], name: state.characters[appId].name || '(unnamed)' }))
+    .map(appId => ({ appId, rowId: charRowIds[appId], name: charDisplayName(state.characters[appId]) || '(unnamed)' }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -437,7 +438,8 @@ function chatPostAsOptions(groupId) {
     opts.push({ value: CHAT_AS_PREFIX + name, label, section });
   };
   const current = state.characters[state.activeChar];
-  if (current && current.name) named(current.name, current.name);
+  // the selected character, unless it's already listed as one of yours (maybe under its Nickname / Title)
+  if (current && current.name && !mine.some(c => state.characters[c.appId] === current)) named(current.name, current.name);
   chatRoster.filter(r => r.is_npc).map(r => r.name).sort((a, b) => a.localeCompare(b)).forEach(n => named(n, n, 'NPCs'));
   chatTempNames.slice().sort((a, b) => a.localeCompare(b)).forEach(n => named(n, n, 'Temp characters'));
   const foeSections = ['Foes in combat', 'Foes (Beastiary)'];
@@ -809,8 +811,14 @@ function renderChatMessages(mode) {
       prev = null;
     }
   };
+  // 👍 reactions (rows with payload.react_to): counted under the message they're for
+  const reactions = {};
+  for (const r of chatMessages) {
+    if (r.payload && r.payload.react_to && !r.deleted_at) (reactions[r.payload.react_to] = reactions[r.payload.react_to] || []).push(r);
+  }
   for (const m of list) {
     if (m.payload && m.payload.att_reply) continue;   // the GM's private AV answer for /att (js/attack.js): never shown
+    if (m.payload && m.payload.react_to) continue;    // a 👍: shown on its message
     flushMarkers(m.created_at);
     const d = new Date(m.created_at);
     const day = d.toDateString();
@@ -818,8 +826,12 @@ function renderChatMessages(mode) {
     const mine = m.author_id === currentUser.id;
     const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
     const kind = m.kind || 'message';
-    const editable = mine && !m.local && !m.deleted_at && !m.payload && ['message', 'emote', 'ooc', 'desc', 'as', 'emas'].includes(kind);
+    const editable = mine && !m.local && !m.deleted_at && (!m.payload || Object.keys(m.payload).every(k => k === 'as_name')) && ['message', 'emote', 'ooc', 'desc', 'as', 'emas'].includes(kind);
+    const thumbs = reactions[m.id] || [];
+    const iThumbed = thumbs.some(r => r.author_id === currentUser.id);
+    const thumbsHtml = thumbs.length ? `<button class="chat-reaction${iThumbed ? ' mine' : ''}" title="${escapeHtml(thumbs.map(chatSenderName).join(', '))}" onclick="toggleChatThumb('${m.id}')">👍 ${thumbs.length}</button>` : '';
     const actions = m.local || m.deleted_at || chatSearch ? '' : [
+      m.whisper_to ? '' : `<button title="${iThumbed ? 'Take back your thumbs up' : 'Thumbs up'}" onclick="toggleChatThumb('${m.id}')">👍</button>`,
       editable ? `<button onclick="openEditChatMessage('${m.id}')">Edit</button>` : '',
       (mine || isGM) ? `<button onclick="deleteChatMessage('${m.id}')">Delete</button>` : ''
     ].join('');
@@ -827,22 +839,22 @@ function renderChatMessages(mode) {
     const bodyHtml = chatMessageBodyHtml(m);
     let inner;
     if (kind === 'emote' || kind === 'emas') {
-      inner = `<div class="chat-body">${chatWhisperTag(m)} <b>${escapeHtml(m.sender_name || '?')}</b> ${bodyHtml}</div>`;
+      inner = `<div class="chat-body">${chatWhisperTag(m)} <b>${escapeHtml(chatSenderName(m))}</b> ${bodyHtml}</div>`;
       prev = null;
     } else if (kind === 'desc' || kind === 'system') {
       inner = `<div class="chat-body">${chatWhisperTag(m)} ${bodyHtml}</div>`;
       prev = null;
     } else {
       // Back-to-back messages from the same sender within 5 minutes share a header.
-      const continued = prev && prev.author_id === m.author_id && prev.sender_name === m.sender_name && (prev.kind || 'message') === kind
+      const continued = prev && prev.author_id === m.author_id && chatSenderName(prev) === chatSenderName(m) && (prev.kind || 'message') === kind
         && (prev.whisper_label || '') === (m.whisper_label || '') && !!prev.whisper_to === !!m.whisper_to
         && (d - new Date(prev.created_at)) < 5 * 60 * 1000;
       if (continued) classes.push('continued');
-      inner = `${continued ? '' : `<div class="chat-msg-head"><span class="chat-sender">${escapeHtml(m.sender_name || '?')}</span>${kind === 'ooc' ? '<span class="chat-ooc-tag">(OOC)</span>' : ''}${chatWhisperTag(m)}<span class="chat-time">${time}</span></div>`}
+      inner = `${continued ? '' : `<div class="chat-msg-head"><span class="chat-sender">${escapeHtml(chatSenderName(m))}</span>${kind === 'ooc' ? '<span class="chat-ooc-tag">(OOC)</span>' : ''}${chatWhisperTag(m)}<span class="chat-time">${time}</span></div>`}
         <div class="chat-body">${bodyHtml}${m.edited_at && !m.deleted_at ? ' <span class="chat-edited">(edited)</span>' : ''}</div>`;
       prev = m;
     }
-    html += `<div class="${classes.filter(Boolean).join(' ')}" title="${escapeHtml(d.toLocaleString())}">${inner}${actions ? `<div class="chat-actions">${actions}</div>` : ''}</div>`;
+    html += `<div class="${classes.filter(Boolean).join(' ')}" title="${escapeHtml(d.toLocaleString())}">${inner}${thumbsHtml ? `<div class="chat-reactions">${thumbsHtml}</div>` : ''}${actions ? `<div class="chat-actions">${actions}</div>` : ''}</div>`;
   }
   flushMarkers(null);
   box.innerHTML = html;
@@ -1028,6 +1040,8 @@ const CHAT_HELP_HTML = `
   <b>Game rolls</b>
   <table>
     <tr><td>/att &nbsp;or&nbsp; /attack</td><td>Attack with the "Post as" character: picks the weapon in hand, rolls Multiple Attack, then each attack (crit and fumble). The GM is asked privately for the target's AV; the hit, a critical's second roll and the damage follow. The steps go to you and the GM, and the result ("hits for 9 damage" / "whiffs") goes to everyone.</td></tr>
+    <tr><td>/init &nbsp;or&nbsp; /init <i>number</i></td><td>Roll initiative for the "Post as" character: d10 + the weapon's speed (d8 for a throw or missile fire), plus the number (penalties, e.g. /init 1 for unsheathing), plus the current segment. If the group's combat is active, it becomes that character's next segment on the Combat page.</td></tr>
+    <tr><td>/att throw</td><td>The same, throwing a weapon in hand (a dagger, a spear…). A weapon ticked "Throw only with /att throw" in its item popup is only thrown this way; plain /att leaves its throw out.</td></tr>
     <tr><td>/prot <i>number</i></td><td>Armor protection roll: <code>/prot 40</code> rolls <code>(40-d10)/(2d6/2)</code>, rounded, never below 0</td></tr>
     <tr><td>/prot</td><td>The same roll with the "Post as" character's current protection filled in (armor, shield in use, magic, spells, parry); you confirm or change the number first. A temp character takes it from its Bestiary entry.</td></tr>
   </table>
@@ -1085,7 +1099,18 @@ function chatParseCommand(text) {
   switch (name) {
     case 'r': case 'roll': needArg('a roll, e.g. /r 1d20+5'); return { kind: 'roll', body: arg.trim() };
     case 'gr': case 'gmroll': needArg('a roll, e.g. /gr 1d20'); return { kind: 'roll', body: arg.trim(), whisper: { characters: [], gm: true } };
-    case 'att': case 'attack': return { local: 'att' };
+    case 'init': case 'initiative': {
+      // /init or /init 3 (or -2): added to the roll
+      const n = arg.trim();
+      if (n && !/^[+-]?\d+$/.test(n)) throw new Error('/init takes a whole number to add, e.g. /init 2 or /init -1');
+      return { local: 'init', bonus: n ? parseInt(n, 10) : 0 };
+    }
+    case 'att': case 'attack': {
+      // /att throw (or /att t): throw a weapon in hand instead of striking with it
+      const how = arg.trim().toLowerCase();
+      if (how && how !== 'throw' && how !== 't') throw new Error('Use /att to attack, or /att throw to throw the weapon in hand.');
+      return { local: 'att', throw: !!how };
+    }
     case 'prot':
       if (!arg.trim()) return { local: 'prot' };   // no number: fill in the Post-as character's own protection (js/attack.js)
       return { kind: 'roll', body: CHAT_GAME_ROLLS.prot.build(arg) };
@@ -1146,7 +1171,8 @@ async function sendChatMessage(textOverride) {
     msg = chatParseCommand(text);
     if (msg.local === 'help') { showChatHelp(); chatAfterSend(input, typed, textOverride); return; }
     if (msg.local === 'session') { chatAfterSend(input, typed, textOverride); openChatSessionModal(); return; }
-    if (msg.local === 'att') { chatAfterSend(input, typed, textOverride); await chatAttackRun(); return; }
+    if (msg.local === 'init') { chatAfterSend(input, typed, textOverride); await chatInitRun(msg.bonus); return; }
+    if (msg.local === 'att') { chatAfterSend(input, typed, textOverride); await chatAttackRun(msg.throw); return; }
     if (msg.local === 'prot') { chatAfterSend(input, typed, textOverride); await chatProtRun(); return; }
     if (msg.local) { chatLocalLine('system', msg.body); chatAfterSend(input, typed, textOverride); return; }
     // "To" is set: whisper it, unless the line already says who it's for (/w, /gr)
@@ -1188,7 +1214,7 @@ async function sendChatMessage(textOverride) {
 
   if (chatTalkToMyself) {
     const char = chatPostAsChar();
-    chatLocalLine(msg.kind, msg.body, { sender_name: msg.sender_name || (char ? char.name : 'GM'), payload: msg.payload && Object.assign({}, msg.payload, { whisper: undefined }) });
+    chatLocalLine(msg.kind, msg.body, { sender_name: msg.sender_name || (char ? charDisplayName(char) : 'GM'), payload: msg.payload && Object.assign({}, msg.payload, { whisper: undefined }) });
     chatAfterSend(input, typed, textOverride);
     return;
   }
@@ -1212,6 +1238,14 @@ async function chatInsertMessage(msg) {
   if (btn) btn.disabled = true;
   const row = { group_id: chatGroupId, character_id: asSel.value && !asSel.value.startsWith(CHAT_AS_PREFIX) ? asSel.value : null, body: msg.body, kind: msg.kind, payload: msg.payload };
   if (msg.sender_name) row.sender_name = msg.sender_name;
+  else if (row.character_id) {
+    // A character set to go by its Nickname / Title: Supabase fills sender_name
+    // from the character's name, so the name to show rides in the payload
+    // (as_name, read by chatSenderName) for everyone who reads it.
+    const appId = Object.keys(charRowIds).find(k => charRowIds[k] === row.character_id);
+    const c = appId && state.characters[appId];
+    if (c && charDisplayName(c) !== c.name) row.payload = Object.assign({}, row.payload || {}, { as_name: charDisplayName(c) });
+  }
   const { data, error } = await sb.from('group_chat_messages').insert(row).select().single();
   if (btn) btn.disabled = false;
   if (error) { chatShowStatus('Failed to send: ' + error.message); return false; }
@@ -1317,6 +1351,30 @@ async function saveChatEdit(id) {
   closeModal();
   const i = chatMessages.findIndex(m => m.id === id);
   if (i >= 0 && data) { chatMessages[i] = data; renderChatMessages('keep'); }
+}
+
+// 👍 on a message: posted as a small row (payload.react_to) that the chat
+// counts under the message; again takes yours back. Not on whispers.
+async function toggleChatThumb(id) {
+  const mine = chatMessages.find(r => r.payload && r.payload.react_to === id && r.author_id === currentUser.id && !r.deleted_at);
+  if (mine) {
+    const { data, error } = await sb.from('group_chat_messages').update({ deleted_at: new Date().toISOString() }).eq('id', mine.id).select().single();
+    if (error) { chatShowStatus('Could not take it back: ' + error.message); return; }
+    const i = chatMessages.findIndex(m => m.id === mine.id);
+    if (i >= 0 && data) chatMessages[i] = data;
+    renderChatMessages('keep');
+    return;
+  }
+  const target = chatMessages.find(m => m.id === id);
+  if (!target || target.whisper_to || target.local) return;
+  const stick = chatNearBottom();
+  if (await chatInsertMessage({ kind: 'message', body: '👍', payload: { react_to: id } })) renderChatMessages(stick ? 'bottom' : 'keep');
+}
+
+// The name a message is shown under: the Nickname / Title its character posted
+// with (payload.as_name), else the stored sender name.
+function chatSenderName(m) {
+  return (m && m.payload && m.payload.as_name) || (m && m.sender_name) || '?';
 }
 
 async function deleteChatMessage(id) {

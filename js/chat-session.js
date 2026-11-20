@@ -113,7 +113,7 @@ async function chatSessionFetch(from, to) {
     out.push(...(data || []));
     if (!data || data.length < PAGE) break;
   }
-  return out.filter(m => !(m.payload && m.payload.att_reply));   // /att answers are never shown
+  return out.filter(m => !(m.payload && (m.payload.att_reply || m.payload.react_to)));   // /att answers and 👍s are never shown
 }
 
 // ---------- the dialog ----------
@@ -290,7 +290,7 @@ function chatSessionText(title, cur, msgs) {
     const d = new Date(m.created_at);
     if (d.toDateString() !== lastDay) { lastDay = d.toDateString(); lines.push('', `=== ${chatSessionDay(d)} ===`); }
     const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-    const who = m.sender_name || '?', w = chatPlainWhisper(m), body = chatPlainBody(m).replace(/\n/g, '\n    ');
+    const who = chatSenderName(m), w = chatPlainWhisper(m), body = chatPlainBody(m).replace(/\n/g, '\n    ');
     const kind = m.kind || 'message';
     if (kind === 'emote' || kind === 'emas') lines.push(`[${time}] ${w ? w + ' ' : ''}* ${who} ${body}`);
     else if (kind === 'desc') lines.push(`[${time}] ${w ? w + ' ' : ''}— ${body}`);
@@ -321,7 +321,7 @@ function chatSessionHtml(title, cur, msgs) {
     const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
     const kind = m.kind || 'message', w = chatPlainWhisper(m);
     const tag = w ? `<span class="wt">${escapeHtml(w)}</span>` : '';
-    const who = `<span class="who">${escapeHtml(m.sender_name || '?')}</span>${kind === 'ooc' ? ' <span class="wt">(OOC)</span>' : ''}`;
+    const who = `<span class="who">${escapeHtml(chatSenderName(m))}</span>${kind === 'ooc' ? ' <span class="wt">(OOC)</span>' : ''}`;
     const body = `<span class="body">${chatMessageBodyHtml(m)}</span>`;
     let inner;
     if (kind === 'emote' || kind === 'emas') inner = `<span class="t">${time}</span>${tag} ${who} ${body}`;

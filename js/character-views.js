@@ -27,7 +27,7 @@ function renderOverview() {
   // Each section is { key, header, body }; they render in the character's
   // saved order, each collapsible and movable (see overviewSectionsHtml).
   const sections = [];
-  sections.push({ key: 'summary', header: `<h2 style="font-family:var(--font-display);font-style:italic;font-weight:bold">${char.name}</h2>${char.nickname ? `<span class="type-badge" style="font-style:italic">"${char.nickname}"</span>` : ''}${char.isNPC ? '<span class="type-badge" style="color:var(--gold)">NPC</span>' : ''}<span class="type-badge">${char.race || ''} ${char.subrace || ''}</span><span class="type-badge">${char.guild || ''}</span>`, body: `
+  sections.push({ key: 'summary', header: `<h2 style="font-family:var(--font-display);font-style:italic;font-weight:bold">${escapeHtml(charDisplayName(char))}</h2>${char.nickname ? `<span class="type-badge" style="font-style:italic">${charDisplayName(char) === char.name ? '"' + escapeHtml(char.nickname) + '"' : escapeHtml(char.name || '')}</span>` : ''}${char.isNPC ? '<span class="type-badge" style="color:var(--gold)">NPC</span>' : ''}<span class="type-badge">${char.race || ''} ${char.subrace || ''}</span><span class="type-badge">${char.guild || ''}</span>`, body: `
       ${mainGuildBannerHtml(char, false)}
       <div class="form-row" style="margin-bottom:4px">
         ${['ST','IN','WI','CD','HE','CH','AP'].map(a=>`<div class="computed-item"><span class="ci-label">${a}</span><span class="ci-value">${(char.attrs||{})[a]||'—'}</span></div>`).join('')}
@@ -143,7 +143,7 @@ function renderGeneralModule() {
 
   document.getElementById('main').innerHTML = `
   <div class="panel">
-    <div class="panel-header"><h2 style="font-family:var(--font-display);font-style:italic;font-weight:bold">General Information — ${char.name}</h2>
+    <div class="panel-header"><h2 style="font-family:var(--font-display);font-style:italic;font-weight:bold">General Information — ${escapeHtml(charDisplayName(char))}</h2>
       <div class="computed-item" style="margin-left:auto"><span class="ci-label">Total Raw XP</span><span class="ci-value" style="font-size:calc(16px * var(--fs))">${totalXP.toLocaleString()}</span></div>
       ${char.unspentInitialExp > 0 ? `<div class="computed-item"><span class="ci-label">Unspent Initial Raw XP</span><span class="ci-value" style="font-size:calc(16px * var(--fs))">${char.unspentInitialExp.toLocaleString()}</span></div>` : ''}
     </div>
@@ -1376,7 +1376,6 @@ function renderSkillModule(skillId) {
       ${def && def.templated ? '<span class="type-badge" style="color:var(--gold)">TEMPLATED</span>' : ''}
       <span class="${si.dropdownOnly ? 'status-dropdown' : 'status-trained'}">${si.dropdownOnly ? '◈ Dropdown Only' : '◆ Trained'}</span>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button class="btn btn-dim" onclick="showOverview()">← Back</button>
         <button class="btn btn-red" onclick="deleteSkill('${skillId}')">Remove</button>
       </div>
     </div>
@@ -1446,8 +1445,8 @@ function renderSkillModule(skillId) {
 
       <!-- RAW XP -->
       <div class="form-row" style="align-items:flex-end">
-        <div class="form-group"><label>Raw XP</label>
-          <input type="number" class="w-sm" value="${si.rawXP||0}" onchange="updateSkill('${skillId}','rawXP',this.value)">
+        <div class="form-group"><label>Raw XP${infoTip('Add or take off by typing the sum: 100+50 saves 150, 100-20 saves 80. +50 on its own adds 50 to what is there. A missing number counts as 0.')}</label>
+          <input type="text" inputmode="decimal" class="w-sm" value="${si.rawXP||0}" oninput="this.value=this.value.replace(/[^0-9.+\-]/g,'')" onkeydown="if(event.key==='Enter')this.blur()" onchange="setSkillXP('${skillId}',this)">
         </div>
         <div class="computed-item" style="margin-bottom:2px"><span class="ci-label">→ Adj XP</span><span class="ci-value" style="font-size:calc(14px * var(--fs))">${Math.round(vals.adjXP).toLocaleString()}</span></div>
         <div class="computed-item" style="margin-bottom:2px"><span class="ci-label">→ Level</span><span class="ci-value" style="font-size:calc(14px * var(--fs));color:#4a9460">${vals.level}</span></div>

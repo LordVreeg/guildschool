@@ -17,7 +17,7 @@ function renderCharSelect() {
   if (sortSel) sortSel.value = mode;
 
   const charXP = c => (c.skills || []).reduce((sum, si) => sum + (parseFloat(si.rawXP) || 0), 0);
-  const label = c => `${c.name}${c.isNPC ? ' (NPC)' : ''} (${charXP(c).toLocaleString()} XP)`;
+  const label = c => `${charDisplayName(c)}${c.isNPC ? ' (NPC)' : ''} (${charXP(c).toLocaleString()} XP)`;
   const groupName = c => { const g = myGroups.find(x => x.id === c.playGroupId); return g ? g.name : null; };
 
   let html = '<option value="">— select character —</option>';
@@ -221,7 +221,7 @@ function renderSidebar() {
   const navItem = (key, onclick, icon, label) => `<div class="sidebar-item sidebar-nav ${view === key ? 'active' : ''}" onclick="${onclick}"><span class="nav-icon">${icon}</span><span>${label}</span></div>`;
   let html = char.hideOverview ? '' : navItem('overview', 'showOverview()', '📋', 'Overview');
   html += navItem('general', 'showGeneralModule()', '👤', 'General Info');
-  html += navItem('combat', 'showCombatModule()', '⚔', 'Combat');
+  html += navItem('combat', 'showCombatModule()', '⚔', 'Equipped Info');
   if (hasSpiritLevel(char)) html += navItem('spell', 'showSpellModule()', '✦', 'Spells');
   html += navItem('inventory', 'showInventoryModule()', '🎒', 'Inventory');
   html += navItem('companions', 'showCompanionsModule()', '🐾', 'Companions');
@@ -230,7 +230,17 @@ function renderSidebar() {
   // with both the skills and the Overview hidden, Add Skill still needs a home
   else if (char.hideOverview) html += `<div class="sidebar-add"><button onclick="openAddSkillModal()">Add Skill</button></div><hr style="border-color:var(--border);margin:4px 0">`;
   html += sidebarGroupsHtml(char, view);
+  // the app's version (index.html's ?v=), small, at the foot of the menu
+  if (ASSET_VERSION) html += `<div class="sidebar-version">v${escapeHtml(ASSET_VERSION)}</div>`;
   document.getElementById('sidebar').innerHTML = html;
+}
+
+// The name a character goes by: its Nickname / Title when Settings has
+// "Use Nickname / Title instead of name" ticked (and there is one), else its name.
+function charDisplayName(c) {
+  if (!c) return '';
+  const nick = String(c.nickname || '').trim();
+  return c.useNickname && nick ? nick : (c.name || '');
 }
 
 // The sidebar's skills, by type, then Add Skill. Other -> Settings can hide

@@ -22,7 +22,8 @@ let groupItemsRoster = [];    // the group's characters: { id, owner_id, name, i
 let groupItemsError = '';     // why the rows couldn't be loaded ('' = fine)
 let itemPopupTarget = null;   // the item popup saving to group_items: { groupId, place, rowId }
 
-// Magic items, weapons, armor and shields need an item number.
+// Magic items, weapons, armor and shields in the group's or GM's lists need an
+// item number (one added straight to a character doesn't).
 function itemNeedsNumber(it) {
   return !!it && (['Weapon', 'Armor', 'Shield', 'Magic Item'].includes(it.type) || !!it.masterwork);
 }

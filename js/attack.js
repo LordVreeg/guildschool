@@ -60,7 +60,7 @@ async function chatAttackPost(title, rows) {
   const payload = { template: { name: 'default', rows: all.map(r => [r[0], r[1]]) }, inline, whisper: { characters: [], gm: true } };
   if (chatTalkToMyself) {
     const c = chatPostAsChar();
-    chatLocalLine('message', body, { sender_name: c ? c.name : 'GM', payload: Object.assign({}, payload, { whisper: undefined }) });
+    chatLocalLine('message', body, { sender_name: c ? charDisplayName(c) : 'GM', payload: Object.assign({}, payload, { whisper: undefined }) });
     return true;
   }
   return chatInsertMessage({ kind: 'message', body, payload });
@@ -72,7 +72,7 @@ async function chatAttackPost(title, rows) {
 // payload: extra for the row, e.g. { att_crit: true } (the chat draws a cut)
 // or { att_fumble: true } (a banana peel slides down the chat).
 async function chatAttackPublic(text, payload) {
-  if (chatTalkToMyself) { const c = chatPostAsChar(); chatLocalLine('emote', text, { sender_name: c ? c.name : 'GM', payload: payload || null }); return true; }
+  if (chatTalkToMyself) { const c = chatPostAsChar(); chatLocalLine('emote', text, { sender_name: c ? charDisplayName(c) : 'GM', payload: payload || null }); return true; }
   return chatInsertMessage({ kind: 'emote', body: text, payload: payload || null });
 }
 
@@ -355,7 +355,7 @@ async function chatProtFlow() {
   let char = null;
   try { char = await attSheetFor(); } catch (e) { char = null; }   // no sheet is fine here
   if (char) {
-    who = char.name || 'Character';
+    who = charDisplayName(char) || 'Character';
     const armor = computeArmor(char), cur = armor.current;
     value = Math.round(cur.totalPR);
     const parts = [['armor', armor.sumArmorPR], ['shield', armor.wield.shields ? armor.sumShieldPR : 0], ['protection skill', armor.protectionSkval / 5],
@@ -406,7 +406,7 @@ async function chatProtFlow() {
   const r = DiceRoller.roll(expr);
   if (chatTalkToMyself) {
     const c = chatPostAsChar();
-    chatLocalLine('roll', expr, { sender_name: c ? c.name : who, payload: { rolls: [r] } });
+    chatLocalLine('roll', expr, { sender_name: c ? charDisplayName(c) : who, payload: { rolls: [r] } });
     return;
   }
   await chatInsertMessage({ kind: 'roll', body: expr, payload: { rolls: [r] } });
@@ -421,9 +421,9 @@ function chatProtDone(ok) {
   if (resolve) resolve(ok && !isNaN(n) ? n : null);
 }
 
-async function chatAttackRun() {
+async function chatAttackRun(throwIt) {
   try {
-    await chatAttackFlow();
+    await chatAttackFlow(throwIt);
   } catch (e) {
     closeModal();
     chatShowStatus(e.message || String(e));
@@ -451,12 +451,17 @@ async function attSheetFor() {
   return data.data;
 }
 
-async function chatAttackFlow() {
+// throwIt: /att throw -- only throws are offered. Plain /att leaves out the
+// throw of a weapon ticked "Throw only with /att throw" (item.throwOnlyByCommand).
+async function chatAttackFlow(throwIt) {
   const char = await attSheetFor();
   if (!char) {
     const sel = document.getElementById('chat-post-as');
     const foe = sel && sel.value.startsWith(CHAT_AS_PREFIX) && chatIsGM() ? chatFindFoe(sel.value.slice(CHAT_AS_PREFIX.length)) : null;
-    if (foe) return chatFoeAttackFlow(foe);
+    if (foe) {
+      if (throwIt) throw new Error('/att throw is for a character sheet\'s weapons; a foe attacks with /att.');
+      return chatFoeAttackFlow(foe);
+    }
     throw new Error('/att attacks as a character with a sheet: pick one of your characters under "Post as", or (as GM) an NPC or a foe.');
   }
 
@@ -465,9 +470,12 @@ async function chatAttackFlow() {
   for (const entry of combatWeaponEntries(char)) {
     const al = weaponAttackLines(char, entry);
     if (!al) continue;
-    al.lines.filter(l => l.v || l.missile).forEach(line => options.push({ it: al.it, w: al.w, line, label: `${al.it.name || 'Weapon'} — ${attGripLabel(line)}` }));
+    al.lines.filter(l => l.v || l.missile)
+      .filter(l => throwIt ? l.grip === 'Throw' : !(l.grip === 'Throw' && al.it.throwOnlyByCommand))
+      .forEach(line => options.push({ it: al.it, w: al.w, line, label: `${al.it.name || 'Weapon'} — ${attGripLabel(line)}` }));
   }
-  if (!options.length) throw new Error(`${char.name || 'That character'} has no weapon in use. Tick In Use on one of their carried weapons on the Inventory page.`);
+  if (!options.length && throwIt) throw new Error(`${char.name || 'That character'} has nothing in hand to throw. Tick In Use on a weapon that can be thrown (one with a Throw section on the Combat page).`);
+  if (!options.length) throw new Error(`${char.name || 'That character'} has no weapon in use${combatWeaponEntries(char).some(e => e.it && e.it.throwOnlyByCommand) ? ' to strike with (to throw, use /att throw)' : ''}. Tick In Use on one of their carried weapons on the Inventory page.`);
   let pick = options[0];
   if (options.length > 1) {
     const i = await chatPromptButtons('Attack with which?', 'Weapons and grips in hand right now.', options.map((o, idx) => ({ label: o.label, value: idx })).concat([{ label: 'Cancel', value: null }]));
@@ -497,7 +505,7 @@ async function chatAttackFlow() {
     const m = w2.missile;
     if (m.effectiveRange > 0) rangeRow = ['Range', `${dist} of ${Math.round(m.effectiveRange)}: to hit × ${Math.round(m.rangeMod * 100) / 100}${m.rangeMod === 0 ? ' (out of range)' : ''}`];
   }
-  const who = char.name || 'Attacker';
+  const who = charDisplayName(char) || 'Attacker';
   const weaponName = (it.name || 'weapon').replace(/\s*\(spike\)$/i, ' spike');
   const skill = Math.round(w.multipleAttackSkval || 0);
   const noMulti = line.grip === 'Throw' ? 'a thrown weapon leaves the hand' : /crossbow/i.test(it.weaponClass || '') ? 'crossbows have to be spanned between shots' : '';
@@ -642,4 +650,94 @@ async function chatFoeAttackFlow(foe) {
   const line = { grip: a.weaponName ? 'weapon attack' : 'natural attack',
     v: { hit: toHit, critChance: cf.critChance, fumbleThreshold: cf.fumbleThreshold, dmgBeforeDivider: 0, dmgBonus: dmg.after } };
   return attRunSequence({ who: foe.name, it, line, weaponName: label, rangeRow: null, skill: Math.round(parseFloat(e.multi) || 0), noMulti: '' });
+}
+
+// ============================================================
+// /init [n] -- roll initiative for the "Post as" character (or foe) and,
+// when the group has an active combat, set it as that combatant's next
+// segment on the Combat page.
+//   The roll (wiki "Initiative", as the Combat page's Init Roll): d10 plus the
+//   weapon's speed in melee, d8 plus its speed for a throw or missile fire,
+//   plus n (penalties such as unsheathing +1, or a bonus), plus the combat's
+//   current segment. Nothing in hand (or a foe): a plain d10.
+// ============================================================
+async function chatInitRun(bonus) {
+  try {
+    await chatInitFlow(bonus);
+  } catch (e) {
+    closeModal();
+    chatShowStatus(e.message || String(e));
+  }
+}
+async function chatInitFlow(bonus) {
+  const sel = document.getElementById('chat-post-as');
+  const v = sel ? sel.value : '';
+  let char = null;
+  try { char = await attSheetFor(); } catch (e) { char = null; }   // a temp character has no sheet: a plain d10
+  let who = '', charRowId = null, foe = null;
+  if (char) {
+    who = charDisplayName(char) || 'Character';
+    const appId = Object.keys(state.characters).find(k => state.characters[k] === char);
+    charRowId = appId ? charRowIds[appId] : null;
+    if (!charRowId) { const r = chatRoster.find(x => (x.name || '').trim().toLowerCase() === who.trim().toLowerCase()); charRowId = r ? r.id : null; }
+  } else if (v.startsWith(CHAT_AS_PREFIX)) {
+    who = v.slice(CHAT_AS_PREFIX.length).trim();
+    foe = chatIsGM() ? chatFindFoe(who) : null;
+  } else throw new Error('/init rolls for the "Post as" character: pick one first.');
+
+  // the die and speed: the weapon (and grip, throw or missile) it acts with
+  let die = 10, speed = 0, what = '';
+  if (char) {
+    const options = [];
+    for (const entry of combatWeaponEntries(char)) {
+      const al = weaponAttackLines(char, entry);
+      if (!al) continue;
+      for (const line of al.lines) {
+        if (line.v) options.push({ die: 10, speed: Math.round(line.v.speed || 0), label: `${al.it.name || 'Weapon'} — ${attGripLabel(line)} (d10+${Math.round(line.v.speed || 0)})` });
+        else if (line.missile) options.push({ die: 8, speed: Math.round(line.missile.speed || 0), label: `${al.it.name || 'Weapon'} — ${attGripLabel(line)} (d8+${Math.round(line.missile.speed || 0)})` });
+      }
+    }
+    let pick = options[0] || null;
+    if (options.length > 1) {
+      const i = await chatPromptButtons('Initiative with which?', 'Weapons and grips in hand right now.', options.map((o, idx) => ({ label: o.label, value: idx })).concat([{ label: 'Cancel', value: null }]));
+      if (i === null) return;
+      pick = options[i];
+    }
+    if (pick) { die = pick.die; speed = pick.speed; what = pick.label; }
+  }
+
+  // the combat it goes into, if the group has one going
+  const { data: encs } = await sb.from('combat_encounters').select('id, current_segment').eq('group_id', chatGroupId).eq('status', 'active').order('updated_at', { ascending: false }).limit(1);
+  const enc = (encs || [])[0] || null;
+  const seg = enc ? Math.round((parseFloat(enc.current_segment) || 0) * 100) / 100 : 0;
+  const n = parseInt(bonus) || 0;
+  const expr = `1d${die}` + (speed ? `+${speed}[speed]` : '') + (n ? `${n < 0 ? '-' : '+'}${Math.abs(n)}[modifier]` : '') + (enc && seg ? `+${seg}[segment]` : '');
+  const r = DiceRoller.roll(expr);
+  if (chatTalkToMyself) {
+    chatLocalLine('roll', expr, { sender_name: who, payload: { rolls: [r] } });
+    return;   // only you see it: the Combat page is left alone
+  }
+  if (!await chatInsertMessage({ kind: 'roll', body: expr, payload: { rolls: [r] } })) return;
+  if (!enc) return;
+
+  // its combatant in that combat, and the action track to set
+  let cc = null;
+  if (charRowId) {
+    const { data } = await sb.from('combat_combatants').select('id').eq('encounter_id', enc.id).eq('character_id', charRowId).limit(1);
+    cc = (data || [])[0] || null;
+  } else if (foe && foe.combatant && foe.combatant.encounter_id === enc.id) cc = foe.combatant;
+  else {
+    const { data } = await sb.from('combat_combatants').select('id, display_name').eq('encounter_id', enc.id);
+    cc = (data || []).find(c => (c.display_name || '').trim().toLowerCase() === who.toLowerCase()) || null;
+  }
+  if (!cc) { chatShowStatus(`${who} isn't in the combat, so the Combat page wasn't changed.`); return; }
+  const { data: tracks } = await sb.from('combat_action_tracks').select('*').eq('combatant_id', cc.id);
+  // the track waiting for an initiative, else the first
+  const track = (tracks || []).find(t => t.next_segment == null) || (tracks || [])[0];
+  if (!track) { chatShowStatus(`${who} has no action track in the combat to set.`); return; }
+  const patch = { next_segment: r.total };
+  if ('tie_order' in track) patch.tie_order = null;   // a tie position only holds at its old segment
+  const { error } = await sb.from('combat_action_tracks').update(patch).eq('id', track.id);
+  chatShowStatus(error ? `The roll is posted, but the Combat page couldn't be updated: ${error.message}` : `${who} acts at segment ${r.total} on the Combat page.`);
+  if (!error && typeof renderEncounterModule === 'function' && state.activeView === 'encounter' && typeof activeEncounterId !== 'undefined' && activeEncounterId === enc.id && !CHAT_WINDOW) renderEncounterModule();
 }

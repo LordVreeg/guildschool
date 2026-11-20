@@ -427,7 +427,7 @@ function toggleDiceAnim() {
 }
 function diceAnimButtonHtml() {
   const on = diceAnimEnabled();
-  return `<button id="dice-anim-btn" class="btn btn-dim" style="font-size:calc(11px * var(--fs));padding:3px 8px" title="Chat animations (dice rolling, critical hits, fumbles): ${on ? 'on' : 'off'}" onclick="toggleDiceAnim()">🎲 ${on ? 'On' : 'Off'}</button>`;
+  return `<button id="dice-anim-btn" class="btn btn-dim chat-head-btn" title="Chat animations (dice rolling, critical hits, fumbles): ${on ? 'on' : 'off'}" onclick="toggleDiceAnim()">🎲 ${on ? 'On' : 'Off'}</button>`;
 }
 
 // The outline of a die with this many sides, in a 100 x 100 box, and how far

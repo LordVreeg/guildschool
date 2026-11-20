@@ -202,6 +202,7 @@ function setItemPick(key, value) {
   if (editingItemIdx !== null && String(old.name || '').trim()) d.name = old.name;
   if (String(old.notes || '').trim()) d.notes = old.notes;
   for (const f of ['itemNo', 'omniEyed', 'groupContainer', 'gmMade', 'gmBy', 'gmGroupId', 'veiled']) if (old[f] !== undefined) d[f] = old[f];
+  if (old.throwOnlyByCommand && d.type === 'Weapon') d.throwOnlyByCommand = true;
   if (old.masterwork && ['Weapon', 'Armor', 'Shield', 'Ammunition'].includes(d.type)) d.masterwork = true;
   if ((old.spells || []).length) d.spells = old.spells;
   for (const f of [...MAGIC_MOD_FIELDS.defense, ...MAGIC_MOD_FIELDS.offense, 'magicVoid', 'magicVoidStacks', 'voidActive', '_mod_offense', '_mod_defense', '_mod_void']) {
@@ -214,6 +215,36 @@ function setItemPick(key, value) {
 function setAddItemField(field, value) {
   if (!itemDraft) return;
   itemDraft[field] = value;
+  if (document.getElementById('ai-add')) refreshItemRequired();
+}
+
+// The item popup's required fields (marked * and outlined in red while
+// empty; Add / Save stays off until they're all filled): every dropdown, the
+// name, a potion's uses, an item number on the GM Inventory's magic items,
+// weapons, armor and shields, and a weight on every item a GM makes.
+function itemNumberRequired(d) {
+  return !!itemPopupTarget && itemPopupTarget.place === 'gm' && itemNeedsNumber(d);
+}
+function itemWeightRequired(d) {
+  if (!d || d.type === 'Spell Book') return false;
+  return !!d.gmMade || (!!itemPopupTarget && !itemPopupTarget.rowId && popupMakerIsGM(itemPopupTarget));
+}
+function itemMissingFields(d) {
+  const miss = [];
+  if (!d) return miss;
+  for (const s of itemPickSteps(d)) if (itemPicks[s.key] === undefined) miss.push('pick:' + s.key);
+  if (!String(d.name || '').trim()) miss.push('name');
+  if (itemNumberRequired(d) && !String(d.itemNo || '').trim()) miss.push('itemNo');
+  if (itemWeightRequired(d) && !(parseFloat(d.weight) > 0)) miss.push('weight');
+  if (itemSpellRule(d) === 'potion' && !(parseInt(d.potionUses === undefined ? potionUses(d) : d.potionUses) >= 1)) miss.push('potionUses');
+  return miss;
+}
+// Outlines what's still empty and turns Add / Save on once nothing is.
+function refreshItemRequired() {
+  const missing = itemMissingFields(itemDraft);
+  document.querySelectorAll('#modal-box [data-req]').forEach(el => el.classList.toggle('req-missing', missing.includes(el.dataset.req)));
+  const btn = document.getElementById('ai-add');
+  if (btn) btn.disabled = missing.length > 0;
 }
 
 function confirmAddItem() {
@@ -230,7 +261,7 @@ function confirmAddItem() {
   if (original && !canEditGmFields(original)) { d.weight = original.weight; if (original.itemNo) d.itemNo = original.itemNo; else delete d.itemNo; d.omniEyed = original.omniEyed; }
   const byGM = original ? !!original.gmMade : popupMakerIsGM(itemPopupTarget);
   const problem = !d.name ? 'Give the item a name.'
-    : itemNeedsNumber(d) && !d.itemNo ? 'Give the item an item number: magic items, weapons, armor and shields need one.'
+    : itemNumberRequired(d) && !d.itemNo ? 'Give the item an item number: magic items, weapons, armor and shields in the GM Inventory need one.'
     : byGM && d.type !== 'Spell Book' && !(parseFloat(d.weight) > 0) ? 'Give the item a weight: every item the GM makes needs one.'
     : itemPopupTarget && d.type === 'Spell Book' ? "A spell book can't go into the group's inventory."
     : finishItemSpellsAndMods(d);
@@ -1433,6 +1464,12 @@ function setCharSetting(key, on) {
     saveState();
     if (on && state.activeView === 'overview' && !state.activeSkillId) showOverview(); else renderSidebar();
   }
+  if (key === 'useNickname') {
+    if (on) char.useNickname = true; else delete char.useNickname;
+    saveState();
+    renderApp();
+    return;
+  }
   if (key === 'hideSidebarSkills') {
     if (on) char.hideSidebarSkills = true; else delete char.hideSidebarSkills;
     saveState();
@@ -1566,6 +1603,32 @@ function updateSkill(skillId, field, value) {
   saveState();
   renderSkillModule(skillId);
   renderSidebar();
+}
+
+// The Raw XP box takes a sum: "100+50" is 150, "100-20" is 80, and a missing
+// number counts as 0 ("100+" is 100). Starting with + or - adds to (or takes
+// off) what was there: "+50" on 100 is 150. Returns null if it isn't a sum.
+function xpFromInput(text, current) {
+  let s = String(text || '').replace(/\s+/g, '');
+  if (!s) return 0;
+  if (!/^[+-]?[0-9.]*([+-][0-9.]*)*$/.test(s)) return null;
+  if (/^[+-]/.test(s)) s = (parseFloat(current) || 0) + s;
+  let total = 0;
+  for (const m of s.matchAll(/([+-]?)([0-9.]*)/g)) {
+    if (!m[0]) continue;
+    const n = m[2] === '' ? 0 : parseFloat(m[2]);
+    if (isNaN(n)) return null;
+    total += m[1] === '-' ? -n : n;
+  }
+  return Math.round(total * 100) / 100;
+}
+function setSkillXP(skillId, input) {
+  const char = state.characters[state.activeChar];
+  const si = char && (char.skills || []).find(s => s.id === skillId);
+  if (!si) return;
+  const v = xpFromInput(input.value, si.rawXP);
+  if (v === null) { input.value = si.rawXP || 0; return; }
+  updateSkill(skillId, 'rawXP', Math.max(0, v));
 }
 
 function updateRoll(skillId, idx, value) {
