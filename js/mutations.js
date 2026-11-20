@@ -1291,6 +1291,7 @@ function confirmHardcast() {
   for (const p of pools) poolByName[p.name] = p;
 
   const { finalCosts } = computeCastCosts(hs, poolByName);
+  hs.totalSpent = Object.values(finalCosts).reduce((s, n) => s + (parseFloat(n) || 0), 0);   // for the spell's experience
 
   if (!char.spellState) char.spellState = {};
   for (const [poolName, needed] of Object.entries(finalCosts)) {
@@ -1396,6 +1397,7 @@ function confirmSpellResolve() {
   if (r.gm == null || r.cast == null) { appAlert('Enter or roll both the GM d50 and the caster d100.'); return; }
   hs.gmRoll = r.gm; hs.castRoll = r.cast; hs.finalTarget = r.target;
   const char = state.characters[state.activeChar];
+  if (char) { addSpellCastXP(char, r.success, hs.totalSpent); saveState(); }
   if (r.success && char && char.playGroupId) {
     openMarkDurationModal(r.cast);
   } else {
@@ -1750,6 +1752,28 @@ function updateSkill(skillId, field, value) {
   saveState();
   renderSkillModule(skillId);
   renderSidebar();
+}
+
+// Unallocated Experience Points (General Info): char.unallocatedXP, by kind.
+const UNALLOCATED_XP_KINDS = [['hp', 'HP'], ['protection', 'Protection'], ['spell', 'Spell'], ['skill', 'Skill'], ['combat', 'Combat'], ['general', 'General'], ['other', 'Other']];
+function setUnallocatedXP(key, input) {
+  const char = state.characters[state.activeChar];
+  if (!char) return;
+  const cur = (char.unallocatedXP || {})[key] || 0;
+  const v = xpFromInput(input.value, cur);
+  if (v === null) { input.value = cur; return; }
+  char.unallocatedXP = { ...(char.unallocatedXP || {}), [key]: v };
+  input.value = v;
+  saveState();
+}
+// A spell's experience, when its success roll is confirmed: 3 for a failure,
+// 3 × the points spent on it for a success (into Unallocated Spell XP).
+function addSpellCastXP(char, success, spent) {
+  if (!char) return 0;
+  const add = success ? 3 * (parseFloat(spent) || 0) : 3;
+  const cur = parseFloat((char.unallocatedXP || {}).spell) || 0;
+  char.unallocatedXP = { ...(char.unallocatedXP || {}), spell: Math.round((cur + add) * 100) / 100 };
+  return add;
 }
 
 // The Raw XP box takes a sum: "100+50" is 150, "100-20" is 80, and a missing

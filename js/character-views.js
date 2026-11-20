@@ -278,6 +278,12 @@ function renderGeneralModule() {
       })()}
 
       <hr class="divider">
+      <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Unallocated Experience Points${infoTip('Experience earned but not yet put on a skill, by kind. Each box takes a sum: 12+3 saves 15, and +3 on its own adds 3. A hardcast spell adds to Spell when its roll is confirmed: 3 for a failure, 3 × the points spent for a success.')}</div>
+      <div class="form-row">
+        ${UNALLOCATED_XP_KINDS.map(([key, label]) => `<div class="form-group"><label>${label}</label><input type="text" inputmode="decimal" class="w-sm" value="${escapeHtml(String((char.unallocatedXP || {})[key] || 0))}" oninput="this.value=this.value.replace(/[^0-9.+\-]/g,'')" onkeydown="if(event.key==='Enter')this.blur()" onchange="setUnallocatedXP('${key}',this)"></div>`).join('')}
+      </div>
+
+      <hr class="divider">
       <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Notes</div>
       <div class="form-group" style="margin-bottom:10px"><label>History</label>
         <textarea class="w-full" rows="4" style="resize:vertical" onchange="updateChar('historyNotes',this.value)">${char.historyNotes||''}</textarea>
