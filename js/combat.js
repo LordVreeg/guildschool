@@ -16,6 +16,7 @@ let combatantsCache = [];
 let actionTracksCache = [];
 let combatLogCache = [];
 let combatOwnerByCharId = {}; // character_id -> owner_id, for this encounter's home group
+let combatPcCharIds = new Set(); // character_ids of the group's player characters (not NPCs), whose initiative every player can see
 // Bumped at the start of every renderEncounterModule() call; a call only
 // commits its fetched data / repaints if it's still the most recent one by
 // the time its fetches finish. Without this, two edits fired in quick
@@ -113,7 +114,7 @@ async function renderEncounterModule(opts) {
 
   const [{ data: combatants, error: ccErr }, { data: roster, error: rErr2 }] = await Promise.all([
     sb.from('combat_combatants').select('*').eq('encounter_id', enc.id).order('manual_order', { ascending: true }),
-    sb.from('group_roster').select('id, owner_id').eq('group_id', enc.group_id)
+    sb.from('group_roster').select('id, owner_id, is_npc').eq('group_id', enc.group_id)
   ]);
   if (!stillCurrent()) return;
   if (ccErr || rErr2) {
@@ -123,6 +124,7 @@ async function renderEncounterModule(opts) {
   const combatantRows = combatants || [];
   const ownerByCharId = {};
   for (const r of roster || []) ownerByCharId[r.id] = r.owner_id;
+  const pcCharIds = new Set((roster || []).filter(r => !r.is_npc).map(r => r.id));
 
   const combatantIds = combatantRows.map(c => c.id);
   const [{ data: tracks, error: tErr }, { data: log, error: lErr }] = await Promise.all([
@@ -166,6 +168,7 @@ async function renderEncounterModule(opts) {
   encounterCache = enc;
   combatantsCache = combatantRows;
   combatOwnerByCharId = ownerByCharId;
+  combatPcCharIds = pcCharIds;
   actionTracksCache = tracks || [];
   combatLogCache = log || [];
   encounterIsGM = isGM;
@@ -283,6 +286,12 @@ function renderEncounterHtml(enc, isGM) {
   // name and the existing color-coded HP status. No separate per-field
   // toggles; "can edit it" and "can see its detail" are the same question.
   const canEditCombatant = (c) => isGM || !!(c && c.character_id && combatOwnerByCharId[c.character_id] === currentUser.id);
+  // The one exception to that rule: the party's player characters. Every
+  // player sees where the other PCs stand in the Turn Order (their segment,
+  // action type and intended action, and timed effects on them); foes and
+  // NPCs stay hidden. Their cards stay collapsed, and only their owner or the
+  // GM can change anything.
+  const canSeeInitiative = (c) => canEditCombatant(c) || !!(c && c.character_id && combatPcCharIds.has(c.character_id));
   // A combatant's overall state -- active/waiting/incapacitated/killed --
   // set by hand (GM or the owning player), never inferred from HP. Legacy
   // rows with no status yet default to 'active'.
@@ -415,13 +424,12 @@ function renderEncounterHtml(enc, isGM) {
   // fumbling. Falls back to whoever's soonest if nothing's due yet.
   const dueTrack = queuedTracks.find(t => t.next_segment <= dueSegment);
   const currentTurnCombatantId = (dueTrack || queuedTracks[0] || {}).combatant_id;
-  // Turn Order itself is creature info -- a player only sees rows for
-  // combatants they can already see the full card for (their own, or the
-  // GM's view of everyone); other creatures' place in the order, and
-  // whatever they're about to do, isn't shown at all.
-  const visibleOrderedTracks = orderedTracks.filter(t => canEditCombatant(byId[t.combatant_id]));
+  // Turn Order: a player sees rows for their own combatants and for the
+  // other player characters (canSeeInitiative); other creatures' place in
+  // the order, and whatever they're about to do, isn't shown at all.
+  const visibleOrderedTracks = orderedTracks.filter(t => canSeeInitiative(byId[t.combatant_id]));
   const visibleSidelined = sidelinedCombatants
-    .filter(c => canEditCombatant(c))
+    .filter(c => canSeeInitiative(c))
     .sort((a, b) => {
       const rank = s => s === 'waiting' ? 0 : 1;
       const ra = rank(combatantStatus(a)), rb = rank(combatantStatus(b));
@@ -469,7 +477,7 @@ function renderEncounterHtml(enc, isGM) {
   const effectGroups = {};
   for (const c of combatantsCache) {
     const s = combatantStatus(c);
-    if (s === 'waiting' || s === 'killed' || !canEditCombatant(c)) continue;
+    if (s === 'waiting' || s === 'killed' || !canSeeInitiative(c)) continue;
     (c.effects || []).forEach((eff, ei) => {
       if (eff.expires_at_segment == null) return;
       const key = eff.effect_id || `${c.id}:${ei}`;
@@ -518,7 +526,7 @@ function renderEncounterHtml(enc, isGM) {
     foeXpHeaderHtml = `<div class="form-group"><label>Foe XP</label><div><b>${sum(foeIds).toLocaleString()}</b> total<span style="color:var(--text-dim)"> -- ${sum(downIds).toLocaleString()} defeated (${downIds.length}/${foeIds.length})</span></div></div>`;
   }
   const upcomingHtml = (trackRowHtml || sidelinedRowHtml) ? (trackRowHtml + sidelinedRowHtml)
-    : `<div class="note">${(orderedTracks.length || sidelinedCombatants.length) ? 'Nothing of yours in the order yet.' : 'No combatants yet.'}</div>`;
+    : `<div class="note">${(orderedTracks.length || sidelinedCombatants.length) ? 'Nothing you can see in the order yet.' : 'No combatants yet.'}</div>`;
 
   return `<div class="panel"><div class="panel-body">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
