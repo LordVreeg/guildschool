@@ -1040,6 +1040,7 @@ const CHAT_HELP_HTML = `
   <b>Game rolls</b>
   <table>
     <tr><td>/att &nbsp;or&nbsp; /attack</td><td>Attack with the "Post as" character: picks the weapon in hand, rolls Multiple Attack, then each attack (crit and fumble). The GM is asked privately for the target's AV; the hit, a critical's second roll and the damage follow. The steps go to you and the GM, and the result ("hits for 9 damage" / "whiffs") goes to everyone.</td></tr>
+    <tr><td>/cast</td><td>Cast the spell the "Post as" character has prepared (Prepare on the Spells page, during a combat): the usual Cast popup, then "casts …" in the chat.</td></tr>
     <tr><td>/init &nbsp;or&nbsp; /init <i>number</i></td><td>Roll initiative for the "Post as" character: d10 + the weapon's speed (d8 for a throw or missile fire), plus the number (penalties, e.g. /init 1 for unsheathing), plus the current segment. If the group's combat is active, it becomes that character's next segment on the Combat page.</td></tr>
     <tr><td>/att throw</td><td>The same, throwing a weapon in hand (a dagger, a spear…). A weapon ticked "Throw only with /att throw" in its item popup is only thrown this way; plain /att leaves its throw out.</td></tr>
     <tr><td>/prot <i>number</i></td><td>Armor protection roll: <code>/prot 40</code> rolls <code>(40-d10)/(2d6/2)</code>, rounded, never below 0</td></tr>
@@ -1099,6 +1100,7 @@ function chatParseCommand(text) {
   switch (name) {
     case 'r': case 'roll': needArg('a roll, e.g. /r 1d20+5'); return { kind: 'roll', body: arg.trim() };
     case 'gr': case 'gmroll': needArg('a roll, e.g. /gr 1d20'); return { kind: 'roll', body: arg.trim(), whisper: { characters: [], gm: true } };
+    case 'cast': return { local: 'cast' };
     case 'init': case 'initiative': {
       // /init or /init 3 (or -2): added to the roll
       const n = arg.trim();
@@ -1171,6 +1173,7 @@ async function sendChatMessage(textOverride) {
     msg = chatParseCommand(text);
     if (msg.local === 'help') { showChatHelp(); chatAfterSend(input, typed, textOverride); return; }
     if (msg.local === 'session') { chatAfterSend(input, typed, textOverride); openChatSessionModal(); return; }
+    if (msg.local === 'cast') { chatAfterSend(input, typed, textOverride); await chatCastRun(); return; }
     if (msg.local === 'init') { chatAfterSend(input, typed, textOverride); await chatInitRun(msg.bonus); return; }
     if (msg.local === 'att') { chatAfterSend(input, typed, textOverride); await chatAttackRun(msg.throw); return; }
     if (msg.local === 'prot') { chatAfterSend(input, typed, textOverride); await chatProtRun(); return; }

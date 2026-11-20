@@ -1053,7 +1053,22 @@ function spellWikiUrl(name) {
   return 'http://celtricia.pbworks.com/w/page/' + encodeURIComponent(String(name).trim());
 }
 
+// In combat, beside Cast: Prepare (one spell at a time), or Cancel Prep on the prepared one.
+function spellPrepButtonHtml(char, idx, catalogEntry) {
+  const prepIdx = preparedSpellIdx(char);
+  const style = 'font-size:calc(11px * var(--fs));padding:3px 8px;margin-left:4px';
+  if (prepIdx === idx) return `<button class="btn btn-dim spell-prep-on" style="${style}" title="Stop preparing it" onclick="cancelSpellPrep()">Cancel Prep</button>`;
+  if (!catalogEntry || !catalogEntry.costs || (!charInCombatCached(char) && prepIdx < 0)) return '';
+  return `<button class="btn btn-dim" style="${style}" ${prepIdx >= 0 ? `disabled title="Already preparing ${escapeHtml(char.preparedSpell.name)}"` : 'title="Get it ready to cast in this combat"'} onclick="prepareSpell(${idx})">Prepare</button>`;
+}
+
 function renderSpellModule() {
+  const charNow = state.characters[state.activeChar];
+  // whether the character is in a combat (for Prepare): checked behind, redrawn if it changed
+  if (charNow) {
+    const before = charInCombatCached(charNow);
+    characterActiveCombat(charNow).then(() => { if (state.activeView === 'spell' && state.characters[state.activeChar] === charNow && charInCombatCached(charNow) !== before) renderSpellModule(); });
+  }
   const char = state.characters[state.activeChar];
   if (!char) return;
   if (ensureSpellBooks(char)) saveState();
@@ -1129,7 +1144,7 @@ function renderSpellModule() {
             <td class="note">${breakdown}</td>
             <td>${escapeHtml(spellDurationText(catalogEntry && catalogEntry.duration, level))}</td>
             <td><input value="${sp.notes||''}" onchange="updateSpell(${idx},'notes',this.value)"></td>
-            <td>${catalogEntry && catalogEntry.costs ? `<button class="btn btn-gold" style="font-size:calc(11px * var(--fs));padding:3px 8px" onclick="openHardcastModal(${idx})">Cast</button>` : ''}</td>
+            <td style="white-space:nowrap">${catalogEntry && catalogEntry.costs ? `<button class="btn btn-gold" style="font-size:calc(11px * var(--fs));padding:3px 8px" onclick="openHardcastModal(${idx})">Cast</button>` : ''}${spellPrepButtonHtml(char, idx, catalogEntry)}</td>
             <td class="item-edit" title="Edit" onclick="openEditSpellModal(${idx})">✎</td>
             <td class="item-del" title="Delete" onclick="removeSpell(${idx})">✕</td>
           </tr>`;

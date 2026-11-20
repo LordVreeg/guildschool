@@ -68,6 +68,36 @@ function restoreLastView() {
   }
 }
 
+// Loads one of your characters again from Supabase, when another window (the
+// chat) changed it, so this window doesn't save over that change. The
+// group's items assigned to it are put back (syncGroupItemsForMyCharacters).
+async function reloadCharacterFromDb(appId) {
+  const rowId = charRowIds[appId];
+  if (!rowId) return false;
+  // a save on its way first: reloading now would lose it
+  for (let i = 0; i < 20 && (saveStateTimer || flushBusy); i++) await new Promise(r => setTimeout(r, 250));
+  const { data, error } = await sb.from('characters').select('data, group_id').eq('id', rowId).single();
+  if (error || !data || !data.data) return false;
+  data.data.playGroupId = data.group_id || null;
+  if (typeof groupItemShownOn !== 'undefined') {
+    for (const [id, a] of Object.entries(groupItemShownOn)) if (a === appId) { delete groupItemShownOn[id]; delete groupItemSynced[id]; }
+  }
+  state.characters[appId] = data.data;
+  savedCharJson[appId] = JSON.stringify(data.data);
+  if (typeof syncGroupItemsForMyCharacters === 'function') syncGroupItemsForMyCharacters(true);
+  return true;
+}
+// Tells the other window (main <-> chat) that a character was changed here.
+function announceCharacterChange(appId) {
+  try { localStorage.setItem('gs_char_changed', appId + '|' + Date.now()); } catch (e) {}
+}
+window.addEventListener('storage', async e => {
+  if (e.key !== 'gs_char_changed' || !e.newValue || !currentUser) return;
+  const appId = e.newValue.split('|')[0];
+  if (!state.characters[appId] || !(await reloadCharacterFromDb(appId))) return;
+  if (!document.getElementById('modal-overlay').classList.contains('open') && typeof renderMain === 'function' && !CHAT_WINDOW) renderMain();
+});
+
 let saveStateTimer = null;
 function saveState() {
   if (state.activeChar && !CHAT_WINDOW) localStorage.setItem('gs_active_char', state.activeChar);

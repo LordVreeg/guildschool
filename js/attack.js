@@ -661,6 +661,32 @@ async function chatFoeAttackFlow(foe) {
 //   plus n (penalties such as unsheathing +1, or a bonus), plus the combat's
 //   current segment. Nothing in hand (or a foe): a plain d10.
 // ============================================================
+// /cast: the "Post as" character's prepared spell, through the usual Cast
+// popup (loaded fresh, in case it was prepared in the main window just now).
+let chatCastPending = null;
+async function chatCastRun() {
+  try {
+    const char = chatPostAsChar();
+    const appId = char && Object.keys(state.characters).find(k => state.characters[k] === char);
+    if (!appId || !charRowIds[appId]) throw new Error('/cast casts the spell your "Post as" character has prepared: pick one of your characters.');
+    await reloadCharacterFromDb(appId);
+    const fresh = state.characters[appId];
+    if (!fresh.preparedSpell) throw new Error(`${charDisplayName(fresh) || 'That character'} has no spell prepared. During a combat, use Prepare on the Spells page.`);
+    chatCastPending = { appId, name: fresh.preparedSpell.name };
+    if (!castPreparedSpell(appId)) chatCastPending = null;
+  } catch (e) {
+    chatShowStatus(e.message || String(e));
+  }
+}
+// After the points are spent on a /cast: "casts Fireball." for the group.
+function chatCastAnnounce(spellName) {
+  const pend = chatCastPending;
+  chatCastPending = null;
+  if (!pend || pend.name !== spellName || !document.getElementById('chat-post-as')) return;
+  if (chatTalkToMyself) { const c = state.characters[pend.appId]; chatLocalLine('emote', `casts ${spellName}.`, { sender_name: c ? charDisplayName(c) : '' }); return; }
+  chatInsertMessage({ kind: 'emote', body: `casts ${spellName}.`, payload: null });
+}
+
 async function chatInitRun(bonus) {
   try {
     await chatInitFlow(bonus);

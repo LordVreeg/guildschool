@@ -1141,6 +1141,101 @@ function renderHardcastModal() {
     </div>`);
 }
 
+// ---------- preparing a spell in combat ----------
+// char.preparedSpell = { name, school, book, encounterId, at }: the one spell
+// the character has ready (Spells page, while in an active combat). It shows
+// on their combat card with Cast; chat's /cast casts it; casting it (spending
+// the points) clears it, so another can be prepared.
+const charCombatCache = {};   // character row id -> { at, encounterId }
+// The active combat the character is in (its group's, with it as a combatant), or null.
+async function characterActiveCombat(char, force) {
+  const appId = Object.keys(state.characters).find(k => state.characters[k] === char);
+  const rowId = appId && charRowIds[appId];
+  if (!rowId || !char.playGroupId) return null;
+  const hit = charCombatCache[rowId];
+  if (hit && !force && Date.now() - hit.at < 15000) return hit.encounterId;
+  const { data: encs } = await sb.from('combat_encounters').select('id').eq('group_id', char.playGroupId).eq('status', 'active');
+  const ids = (encs || []).map(e => e.id);
+  let encounterId = null;
+  if (ids.length) {
+    const { data: cc } = await sb.from('combat_combatants').select('encounter_id').in('encounter_id', ids).eq('character_id', rowId).limit(1);
+    encounterId = (cc && cc[0]) ? cc[0].encounter_id : null;
+  }
+  charCombatCache[rowId] = { at: Date.now(), encounterId };
+  return encounterId;
+}
+function charInCombatCached(char) {
+  const appId = Object.keys(state.characters).find(k => state.characters[k] === char);
+  const hit = appId && charCombatCache[charRowIds[appId]];
+  return !!(hit && hit.encounterId);
+}
+function preparedSpellIdx(char) {
+  const p = char && char.preparedSpell;
+  if (!p) return -1;
+  return (char.spellbook || []).findIndex(s => s.name === p.name && s.school === p.school);
+}
+// Why the character couldn't hardcast this spell right now ([] = they can):
+// a pool it needs that they don't have, or not enough points in it. Spirit
+// substitution counts: if swapping the other schools for Spirit would cover
+// it, that's enough.
+function spellPrepProblems(char, idx) {
+  const sp = (char.spellbook || [])[idx];
+  const cat = sp && SPELLS.find(s => s.name === sp.name && s.school === sp.school);
+  if (!cat || !cat.costs) return ["This spell has no cost in the spell catalog, so it can't be cast from here."];
+  const pools = computeSpellPools(char);
+  const byName = {};
+  for (const p of pools) byName[p.name] = p;
+  const shortOf = substitute => {
+    const hs = { baseCosts: { ...cat.costs }, majorPool: SPELL_SCHOOL_TO_POOL[cat.school], castMode: 'hardcast', substitute, overcastSpirit: 0, overcastMajor: 0 };
+    const { finalCosts } = computeCastCosts(hs, byName);
+    return Object.entries(finalCosts).map(([pool, need]) => {
+      const info = byName[pool];
+      return !info ? `${pool}: not trained (needs ${need})` : info.currentSP < need ? `${pool}: needs ${need}, has ${info.currentSP}` : null;
+    }).filter(Boolean);
+  };
+  const plain = shortOf({});
+  if (!plain.length) return [];
+  const all = {};
+  for (const school of Object.keys(cat.costs)) { const pool = COST_KEY_TO_POOL[school] || `${school} SP`; if (pool !== 'Spirit SP') all[pool] = true; }
+  return Object.keys(all).length && !shortOf(all).length ? [] : plain;
+}
+async function prepareSpell(idx) {
+  const char = state.characters[state.activeChar];
+  const sp = char && (char.spellbook || [])[idx];
+  if (!sp) return;
+  if (char.preparedSpell) { alert(`${char.name || 'This character'} is already preparing ${char.preparedSpell.name}. Cast it or Cancel Prep first.`); return; }
+  const encounterId = await characterActiveCombat(char, true);
+  if (!encounterId) { alert(`${char.name || 'This character'} isn't in an active combat, so there's nothing to prepare for.`); renderSpellModule(); return; }
+  if (char.playGroupId) { const grp = myGroups.find(g => g.id === char.playGroupId); if (grp) settleCharacterRecovery(char, grp.clock_seconds, {}); }
+  const problems = spellPrepProblems(char, idx);
+  if (problems.length) { alert(`Not enough spell points to cast ${sp.name}:\n` + problems.join('\n')); renderSpellModule(); return; }
+  char.preparedSpell = { name: sp.name, school: sp.school, book: sp.book || '', encounterId, at: new Date().toISOString() };
+  saveState();
+  announceCharacterChange(state.activeChar);
+  renderSpellModule();
+}
+function cancelSpellPrep() {
+  const char = state.characters[state.activeChar];
+  if (!char || !char.preparedSpell) return;
+  delete char.preparedSpell;
+  saveState();
+  announceCharacterChange(state.activeChar);
+  if (state.activeView === 'spell') renderSpellModule(); else renderMain();
+}
+// Cast on a combat card, or chat's /cast: the usual Cast popup for the
+// prepared spell, as that character (it becomes the selected one).
+function castPreparedSpell(appId) {
+  const char = state.characters[appId];
+  const idx = preparedSpellIdx(char);
+  if (idx < 0) { alert(char && char.preparedSpell ? `${char.preparedSpell.name} isn't in ${char.name || 'the'}'s spell list any more.` : 'No spell is prepared.'); return false; }
+  if (state.activeChar !== appId) {
+    state.activeChar = appId;
+    if (!CHAT_WINDOW) { try { localStorage.setItem('gs_active_char', appId); } catch (e) {} const sel = document.getElementById('char-select'); if (sel) sel.value = appId; renderSidebar(); }
+  }
+  openHardcastModal(idx);
+  return true;
+}
+
 function confirmHardcast() {
   const char = state.characters[state.activeChar];
   if (!char || !hardcastState) return;
@@ -1162,7 +1257,13 @@ function confirmHardcast() {
     setPoolTrueSP(char, poolName, (info ? info.trueSP : 0) - needed, info ? info.maxSP : 0);
   }
   if (hs.castItem) useUpItemSpell(char, hs.castItem.itemIdx, hs.castItem.spellIdx);
+  // casting the prepared spell uses up the preparation
+  const p = char.preparedSpell;
+  const wasPrepared = !hs.castItem && p && p.name === hs.spellName && p.school === hs.school;
+  if (wasPrepared) delete char.preparedSpell;
   saveState();
+  announceCharacterChange(state.activeChar);
+  if (wasPrepared && typeof chatCastAnnounce === 'function') chatCastAnnounce(hs.spellName);
   // SP is spent either way -- hardcastState stays alive through resolving
   // success and (if successful) marking a duration, closed out at the end
   // of that chain rather than here.

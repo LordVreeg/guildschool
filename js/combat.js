@@ -300,6 +300,17 @@ function combatantArmorHtml(c) {
   return `<span class="cc-lbl">AV</span><span class="cc-box" title="Avoidance, ${src}">${av}</span><span class="cc-lbl">Prot</span><span class="cc-box" title="Protection, ${src}">${pr}</span>`;
 }
 
+// The spell a character has prepared (Spells page), on its combat card; its
+// owner gets Cast (the usual Cast popup). The GM sees it from the sheet.
+function preparedSpellLineHtml(c) {
+  const sheet = c.character_id && combatSheets[c.character_id];
+  const p = sheet && sheet.preparedSpell;
+  if (!p) return '';
+  const appId = Object.keys(charRowIds).find(k => charRowIds[k] === c.character_id);
+  const mine = appId && state.characters[appId] === sheet;
+  return `<div class="cc-prep">✦ Preparing <b>${escapeHtml(p.name)}</b> <span class="cc-lbl">(${escapeHtml(p.school || '')})</span>${mine ? ` <button class="btn btn-gold" onclick="castPreparedSpell('${appId}')">Cast</button>` : ''}</div>`;
+}
+
 // The Turn Order's width: dragged on the spear between it and the cards,
 // remembered in this browser; double-click puts it back.
 const TURN_ORDER_W_KEY = 'gs_turn_order_w', TURN_ORDER_W_DEFAULT = 300, TURN_ORDER_W_MIN = 200, TURN_ORDER_W_MAX = 800;
@@ -538,6 +549,7 @@ function renderEncounterHtml(enc, isGM) {
         </select>
         ${isGM ? `<button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px" onclick="removeCombatant('${c.id}')">Remove</button>` : ''}
       </div>
+      ${preparedSpellLineHtml(c)}
       <div style="margin-top:4px">${tracksHtml}</div>
       ${canEdit ? `<button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px;margin-top:2px" onclick="addActionTrack('${c.id}')">Track</button>
       <button class="btn btn-dim" style="font-size:calc(10px * var(--fs));padding:1px 6px;margin-top:2px" onclick="openAddEffectModal('${c.id}')">Effect</button>` : ''}
