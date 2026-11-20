@@ -16,7 +16,7 @@ let combatantsCache = [];
 let actionTracksCache = [];
 let combatLogCache = [];
 let combatOwnerByCharId = {}; // character_id -> owner_id, for this encounter's home group
-let combatPcCharIds = new Set(); // character_ids of the group's player characters (not NPCs), whose initiative every player can see
+let combatPcCharIds = new Set(); // character_ids of the group's characters -- player characters and NPCs -- whose initiative every player can see
 // Bumped at the start of every renderEncounterModule() call; a call only
 // commits its fetched data / repaints if it's still the most recent one by
 // the time its fetches finish. Without this, two edits fired in quick
@@ -128,7 +128,8 @@ async function renderEncounterModule(opts) {
   const combatantRows = combatants || [];
   const ownerByCharId = {};
   for (const r of roster || []) ownerByCharId[r.id] = r.owner_id;
-  const pcCharIds = new Set((roster || []).filter(r => !r.is_npc).map(r => r.id));
+  // the party: every character on the group's roster, player characters and NPCs
+  const pcCharIds = new Set((roster || []).map(r => r.id));
 
   const combatantIds = combatantRows.map(c => c.id);
   const [{ data: tracks, error: tErr }, { data: log, error: lErr }] = await Promise.all([
@@ -386,11 +387,10 @@ function renderEncounterHtml(enc, isGM) {
   // name and the existing color-coded HP status. No separate per-field
   // toggles; "can edit it" and "can see its detail" are the same question.
   const canEditCombatant = (c) => isGM || !!(c && c.character_id && combatOwnerByCharId[c.character_id] === currentUser.id);
-  // The one exception to that rule: the party's player characters. Every
-  // player sees where the other PCs stand in the Turn Order (their segment,
-  // action type and intended action, and timed effects on them); foes and
-  // NPCs stay hidden. Their cards stay collapsed, and only their owner or the
-  // GM can change anything.
+  // The one exception to that rule: the party -- the group's player
+  // characters and NPCs. Every player sees where they stand in the Turn Order
+  // (their segment, action type and intended action, and timed effects on
+  // them); foes stay hidden. Only their owner or the GM can change anything.
   const canSeeInitiative = (c) => canEditCombatant(c) || !!(c && c.character_id && combatPcCharIds.has(c.character_id));
   // A combatant's overall state -- active/waiting/incapacitated/killed --
   // set by hand (GM or the owning player), never inferred from HP. Legacy
@@ -409,6 +409,9 @@ function renderEncounterHtml(enc, isGM) {
     // tracks, effects -- for their own combatant (or the GM's, for
     // everyone). Anyone else's card collapses to just a name and the
     // existing color-coded HP status: no other creature info leaks.
+    // A player's right-hand list has no other party members' cards: their
+    // place is in the Turn Order. (Foes still show as a name and HP status.)
+    if (!canEdit && c.character_id) return '';
     if (!canEdit) {
       return `<div id="cc-card-${c.id}" style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin-bottom:6px;display:flex;align-items:center;gap:8px;transition:box-shadow .3s">
         <span style="${nameStyle}">${escapeHtml(c.display_name)}</span>
