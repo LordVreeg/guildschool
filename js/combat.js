@@ -39,20 +39,42 @@ let combatEntryById = {};  // Beastiary entry id -> entry (GM only): a foe's or 
 function enterOrStartCombat(groupId) {
   const resumable = groupEncountersCache.filter(e => e.status === 'active' || e.status === 'paused');
   const encStatusColor = { active: '#4a9460', paused: '#c9a227' };
-  const resumableHtml = resumable.length
-    ? resumable.map(e => `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
-        <span style="cursor:pointer;color:var(--gold)" onclick="closeModal();openEncounter('${e.id}')">${escapeHtml(e.name)}</span>
-        <span style="font-size:calc(10px * var(--fs));color:${encStatusColor[e.status]}">(${e.status}, segment ${e.current_segment})</span>
-      </li>`).join('')
-    : '<li class="note">No combats currently in progress.</li>';
+  const status = e => `<span style="font-size:calc(10px * var(--fs));color:${encStatusColor[e.status]}">(${e.status}, segment ${e.current_segment})</span>`;
+  // More than one to resume: a tick box on each (only one can be ticked), the
+  // active one ticked to start with; Resume opens the ticked one.
+  const pick = resumable.find(e => e.status === 'active') || resumable[0];
+  const resumableHtml = !resumable.length ? '<li class="note">No combats currently in progress.</li>'
+    : resumable.length === 1
+      ? `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px"><span>${escapeHtml(resumable[0].name)}</span>${status(resumable[0])}</li>`
+      : resumable.map(e => `<li style="list-style:none;margin-bottom:2px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" class="resume-pick" value="${e.id}" ${e === pick ? 'checked' : ''} onchange="pickResumeCombat(this)">
+            <span>${escapeHtml(e.name)}</span>${status(e)}
+          </label></li>`).join('');
   openModal(`
     <h3>Enter Combat</h3>
     <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Resume</div>
-    <ul style="margin:0 0 12px 16px;padding:0;font-size:calc(13px * var(--fs))">${resumableHtml}</ul>
+    <ul style="margin:0 0 8px ${resumable.length > 1 ? 0 : 16}px;padding:0;font-size:calc(13px * var(--fs))">${resumableHtml}</ul>
+    ${resumable.length ? `<div style="margin-bottom:12px"><button class="btn btn-gold" id="resume-combat-btn" onclick="resumeCombat()">Resume</button></div>` : ''}
     <hr class="divider">
     <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:8px 0 6px">Start New</div>
     <div class="form-group" style="margin-bottom:8px"><label>Name</label><input class="w-full" id="sc-name"  placeholder="e.g. Ambush on the Old Road"></div>
     <div class="modal-actions"><button class="btn btn-dim" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="createEncounter('${groupId}')">Start</button></div>`);
+  enterCombatResumeId = resumable.length ? pick.id : null;
+}
+// The combat the Enter Combat popup's Resume opens.
+let enterCombatResumeId = null;
+// Ticking one combat unticks the others; unticking leaves none to resume.
+function pickResumeCombat(box) {
+  document.querySelectorAll('#modal-box .resume-pick').forEach(b => { if (b !== box) b.checked = false; });
+  enterCombatResumeId = box.checked ? box.value : null;
+  const btn = document.getElementById('resume-combat-btn');
+  if (btn) btn.disabled = !enterCombatResumeId;
+}
+function resumeCombat() {
+  if (!enterCombatResumeId) return;
+  closeModal();
+  openEncounter(enterCombatResumeId);
 }
 
 async function createEncounter(groupId) {
