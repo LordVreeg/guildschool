@@ -87,6 +87,7 @@ async function createEncounter(groupId) {
 }
 
 function openEncounter(id) {
+  if (id !== activeEncounterId) combatPlayerPreview = false;   // each combat opens in the GM's own view
   activeEncounterId = id;
   state.activeView = 'encounter';
   renderEncounterModule();
@@ -226,7 +227,35 @@ async function renderEncounterModule(opts) {
     c.display_name = want;
     sb.from('combat_combatants').update({ display_name: want }).eq('id', c.id).then(({ error }) => { if (error) console.error('Could not rename combatant', error); });
   }
-  paintEncounter(renderEncounterHtml(enc, isGM), enc.id);
+  paintEncounter(encounterViewHtml(enc, isGM), enc.id);
+}
+
+// The GM's "Show Combatants' View" / "Back to GM View" button: the page
+// exactly as the player of the character selected at the top sees it -- the
+// same drawing a player's browser does (not GM), with that character as
+// theirs and every other character someone else's, and none of the GM-only
+// foe details. Nothing is reloaded.
+let combatPlayerPreview = false;
+let combatPreviewWho = null;   // { name, inFight } while previewing, for the note
+function encounterViewHtml(enc, isGM) {
+  combatPreviewWho = null;
+  if (!(isGM && combatPlayerPreview)) return renderEncounterHtml(enc, isGM);
+  const char = state.characters[state.activeChar];
+  const rowId = char ? charRowIds[state.activeChar] : null;
+  const owners = {};
+  for (const id of Object.keys(combatOwnerByCharId)) owners[id] = 'another-player';
+  for (const c of combatantsCache) if (c.character_id) owners[c.character_id] = 'another-player';
+  if (rowId) owners[rowId] = currentUser.id;
+  combatPreviewWho = { name: char ? charDisplayName(char) : '', inFight: !!rowId && combatantsCache.some(c => c.character_id === rowId) };
+  const keep = [combatFoeXp, combatFoeType, combatFoeEntry, combatOwnerByCharId];
+  combatFoeXp = {}; combatFoeType = {}; combatFoeEntry = {}; combatOwnerByCharId = owners;
+  try { return renderEncounterHtml(enc, false); }
+  finally { [combatFoeXp, combatFoeType, combatFoeEntry, combatOwnerByCharId] = keep; }
+}
+function toggleCombatPlayerPreview() {
+  if (!encounterCache || !encounterIsGM) return;
+  combatPlayerPreview = !combatPlayerPreview;
+  paintEncounter(encounterViewHtml(encounterCache, encounterIsGM), encounterCache.id);
 }
 
 // Swaps in the redrawn combat page without the jolt: the scroll position
@@ -660,6 +689,7 @@ function renderEncounterHtml(enc, isGM) {
         <button class="btn btn-dim" onclick="closeEncounter()">← Back to Group</button>
         <h2 style="margin:0">${escapeHtml(enc.name)}</h2>
         <span style="font-size:calc(11px * var(--fs));color:var(--text-dim)">(${enc.status})</span>
+        ${encounterIsGM ? `<button class="btn ${combatPlayerPreview ? 'btn-gold' : 'btn-dim'}" title="${combatPlayerPreview ? 'Back to your own view of the combat' : 'See the page as the players do'}" onclick="toggleCombatPlayerPreview()">${combatPlayerPreview ? '★ Back to GM View' : "👁 Show Combatants' View"}</button>` : ''}
       </div>
       ${isGM ? `
       <div style="display:flex;gap:6px;align-items:center">
@@ -669,6 +699,7 @@ function renderEncounterHtml(enc, isGM) {
         <button class="btn btn-dim" onclick="openAddCombatantModal()">Add Combatant</button>
       </div>` : ''}
     </div>
+    ${combatPreviewWho ? `<div class="note">${combatPreviewWho.name ? `Showing what ${escapeHtml(combatPreviewWho.name)}'s player sees${combatPreviewWho.inFight ? '' : ` (${escapeHtml(combatPreviewWho.name)} isn't in this combat)`}.` : 'Showing what a player sees. Pick a character at the top to see it as theirs.'}</div>` : ''}
     <div class="form-row" style="margin:8px 0;align-items:center">
       <div class="form-group"><label>Current Segment</label>
         ${isGM ? `<input type="number" step="any" class="w-sm" value="${enc.current_segment}" onchange="updateEncounterField('current_segment',parseFloat(this.value)||0)">` : `<div>${enc.current_segment}</div>`}
