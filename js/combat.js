@@ -330,6 +330,16 @@ function resetTurnOrderWidth() {
   if (box) box.style.width = TURN_ORDER_W_DEFAULT + 'px';
 }
 
+// An enemy: a combatant that isn't one of the group's characters and isn't
+// on the Party team (temp characters are added to it). Everyone can tell,
+// since the team is on the combatant. Marked ⚔ wherever its name shows.
+function isFoeCombatant(c) {
+  return !!c && !c.character_id && String(c.team || '').trim().toLowerCase() !== 'party';
+}
+function foeMark(c) {
+  return isFoeCombatant(c) ? '<span class="foe-mark" title="Enemy">⚔</span> ' : '';
+}
+
 // A foe's given name ("Groll", "Barty") often doesn't say what it is, so the
 // GM sees its creature type beside it -- skipped when the name already is
 // the type.
@@ -449,7 +459,7 @@ function renderEncounterHtml(enc, isGM) {
   const combatantStatus = (c) => (c && c.status) || 'active';
 
   const targetOptionsHtml = (currentId, selectedId) => `<option value="">(no target)</option>` +
-    combatantsCache.filter(c => c.id !== currentId).map(c => `<option value="${c.id}" ${c.id===selectedId?'selected':''}>${escapeHtml(c.display_name)}</option>`).join('');
+    combatantsCache.filter(c => c.id !== currentId).map(c => `<option value="${c.id}" ${c.id===selectedId?'selected':''}>${isFoeCombatant(c) ? '⚔ ' : ''}${escapeHtml(c.display_name)}</option>`).join('');
 
   const combatantsHtml = combatantsCache.length ? combatantsCache.map((c, i) => {
     const canEdit = canEditCombatant(c);
@@ -465,7 +475,7 @@ function renderEncounterHtml(enc, isGM) {
     if (!canEdit && c.character_id) return '';
     if (!canEdit) {
       return `<div id="cc-card-${c.id}" style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin-bottom:6px;display:flex;align-items:center;gap:8px;transition:box-shadow .3s">
-        <span style="${nameStyle}">${escapeHtml(c.display_name)}</span>
+        ${foeMark(c)}<span style="${nameStyle}">${escapeHtml(c.display_name)}</span>
         ${combatantHpBadge(c, isGM)}
       </div>`;
     }
@@ -507,7 +517,7 @@ function renderEncounterHtml(enc, isGM) {
     }).join('');
     return `<div id="cc-card-${c.id}" style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin-bottom:6px;transition:box-shadow .3s">
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-        <span style="${nameStyle}">${escapeHtml(c.display_name)}</span>
+        ${foeMark(c)}<span style="${nameStyle}">${escapeHtml(c.display_name)}</span>
         ${foeTypeTag(c)}${foeStatsBtn(c)}${combatFoeXp[c.id] != null ? `<span style="font-size:calc(11px * var(--fs));color:var(--gold-dim)" title="Experience value of this foe (Beastiary formula)">XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
         ${canEdit ? `<input value="${escapeHtml(c.team||'')}" placeholder="Team" class="w-sm" style="font-size:calc(11px * var(--fs))" onchange="updateCombatantField('${c.id}','team',this.value)">`
           : `<span style="font-size:calc(10px * var(--fs));color:var(--text-dim)">${escapeHtml(c.team||'')}</span>`}
@@ -613,7 +623,7 @@ function renderEncounterHtml(enc, isGM) {
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border)${due?';background:rgba(74,148,96,.22)':''}">
       ${tieControlsHtml}
       <span style="flex:1;min-width:0">
-        <span style="font-size:calc(17px * var(--fs));font-weight:bold;cursor:pointer;${nameStyle}" title="Show on the right" onclick="focusCombatantCard('${c.id}')">${escapeHtml(c.display_name)}</span>
+        ${foeMark(c)}<span style="font-size:calc(17px * var(--fs));font-weight:bold;cursor:pointer;${nameStyle}" title="Show on the right" onclick="focusCombatantCard('${c.id}')">${escapeHtml(c.display_name)}</span>
         ${foeTypeTag(c)}${foeStatsBtn(c)}${combatFoeXp[c.id] != null ? `<span style="font-size:calc(11px * var(--fs));color:var(--gold-dim)"> XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
         ${t.label ? `<span style="font-size:calc(12px * var(--fs));color:var(--text-dim)"> ${escapeHtml(t.label)}</span>` : ''}
         ${t.action_category ? `<span style="display:block;font-size:calc(11px * var(--fs));color:var(--text-dim)">${COMBAT_CATEGORY_LABELS[t.action_category]}</span>` : ''}
@@ -644,7 +654,7 @@ function renderEncounterHtml(enc, isGM) {
   const renderEffectRow = ({ combatants, ei, eff, shared }) => {
     const ended = eff.expires_at_segment <= dueSegment;
     const left = Math.round((eff.expires_at_segment - dueSegment) * 100) / 100;
-    const names = combatants.map(c => `<span style="cursor:pointer;text-decoration:underline dotted" title="Show on the right" onclick="focusCombatantCard('${c.id}')">${escapeHtml(c.display_name)}</span>`).join(', ');
+    const names = combatants.map(c => `<span style="cursor:pointer;text-decoration:underline dotted" title="Show on the right" onclick="focusCombatantCard('${c.id}')">${foeMark(c)}${escapeHtml(c.display_name)}</span>`).join(', ');
     const clearCall = shared ? `removeEffectEverywhere('${eff.effect_id}')` : `removeEffect('${combatants[0].id}',${ei})`;
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);font-style:italic;background:${ended?'rgba(201,162,39,.25)':'rgba(120,100,60,.08)'}">
       <span style="flex:1;min-width:0">
@@ -664,7 +674,7 @@ function renderEncounterHtml(enc, isGM) {
     const killed = status === 'killed';
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);opacity:.75">
       <span style="flex:1;min-width:0">
-        <span style="font-size:calc(17px * var(--fs));font-weight:bold;cursor:pointer;text-decoration:${killed?'line-through':'none'};color:${killed?'#a03030':'inherit'}" title="Show on the right" onclick="focusCombatantCard('${c.id}')">${escapeHtml(c.display_name)}</span>
+        <span style="font-size:calc(17px * var(--fs));font-weight:bold;cursor:pointer;text-decoration:${killed?'line-through':'none'};color:${killed?'#a03030':'inherit'}" title="Show on the right" onclick="focusCombatantCard('${c.id}')">${foeMark(c)}${escapeHtml(c.display_name)}</span>
         ${foeTypeTag(c)}${foeStatsBtn(c)}${combatFoeXp[c.id] != null ? `<span style="font-size:calc(11px * var(--fs));color:var(--gold-dim)"> XP ${combatFoeXp[c.id].toLocaleString()}</span>` : ''}
         <span style="display:block;font-size:calc(11px * var(--fs));color:var(--text-dim)">${killed?'Killed':'Waiting'}</span>
       </span>
@@ -721,8 +731,8 @@ function renderEncounterHtml(enc, isGM) {
         <hr class="divider">
         <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Log an Action</div>
         <div class="form-row">
-          <div class="form-group"><label>Combatant</label><select id="log-combatant">${combatantsCache.map(c=>`<option value="${c.id}" ${c.id===currentTurnCombatantId?'selected':''}>${escapeHtml(c.display_name)}</option>`).join('')}</select></div>
-          <div class="form-group"><label>Target</label><select id="log-target"><option value="">(none)</option>${combatantsCache.map(c=>`<option value="${c.id}">${escapeHtml(c.display_name)}</option>`).join('')}</select></div>
+          <div class="form-group"><label>Combatant</label><select id="log-combatant">${combatantsCache.map(c=>`<option value="${c.id}" ${c.id===currentTurnCombatantId?'selected':''}>${isFoeCombatant(c) ? '⚔ ' : ''}${escapeHtml(c.display_name)}</option>`).join('')}</select></div>
+          <div class="form-group"><label>Target</label><select id="log-target"><option value="">(none)</option>${combatantsCache.map(c=>`<option value="${c.id}">${isFoeCombatant(c) ? '⚔ ' : ''}${escapeHtml(c.display_name)}</option>`).join('')}</select></div>
         </div>
         <div class="form-group" style="margin:6px 0"><label>Action Summary</label><input class="w-full" id="log-summary"  placeholder="e.g. Swings longsword, hits for 8"></div>
         <div class="form-row">

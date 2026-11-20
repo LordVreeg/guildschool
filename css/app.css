@@ -533,6 +533,7 @@ td div.note, td.note, li.note { margin: 0; }
 #sidebar { overflow-x: hidden; display: flex; flex-direction: column; }
 #sidebar > * { flex-shrink: 0; }
 /* Combat page: small HP boxes, AV / Prot, and the spear that resizes the Turn Order */
+.foe-mark { color: var(--red-b); font-weight: normal; }
 #main .cc-num { width: calc(44px * var(--fs)); padding: 1px 3px; font-size: calc(11px * var(--fs)); text-align: center; }
 .cc-lbl { font-size: calc(10px * var(--fs)); color: var(--text-dim); }
 .cc-box { display: inline-block; min-width: calc(30px * var(--fs)); padding: 1px 4px; font-size: calc(11px * var(--fs)); text-align: center; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
