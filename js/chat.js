@@ -79,8 +79,20 @@ async function refreshChatUnread() {
   updateChatMenuBadge();
 }
 
+// The chat shows only the group of the character selected at the top of the
+// page. If that character isn't in a group, a GM still sees the groups they
+// run (a GM doesn't need a character in the group to run its chat).
+function chatCurrentGroupId() {
+  const c = state.characters[state.activeChar];
+  return c && c.playGroupId && myGroups.some(g => g.id === c.playGroupId) ? c.playGroupId : null;
+}
+function chatVisibleGroups() {
+  const id = chatCurrentGroupId();
+  return id ? myGroups.filter(g => g.id === id) : myGroups.filter(g => g.myRole === 'gm');
+}
+
 function updateChatMenuBadge() {
-  const total = Object.values(chatUnread).reduce((a, b) => a + b, 0);
+  const total = chatVisibleGroups().reduce((a, g) => a + (chatUnread[g.id] || 0), 0);
   for (const id of ['chat-menu-badge', 'other-menu-badge']) {
     const el = document.getElementById(id);
     if (!el) continue;
@@ -161,6 +173,7 @@ window.addEventListener('message', e => {
   if (CHAT_WINDOW || e.origin !== location.origin || !e.data) return;
   if (e.data.gsChat === 'close') closeChatDock();
   else if (e.data.gsChat === 'popout') { closeChatDock(); openChatPopup(); }
+  else if (e.data.gsChat === 'popin') { chatWindowRef = null; openChatDock(); window.focus(); }
 });
 function showChatModule() {
   if (CHAT_WINDOW) { window.focus(); return; }
@@ -169,8 +182,19 @@ function showChatModule() {
   if (window.innerWidth >= CHAT_DOCK_MIN_VIEWPORT) { openChatDock(); return; }
   openChatPopup();
 }
+// Docked: "Pop out" to its own window. In its own window: "Pop in" docks it
+// back into the main window (the one that opened it, else any open one).
 function chatPopoutBtn() {
-  return CHAT_IN_DOCK ? '<button class="btn btn-dim chat-close" title="Open the chat in its own window" onclick="parent.postMessage({gsChat:\'popout\'}, location.origin)">⧉ Pop out</button>' : '';
+  if (CHAT_IN_DOCK) return '<button class="btn btn-dim chat-close" title="Open the chat in its own window" onclick="parent.postMessage({gsChat:\'popout\'}, location.origin)">⧉ Pop out</button>';
+  if (CHAT_WINDOW) return '<button class="btn btn-dim chat-close" title="Put the chat back beside the main window" onclick="popChatIn()">⇲ Pop in</button>';
+  return '';
+}
+function popChatIn() {
+  let opener = null;
+  try { opener = window.opener && !window.opener.closed && window.opener.location.origin === location.origin ? window.opener : null; } catch (e) {}
+  if (opener) opener.postMessage({ gsChat: 'popin' }, location.origin);
+  else { try { localStorage.setItem('gs_chat_popin', String(Date.now())); } catch (e) {} }
+  window.close();
 }
 function openChatPopup() {
   const w = 420, h = Math.min(760, (window.screen && window.screen.availHeight) || 760);
@@ -201,9 +225,15 @@ function startChatWindow() {
 window.addEventListener('storage', e => {
   if (!e.key || !currentUser) return;
   if (CHAT_WINDOW && e.key === 'gs_active_char' && e.newValue && state.characters[e.newValue]) {
-    // the main window picked another character: "Post as" follows it
+    // the main window picked another character: the chat follows it to its
+    // group, and "Post as" follows it
+    const before = chatCurrentGroupId();
     state.activeChar = e.newValue;
-    if (document.getElementById('chat-composer')) renderChatComposer();
+    if (chatCurrentGroupId() !== before) renderChatModule();
+    else if (document.getElementById('chat-composer')) renderChatComposer();
+  } else if (!CHAT_WINDOW && e.key === 'gs_chat_popin' && e.newValue) {
+    // a chat window with no opener asked to come back in
+    openChatDock();
   } else if (!CHAT_WINDOW && e.key.startsWith('gs_chat_read_')) {
     // the chat window read a group's messages
     refreshChatUnread();
@@ -251,14 +281,18 @@ async function renderChatModule() {
   if (!main) return;
   main.innerHTML = `<div class="panel"><div class="panel-body">Loading chat…</div></div>`;
   await fetchMyGroups();
-  if (chatGroupId && !myGroups.find(g => g.id === chatGroupId)) chatGroupId = null;
-  if (!chatGroupId && myGroups.length) {
+  const groups = chatVisibleGroups();
+  if (chatGroupId && !groups.find(g => g.id === chatGroupId)) { chatGroupId = null; chatMessages = []; chatSearch = null; }
+  if (!chatGroupId && groups.length) {
     // Open the group with unread messages first, else the first group.
-    const unreadGroup = myGroups.find(g => chatUnread[g.id] > 0);
-    chatGroupId = (unreadGroup || myGroups[0]).id;
+    const unreadGroup = groups.find(g => chatUnread[g.id] > 0);
+    chatGroupId = (unreadGroup || groups[0]).id;
   }
-  if (!myGroups.length) {
-    main.innerHTML = `<div class="panel chat-panel"><div class="panel-header"><h2>Chat</h2><div style="flex:1"></div>${chatPopoutBtn()}<button class="btn btn-dim chat-close" title="Close the chat window" onclick="closeChatWindow()">✕</button></div><div class="panel-body"><div class="note">You're not in any groups yet. Each group has its own chat — ask your GM to add one of your characters to a group.</div></div></div>`;
+  updateChatMenuBadge();
+  if (!groups.length) {
+    const c = state.characters[state.activeChar];
+    const why = c ? `${escapeHtml(c.name || 'This character')} isn't in a group. Each group has its own chat — ask your GM to add this character to one.` : 'Select a character at the top of the page to see its group\'s chat.';
+    main.innerHTML = `<div class="panel chat-panel"><div class="panel-header"><h2>Chat</h2><div style="flex:1"></div>${chatPopoutBtn()}<button class="btn btn-dim chat-close" title="Close the chat window" onclick="closeChatWindow()">✕</button></div><div class="panel-body"><div class="note">${why}</div></div></div>`;
     return;
   }
   main.innerHTML = `
@@ -311,7 +345,9 @@ async function loadChatRoster() {
 function renderChatGroupTabs() {
   const el = document.getElementById('chat-group-tabs');
   if (!el) return;
-  el.innerHTML = myGroups.map(g => {
+  const groups = chatVisibleGroups();
+  if (groups.length === 1) { el.innerHTML = `<span class="chat-group-current">${escapeHtml(groups[0].name)}${groups[0].myRole === 'gm' ? ' ★' : ''}</span>`; return; }
+  el.innerHTML = groups.map(g => {
     const n = g.id === chatGroupId ? 0 : (chatUnread[g.id] || 0);
     return `<button class="btn ${g.id === chatGroupId ? 'btn-gold' : 'btn-dim'}" onclick="selectChatGroup('${g.id}')">${escapeHtml(g.name)}${g.myRole === 'gm' ? ' ★' : ''}${n ? ` <span class="chat-badge">${n > 99 ? '99+' : n}</span>` : ''}</button>`;
   }).join('');

@@ -1,12 +1,19 @@
 # GuildSchool Chat
 
-Each group has its own chat. **Other → 💬 Chat** opens it in its own
-browser window, which you can move and size like any other (or put on
-another screen); choosing it again brings that window to the front. It
-uses the same sign-in as the main window, and "Post as" follows the
-character you pick there. If nothing opens, allow pop-ups for the site.
-Use the buttons at the top to switch between your groups. Everyone in a
-group can read its chat.
+Each group has its own chat, and everyone in a group can read it.
+**Other → 💬 Chat** opens it. On a wide screen it docks down the right-hand
+side of the page (drag its left edge to resize it); on a narrow one it
+opens in its own browser window. It uses the same sign-in as the main
+window. If nothing opens, allow pop-ups for the site.
+
+- **⧉ Pop out** moves the docked chat to its own browser window, which you
+  can move and size like any other, or put on another screen.
+- **⇲ Pop in**, in that window, puts the chat back beside the main window.
+
+The chat shows the group of the character selected at the top of the page.
+Pick another character and the chat follows it to that character's group,
+and "Post as" follows it too. A GM whose selected character isn't in a
+group sees the chats of the groups they run, with a button for each.
 
 The chat works like Roll20's text chat: the same slash commands, the same
 dice syntax, inline rolls, macros and roll queries.
@@ -221,8 +228,9 @@ Any HTML you type shows as plain text.
 ## Reading the chat
 
 - New messages, edits and deletes appear live for everyone in the group.
-- Unread counts show on each group's button, on the **Other** menu and on
-  **Chat**. They're counted per browser.
+- Unread counts for the chat you can see show on the **Other** menu and on
+  **Chat** (and on each group's button, when there's more than one). They're
+  counted per browser.
 - Messages show under **Today**, **Yesterday** or date headings. Several
   messages from the same sender within 5 minutes share one heading.
 - The 50 most recent messages load first. Use **Load older messages** at

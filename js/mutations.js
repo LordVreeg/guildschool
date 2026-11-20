@@ -8,6 +8,7 @@ function selectChar(id) {
   state.activeSkillId = null;
   state.activeView = 'overview';
   renderApp();
+  updateChatMenuBadge();   // the unread count is for this character's group
 }
 
 // Overview layout, saved with the character: collapse a section, or move it
