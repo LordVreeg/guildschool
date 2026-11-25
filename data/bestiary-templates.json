@@ -1440,6 +1440,47 @@ false
     "notes": "Large territorial reptile related to the giant lizard, roughly draft-horse-sized, grey-green scales with a reddish-orange cast from fire-producing glands. Not intelligent but cunning as a large predator -- patient, observant, aware of its own range. Move 15'. INT 2-4 (animal, territorial). Intensely territorial, defends its ground aggressively but rarely pursues prey beyond established boundaries; most dangerous when cornered or defending a lair. No special weapon requirements to damage. Fire Breath: 20' long, 10'-wide-at-terminus cone, (5d6+8)/d4 fire damage (Reflex CC for half); usable once per 20 segments. Typically opens with the breath weapon before closing to melee, and will close to melee immediately after using it rather than waiting out the cooldown. Lairs accumulate char marks on stonework/vegetation from years of territorial use; other creatures generally learn to avoid a Fire Lizard's range entirely."
   },
   {
+    "name": "FireBurnt Zombie",
+    "hp_formula": "3d8+14",
+    "avg_hp": 27.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 30,
+    "protection": 35,
+    "bmod": 0.9,
+    "avg_damage": 0,
+    "multi": 10,
+    "cc_fortitude": 70,
+    "cc_reflex": 30,
+    "cc_will": 35,
+    "cc_surprise": 20,
+    "cc_social": 0,
+    "attacks": [
+      {
+        "name": "Burning Fists (x2)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+8)/d6)+2 each, plus Burn",
+        "speed": "Speed 6"
+      },
+      {
+        "name": "or Weapon (if raised with one in hand)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "by weapon, +2 damage and +1d4 fire",
+        "speed": ""
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [
+      "Immune to fire/heat (incl. magical)"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "A mindless undead made deliberately, at some cost, by exporting the soul of a lesser creature of the Third House (a Fire Bat, a thing of the Well of Fire, a beast of the magma reaches) and binding it into a prepared body. The corpse burns from the inside and keeps burning: charred black and split, glowing a dull ember-red through the cracks, eye sockets like coals; it doesn't rot, and stinks of char and scorched hair. It obeys its maker's orders and nothing else; left without orders it drifts toward fires, forges, lamps and the warmth of the living, and it moves and strikes faster than an ordinary zombie. Makers are usually fire casters or allied with one. Not the same as the Fiery Undead. Move 6'. INT 0. Burn: any hit that beats avoidance sets clothing, hair and other flammables alight on a failed Reflex CC; a burning target takes ((1d6+3)/d6) each segment until put out (a full segment beating it out, or water). Smoldering Body: unarmed strikes, natural weapons, bites and grapples against it take 1d4 fire each time; wooden hafts and shields that strike or block it have a 10% chance to catch and smolder; it gives dim light for 10', so it can't surprise anyone in the dark. Ember Death: at 0 HP the soul tears loose and the body bursts -- all within 10' take (3d6+10)/d4 fire, a Reflex CC halves it, armor protects 50%, and flammables catch as Burn. Immune to fire and heat of all kinds (including magical), and to sleep, charm, poison, paralysis, disease and mind-affecting effects as undead; cold and water do half again damage, and a full bucket of water thrown on one does 1d6. No special weapons required. For Affecting Undead it is a mindless undead like skeletons and zombies: if repulsed it flees at full speed and doesn't stop for a full minute after leaving the area; it counts against its maker's skeletal servant limit. Frequency Rare (10%)."
+  },
+  {
     "name": 
 "Forest Giant"
 ,
@@ -3292,6 +3333,95 @@ false
     "notes": "An undead chimera created in Igbar bearing dragon, lion, and goat heads, all biting for identical damage (weapon skill listed as bite/bite/claw/butt). Clad in necrotic hide armor; needs silver weapons to bypass its protection fully (74 vs regular/non-silver weapons). Crit 13%. MR 25%. Immune to poison and mind-affecting effects. Breathes fire 3/day (20% chance per round): spray pattern, Reflex CC halves damage, Reflex CC by 25% quarters it, armor protection only 1/4 effective, damage (4d8+15)/d4 (avg ~17.2, under the 20-avg Minor/Major breath-weapon threshold). Source sheet lists a separate 'Bmod-NATURAL 35' stat not mapped to the bmod field above."
   },
   {
+    "name": "Neo-Otyugh",
+    "hp_formula": "7d8+40",
+    "avg_hp": 71.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 30,
+    "protection": 60,
+    "bmod": 1.15,
+    "avg_damage": 0,
+    "multi": 25,
+    "cc_fortitude": 85,
+    "cc_reflex": 35,
+    "cc_will": 55,
+    "cc_surprise": 20,
+    "cc_social": 15,
+    "attacks": [
+      {
+        "name": "Tentacles (x2)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d6+10)/d6)+3 each, see Grab",
+        "speed": "Speed 5"
+      },
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((4d6+10)/d6)+4, plus Midden Rot",
+        "speed": "Speed 7"
+      }
+    ],
+    "bonus_abilities": [
+      "Hide",
+      "Darksight 25'+",
+      "Web / minor impair move"
+    ],
+    "special_abilities": [
+      "Disease (Midden Rot)"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "Korang's second, better vat-line: larger, stronger and far more intelligent, bred (with more of the House of Earth and a deliberate measure of wit) to herd and command the lesser Otyughs as overseers of the Venolvian sewers. 8-12' across, a thicker near-stony hide crusted with minerals, longer tentacles with heavier hooked pads. Since Venolvia fell many have become small lords of their underworlds, ruling a few Otyughs, trading with smugglers and thieves' guilds, and knowing a great deal about the city above; they breed the lesser Otyughs. INT 9-12 (cunning, greedy, proud). Move 9', burrow 6' in muck or loose earth. Multi split 60% tentacle / 40% bite. Grab: as the Otyugh, but the squeeze is ((2d6+6)/d4) each segment with no armor protection, breaking free takes a Fort CC-20 or 15+ damage to that tentacle, and it may hold a victim in each tentacle and still bite. Midden Rot: as the Otyugh, but the Fort CC is at -25 and the victim loses 1d6 HP a day. Hide 60% underground, none in the open; an unspotted Neo-Otyugh imposes -25% on others' Surprise CCs; it picks its spot well and often lets a party pass if it doesn't like the odds. Darksight 90'. Mind-Voice: full speech, mind to mind, with any intelligent creature within 60' in any language the listener knows; can't read thoughts; any Otyugh within 120' obeys it. Mire: once per hour, turns a 10'x10' patch within 30' into sucking muck for 2-12 rounds -- Reflex CC or stuck fast (can't move, -20% to fight) until a Fort CC pulls free; Otyughs move through it freely. Immune to disease, ingested poison, and stench and nausea effects; no special weapons needed. Its lair is the deepest, oldest part of a sewer or midden, with a sorted hoard of what it found in the filth; it would much rather trade (information, passage, disposal of a body) than fight. Frequency Rare (10%), 1 appearing, with 1d4 Otyughs 50% of the time."
+  },
+  {
+    "name": "Night Hag",
+    "hp_formula": "30+5d10",
+    "avg_hp": 57.5,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 40,
+    "protection": 60,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 15,
+    "cc_fortitude": 70,
+    "cc_reflex": 50,
+    "cc_will": 85,
+    "cc_surprise": 60,
+    "cc_social": 40,
+    "attacks": [
+      {
+        "name": "Claws (x2)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+10)/d6)+4 each",
+        "speed": "Speed 5"
+      },
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d8+8)/d6)+3",
+        "speed": "Speed 6"
+      }
+    ],
+    "bonus_abilities": [
+      "Special or magic to hit"
+    ],
+    "special_abilities": [
+      "15%+ magic resist",
+      "25+ SP caster"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "A Daemon (Outsider of the House of Death) from Zevashopal, the Plain of Sharp Spikes on the lowest level of the House of Death where the Well of Death lies. Night Hags stand along the souls' hawaak road like toll-keepers and pawnbrokers, buying, stealing and bargaining for souls and selling them to Daemons, Devilkin and Entropics. 9' tall, gaunt and stooped, dead-white skin, black-nailed fingers, eyes like wet coals, robed in layered black and grey hung with charms. They come to the Waking Dream to trade and to spy, almost always under a Greater Phantasmal Glamor, which hides face, color, voice and smell but not the 9' body, so they keep their distance, sit in dark corners and avoid being touched. INT 14-18 (cunning, patient, greedy); they keep their word to the letter and never to the spirit, and flee rather than die. Move 12'. Multi split 70% claw / 30% bite. Protection 60 vs magicked weapons, 70 vs masterwork or silver, 80 vs normal weapons. Magic resistance 20% (35% vs Death and Necromantic). Soc 40 (55 in certain guises). Soul Barter: takes a soul, or part of one, only by a freely agreed bargain sealed with blood or a kiss, and pays what she promised; the soul goes to her at death and can't be shrived or raised; a partial soul leaves its owner -5 to Will CCs and unable to benefit from shriving or blessings of the dead until it is bought back or she is slain. Soul Gems: carries 1d4+1 (rubies or emeralds of 750+ Horn), and can cast Soul Gem on anyone she kills. Night Riding: once per night, into the sleep of a mortal within 60'; Will CC-15 or wake unrested, recover no SP or HP, and lose 1d4 HP that heal only with rest; she hears anything the sleeper says aloud. Hag's Glamor: held for hours without concentration, carrying scent and warmth; others save (Will CC-28) only when given cause to doubt -- a grapple, a blow, an embrace or a low doorway gives an immediate save at +20%; Penetrate Disguise doesn't detect it, Detect Magic shows magic is present; younger or lesser Hags may only have the Improved version. Spell effects at level 12 with Spirit, Death, Necromantic and Mentalist pools; favored spells: Greater Phantasmal Glamor, Improved Phantasmal Glamor, Phantasmal Glamor, Soul Gem, Phantasmal Vision, Programmed Illusion, Visage of Death, Candle of Death, Necromantic Shield. Immune to Death and Necromantic damage, cold, sleep, charm, fear and poison. Often keep company with Devilkin and ride Nightmares. Frequency Rare (10%)."
+  },
+  {
     "name": "Nightmare",
     "hp_formula": "3d8+20",
     "avg_hp": 33.5,
@@ -3353,16 +3483,25 @@ false
         "name": "weapon (by weapon)",
         "weaponName": "",
         "toHit": "",
-        "damageDice": "((4d6+14)/D5)+3",
+        "damageDice": "((4d6+14)/D5)+4",
         "speed": "SPD 8"
+      },
+      {
+        "name": "Thrown rock (up to 50')",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d6+10)/d6)+3",
+        "speed": "SPD 5"
       }
     ],
-    "bonus_abilities": [],
+    "bonus_abilities": [
+      "Missiles"
+    ],
     "special_abilities": [],
     "exceptional_abilities": [],
     "level_capable": true,
     "possible_classes": [],
-    "notes": "One of the original Ogrillite races, formed by Anthraxus as his children and servants. 8-9' tall, ST around 17-19, moderate INT (4-12). Throws boulders and uses simple weapons."
+    "notes": "One of the original Ogrillite races, formed by Anthraxus as his children and servants. 8-9' tall, ST around 17-19, moderate INT (4-12). Throws big rocks (up to 50', SPD 5) and uses simple weapons."
   },
   {
     "name": "Orcash",
@@ -3407,6 +3546,51 @@ false
       "Thief"
     ],
     "notes": "Small (4-5') pink-green skinned Ogrillites with upturned noses and mandibular canines. Totally disorganized, chaotic bullies, self-interested with little concept of loyalty, who bully weaker Ogrillites and rarely back down from a fight. Darksight 30'. Basic Outdoors 30%. Assumed to wear raggedy Studded Leather or light scaled leather armor."
+  },
+  {
+    "name": "Otyugh",
+    "hp_formula": "4d8+24",
+    "avg_hp": 42,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 25,
+    "protection": 45,
+    "bmod": 1.1,
+    "avg_damage": 0,
+    "multi": 20,
+    "cc_fortitude": 80,
+    "cc_reflex": 30,
+    "cc_will": 40,
+    "cc_surprise": 15,
+    "cc_social": 5,
+    "attacks": [
+      {
+        "name": "Tentacles (x2)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((2d6+8)/d6)+2 each, see Grab",
+        "speed": "Speed 6"
+      },
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d6+8)/d6)+3, plus Midden Rot",
+        "speed": "Speed 8"
+      }
+    ],
+    "bonus_abilities": [
+      "Hide",
+      "Darksight 25'+",
+      "Web / minor impair move"
+    ],
+    "special_abilities": [
+      "Disease (Midden Rot)"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "A Korang vat-creature, bred in the gene vats of Steel Isle (House of Earth mixed with fetid swamp and midden rot) to eat the Venolvian Empire's garbage; they outlived the Empire and now live in the sewers and refuse-pits of old port cities, swamps and deep wet caves. A bloated, lumpy body 6-8' across on three short legs, two ropy tentacles with thorny rasping pads, an eye-stalk, and a maw on top; it spends most of its life half-buried in muck. INT 4-6 (crafty, greedy, simple). Move 6', burrow 3' in muck or loose earth. Multi split 60% tentacle / 40% bite. Grab: a tentacle hit that gets through holds the target unless it makes a Reflex CC; a held target takes ((1d6+4)/d4) squeezing damage each segment with no armor protection, and the next bite at it hits automatically; breaking free takes a Fort CC-10 or 10+ damage to that tentacle. Midden Rot: a bite that gets through forces a Fort CC-15; on a failure the wound festers -- after 1-3 days fever, -10% to all rolls, and 1d4 HP lost a day that won't heal until cured by Restorative magic or a Healer's skill (untreated it runs 1-4 hawaak). Hide 50% underground (sewers, middens, caves, tunnels, swamp muck), none in the open; an unspotted Otyugh imposes -25% on others' Surprise CCs when it strikes. Darksight 60'. Mind-Voice: pushes hunger, fear, anger or satisfaction (no words) into any intelligent mind within 30'; understands simple offers of food and can be bargained with. Immune to disease, ingested poison, and stench and nausea effects; no special weapons needed. Thieves' guilds and murderers keep them fed to dispose of bodies; a Neo-Otyugh is likely nearby if there is more than one. Guts, gall and hide fungus are prized by alchemists. Frequency Uncommon (25%), 1-2 appearing."
   },
   {
     "name": "OwlBear",
@@ -4498,6 +4682,55 @@ false
     "notes": "A semi-intelligent, diminished cousin of true Sauroid dragons -- the line has bred true since arising and is far more fertile than true dragons, making them common in mountain country. Sauroids bear them little ill will, often keeping them as pets, hunting beasts, or half-tamed guardians. Aggressive to nearly everything, driven by hunger rather than cunning: brute weight, a plate-shearing bite, sword-length talons, and a venomous barbed tail rather than any elemental breath. Multi split 30% sting/30% bite/20% talon/20% talon. Aerial Charge reduces the damage dividing die by 1 on a connecting sting/bite. Improved Grab: both talons connecting lets it grapple as a free action; a held target is auto-struck by the sting next round; a talon crit has a 50% chance of counting as both talons connecting. Poison Sting: Fort CC-15% or (2d6/d6) immediately and again next round (a successful CC halves both). Move 12'/Fly 45'. INT 3-5. Body 20-50' nose to tail; usually alone, a mated pair, or a flight of 3-6."
   },
   {
+    "name": "Yellow Dragon",
+    "hp_formula": "24+2d10 per Age Category",
+    "avg_hp": 35,
+    "armor_name": "",
+    "shield_name": "",
+    "avoidance": 60,
+    "protection": 80,
+    "bmod": 1.05,
+    "avg_damage": 0,
+    "multi": 18,
+    "cc_fortitude": 55,
+    "cc_reflex": 65,
+    "cc_will": 35,
+    "cc_surprise": 60,
+    "cc_social": 10,
+    "attacks": [
+      {
+        "name": "Claw",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((3d6+14)/D5)+(age cat x2)",
+        "speed": "SPD 8"
+      },
+      {
+        "name": "Bite",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "((4d10+20)/d4)+(age cat x2)",
+        "speed": "SPD 15"
+      },
+      {
+        "name": "Breath Weapon (Mustard Breath, 3/day)",
+        "weaponName": "",
+        "toHit": "",
+        "damageDice": "Fort CC-25; Hit: (3d6+8)/d6 + (age cat x2), retching and blinded 2-12 segments; Miss: half damage",
+        "speed": ""
+      }
+    ],
+    "bonus_abilities": [],
+    "special_abilities": [
+      "Hard to kill",
+      "Minor Breath Weapon"
+    ],
+    "exceptional_abilities": [],
+    "level_capable": false,
+    "possible_classes": [],
+    "notes": "A lesser true Sauroid dragon-line -- only the White runs smaller -- but quick to take offense and slow to forget it, imbued with the broken House of Air (the House that is No Longer), which sits in them as a grudge against the world. Fair casters, better than a White and well short of a Red or Gold, whose Aeromancy runs to lightning, arcing sparks, crosswinds and thickened air. INT 11-15. Quicker and more agile in the air than a Red or White, unless heavily armored. Scales run bright mustard in youth to dull ochre and old brass in age (the source of Yellow Dragon Scale Mail); eyes hard pale gold; smells sulphurous, and static follows it in dry weather. All stats scale by Age Category -- figures above are the per-category base; protection gains +2-6 more per category, plus worn armor. Bite Multi 9% (separate from the 18% Claw Multi used above). Basic Detect 30%. Detect Magic 45% (50% for magic armor). Hard/Harder to Kill 1/day each. Immunity to Lightning 3/day. Fear at 4th level + age category. Mustard Breath 3/day: a cone that then hangs as a choking cloud for 2-12 segments; Fort CC-25 -- on a hit, retching and blinded 2-12 segments (-25% to all rolls); on a miss, half damage and coughing 1-4 segments (-10% to all rolls); anyone entering or staying in the cloud saves again at -15 instead of -25, taking half damage on a miss. Storm-Mustard: lightning the Yellow casts or channels into its own cloud strikes every creature inside as if it were the target (no to-hit or range needed), Reflex CC as the spell with -10 more for metal armor heavier than chain; it often opens with Mustard Breath and follows at once with an Arc or Lightning Bolt into the cloud. Armored Hoarder: loves armor above all, and wears pieces from its hoard fitted to its body -- 1 piece at Age Category 1-2, 1-2 at 3, 1-3 at 4, 2-4 at 5 and up; each adds 5+1d6 PR plus its own magic bonus (at least half are magic; roll them on the Gem Cabinet armor tab); they are treasure when it is slain. Spellcasting with Spirit and Air level ~1d4 x age category; favored spells: Arc, Arc Major, Arc of the Adept, Lightning Bolt, Greater Lightning Bolt, Crosswinds, Air Buckler, Thicken Air, Thickened Air, Basic Armor. Breath avg damage is ~7.6 (dice) + 2/Age Category flat -- Minor at Age Category 1-6 (under 20 avg), crosses into Major (20+ avg) at Age Category 7; re-tag to Major/exceptional for a specimen that old. Frequency Uncommon (25%)."
+  },
+  {
     "name": "Zombie",
     "hp_formula": "7+d8",
     "avg_hp": 11.5,
@@ -4511,7 +4744,7 @@ false
     "cc_fortitude": 60,
     "cc_reflex": 25,
     "cc_will": 30,
-    "cc_surprise": null,
+    "cc_surprise": 5,
     "cc_social": 0,
     "attacks": [
       {

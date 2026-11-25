@@ -16563,5 +16563,87 @@
     "range": "see torch",
     "duration": "2 hrs +2 hr plev",
     "spellSuccess": "0"
+  },
+  {
+    "name": "Alchemist's Efficacy of Potion",
+    "school": "Water",
+    "cost": 35,
+    "costs": {
+      "Spirit": 20,
+      "Water": 12,
+      "Artificer": 3
+    },
+    "majorSphere": "Water",
+    "initiative": "10",
+    "range": "touch",
+    "duration": "10min/plev",
+    "spellSuccess": "-15"
+  },
+  {
+    "name": "Comforts of Home, Otyugh",
+    "school": "Earth",
+    "cost": 24,
+    "costs": {
+      "Spirit": 13,
+      "Earth": 8,
+      "Life": 1,
+      "Mentalist": 1,
+      "Artificer": 1
+    },
+    "majorSphere": "Earth",
+    "initiative": "30",
+    "range": "1/4 mile+100' plev",
+    "duration": "1 month",
+    "spellSuccess": "5"
+  },
+  {
+    "name": "Greater Phantasmal Glamor",
+    "school": "Mentalist",
+    "cost": 82,
+    "costs": {
+      "Spirit": 37,
+      "Air": 5,
+      "Life": 2,
+      "Law": 2,
+      "Mentalist": 31,
+      "Artificer": 5
+    },
+    "majorSphere": "Mentalist",
+    "initiative": "6",
+    "range": "60'+3'plev",
+    "duration": "1 hour+1 hour plev",
+    "spellSuccess": "-10"
+  },
+  {
+    "name": "Improved Phantasmal Glamor",
+    "school": "Mentalist",
+    "cost": 59,
+    "costs": {
+      "Spirit": 27,
+      "Air": 4,
+      "Law": 1,
+      "Mentalist": 23,
+      "Artificer": 4
+    },
+    "majorSphere": "Mentalist",
+    "initiative": "4",
+    "range": "60'+3'plev",
+    "duration": "10 min+5 min plev",
+    "spellSuccess": "0"
+  },
+  {
+    "name": "The Jerk",
+    "school": "Mentalist",
+    "cost": 25,
+    "costs": {
+      "Spirit": 15,
+      "Chaos": 3,
+      "Mentalist": 7
+    },
+    "majorSphere": "Mentalist",
+    "initiative": "4",
+    "range": "20'",
+    "duration": "10 min/plev",
+    "spellSuccess": "2"
   }
 ]
