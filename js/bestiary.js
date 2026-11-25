@@ -409,33 +409,29 @@ async function rollBestiaryHpClick() {
   renderBestiaryEditor();
 }
 
-// Full weapon-quality-vs-Protection ladder from the "Damage Reduction (void-sourced)"
-// wiki rule: the creature's stated Protection is the "Magicked" tier; each step away
-// from it (better or worse weapon) shifts Protection by 10.
+// Weapon-quality-vs-Protection ladder from the "Damage Reduction (void-sourced)"
+// wiki rule: the creature's stated Protection is what a Magicked weapon (or better)
+// faces; each step down (Masterwork, Silver, Normal) adds 10. It only works as a
+// malus: a better weapon than Magicked never takes Protection below the stated value.
 function voidDrTiers() {
   const base = parseFloat(bestiaryDraft.protection) || 0;
   return { base, tiers: [
     ['Normal', base + 30],
     ['Silver', base + 20],
     ['Masterwork', base + 10],
-    ['Magicked', base],
-    ['Magicked+5%', base - 10],
-    ['Magicked+10%', base - 20],
-    ['Magicked+15%', base - 30],
-    ['Magicked+20%', base - 40],
-    ['Magicked+25%', base - 50]
+    ['Magicked or better', base]
   ] };
 }
 function voidDrText() {
   const { base, tiers } = voidDrTiers();
-  return 'Void Damage Reduction (Protection by weapon quality, ' + base + ' base vs Magicked, ±10 per tier): '
+  return 'Void Damage Reduction (Protection by weapon quality, ' + base + ' vs Magicked or better, +10 per step down): '
     + tiers.map(([label, val]) => `${label} ${val}`).join(' / ') + '.';
 }
 function showVoidDrModal() {
   if (!bestiaryDraft) { appAlert('No foe is currently open for editing.'); return; }
   const { tiers } = voidDrTiers();
   openModal(`
-    <h3>Void Damage Reduction${infoTip(`Protection by weapon quality, ±10 per tier, based on the Protection value above.`)}</h3>
+    <h3>Void Damage Reduction${infoTip(`Protection by weapon quality: the Protection value above is what a Magicked weapon or better faces; each step down adds 10. Better weapons never lower it.`)}</h3>
     <table class="skill-table" style="margin-bottom:14px">
       <tbody>
         ${tiers.map(([label,val]) => `<tr><td>${label}</td><td class="skval-cell">${val}</td></tr>`).join('')}
@@ -653,7 +649,7 @@ function renderBestiaryEditor() {
       </div>
       <div class="note">Bmod × Avg HP = ${Math.round((parseFloat(d.bmod)||0) * (parseFloat(d.avg_hp)||0) * 100) / 100} -- basic chance to hit.</div>
       <div class="form-row" style="margin-bottom:10px">
-        <div class="form-group"><button class="btn btn-dim" onclick="showVoidDrModal()">⛓ Void DR continuum</button>${infoTip(`Shows the full Normal/Silver/Masterwork/Magicked/+5%/+10%/+15%/+20%/+25% Protection ladder (±10 per tier off the Protection value above) in a popup, with an option to insert it into Notes below.`)}</div>
+        <div class="form-group"><button class="btn btn-dim" onclick="showVoidDrModal()">⛓ Void DR continuum</button>${infoTip(`Shows the Protection ladder by weapon quality in a popup: the Protection value above is what a Magicked weapon or better faces, and Masterwork, Silver and Normal weapons face +10, +20 and +30 (the ladder only adds; better weapons never lower it), with an option to insert it into Notes below.`)}</div>
       </div>
 
       <div style="font-size:calc(11px * var(--fs));color:var(--gold-dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Hit points (this foe)</div>
